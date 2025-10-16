@@ -1,0 +1,74 @@
+[project]
+name = "bsv-wallet-toolbox"
+version = "0.1.0"
+description = "BRC-100 compliant Bitcoin SV wallet implementation"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Open BSV License version 4"}
+authors = [
+    {name = "BSV Blockchain Association"},
+]
+keywords = ["bitcoin", "bsv", "wallet", "brc-100"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "bsv-sdk @ git+https://github.com/bsv-blockchain/py-sdk.git@feature/auth/certificates-port",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "mypy>=1.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+skip-string-normalization = false
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+select = ["E", "F", "I", "N", "UP", "ANN", "B", "A", "C4", "PIE", "T20", "SIM", "ARG", "PTH", "ERA", "PL", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+addopts = "-v --strict-markers"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
