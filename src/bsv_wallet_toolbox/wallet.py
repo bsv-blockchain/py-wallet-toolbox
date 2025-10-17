@@ -5,7 +5,7 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 
 from typing import Literal
 
-from bsv.wallet.wallet_interface import GetNetworkResult, GetVersionResult
+from bsv.wallet.wallet_interface import AuthenticatedResult, GetNetworkResult, GetVersionResult
 
 from .errors import InvalidParameterError
 
@@ -28,18 +28,18 @@ class Wallet:
 
     Note:
         Version is hardcoded as a class constant, matching TypeScript implementation.
-        Python implementation uses "0.2.0" during development, will become "1.0.0"
+        Python implementation uses "0.3.0" during development, will become "1.0.0"
         when all 28 methods are implemented.
 
     Example:
         >>> wallet = Wallet()
         >>> result = await wallet.get_version({})
         >>> print(result["version"])
-        0.2.0
+        0.3.0
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.2.0"  # Will become "1.0.0" when all 28 methods are complete (2/28 done)
+    VERSION = "0.3.0"  # Will become "1.0.0" when all 28 methods are complete (3/28 done)
 
     def __init__(self, chain: Chain = "main") -> None:
         """Initialize wallet.
@@ -140,3 +140,35 @@ class Wallet:
         """
         self._validate_originator(originator)
         return {"version": self.VERSION}
+
+    async def is_authenticated(
+        self,
+        _args: dict,
+        originator: str | None = None,  # Empty dict for isAuthenticated (unused but required by interface)
+    ) -> AuthenticatedResult:
+        """Check if user is authenticated.
+
+        BRC-100 WalletInterface method implementation.
+        In the base Wallet implementation, authentication is always true since
+        the wallet is initialized with keys.
+
+        Reference:
+            - ts-wallet-toolbox/src/Wallet.ts
+
+        Args:
+            args: Empty dict (isAuthenticated takes no parameters)
+            originator: Optional originator domain name (must be string under 250 bytes)
+
+        Returns:
+            Dictionary with 'authenticated' key set to True
+
+        Raises:
+            InvalidParameterError: If originator is invalid
+
+        Example:
+            >>> wallet = Wallet()
+            >>> result = await wallet.is_authenticated({})
+            >>> assert result == {"authenticated": True}
+        """
+        self._validate_originator(originator)
+        return {"authenticated": True}
