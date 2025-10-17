@@ -12,8 +12,7 @@ Note: TypeScript implementation returns 'wallet-brc100-1.0.0',
       We follow the official spec (Universal Test Vectors).
 """
 
-import json
-from pathlib import Path
+from collections.abc import Callable
 
 import pytest
 
@@ -22,63 +21,45 @@ from bsv_wallet_toolbox import Wallet
 
 class TestUniversalVectorsGetVersion:
     """Tests using Universal Test Vectors for getVersion.
-    
+
     Important: ABI (wire) tests are skipped because TypeScript doesn't test them.
     Following the principle: "If TypeScript skips it, we skip it too."
     """
-    
-    @pytest.fixture
-    def test_vectors_dir(self) -> Path:
-        """Get path to Universal Test Vectors directory."""
-        return Path(__file__).parent.parent / "data" / "universal-test-vectors" / "generated" / "brc100"
-    
-    @pytest.fixture
-    def test_vectors(self, test_vectors_dir: Path) -> tuple[dict, dict]:
-        """Load Universal Test Vectors for getVersion.
-        
-        Returns:
-            Tuple of (args_data, result_data)
-        """
-        with open(test_vectors_dir / "getVersion-simple-args.json") as f:
-            args_data = json.load(f)
-        
-        with open(test_vectors_dir / "getVersion-simple-result.json") as f:
-            result_data = json.load(f)
-        
-        return args_data, result_data
-    
+
     @pytest.mark.asyncio
-    async def test_getversion_json_matches_universal_vectors(self, test_vectors: tuple[dict, dict]):
+    async def test_getversion_json_matches_universal_vectors(
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+    ) -> None:
         """Given: Universal Test Vector input for getVersion
            When: Call getVersion with empty args
            Then: Result matches Universal Test Vector output (JSON)
-           
+
         Note: This test will FAIL until Python implementation reaches v1.0.0.
               Universal Test Vectors expect "1.0.0" but Python currently returns "0.1.0".
               This failure is expected and acceptable during development.
         """
         # Given
-        args_data, result_data = test_vectors
+        args_data, result_data = load_test_vectors("getVersion-simple")
         wallet = Wallet()  # Will use Wallet.VERSION (currently "0.1.0")
-        
+
         # When
-        result = await wallet.get_version(args_data['json'], originator=None)
-        
+        result = await wallet.get_version(args_data["json"], originator=None)
+
         # Then - Will fail until Wallet.VERSION becomes "1.0.0"
-        assert result == result_data['json']
-        assert result['version'] == '1.0.0'  # Universal Test Vector expectation
-    
+        assert result == result_data["json"]
+        assert result["version"] == "1.0.0"  # Universal Test Vector expectation
+
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     @pytest.mark.asyncio
-    async def test_getversion_wire_matches_universal_vectors(self, test_vectors: tuple[dict, dict]):
+    async def test_getversion_wire_matches_universal_vectors(
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+    ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this.
-        
+
         This test would verify:
         1. Deserialize wire input: "1c00" -> method + args
         2. Execute getVersion
         3. Serialize result -> matches "00312e302e30"
-        
+
         Following the principle: "If TypeScript skips it, we skip it too."
         """
-        pass
-
