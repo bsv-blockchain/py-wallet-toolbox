@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.services import MockWalletServices
 
 
 @pytest.fixture
@@ -73,3 +74,23 @@ def testnet_wallet() -> Wallet:
         Wallet instance configured for testnet
     """
     return Wallet(chain="test")
+
+
+@pytest.fixture
+def mock_services() -> MockWalletServices:
+    """Create mock wallet services for testing.
+
+    Returns:
+        MockWalletServices instance with default height 850000
+    """
+    return MockWalletServices(chain="main", height=850000)
+
+
+@pytest.fixture
+def wallet_with_services(mock_services: MockWalletServices) -> Wallet:
+    """Create a test wallet instance with mock services.
+
+    Returns:
+        Wallet instance configured with MockWalletServices
+    """
+    return Wallet(chain="main", services=mock_services)

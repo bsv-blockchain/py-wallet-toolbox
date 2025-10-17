@@ -5,10 +5,13 @@ WalletInterface, compatible with TypeScript and Go implementations.
 """
 
 from .errors import InvalidParameterError
+from .services import MockWalletServices, WalletServices
 from .wallet import Wallet
 
-__version__ = "0.1.0"
+__version__ = "0.5.0"
 __all__ = [
     "InvalidParameterError",
+    "MockWalletServices",
     "Wallet",
+    "WalletServices",
 ]

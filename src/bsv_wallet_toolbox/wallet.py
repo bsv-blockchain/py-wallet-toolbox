@@ -5,9 +5,10 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 
 from typing import Literal
 
-from bsv.wallet.wallet_interface import AuthenticatedResult, GetNetworkResult, GetVersionResult
+from bsv.wallet.wallet_interface import AuthenticatedResult, GetHeightResult, GetNetworkResult, GetVersionResult
 
 from .errors import InvalidParameterError
+from .services import WalletServices
 
 # Type alias for chain (matches TypeScript: 'main' | 'test')
 Chain = Literal["main", "test"]
@@ -39,18 +40,21 @@ class Wallet:
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.4.0"  # Will become "1.0.0" when all 28 methods are complete (4/28 done)
+    VERSION = "0.5.0"  # Will become "1.0.0" when all 28 methods are complete (5/28 done)
 
-    def __init__(self, chain: Chain = "main") -> None:
+    def __init__(self, chain: Chain = "main", services: WalletServices | None = None) -> None:
         """Initialize wallet.
 
         Args:
             chain: Bitcoin network chain ('main' or 'test'). Defaults to 'main'.
+            services: Optional WalletServices instance for blockchain data access.
+                     If None, some methods requiring services will not work.
 
         Note:
             Version is not configurable, it's a class constant.
         """
         self.chain: Chain = chain
+        self.services: WalletServices | None = services
 
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.
@@ -209,3 +213,45 @@ class Wallet:
         """
         self._validate_originator(originator)
         return {"authenticated": True}
+
+    async def get_height(
+        self, _args: dict, originator: str | None = None  # Empty dict for getHeight (unused but required by interface)
+    ) -> GetHeightResult:
+        """Get current blockchain height.
+
+        BRC-100 WalletInterface method implementation.
+        Returns the current height of the blockchain by querying configured services.
+
+        Reference:
+            - ts-wallet-toolbox/src/Wallet.ts
+            - ts-wallet-toolbox/test/Wallet/get/getHeight.test.ts
+
+        Args:
+            args: Empty dict (getHeight takes no parameters)
+            originator: Optional originator domain name (must be string under 250 bytes)
+
+        Returns:
+            Dictionary with 'height' key containing current blockchain height
+
+        Raises:
+            InvalidParameterError: If originator parameter is invalid
+            RuntimeError: If services are not configured
+
+        Example:
+            >>> from bsv_wallet_toolbox.services import MockWalletServices
+            >>> services = MockWalletServices(height=850000)
+            >>> wallet = Wallet(services=services)
+            >>> result = await wallet.get_height({})
+            >>> print(result["height"])
+            850000
+
+        Note:
+            Requires services to be configured. If services is None, raises RuntimeError.
+        """
+        self._validate_originator(originator)
+
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use getHeight")
+
+        height = await self.services.get_height()
+        return {"height": height}
