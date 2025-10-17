@@ -28,18 +28,18 @@ class Wallet:
 
     Note:
         Version is hardcoded as a class constant, matching TypeScript implementation.
-        Python implementation uses "0.3.0" during development, will become "1.0.0"
+        Python implementation uses "0.4.0" during development, will become "1.0.0"
         when all 28 methods are implemented.
 
     Example:
         >>> wallet = Wallet()
         >>> result = await wallet.get_version({})
         >>> print(result["version"])
-        0.3.0
+        0.4.0
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.3.0"  # Will become "1.0.0" when all 28 methods are complete (3/28 done)
+    VERSION = "0.4.0"  # Will become "1.0.0" when all 28 methods are complete (4/28 done)
 
     def __init__(self, chain: Chain = "main") -> None:
         """Initialize wallet.
@@ -168,6 +168,43 @@ class Wallet:
         Example:
             >>> wallet = Wallet()
             >>> result = await wallet.is_authenticated({})
+            >>> assert result == {"authenticated": True}
+        """
+        self._validate_originator(originator)
+        return {"authenticated": True}
+
+    async def wait_for_authentication(
+        self,
+        _args: dict,
+        originator: str | None = None,  # Empty dict for waitForAuthentication (unused but required by interface)
+    ) -> AuthenticatedResult:
+        """Wait for user authentication.
+
+        BRC-100 WalletInterface method implementation.
+        In the base Wallet implementation, returns immediately with authenticated=true
+        since the wallet is always authenticated (initialized with keys).
+
+        Note:
+            In wallet manager implementations (SimpleWalletManager, CWIStyleWalletManager),
+            this method waits in a loop until authentication occurs. However, in the base
+            Wallet class, authentication is immediate.
+
+        Reference:
+            - ts-wallet-toolbox/src/Wallet.ts
+
+        Args:
+            args: Empty dict (waitForAuthentication takes no parameters)
+            originator: Optional originator domain name (must be string under 250 bytes)
+
+        Returns:
+            Dictionary with 'authenticated' key set to True
+
+        Raises:
+            InvalidParameterError: If originator is invalid
+
+        Example:
+            >>> wallet = Wallet()
+            >>> result = await wallet.wait_for_authentication({})
             >>> assert result == {"authenticated": True}
         """
         self._validate_originator(originator)

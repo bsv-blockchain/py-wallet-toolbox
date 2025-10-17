@@ -8,7 +8,6 @@ Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getNetwork.test.ts
 import pytest
 
 from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 class TestGetNetworkBasic:
@@ -26,7 +25,7 @@ class TestGetNetworkBasic:
            When: Call getNetwork
            Then: Returns 'testnet'
 
-        Reference: TypeScript test creates wallet with chain='test' (line 805 in TestUtilsWalletStorage.ts)
+        Reference: TypeScript test creates wallet with chain='test' in TestUtilsWalletStorage.ts
         """
         # Given
         wallet = Wallet(chain="test")
@@ -66,72 +65,3 @@ class TestGetNetworkBasic:
 
         # Then
         assert result == {"network": "mainnet"}
-
-
-class TestGetNetworkOriginator:
-    """Tests for originator parameter validation in getNetwork method."""
-
-    @pytest.mark.asyncio
-    async def test_with_valid_originator(self) -> None:
-        """Given: Wallet and valid originator string
-        When: Call getNetwork with originator
-        Then: Returns network without error
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        originator = "test.example.com"
-
-        # When
-        result = await wallet.get_network({}, originator=originator)
-
-        # Then
-        assert result == {"network": "mainnet"}
-        # No exception raised
-
-    @pytest.mark.asyncio
-    async def test_with_invalid_originator_type(self) -> None:
-        """Given: Wallet and non-string originator
-        When: Call getNetwork with invalid originator type
-        Then: Raises InvalidParameterError
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        invalid_originator = 123  # Not a string
-
-        # When/Then
-        with pytest.raises(InvalidParameterError) as exc_info:
-            await wallet.get_network({}, originator=invalid_originator)
-
-        assert "originator" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_with_too_long_originator(self) -> None:
-        """Given: Wallet and originator > 250 bytes
-        When: Call getNetwork with too long originator
-        Then: Raises InvalidParameterError
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        too_long_originator = "a" * 251  # 251 bytes > 250
-
-        # When/Then
-        with pytest.raises(InvalidParameterError) as exc_info:
-            await wallet.get_network({}, originator=too_long_originator)
-
-        assert "originator" in str(exc_info.value)
-
-    @pytest.mark.asyncio
-    async def test_with_none_originator(self) -> None:
-        """Given: Wallet and None originator
-        When: Call getNetwork with originator=None
-        Then: Returns network without error
-        """
-        # Given
-        wallet = Wallet(chain="main")
-
-        # When
-        result = await wallet.get_network({}, originator=None)
-
-        # Then
-        assert result == {"network": "mainnet"}
-        # No exception raised

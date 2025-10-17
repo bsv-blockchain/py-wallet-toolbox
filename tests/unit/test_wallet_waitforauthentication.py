@@ -1,6 +1,6 @@
-"""Unit tests for Wallet.is_authenticated method.
+"""Unit tests for Wallet.wait_for_authentication method.
 
-Note: TypeScript does not have dedicated unit tests for base Wallet.isAuthenticated
+Note: TypeScript does not have dedicated unit tests for base Wallet.waitForAuthentication
       (only tested through manager implementations in src/__tests/CWIStyleWalletManager.test.ts).
 
       This Python test verifies basic functionality to ensure the method works as expected,
@@ -12,26 +12,26 @@ import pytest
 from bsv_wallet_toolbox import Wallet
 
 
-class TestIsAuthenticated:
-    """Tests for isAuthenticated method.
+class TestWaitForAuthentication:
+    """Tests for waitForAuthentication method.
 
     Note: Python-specific test (no TypeScript equivalent for base Wallet class).
     """
 
     @pytest.mark.asyncio
-    async def test_resolves_with_authenticated_true(self) -> None:
+    async def test_eventually_resolves(self) -> None:
         """Given: Wallet instance
-           When: Call isAuthenticated with normal originator
+           When: Call waitForAuthentication
            Then: Returns authenticated=true
 
         Note: Inspired by manager tests in TypeScript, but adapted for base Wallet class.
-              We test the successful case with normal originator.
+              Base Wallet class returns immediately since it's always authenticated.
         """
         # Given
         wallet = Wallet()
 
         # When
-        result = await wallet.is_authenticated({}, originator="normal.com")
+        result = await wallet.wait_for_authentication({}, originator="normal.com")
 
         # Then
         assert result == {"authenticated": True}
