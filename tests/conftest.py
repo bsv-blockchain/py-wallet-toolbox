@@ -8,9 +8,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from bsv.chaintracker import ChainTracker
 
 from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.services import MockWalletServices
+from bsv_wallet_toolbox.services import WalletServices
 
 
 @pytest.fixture
@@ -74,6 +75,82 @@ def testnet_wallet() -> Wallet:
         Wallet instance configured for testnet
     """
     return Wallet(chain="test")
+
+
+# ========================================================================
+# MockWalletServices - Test Implementation
+# ========================================================================
+
+
+class MockWalletServices(WalletServices):
+    """Mock implementation of WalletServices for testing.
+
+    This mock allows tests to verify Wallet interface behavior without
+    requiring actual blockchain API calls.
+
+    Attributes:
+        height: Mock blockchain height (default: 850000)
+        header: Mock block header bytes (default: genesis block)
+    """
+
+    def __init__(
+        self,
+        chain: str = "main",
+        height: int = 850000,
+        header: bytes | None = None,
+    ) -> None:
+        """Initialize mock services.
+
+        Args:
+            chain: Blockchain network ('main' or 'test')
+            height: Mock blockchain height
+            header: Mock block header (80 bytes). If None, uses genesis block header.
+        """
+        super().__init__(chain)
+        self._height = height
+
+        # Default to genesis block header if not provided
+        if header is None:
+            genesis_hex = (
+                "0100000000000000000000000000000000000000000000000000000000000000"
+                "000000003ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa"
+                "4b1e5e4a29ab5f49ffff001d1dac2b7c"
+            )
+            self._header = bytes.fromhex(genesis_hex)
+        else:
+            self._header = header
+
+    async def get_chain_tracker(self) -> ChainTracker:
+        """Get mock ChainTracker (not implemented for basic tests).
+
+        Raises:
+            NotImplementedError: ChainTracker not needed for basic Wallet interface tests
+        """
+        raise NotImplementedError("MockWalletServices does not provide ChainTracker")
+
+    async def get_height(self) -> int:
+        """Get mock blockchain height.
+
+        Returns:
+            Mock height value
+        """
+        return self._height
+
+    async def get_header_for_height(self, height: int) -> bytes:
+        """Get mock block header.
+
+        Args:
+            height: Block height (ignored in mock)
+
+        Returns:
+            Mock header bytes (80 bytes)
+        """
+        return self._header
+
+
+# ========================================================================
+# Fixtures using MockWalletServices
+# ========================================================================
 
 
 @pytest.fixture

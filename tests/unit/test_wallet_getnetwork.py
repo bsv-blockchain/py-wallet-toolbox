@@ -25,7 +25,8 @@ class TestGetNetworkBasic:
            When: Call getNetwork
            Then: Returns 'testnet'
 
-        Reference: TypeScript test creates wallet with chain='test' in TestUtilsWalletStorage.ts
+        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getNetwork.test.ts
+                   test('should return the correct network')
         """
         # Given
         wallet = Wallet(chain="test")
@@ -41,6 +42,9 @@ class TestGetNetworkBasic:
         """Given: Wallet with chain='main'
         When: Call getNetwork
         Then: Returns 'mainnet'
+
+        Note: TypeScript only tests chain='test' (testnet).
+              This test verifies mainnet behavior for completeness.
         """
         # Given
         wallet = Wallet(chain="main")
@@ -56,6 +60,9 @@ class TestGetNetworkBasic:
         """Given: Wallet with no chain specified (default)
         When: Call getNetwork
         Then: Returns 'mainnet' (default)
+
+        Note: TypeScript does not test default chain behavior.
+              This test verifies Python's default chain='main' parameter works correctly.
         """
         # Given
         wallet = Wallet()  # No chain specified, defaults to 'main'

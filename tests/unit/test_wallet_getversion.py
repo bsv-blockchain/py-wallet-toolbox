@@ -14,12 +14,13 @@ class TestWalletGetVersion:
     """Test suite for Wallet.get_version method."""
 
     @pytest.mark.asyncio
-    async def test_returns_correct_wallet_version(self) -> None:
+    async def test_should_return_the_correct_wallet_version(self) -> None:
         """Given: A wallet instance
            When: get_version is called
            Then: Returns the correct wallet version
 
-        Reference: TypeScript test "should return the correct wallet version"
+        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getVersion.test.ts
+                   test('should return the correct wallet version')
         """
         # Given
         wallet = Wallet()

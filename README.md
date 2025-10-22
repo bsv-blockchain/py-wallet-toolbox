@@ -9,12 +9,10 @@ Welcome to the BSV Blockchain Wallet Toolbox for Python — BRC-100 conforming w
 - [Getting Started](#getting-started)
   - [Installation](#installation)
   - [Quick Start](#quick-start)
-  - [Examples & Usage Guides](#examples--usage-guides)
 - [Building Blocks](#building-blocks)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Roadmap](#roadmap)
-- [Documentation](#documentation)
 - [Compatibility](#compatibility)
 - [Contribution Guidelines](#contribution-guidelines)
 - [Support & Contacts](#support--contacts)
@@ -38,17 +36,14 @@ By providing interlocking, production-ready building blocks for persistent stora
 
 **Version**: 0.1.0 (Alpha)
 
-**Implemented Methods** (Level 1):
-- ✅ `getVersion` - Get wallet version with originator validation
+**Implementation Progress**: Phase 0 Complete, Phase 1 Ready to Start
 
-**In Development** (Levels 2-12):
-- ⏳ `getNetwork`, `isAuthenticated`, `waitForAuthentication` (Level 2-3)
-- ⏳ `getHeight`, `getHeaderForHeight`, `getPublicKey` (Level 3)
-- ⏳ `listActions`, `listOutputs`, `listCertificates` (Level 4)
-- ⏳ `createAction`, `signAction`, `internalizeAction` (Levels 7-9)
-- ⏳ And 18 more methods...
+This is an early-stage implementation. The wallet is being built incrementally with a focus on:
+- List-based development approach
+- Test-driven development
+- Cross-implementation compatibility
 
-See [CHANGELOG.md](./CHANGELOG.md) for detailed version history and [Implementation Strategy](../../doc/01_implementation_strategy.md) for the complete roadmap.
+See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
 ## Getting Started
 
@@ -77,6 +72,12 @@ source .venv/bin/activate  # Linux/Mac
 pip install -e .[dev]
 ```
 
+#### From PyPI (Coming Soon)
+
+```bash
+pip install bsv-wallet-toolbox
+```
+
 ### Quick Start
 
 #### Basic Usage
@@ -92,7 +93,6 @@ async def main():
     # Get wallet version
     result = await wallet.get_version({})
     print(f"Wallet version: {result['version']}")
-    # Output: Wallet version: 0.1.0
     
     # With originator validation
     result = await wallet.get_version({}, originator="example.com")
@@ -118,13 +118,6 @@ async def example_with_error_handling():
         # Output: Error: Invalid parameter 'originator': must be under 250 bytes
 ```
 
-### Examples & Usage Guides
-
-Examples and detailed guides are available in:
-- [Implementation Guide](../../doc/09_getversion_implementation_guide.md) - Step-by-step implementation of `getVersion`
-- [Testing Strategy](../../doc/04_interoperability_testing_strategy.md) - How we ensure compatibility
-- [Architecture Clarification](../../doc/10_architecture_clarification.md) - Understanding WalletInterface vs WalletStorageProvider
-
 ## Building Blocks
 
 The Python Wallet Toolbox consists of the following components:
@@ -132,10 +125,8 @@ The Python Wallet Toolbox consists of the following components:
 ### Currently Implemented
 
 - **Wallet** (`src/bsv_wallet_toolbox/wallet.py`): High-level wallet orchestration implementing BRC-100 WalletInterface
-  - ✅ Version management with originator validation
-  - ⏳ Network configuration
-  - ⏳ Authentication state management
-  - ⏳ Transaction creation and signing
+  - ✅ Basic wallet structure
+  - ⏳ 28 BRC-100 methods (in development)
   
 - **Error Handling** (`src/bsv_wallet_toolbox/errors/`): Comprehensive error classes
   - ✅ `InvalidParameterError` for parameter validation
@@ -143,22 +134,22 @@ The Python Wallet Toolbox consists of the following components:
 
 ### Planned Components
 
-- **Storage Layer** (Level 4+): Durable records for actions, outputs, certificates, and related entities
+- **Storage Layer**: Durable records for actions, outputs, certificates, and related entities
   - SQLAlchemy-based ORM
   - Support for SQLite, PostgreSQL, MySQL
   - 16 database tables matching TypeScript schema
   
-- **Services Integration** (Level 3+): Integrations for blockchain services
+- **Services Integration**: Integrations for blockchain services
   - Chain tracker (block height, headers)
   - ARC (transaction broadcast)
   - Overlay services (discovery, certificates)
   
-- **Monitor** (Level 10+): Background tasks for SPV-friendly workflows
+- **Monitor**: Background tasks for SPV-friendly workflows
   - Transaction status monitoring
   - Proof retrieval
   - Storage synchronization
   
-- **JSON-RPC Dispatcher** (Level 12): Framework-neutral JSON-RPC server
+- **JSON-RPC Dispatcher**: Framework-neutral JSON-RPC server
   - Standard JSON-RPC 2.0 protocol
   - HTTP transport layer
   - Authentication middleware integration
@@ -170,15 +161,15 @@ The Python Wallet Toolbox consists of the following components:
 - ✅ **BRC-100 Compliant**: Implements official WalletInterface specification
 - ✅ **Type Safe**: Full type hints with mypy strict mode
 - ✅ **Async/Await**: Modern asynchronous programming with asyncio
-- ✅ **Originator Validation**: Secure parameter validation
-- ✅ **Universal Test Vectors**: Validated against official BRC-100 test data
 - ✅ **Cross-Platform**: Linux, macOS, Windows support
 - ✅ **Well Documented**: Comprehensive English docstrings
+- ✅ **Test Infrastructure**: pytest-based testing framework
 
 ### Planned Features
 
+- ⏳ **28 BRC-100 Methods**: Full WalletInterface implementation
 - ⏳ **Database Persistence**: SQLAlchemy-based storage (SQLite/PostgreSQL/MySQL)
-- ⏳ **Protocol-Aligned Wallet Flows**: Full BRC-100 method implementation
+- ⏳ **Protocol-Aligned Wallet Flows**: Complete BRC-100 method implementation
 - ⏳ **Pluggable Service Layer**: ARC, ChainTracker, Overlay Services
 - ⏳ **Storage Synchronization**: Multi-device wallet sync
 - ⏳ **JSON-RPC Server**: HTTP-based wallet server
@@ -201,10 +192,11 @@ The Python Wallet Toolbox consists of the following components:
 ┌─────────────────────────────────────────────────────────┐
 │                   Wallet Class                           │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │  • getVersion() ✅                                 │ │
-│  │  • createAction() ⏳                               │ │
-│  │  • signAction() ⏳                                 │ │
-│  │  • ... 25 more methods                             │ │
+│  │  • getVersion()                                    │ │
+│  │  • getNetwork()                                    │ │
+│  │  • createAction()                                  │ │
+│  │  • signAction()                                    │ │
+│  │  • ... 24 more methods                             │ │
 │  └────────────────────────────────────────────────────┘ │
 │                        │                                 │
 │       ┌────────────────┼────────────────┐               │
@@ -225,62 +217,47 @@ The Python Wallet Toolbox consists of the following components:
 1. **Framework Neutral**: Core library has no web framework dependencies
 2. **Async First**: All I/O operations use async/await
 3. **Type Safe**: Complete type hints for IDE support and static analysis
-4. **Test Driven**: Universal Test Vectors + TypeScript test ports
+4. **Test Driven**: Universal Test Vectors + comprehensive test suite
 5. **Cross-Language Compatible**: 100% compatible with TypeScript and Go
 
 ## Roadmap
 
-### Phase 1: Core Wallet (v0.1.0 - v0.5.0) 🔄 Current Phase
+### Phase 0: Preparation ✅ Complete
 
-- [x] Level 0: Project setup, type definitions
-- [x] Level 1: `getVersion` ✅ **COMPLETED**
-- [ ] Level 2: `getNetwork`, `isAuthenticated`, `waitForAuthentication`
-- [ ] Level 3: Services integration (`getHeight`, `getHeaderForHeight`, `getPublicKey`)
-- [ ] Level 4-7: Storage operations (list, relinquish, abort, internalize)
-- [ ] Level 8-11: Transaction operations (create, sign, certificates, key linkage)
+- [x] Project structure and build system
+- [x] Testing framework setup
+- [x] Type definitions
+- [x] Development documentation
 
-### Phase 2: Advanced Features (v0.6.0 - v1.0.0)
+### Phase 1: Foundation (Current)
 
-- [ ] Level 12: JSON-RPC dispatcher
-- [ ] Level 13+: BRC-100 ABI implementation
+- [ ] WalletInterface basic methods (4 methods)
+- [ ] Storage layer foundation (16 tables)
+- [ ] Basic CRUD operations
+- [ ] Validation utilities
+
+### Phase 2: Core Features
+
+- [ ] Network information methods
+- [ ] List operations
+- [ ] Transaction management
+- [ ] Services integration
+
+### Phase 3: Advanced Features
+
+- [ ] Cryptographic operations
+- [ ] Certificate management
+- [ ] Discovery services
 - [ ] Storage synchronization
+
+### Phase 4: Production Ready
+
+- [ ] JSON-RPC dispatcher
+- [ ] BRC-100 ABI
 - [ ] Monitor (background tasks)
-- [ ] Example applications
-
-### Phase 3: Production Ready (v1.0.0+)
-
 - [ ] Performance optimization
-- [ ] Production deployment guides
-- [ ] Docker support
-- [ ] Comprehensive tutorials
-- [ ] Enterprise features
 
-See [Implementation Strategy](../../doc/01_implementation_strategy.md) for detailed breakdown.
-
-## Documentation
-
-### Core Documentation
-
-- [Project Overview](../../doc/00_project_overview.md) - High-level project goals and approach
-- [Implementation Strategy](../../doc/01_implementation_strategy.md) - Detailed implementation plan with 12 levels
-- [WalletInterface Methods](../../doc/02_wallet_interface_methods.md) - All 28 methods explained
-- [Design Decisions](../../doc/03_design_decisions.md) - Why we made certain architectural choices
-- [Testing Strategy](../../doc/04_interoperability_testing_strategy.md) - How we ensure quality
-- [JSON-RPC & ABI Guide](../../doc/05_library_choices_jsonrpc_wire.md) - Communication protocols
-- [Database Schema](../../doc/08_database_schema.md) - Complete database design
-
-### Implementation Guides
-
-- [getVersion Implementation Guide](../../doc/09_getversion_implementation_guide.md) - Complete step-by-step guide
-- [Architecture Clarification](../../doc/10_architecture_clarification.md) - WalletInterface vs WalletStorageProvider
-
-### Reference Documentation
-
-- Python SDK: [BSV SDK Documentation](https://github.com/bsv-blockchain/py-sdk)
-- BRC-100 Specification: [Wallet Interface Standard](https://github.com/bitcoin-sv/BRCs/blob/master/wallet/0100.md)
-- Universal Test Vectors: [Official Test Data](https://github.com/bsv-blockchain/universal-test-vectors)
-
-The repository is richly documented with English docstrings that surface well in editors like VSCode.
+See [IMPLEMENTATION_ROADMAP.md](./IMPLEMENTATION_ROADMAP.md) for detailed breakdown.
 
 ## Compatibility
 
@@ -339,8 +316,18 @@ For detailed guidelines, check [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 For questions, bug reports, or feature requests:
 - Open an issue on [GitHub](https://github.com/bsv-blockchain/wallet-toolbox/issues)
-- Check existing [documentation](../../doc/)
 - Review [TypeScript implementation](../ts-wallet-toolbox) for reference
+- Check [Go implementation](../go-wallet-toolbox) for reference
+
+## Documentation
+
+### Reference Documentation
+
+- Python SDK: [BSV SDK Documentation](https://github.com/bsv-blockchain/py-sdk)
+- BRC-100 Specification: [Wallet Interface Standard](https://github.com/bitcoin-sv/BRCs/blob/master/wallet/0100.md)
+- Universal Test Vectors: [Official Test Data](https://github.com/bsv-blockchain/universal-test-vectors)
+
+The repository is richly documented with English docstrings that surface well in editors like VSCode.
 
 ## License
 

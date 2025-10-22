@@ -5,7 +5,13 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 
 from typing import Literal
 
-from bsv.wallet.wallet_interface import AuthenticatedResult, GetHeightResult, GetNetworkResult, GetVersionResult
+from bsv.wallet.wallet_interface import (
+    AuthenticatedResult,
+    GetHeaderResult,
+    GetHeightResult,
+    GetNetworkResult,
+    GetVersionResult,
+)
 
 from .errors import InvalidParameterError
 from .services import WalletServices
@@ -40,7 +46,7 @@ class Wallet:
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.5.0"  # Will become "1.0.0" when all 28 methods are complete (5/28 done)
+    VERSION = "0.6.0"  # Will become "1.0.0" when all 28 methods are complete (6/28 done)
 
     def __init__(self, chain: Chain = "main", services: WalletServices | None = None) -> None:
         """Initialize wallet.
@@ -255,3 +261,60 @@ class Wallet:
 
         height = await self.services.get_height()
         return {"height": height}
+
+    async def get_header_for_height(self, args: dict, originator: str | None = None) -> GetHeaderResult:
+        """Get block header at specified height.
+
+        BRC-100 WalletInterface method implementation.
+        Returns the block header at the specified height as a hex string.
+
+        Reference:
+            - ts-wallet-toolbox/src/Wallet.ts
+            - ts-wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
+
+        Args:
+            args: Dictionary with 'height' key (non-negative integer)
+            originator: Optional originator domain name (must be string under 250 bytes)
+
+        Returns:
+            Dictionary with 'header' key containing block header as hex string
+
+        Raises:
+            InvalidParameterError: If originator parameter is invalid or height is invalid
+            RuntimeError: If services are not configured
+            Exception: If unable to retrieve header from services
+
+        Example:
+            >>> from bsv_wallet_toolbox.services import MockWalletServices
+            >>> services = MockWalletServices(height=850000)
+            >>> wallet = Wallet(services=services)
+            >>> result = await wallet.get_header_for_height({"height": 850000})
+            >>> print(result["header"][:16])  # First 16 chars of hex
+            0100000000000000
+
+        Note:
+            Requires services to be configured. If services is None, raises RuntimeError.
+            Height must be a non-negative integer.
+        """
+        self._validate_originator(originator)
+
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use getHeaderForHeight")
+
+        # Validate height parameter
+        if "height" not in args:
+            raise InvalidParameterError("height", "required")
+
+        height = args["height"]
+
+        if not isinstance(height, int):
+            raise InvalidParameterError("height", "an integer")
+
+        if height < 0:
+            raise InvalidParameterError("height", f"a non-negative integer (got {height})")
+
+        # Get header from services (returns bytes)
+        header_bytes = await self.services.get_header_for_height(height)
+
+        # Convert bytes to hex string (matching TypeScript behavior)
+        return {"header": header_bytes.hex()}
