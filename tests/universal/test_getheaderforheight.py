@@ -30,7 +30,7 @@ class TestUniversalVectorsGetHeaderForHeight:
         expected_header_hex = result_data["json"]["header"]
         header_bytes = bytes.fromhex(expected_header_hex)
         services = MockWalletServices(height=850000, header=header_bytes)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="main", services=services)
 
         # When
         result = await wallet.get_header_for_height(args_data["json"], originator=None)

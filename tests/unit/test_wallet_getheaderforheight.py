@@ -37,7 +37,7 @@ class TestGetHeaderForHeightBasic:
         # Given
         header_bytes = bytes.fromhex(GENESIS_HEADER_HEX)
         services = MockWalletServices(height=EXPECTED_HEIGHT, header=header_bytes)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
 
         # When
         result = await wallet.get_header_for_height({"height": 1})
@@ -80,7 +80,7 @@ class TestGetHeaderForHeightValidation:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
@@ -97,7 +97,7 @@ class TestGetHeaderForHeightValidation:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
@@ -114,7 +114,7 @@ class TestGetHeaderForHeightValidation:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
         invalid_height = "not_a_number"  # type: ignore
 
         # When / Then
@@ -133,7 +133,7 @@ class TestGetHeaderForHeightValidation:
         # Given
         header_bytes = bytes.fromhex(GENESIS_HEADER_HEX)
         services = MockWalletServices(height=EXPECTED_HEIGHT, header=header_bytes)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
 
         # When
         result = await wallet.get_header_for_height({"height": 0})
@@ -158,7 +158,7 @@ class TestGetHeaderForHeightIntegration:
         # Given
         header_bytes = bytes.fromhex(GENESIS_HEADER_HEX)
         services = MockWalletServices(height=EXPECTED_HEIGHT, header=header_bytes)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
 
         # When
         result = await wallet.get_header_for_height({"height": 9999})

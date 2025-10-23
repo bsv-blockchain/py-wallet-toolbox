@@ -29,7 +29,7 @@ class TestGetHeightBasic:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
 
         # When
         result = await wallet.get_height({})
@@ -70,7 +70,7 @@ class TestGetHeightWithOriginator:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="test", services=services)
         originator = "test.example.com"
 
         # When

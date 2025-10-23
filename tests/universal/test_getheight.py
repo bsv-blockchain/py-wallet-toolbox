@@ -28,7 +28,7 @@ class TestUniversalVectorsGetHeight:
         args_data, result_data = load_test_vectors("getHeight-simple")
         # Mock services returning the expected height from Universal Test Vectors
         services = MockWalletServices(height=result_data["json"]["height"])
-        wallet = Wallet(services=services)
+        wallet = Wallet(chain="main", services=services)
 
         # When
         result = await wallet.get_height(args_data["json"], originator=None)
