@@ -28,8 +28,8 @@ class TestUniversalVectorsDiscoverByAttributes:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for discoverByAttributes
-           When: Call discoverByAttributes
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call discoverByAttributes
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("discoverByAttributes-simple")
@@ -47,4 +47,3 @@ class TestUniversalVectorsDiscoverByAttributes:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
-

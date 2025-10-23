@@ -2,7 +2,7 @@
 
 Ported from TypeScript implementation to ensure compatibility.
 
-Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getNetwork.test.ts
+Reference: wallet-toolbox/test/Wallet/get/getNetwork.test.ts
 """
 
 import pytest
@@ -19,7 +19,7 @@ class TestWalletGetNetwork:
            When: Call getNetwork
            Then: Returns 'testnet'
 
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getNetwork.test.ts
+        Reference: wallet-toolbox/test/Wallet/get/getNetwork.test.ts
                    test('should return the correct network')
 
         Note: TypeScript tests use chain='test' by default in test environment.

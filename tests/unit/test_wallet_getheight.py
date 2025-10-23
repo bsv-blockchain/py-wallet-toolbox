@@ -1,6 +1,6 @@
 """Unit tests for Wallet.get_height method.
 
-Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getHeight.test.ts
+Reference: wallet-toolbox/test/Wallet/get/getHeight.test.ts
 
 Note: TypeScript tests require full wallet setup with chaintracks.
       Python tests use MockWalletServices for interface verification.
@@ -24,7 +24,7 @@ class TestGetHeightBasic:
            When: Call getHeight
            Then: Returns positive height value
 
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getHeight.test.ts
+        Reference: wallet-toolbox/test/Wallet/get/getHeight.test.ts
                    test('0 valid height')
         """
         # Given

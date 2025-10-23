@@ -3,19 +3,18 @@
 This module tests the initialization behavior and configuration options
 of WalletPermissionsManager.
 
-Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
 """
 
+import asyncio
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from typing import Optional, Dict, Any
-from unittest.mock import Mock, AsyncMock
 
 try:
-    from bsv_wallet_toolbox.wallet_permissions_manager import (
-        WalletPermissionsManager,
-        PermissionsManagerConfig
-    )
     from bsv.wallet.wallet_interface import WalletInterface
+    from bsv_wallet_toolbox.wallet_permissions_manager import PermissionsManagerConfig, WalletPermissionsManager
+
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
@@ -26,80 +25,77 @@ except ImportError:
 
 class TestWalletPermissionsManagerInitialization:
     """Test suite for WalletPermissionsManager initialization and configuration.
-    
-    Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+    Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                describe('WalletPermissionsManager - Initialization & Configuration')
     """
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_should_initialize_with_default_config_if_none_is_provided(self) -> None:
         """Given: No config provided to constructor
            When: Create WalletPermissionsManager
            Then: All config flags default to True
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should initialize with default config if none is provided')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        
+
         # When
         manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.domain.com"
+            underlying_wallet=mock_underlying_wallet, admin_originator="admin.domain.com"
         )
-        
+
         # Then - manager internally defaults all config flags to true
         internal_config = getattr(manager, "_config", {})
         assert internal_config.get("seekProtocolPermissionsForSigning") is True
         assert internal_config.get("seekProtocolPermissionsForEncrypting") is True
         assert internal_config.get("seekPermissionsForIdentityKeyRevelation") is True
         assert internal_config.get("encryptWalletMetadata") is True
-        
+
         # The manager should store the admin originator
         admin = getattr(manager, "_admin_originator", None)
         assert admin == "admin.domain.com"
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_should_initialize_with_partial_config_overrides_merging_with_defaults(self) -> None:
         """Given: Partial config provided (some flags overridden)
            When: Create WalletPermissionsManager
            Then: Overridden flags set correctly, rest remain default
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should initialize with partial config overrides, merging with defaults')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         partial_config = {
             "seekProtocolPermissionsForSigning": False,
-            "encryptWalletMetadata": False
+            "encryptWalletMetadata": False,
             # The rest remain default = true
         }
-        
+
         # When
         manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.domain.com",
-            config=partial_config
+            underlying_wallet=mock_underlying_wallet, admin_originator="admin.domain.com", config=partial_config
         )
-        
+
         # Then - overridden to false
         internal_config = getattr(manager, "_config", {})
         assert internal_config.get("seekProtocolPermissionsForSigning") is False
         assert internal_config.get("encryptWalletMetadata") is False
-        
+
         # Remaining defaults still true
         assert internal_config.get("seekBasketInsertionPermissions") is True
         assert internal_config.get("seekSpendingPermissions") is True
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_should_initialize_with_all_config_flags_set_to_false(self) -> None:
         """Given: All config flags set to False
            When: Create WalletPermissionsManager
            Then: All flags are False
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should initialize with all config flags set to false')
         """
         # Given
@@ -123,69 +119,70 @@ class TestWalletPermissionsManagerInitialization:
             "seekCertificateListingPermissions": False,
             "encryptWalletMetadata": False,
             "seekSpendingPermissions": False,
-            "differentiatePrivilegedOperations": False
+            "differentiatePrivilegedOperations": False,
         }
-        
+
         # When
         manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.domain.com",
-            config=all_false
+            underlying_wallet=mock_underlying_wallet, admin_originator="admin.domain.com", config=all_false
         )
-        
+
         # Then
         internal_config = getattr(manager, "_config", {})
         for key, value in all_false.items():
             assert internal_config.get(key) == value
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_consider_calls_from_the_adminoriginator_as_admin_bypassing_checks(self) -> None:
         """Given: Manager with admin originator set
            When: Call method with admin originator
            Then: Bypasses all permission checks
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should consider calls from the adminOriginator as admin, bypassing checks')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "admin-tx"})
         manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.domain.com"
+            underlying_wallet=mock_underlying_wallet, admin_originator="admin.domain.com"
         )
-        
+
         # When - call with admin originator
         result = await manager.create_action(
             {
                 "description": "Insertion to user basket",
-                "outputs": [{
-                    "lockingScript": "abcd",
-                    "satoshis": 1000,
-                    "outputDescription": "some out desc",
-                    "basket": "some-user-basket"
-                }]
+                "outputs": [
+                    {
+                        "lockingScript": "abcd",
+                        "satoshis": 1000,
+                        "outputDescription": "some out desc",
+                        "basket": "some-user-basket",
+                    }
+                ],
             },
-            "admin.domain.com"
+            "admin.domain.com",
         )
-        
+
         # Then - bypassed checks, call succeeded
         assert result is not None
         assert mock_underlying_wallet.create_action.call_count == 1
-        
+
         # activeRequests map should be empty
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(self) -> None:
+    async def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(
+        self,
+    ) -> None:
         """Given: Manager with seekProtocolPermissionsForSigning=False
            When: Non-admin creates signature with protocolID
            Then: No permission check, proceeds directly
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should skip protocol permission checks for signing if seekProtocolPermissionsForSigning=false')
         """
         # Given
@@ -194,35 +191,32 @@ class TestWalletPermissionsManagerInitialization:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.domain.com",
-            config={"seekProtocolPermissionsForSigning": False}
+            config={"seekProtocolPermissionsForSigning": False},
         )
-        
+
         # When - non-admin origin attempts createSignature
         await manager.create_signature(
-            {
-                "protocolID": [1, "some-protocol"],
-                "privileged": False,
-                "data": [0x01, 0x02],
-                "keyID": "1"
-            },
-            "app.nonadmin.com"
+            {"protocolID": [1, "some-protocol"], "privileged": False, "data": [0x01, 0x02], "keyID": "1"},
+            "app.nonadmin.com",
         )
-        
+
         # Then - underlying createSignature is invoked
         assert mock_underlying_wallet.create_signature.call_count == 1
-        
+
         # The manager's internal request queue should remain empty
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(self) -> None:
+    async def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(
+        self,
+    ) -> None:
         """Given: Manager with seekProtocolPermissionsForSigning=True
            When: Non-admin creates signature with protocolID
            Then: Permission check triggered, request queued
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should enforce protocol permission checks for signing if seekProtocolPermissionsForSigning=true')
         """
         # Given
@@ -230,45 +224,43 @@ class TestWalletPermissionsManagerInitialization:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.domain.com",
-            config={"seekProtocolPermissionsForSigning": True}
+            config={"seekProtocolPermissionsForSigning": True},
         )
         manager._find_protocol_token = AsyncMock(return_value=None)
-        
+
         # When - non-admin origin tries createSignature
         import asyncio
-        create_sig_promise = asyncio.create_task(manager.create_signature(
-            {
-                "protocolID": [1, "test-protocol"],
-                "keyID": "1",
-                "data": [0x10, 0x20],
-                "privileged": False
-            },
-            "nonadmin.com"
-        ))
-        
+
+        create_sig_promise = asyncio.create_task(
+            manager.create_signature(
+                {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
+                "nonadmin.com",
+            )
+        )
+
         # Wait a short tick to let the async code run
         await asyncio.sleep(0.01)
-        
+
         # Then - request queue has an entry
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) > 0
-        
+
         # Forcibly deny the request so the test can conclude
-        first_request_key = list(active_requests.keys())[0]
+        first_request_key = next(iter(active_requests.keys()))
         await manager.deny_permission(first_request_key)
-        
+
         # The promise eventually rejects
         with pytest.raises(ValueError, match="Permission denied"):
             await create_sig_promise
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_skip_basket_insertion_permission_checks_if_seekbasketinsertionpermissions_false(self) -> None:
         """Given: Manager with seekBasketInsertionPermissions=False
            When: Non-admin creates action with basket
            Then: No basket insertion permission check
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should skip basket insertion permission checks if seekBasketInsertionPermissions=false')
         """
         # Given
@@ -277,44 +269,46 @@ class TestWalletPermissionsManagerInitialization:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.domain.com",
-            config={"seekBasketInsertionPermissions": False}
+            config={"seekBasketInsertionPermissions": False},
         )
-        
+
         # Spending authorization is still required, grant it
-        def auto_grant_spending(request):
-            import asyncio
-            asyncio.create_task(manager.grant_permission({
-                "requestID": request["requestID"],
-                "ephemeral": True
-            }))
+        def auto_grant_spending(request) -> None:
+
+            asyncio.create_task(manager.grant_permission({"requestID": request["requestID"], "ephemeral": True}))
+
         manager.bind_callback("onSpendingAuthorizationRequested", auto_grant_spending)
-        
+
         # When - non-admin origin tries to createAction specifying a basket
         await manager.create_action(
             {
                 "description": "Insert to user basket",
-                "outputs": [{
-                    "lockingScript": "1234",
-                    "satoshis": 888,
-                    "basket": "somebasket",
-                    "outputDescription": "some out desc"
-                }]
+                "outputs": [
+                    {
+                        "lockingScript": "1234",
+                        "satoshis": 888,
+                        "basket": "somebasket",
+                        "outputDescription": "some out desc",
+                    }
+                ],
             },
-            "some-user.com"
+            "some-user.com",
         )
-        
+
         # Then - no permission request should be queued (spending auth auto-granted)
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(self) -> None:
+    async def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(
+        self,
+    ) -> None:
         """Given: Manager with seekCertificateDisclosurePermissions=False
            When: Non-admin discloses certificate
            Then: No disclosure permission check
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should skip certificate disclosure permission checks if seekCertificateDisclosurePermissions=false')
         """
         # Given
@@ -323,32 +317,27 @@ class TestWalletPermissionsManagerInitialization:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.domain.com",
-            config={"seekCertificateDisclosurePermissions": False}
+            config={"seekCertificateDisclosurePermissions": False},
         )
-        
+
         # When
         await manager.disclose_certificate(
-            {
-                "certifier": "some-certifier",
-                "type": "some-type",
-                "serialNumber": "123"
-            },
-            "nonadmin.com"
+            {"certifier": "some-certifier", "type": "some-type", "serialNumber": "123"}, "nonadmin.com"
         )
-        
+
         # Then
         assert mock_underlying_wallet.disclose_certificate.call_count == 1
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_skip_metadata_encryption_if_encryptwalletmetadata_false(self) -> None:
         """Given: Manager with encryptWalletMetadata=False
            When: Create action with metadata
            Then: Metadata not encrypted
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should skip metadata encryption if encryptWalletMetadata=false')
         """
         # Given
@@ -357,21 +346,15 @@ class TestWalletPermissionsManagerInitialization:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.domain.com",
-            config={"encryptWalletMetadata": False}
+            config={"encryptWalletMetadata": False},
         )
-        
+
         # When - admin creates action with metadata
         result = await manager.create_action(
-            {
-                "description": "Test action",
-                "metadata": {"key": "plaintext-value"},
-                "outputs": []
-            },
-            "admin.domain.com"
+            {"description": "Test action", "metadata": {"key": "plaintext-value"}, "outputs": []}, "admin.domain.com"
         )
-        
+
         # Then - metadata passed through unencrypted
         assert result is not None
         call_args = mock_underlying_wallet.create_action.call_args[0][0]
         assert call_args.get("metadata") == {"key": "plaintext-value"}
-

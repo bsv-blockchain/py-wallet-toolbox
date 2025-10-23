@@ -69,4 +69,3 @@ class TestUniversalVectorsGetPublicKey:
 
         Following the principle: "If TypeScript skips it, we skip it too."
         """
-

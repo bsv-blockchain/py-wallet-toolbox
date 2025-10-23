@@ -3,7 +3,7 @@
 Reference: ts-wallet-toolbox/src/Wallet.ts
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
@@ -95,7 +95,9 @@ class Wallet:
         return "mainnet" if chain == "main" else "testnet"
 
     async def get_network(
-        self, _args: dict, originator: str | None = None  # Empty dict for getNetwork (unused but required by interface)
+        self,
+        _args: dict[str, Any],  # Empty dict (unused but required by interface)
+        originator: str | None = None,
     ) -> GetNetworkResult:
         """Get Bitcoin network.
 
@@ -125,7 +127,9 @@ class Wallet:
         return {"network": self._to_wallet_network(self.chain)}
 
     async def get_version(
-        self, _args: dict, originator: str | None = None  # Empty dict for getVersion (unused but required by interface)
+        self,
+        _args: dict[str, Any],  # Empty dict (unused but required by interface)
+        originator: str | None = None,
     ) -> GetVersionResult:
         """Get wallet version.
 
@@ -155,7 +159,7 @@ class Wallet:
 
     async def is_authenticated(
         self,
-        _args: dict,
+        _args: dict[str, Any],
         originator: str | None = None,  # Empty dict for isAuthenticated (unused but required by interface)
     ) -> AuthenticatedResult:
         """Check if user is authenticated.
@@ -187,7 +191,7 @@ class Wallet:
 
     async def wait_for_authentication(
         self,
-        _args: dict,
+        _args: dict[str, Any],
         originator: str | None = None,  # Empty dict for waitForAuthentication (unused but required by interface)
     ) -> AuthenticatedResult:
         """Wait for user authentication.
@@ -223,7 +227,9 @@ class Wallet:
         return {"authenticated": True}
 
     async def get_height(
-        self, _args: dict, originator: str | None = None  # Empty dict for getHeight (unused but required by interface)
+        self,
+        _args: dict[str, Any],  # Empty dict (unused but required by interface)
+        originator: str | None = None,
     ) -> GetHeightResult:
         """Get current blockchain height.
 
@@ -264,7 +270,7 @@ class Wallet:
         height = await self.services.get_height()
         return {"height": height}
 
-    async def get_header_for_height(self, args: dict, originator: str | None = None) -> GetHeaderResult:
+    async def get_header_for_height(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
         """Get block header at specified height.
 
         BRC-100 WalletInterface method implementation.

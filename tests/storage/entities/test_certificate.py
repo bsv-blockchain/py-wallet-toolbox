@@ -1,11 +1,12 @@
 """Unit tests for Certificate entity.
 
-Reference: src/storage/schema/entities/__tests/CertificateTests.test.ts
+Reference: wallet-toolbox/src/storage/schema/entities/__tests/CertificateTests.test.ts
 """
 
-import pytest
 from datetime import datetime
-from typing import Any
+
+import pytest
+from bsv_wallet_toolbox.storage.entities import Certificate
 
 
 class TestCertificateEntity:
@@ -17,13 +18,12 @@ class TestCertificateEntity:
         """Given: Two Certificate entities with identical data
            When: Call equals method
            Then: Returns True
-           
+
         Reference: src/storage/schema/entities/__tests/CertificateTests.test.ts
                   test('0_equals identifies matching Certificate entities')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Certificate
-        
+
         now = datetime.now()
         certificate_id = 500
         certificate_data = {
@@ -37,12 +37,12 @@ class TestCertificateEntity:
             "subject": "02c123eabcdeff1234567890abcdef1234567890abcdef1234567890abcdef5678",
             "revocationOutpoint": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890:0",
             "signature": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity1 = Certificate(certificate_data)
         entity2 = Certificate(certificate_data)
-        
+
         # When/Then
         assert entity1.equals(entity2.to_api()) is True
 
@@ -52,13 +52,12 @@ class TestCertificateEntity:
         """Given: Two Certificate entities with different data
            When: Call equals method
            Then: Returns False for each mismatched field
-           
+
         Reference: src/storage/schema/entities/__tests/CertificateTests.test.ts
                   test('1_equals identifies non-matching Certificate entities')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Certificate
-        
+
         now = datetime.now()
         certificate_data1 = {
             "certificateId": 501,
@@ -71,11 +70,11 @@ class TestCertificateEntity:
             "subject": "02c123eabcdeff1234567890abcdef1234567890abcdef1234567890abcdef5678",
             "revocationOutpoint": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890:0",
             "signature": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity1 = Certificate(certificate_data1)
-        
+
         # Test each mismatched field
         mismatched_entities = [
             {"type": "differentType"},
@@ -84,9 +83,9 @@ class TestCertificateEntity:
             {"revocationOutpoint": "differentOutpoint:0"},
             {"signature": "differentSignature"},
             {"verifier": "differentVerifier"},
-            {"isDeleted": not certificate_data1["isDeleted"]}
+            {"isDeleted": not certificate_data1["isDeleted"]},
         ]
-        
+
         for mismatch in mismatched_entities:
             mismatched_entity = Certificate({**certificate_data1, **mismatch})
             # When/Then
@@ -95,18 +94,18 @@ class TestCertificateEntity:
     @pytest.mark.skip(reason="Certificate entity not implemented yet")
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
-        self
+        self,
     ) -> None:
         """Given: Certificate entity with older updated_at
            When: Call merge_existing with newer updated_at
            Then: Entity and database are updated
-           
+
         Reference: src/storage/schema/entities/__tests/CertificateTests.test.ts
                   test('2_mergeExisting updates entity and database when ei.updated_at > this.updated_at')
         """
         # Given
         from bsv_wallet_toolbox.storage.entities import Certificate
-        
+
         now = datetime.now()
         certificate_id = 600
         certificate_data = {
@@ -120,11 +119,11 @@ class TestCertificateEntity:
             "subject": "02c123eabcdeff1234567890abcdef1234567890abcdef1234567890abcdef5678",
             "revocationOutpoint": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890:0",
             "signature": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity = Certificate(certificate_data)
-        
+
         # Updated data with later timestamp
         updated_data = {
             **certificate_data,
@@ -135,17 +134,15 @@ class TestCertificateEntity:
             "revocationOutpoint": "updatedOutpoint:1",
             "signature": "updatedSignature",
             "verifier": "updatedVerifier",
-            "isDeleted": True
+            "isDeleted": True,
         }
-        
+
         sync_map = {"certificate": {"idMap": {certificate_id: certificate_id}}}
         mock_storage = type("MockStorage", (), {})()
-        
+
         # When
-        was_merged = await entity.merge_existing(
-            mock_storage, None, updated_data, sync_map, None
-        )
-        
+        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
+
         # Then
         assert was_merged is True
         assert entity.type == "updatedType"
@@ -159,18 +156,18 @@ class TestCertificateEntity:
     @pytest.mark.skip(reason="Certificate entity not implemented yet")
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_update_entity_when_ei_updated_at_less_than_or_equal_this_updated_at(
-        self
+        self,
     ) -> None:
         """Given: Certificate entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
            Then: Entity is not updated
-           
+
         Reference: src/storage/schema/entities/__tests/CertificateTests.test.ts
                   test('3_mergeExisting does not update entity when ei.updated_at <= this.updated_at')
         """
         # Given
         from bsv_wallet_toolbox.storage.entities import Certificate
-        
+
         now = datetime.now()
         certificate_id = 601
         certificate_data = {
@@ -184,27 +181,25 @@ class TestCertificateEntity:
             "subject": "02c123eabcdeff1234567890abcdef1234567890abcdef1234567890abcdef5678",
             "revocationOutpoint": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890:0",
             "signature": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity = Certificate(certificate_data)
-        
+
         # Same updated_at
         same_updated_data = {
             **certificate_data,
             "updated_at": now,
             "type": "unchangedType",
-            "subject": "unchangedSubject"
+            "subject": "unchangedSubject",
         }
-        
+
         sync_map = {"certificate": {"idMap": {certificate_id: certificate_id}}}
         mock_storage = type("MockStorage", (), {})()
-        
+
         # When
-        was_merged = await entity.merge_existing(
-            mock_storage, None, same_updated_data, sync_map, None
-        )
-        
+        was_merged = await entity.merge_existing(mock_storage, None, same_updated_data, sync_map, None)
+
         # Then
         assert was_merged is False
         assert entity.type == "exampleType"
@@ -216,13 +211,12 @@ class TestCertificateEntity:
         """Given: Certificate entity with initial data
            When: Get and set all properties
            Then: Getters and setters work correctly
-           
+
         Reference: src/storage/schema/entities/__tests/CertificateTests.test.ts
                   test('4_Certificate class getters and setters')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Certificate
-        
+
         now = datetime.now()
         initial_data = {
             "certificateId": 701,
@@ -236,11 +230,11 @@ class TestCertificateEntity:
             "certifier": "initialCertifier",
             "revocationOutpoint": "initialOutpoint:0",
             "signature": "initialSignature",
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity = Certificate(initial_data)
-        
+
         # Validate getters
         assert entity.certificate_id == 701
         assert entity.created_at == now
@@ -253,11 +247,11 @@ class TestCertificateEntity:
         assert entity.certifier == "initialCertifier"
         assert entity.revocation_outpoint == "initialOutpoint:0"
         assert entity.signature == "initialSignature"
-        assert entity.is_deleted == False
+        assert not entity.is_deleted
         assert entity.id == 701
         assert entity.entity_name == "certificate"
         assert entity.entity_table == "certificates"
-        
+
         # Validate setters
         entity.certificate_id = 800
         entity.created_at = datetime(2025, 1, 1)
@@ -272,7 +266,7 @@ class TestCertificateEntity:
         entity.signature = "updatedSignature"
         entity.is_deleted = True
         entity.id = 900
-        
+
         # Validate updated values
         assert entity.certificate_id == 900
         assert entity.created_at == datetime(2025, 1, 1)
@@ -287,4 +281,3 @@ class TestCertificateEntity:
         assert entity.signature == "updatedSignature"
         assert entity.is_deleted is True
         assert entity.id == 900
-

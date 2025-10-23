@@ -30,8 +30,8 @@ class TestUniversalVectorsAcquireCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for acquireCertificate (simple)
-           When: Call acquireCertificate
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call acquireCertificate
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("acquireCertificate-simple")
@@ -56,8 +56,8 @@ class TestUniversalVectorsAcquireCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for acquireCertificate (issuance)
-           When: Call acquireCertificate for issuance
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call acquireCertificate for issuance
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("acquireCertificate-issuance")
@@ -75,4 +75,3 @@ class TestUniversalVectorsAcquireCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
-

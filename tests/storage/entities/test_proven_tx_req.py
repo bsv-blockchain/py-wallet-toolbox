@@ -1,12 +1,14 @@
 """Unit tests for ProvenTxReq entity.
 
-Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
+Reference: wallet-toolbox/src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
 """
 
-import pytest
 import json
 from datetime import datetime
 from typing import Any
+
+import pytest
+from bsv_wallet_toolbox.storage.entities import ProvenTxReq
 
 
 class TestProvenTxReqEntity:
@@ -17,30 +19,31 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq instance
            When: Set and get api_notify property
            Then: Properly serializes/deserializes JSON notify data
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('0_apiNotify_getter_and_setter')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
-        proven_tx_req = ProvenTxReq({
-            "provenTxReqId": 0,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-            "txid": "",
-            "rawTx": [],
-            "history": "{}",
-            "notify": "{}",
-            "attempts": 0,
-            "status": "unknown",
-            "notified": False
-        })
-        
+
+        proven_tx_req = ProvenTxReq(
+            {
+                "provenTxReqId": 0,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "txid": "",
+                "rawTx": [],
+                "history": "{}",
+                "notify": "{}",
+                "attempts": 0,
+                "status": "unknown",
+                "notified": False,
+            }
+        )
+
         # When
         notify_data = {"transactionIds": [1, 2, 3]}
         proven_tx_req.api_notify = json.dumps(notify_data)
-        
+
         # Then
         assert proven_tx_req.api_notify == json.dumps(notify_data)
         assert proven_tx_req.notify["transactionIds"] == [1, 2, 3]
@@ -50,16 +53,15 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq instance with history
            When: Call get_history_summary
            Then: Returns formatted history summary
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('1_getHistorySummary')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         # Placeholder test - implementation details not shown in TS
-        proven_tx_req = ProvenTxReq({})
-        
+        ProvenTxReq({})
+
         # When/Then
         # Test implementation pending
 
@@ -68,26 +70,27 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq instance
            When: Call parse_history_note
            Then: Parses history note correctly
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('2_parseHistoryNote')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
-        proven_tx_req = ProvenTxReq({
-            "provenTxReqId": 0,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-            "txid": "",
-            "rawTx": [],
-            "history": "{}",
-            "notify": "{}",
-            "attempts": 0,
-            "status": "unknown",
-            "notified": False
-        })
-        
+
+        ProvenTxReq(
+            {
+                "provenTxReqId": 0,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "txid": "",
+                "rawTx": [],
+                "history": "{}",
+                "notify": "{}",
+                "attempts": 0,
+                "status": "unknown",
+                "notified": False,
+            }
+        )
+
         # When/Then
         # Test implementation details
 
@@ -97,43 +100,45 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq instance
            When: Call update_storage
            Then: Updates storage and can fetch back the record
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('3_updateStorage')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
-        proven_tx_req = ProvenTxReq({
-            "provenTxReqId": 0,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-            "txid": "test-txid",
-            "rawTx": [1, 2, 3],
-            "history": "{}",
-            "notify": "{}",
-            "attempts": 0,
-            "status": "unknown",
-            "notified": False
-        })
-        
+
+        proven_tx_req = ProvenTxReq(
+            {
+                "provenTxReqId": 0,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "txid": "test-txid",
+                "rawTx": [1, 2, 3],
+                "history": "{}",
+                "notify": "{}",
+                "attempts": 0,
+                "status": "unknown",
+                "notified": False,
+            }
+        )
+
         # Mock storage
         stored_records: list[dict[str, Any]] = []
-        
+
         async def mock_update_proven_tx_req(data: dict[str, Any]) -> None:
             stored_records.append(data)
-        
+
         async def mock_find_proven_tx_reqs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [r for r in stored_records if r.get("txid") == query["partial"]["txid"]]
-        
-        mock_storage = type("MockStorage", (), {
-            "update_proven_tx_req": mock_update_proven_tx_req,
-            "find_proven_tx_reqs": mock_find_proven_tx_reqs
-        })()
-        
+
+        mock_storage = type(
+            "MockStorage",
+            (),
+            {"update_proven_tx_req": mock_update_proven_tx_req, "find_proven_tx_reqs": mock_find_proven_tx_reqs},
+        )()
+
         # When
         await proven_tx_req.update_storage(mock_storage)
-        
+
         # Then
         fetched = await mock_storage.find_proven_tx_reqs({"partial": {"txid": "test-txid"}})
         assert len(fetched) == 1
@@ -145,37 +150,36 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq instance
            When: Call insert_or_merge
            Then: Inserts or merges record and returns result
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('4_insertOrMerge')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
-        proven_tx_req = ProvenTxReq({
-            "provenTxReqId": 0,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
-            "txid": "test-txid-merge",
-            "rawTx": [1, 2, 3],
-            "history": "{}",
-            "notify": "{}",
-            "attempts": 0,
-            "status": "unknown",
-            "notified": False
-        })
-        
+
+        proven_tx_req = ProvenTxReq(
+            {
+                "provenTxReqId": 0,
+                "created_at": datetime.now(),
+                "updated_at": datetime.now(),
+                "txid": "test-txid-merge",
+                "rawTx": [1, 2, 3],
+                "history": "{}",
+                "notify": "{}",
+                "attempts": 0,
+                "status": "unknown",
+                "notified": False,
+            }
+        )
+
         # Mock storage
         async def mock_insert_or_merge(data: dict[str, Any]) -> dict[str, Any]:
             return data
-        
-        mock_storage = type("MockStorage", (), {
-            "insert_or_merge_proven_tx_req": mock_insert_or_merge
-        })()
-        
+
+        mock_storage = type("MockStorage", (), {"insert_or_merge_proven_tx_req": mock_insert_or_merge})()
+
         # When
         result = await proven_tx_req.insert_or_merge(mock_storage)
-        
+
         # Then
         assert result["txid"] == "test-txid-merge"
 
@@ -185,28 +189,29 @@ class TestProvenTxReqEntity:
         """Given: Two ProvenTxReq entities with matching data
            When: Call equals method
            Then: Returns True
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('5_equals_identifies_matching_entities')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         current_time = datetime.now()
-        
-        proven_tx_req1 = ProvenTxReq({
-            "provenTxReqId": 405,
-            "created_at": current_time,
-            "updated_at": current_time,
-            "txid": "test-equals",
-            "rawTx": [1, 2, 3],
-            "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-1"}}),
-            "notify": json.dumps({"transactionIds": [100]}),
-            "attempts": 0,
-            "status": "unknown",
-            "notified": False
-        })
-        
+
+        proven_tx_req1 = ProvenTxReq(
+            {
+                "provenTxReqId": 405,
+                "created_at": current_time,
+                "updated_at": current_time,
+                "txid": "test-equals",
+                "rawTx": [1, 2, 3],
+                "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-1"}}),
+                "notify": json.dumps({"transactionIds": [100]}),
+                "attempts": 0,
+                "status": "unknown",
+                "notified": False,
+            }
+        )
+
         proven_tx_req2_api = {
             "provenTxReqId": 406,
             "created_at": current_time,
@@ -217,11 +222,11 @@ class TestProvenTxReqEntity:
             "notify": json.dumps({"transactionIds": [100]}),
             "attempts": 0,
             "status": "unknown",
-            "notified": False
+            "notified": False,
         }
-        
+
         sync_map: dict[str, Any] = {}
-        
+
         # When/Then
         assert proven_tx_req1.equals(proven_tx_req2_api, sync_map) is True
 
@@ -231,35 +236,36 @@ class TestProvenTxReqEntity:
         """Given: Two ProvenTxReq entities with different data
            When: Call equals method
            Then: Returns False
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('6_equals_identifies_non_matching_entities')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
-        current_time = datetime.now()
-        
-        proven_tx_req1 = ProvenTxReq({
-            "provenTxReqId": 407,
-            "txid": "test-not-equals",
-            "rawTx": [1, 2, 3],
-            "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-1"}}),
-            "notify": json.dumps({"transactionIds": [200]}),
-            "status": "unknown"
-        })
-        
+
+        datetime.now()
+
+        proven_tx_req1 = ProvenTxReq(
+            {
+                "provenTxReqId": 407,
+                "txid": "test-not-equals",
+                "rawTx": [1, 2, 3],
+                "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-1"}}),
+                "notify": json.dumps({"transactionIds": [200]}),
+                "status": "unknown",
+            }
+        )
+
         proven_tx_req2_api = {
             "provenTxReqId": 408,
             "txid": "test-not-equals",
             "rawTx": [4, 5, 6],  # Different rawTx
             "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-2"}}),
             "notify": json.dumps({"transactionIds": [300]}),
-            "status": "unknown"
+            "status": "unknown",
         }
-        
+
         sync_map: dict[str, Any] = {}
-        
+
         # When/Then
         assert proven_tx_req1.equals(proven_tx_req2_api, sync_map) is False
 
@@ -268,22 +274,19 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq with existing notify transactionIds
            When: Call merge_notify_transaction_ids with new IDs
            Then: Merges IDs correctly
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('7_mergeNotifyTransactionIds')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
-        proven_tx_req = ProvenTxReq({
-            "provenTxReqId": 0,
-            "txid": "test-merge-ids",
-            "notify": json.dumps({"transactionIds": [1, 2]})
-        })
-        
+
+        proven_tx_req = ProvenTxReq(
+            {"provenTxReqId": 0, "txid": "test-merge-ids", "notify": json.dumps({"transactionIds": [1, 2]})}
+        )
+
         # When
         proven_tx_req.merge_notify_transaction_ids([2, 3, 4])
-        
+
         # Then
         assert set(proven_tx_req.notify["transactionIds"]) == {1, 2, 3, 4}
 
@@ -292,47 +295,48 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq instance
            When: Set and get all properties
            Then: Getters and setters work correctly
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('8_getters_and_setters')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         now = datetime.now()
-        proven_tx_req = ProvenTxReq({
-            "provenTxReqId": 1,
-            "created_at": now,
-            "updated_at": now,
-            "txid": "test-txid",
-            "rawTx": [1, 2, 3],
-            "history": "{}",
-            "notify": "{}",
-            "attempts": 5,
-            "status": "unknown",
-            "notified": False
-        })
-        
+        proven_tx_req = ProvenTxReq(
+            {
+                "provenTxReqId": 1,
+                "created_at": now,
+                "updated_at": now,
+                "txid": "test-txid",
+                "rawTx": [1, 2, 3],
+                "history": "{}",
+                "notify": "{}",
+                "attempts": 5,
+                "status": "unknown",
+                "notified": False,
+            }
+        )
+
         # Validate getters
         assert proven_tx_req.proven_tx_req_id == 1
         assert proven_tx_req.txid == "test-txid"
         assert proven_tx_req.attempts == 5
         assert proven_tx_req.status == "unknown"
         assert proven_tx_req.notified is False
-        
+
         # Validate setters
         proven_tx_req.proven_tx_req_id = 2
         proven_tx_req.txid = "new-txid"
         proven_tx_req.attempts = 10
         proven_tx_req.status = "completed"
         proven_tx_req.notified = True
-        
+
         assert proven_tx_req.proven_tx_req_id == 2
         assert proven_tx_req.txid == "new-txid"
         assert proven_tx_req.attempts == 10
         assert proven_tx_req.status == "completed"
         assert proven_tx_req.notified is True
-        
+
         # Validate entity metadata
         assert proven_tx_req.entity_name == "provenTxReq"
         assert proven_tx_req.entity_table == "proven_tx_reqs"
@@ -342,16 +346,15 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq with history data
            When: Call parse_history_note
            Then: Correctly parses history note
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('9_parseHistoryNote')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         # Placeholder - implementation details not shown
-        proven_tx_req = ProvenTxReq({})
-        
+        ProvenTxReq({})
+
         # When/Then
         # Test implementation pending
 
@@ -360,16 +363,15 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq with history
            When: Call merge_history with new history
            Then: Merges history correctly
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('10_mergeHistory')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         # Placeholder - implementation details not shown
-        proven_tx_req = ProvenTxReq({})
-        
+        ProvenTxReq({})
+
         # When/Then
         # Test implementation pending
 
@@ -379,24 +381,18 @@ class TestProvenTxReqEntity:
         """Given: ProvenTxReq with various statuses
            When: Call is_terminal_status
            Then: Correctly identifies terminal statuses
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('12_isTerminalStatus_with_real_data')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         # Test various statuses
-        statuses = [
-            ("completed", True),
-            ("invalid", True),
-            ("unknown", False),
-            ("sending", False)
-        ]
-        
+        statuses = [("completed", True), ("invalid", True), ("unknown", False), ("sending", False)]
+
         for status, expected_terminal in statuses:
             proven_tx_req = ProvenTxReq({"status": status})
-            
+
             # When/Then
             assert proven_tx_req.is_terminal_status() == expected_terminal
 
@@ -406,16 +402,14 @@ class TestProvenTxReqEntity:
         """Given: Existing ProvenTxReq
            When: Call merge_existing with updated data
            Then: Merges data correctly
-           
+
         Reference: src/storage/schema/entities/__tests/ProvenTxReqTests.test.ts
                   test('13_mergeExisting_real_data')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
-        
+
         # Placeholder - implementation details not shown
-        proven_tx_req = ProvenTxReq({})
-        
+        ProvenTxReq({})
+
         # When/Then
         # Test implementation pending
-

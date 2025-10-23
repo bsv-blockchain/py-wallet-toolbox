@@ -28,8 +28,8 @@ class TestUniversalVectorsRelinquishCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for relinquishCertificate
-           When: Call relinquishCertificate
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call relinquishCertificate
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("relinquishCertificate-simple")
@@ -47,4 +47,3 @@ class TestUniversalVectorsRelinquishCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
-

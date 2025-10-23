@@ -32,4 +32,3 @@ __all__ = [
     "is_live",
     "is_live_block_header",
 ]
-

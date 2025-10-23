@@ -14,4 +14,3 @@ __all__ = [
     "validate_basket_config",
     "validate_originator",
 ]
-

@@ -1,257 +1,242 @@
-"""Unit tests for Wallet Services integration.
+"""Unit tests for WhatsOnChain services.
 
-Ported from TypeScript implementation to ensure compatibility.
+This module tests WhatsOnChain API integration for header retrieval.
 
-Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-
-Note: All tests are currently skipped as the Services API is not yet implemented.
+Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
 """
 
-import pytest
-import hashlib
+import json
 
-from bsv_wallet_toolbox import Wallet
+import pytest
+from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import WocHeadersBulkListener, WocHeadersLiveListener
+
+try:
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import WhatsOnChainServices
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.util import (
+        ChaintracksFetch,
+        HeightRange,
+        deserialize_block_header,
+    )
+
+    IMPORTS_AVAILABLE = True
+except ImportError:
+    IMPORTS_AVAILABLE = False
 
 
 class TestServices:
-    """Test suite for Wallet Services integration.
-    
-    Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-               Wallet services tests
-    """
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getutxostatus(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getUtxoStatus with script
-           Then: Returns success status and is_utxo True
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('0 getUtxoStatus')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        # Wallet needs to be set up with services
-        script = "4104eca750b68551fb5aa893acb428b6a7d2d673498fd055cf2a8d402211b9500bdc27936846c2aa45cf82afe2f566b69cd7f7298154b0ffb25fbfa4fef8986191c4ac"
-        
-        # When
-        us = await wallet.services.get_utxo_status(script, "script")
-        
-        # Then
-        assert us["status"] == "success"
-        assert us["is_utxo"] is True
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getutxostatus_hashle(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getUtxoStatus with hash (LE format, default)
-           Then: Returns success status and is_utxo True
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('0a getUtxoStatus hashLE')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        script = "4104eca750b68551fb5aa893acb428b6a7d2d673498fd055cf2a8d402211b9500bdc27936846c2aa45cf82afe2f566b69cd7f7298154b0ffb25fbfa4fef8986191c4ac"
-        hash_value = hashlib.sha256(bytes.fromhex(script)).hex()
-        
-        # When
-        us = await wallet.services.get_utxo_status(hash_value)  # Default is hashLE
-        
-        # Then
-        assert us["status"] == "success"
-        assert us["is_utxo"] is True
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getutxostatus_hashbe(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getUtxoStatus with hash (BE format)
-           Then: Returns success status and is_utxo True
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('0b getUtxoStatus hashBE')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        script = "4104eca750b68551fb5aa893acb428b6a7d2d673498fd055cf2a8d402211b9500bdc27936846c2aa45cf82afe2f566b69cd7f7298154b0ffb25fbfa4fef8986191c4ac"
-        hash_value = hashlib.sha256(bytes.fromhex(script))[::-1].hex()
-        
-        # When
-        us = await wallet.services.get_utxo_status(hash_value, "hashBE")
-        
-        # Then
-        assert us["status"] == "success"
-        assert us["is_utxo"] is True
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getutxostatus_hashoutputscript_method(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getUtxoStatus with hash from hashOutputScript method
-           Then: Returns success status and is_utxo True
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('0c getUtxoStatus hashOutputScript method')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        script = "4104eca750b68551fb5aa893acb428b6a7d2d673498fd055cf2a8d402211b9500bdc27936846c2aa45cf82afe2f566b69cd7f7298154b0ffb25fbfa4fef8986191c4ac"
-        
-        # When
-        hash_value = wallet.services.hash_output_script(script)
-        us = await wallet.services.get_utxo_status(hash_value)
-        
-        # Then
-        assert us["status"] == "success"
-        assert us["is_utxo"] is True
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getutxostatus_outpoint(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getUtxoStatus with hash and specific outpoint
-           Then: Returns success status and is_utxo True
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('0d getUtxoStatus outpoint')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        script = "4104eca750b68551fb5aa893acb428b6a7d2d673498fd055cf2a8d402211b9500bdc27936846c2aa45cf82afe2f566b69cd7f7298154b0ffb25fbfa4fef8986191c4ac"
-        hash_value = wallet.services.hash_output_script(script)
-        outpoint = "e4154d8ab6993addc9b8705318cc8e971dfc0780e233038ecf44c601229d93ce.0"
-        
-        # When
-        us = await wallet.services.get_utxo_status(hash_value, None, outpoint)
-        
-        # Then
-        assert us["status"] == "success"
-        assert us["is_utxo"] is True
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getutxostatus_invalid_outpoint(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getUtxoStatus with hash and invalid outpoint
-           Then: Returns success status and is_utxo False
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('0e getUtxoStatus invalid outpoint')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        script = "4104eca750b68551fb5aa893acb428b6a7d2d673498fd055cf2a8d402211b9500bdc27936846c2aa45cf82afe2f566b69cd7f7298154b0ffb25fbfa4fef8986191c4ac"
-        hash_value = wallet.services.hash_output_script(script)
-        invalid_outpoint = "e4154d8ab6993addc9b8705318cc8e971dfc0780e233038ecf44c601229d93ce.1"
-        
-        # When
-        us = await wallet.services.get_utxo_status(hash_value, None, invalid_outpoint)
-        
-        # Then
-        assert us["status"] == "success"
-        assert us["is_utxo"] is False
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getfiatexchangerate(self) -> None:
-        """Given: Wallet with services configured
-           When: Call getFiatExchangeRate for EUR/USD
-           Then: Returns positive exchange rate
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('2 getFiatExchangeRate')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        
-        # When
-        eur_per_usd = await wallet.services.get_fiat_exchange_rate("EUR", "USD")
-        
-        # Then
-        assert eur_per_usd > 0
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getchaintracker(self) -> None:
-        """Given: Wallet with services configured
-           When: Call getChainTracker and get current height
-           Then: Returns height greater than 800000
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('3 getChainTracker')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        
-        # When
-        chain_tracker = await wallet.services.get_chain_tracker()
-        height = await chain_tracker.current_height()
-        
-        # Then
-        assert height > 800000
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getmerklepath(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getMerklePath for known txid
-           Then: Returns merkle path with block height 877599
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('4 getMerklePath')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        txid = "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"
-        
-        # When
-        mp = await wallet.services.get_merkle_path(txid)
-        
-        # Then
-        assert mp["merkle_path"]["block_height"] == 877599
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getrawtx(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getRawTx for known txid
-           Then: Returns raw transaction with length 176
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('5 getRawTx')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        txid = "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"
-        
-        # When
-        raw_tx = await wallet.services.get_raw_tx(txid)
-        
-        # Then
-        assert len(raw_tx["raw_tx"]) == 176
-    
-    @pytest.mark.skip(reason="Waiting for Services API implementation")
-    @pytest.mark.asyncio
-    async def test_getscripthashhistory(self) -> None:
-        """Given: Wallet with services configured on mainnet
-           When: Call getScriptHashHistory for known script hash (reversed)
-           Then: Returns success status and history with length > 0
-           
-        Reference: toolbox/ts-wallet-toolbox/test/services/Services.test.ts
-                   test('6 getScriptHashHistory')
-        """
-        # Given
-        wallet = Wallet(chain="main")
-        hash_le = "86e41f4725135ca0db59d074e7d60daae7c1a87699013498bae52dc95cae1a52"
-        hash_be = bytes.fromhex(hash_le)[::-1].hex()
-        
-        # When
-        us = await wallet.services.get_script_hash_history(hash_be)
-        
-        # Then
-        assert us["status"] == "success"
-        assert len(us["history"]) > 0
+    """Test suite for WhatsOnChain services.
 
+    Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+               describe('WhatsOnChainServices tests')
+    """
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_getheaderbyhash(self) -> None:
+        """Given: WhatsOnChainServices for mainnet
+           When: Get header by known hash
+           Then: Returns header with correct height 781348
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test('getHeaderByHash')
+        """
+        # Given
+        chain = "main"
+        options = WhatsOnChainServices.create_whats_on_chain_services_options(chain)
+        woc = WhatsOnChainServices(options)
+
+        # When
+        header = await woc.get_header_by_hash("000000000000000001b3e99847d57ff3e0bfc4222cea5c29f10bf24387a250a2")
+
+        # Then
+        assert header is not None
+        assert header.height == 781348
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_getchaintipheight(self) -> None:
+        """Given: WhatsOnChainServices for mainnet
+           When: Get chain tip height
+           Then: Returns height > 600000
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test('getChainTipHeight')
+        """
+        # Given
+        chain = "main"
+        options = WhatsOnChainServices.create_whats_on_chain_services_options(chain)
+        woc = WhatsOnChainServices(options)
+
+        # When
+        height = await woc.get_chain_tip_height()
+
+        # Then
+        assert height > 600000
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_listen_for_old_block_headers(self) -> None:
+        """Given: WhatsOnChainServices and height range
+           When: Listen for old block headers via WocHeadersBulkListener
+           Then: Receives headers for the requested height range
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test.skip('0 listenForOldBlockHeaders')
+
+        Note: TypeScript has test.skip() because the service appears to be deprecated.
+              This Python test matches TypeScript structure but is also expected to be skipped.
+        """
+        # Given
+        chain = "main"
+        options = WhatsOnChainServices.create_whats_on_chain_services_options(chain)
+        woc = WhatsOnChainServices(options)
+
+        height = await woc.get_chain_tip_height()
+        assert height > 600000
+
+        headers_old = []
+        errors_old = []
+        stop_old_listeners_token = {"stop": None}
+
+        def stop_old_listener() -> None:
+            if stop_old_listeners_token["stop"]:
+                stop_old_listeners_token["stop"]()
+
+        # When
+
+        ok_old = await WocHeadersBulkListener(
+            height - 4,
+            height,
+            lambda h: headers_old.append(h),
+            lambda code, message: errors_old.append({"code": code, "message": message}) or True,
+            stop_old_listeners_token,
+            chain,
+        )
+
+        # Then
+        assert ok_old is True
+        assert len(errors_old) == 0
+        assert len(headers_old) >= 4
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_listen_for_new_block_headers(self) -> None:
+        """Given: WhatsOnChainServices
+           When: Listen for new block headers via WocHeadersLiveListener
+           Then: Receives new headers as they arrive
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test.skip('1 listenForNewBlockHeaders')
+
+        Note: TypeScript has test.skip() because the service appears to be deprecated.
+              This Python test matches TypeScript structure but is also expected to be skipped.
+        """
+        # Given
+        chain = "main"
+        options = WhatsOnChainServices.create_whats_on_chain_services_options(chain)
+        woc = WhatsOnChainServices(options)
+
+        height = await woc.get_chain_tip_height()
+        assert height > 600000
+
+        headers_new = []
+        errors_new = []
+        stop_new_listeners_token = {"stop": None}
+
+        def enqueue_handler(h) -> None:
+            headers_new.append(h)
+            if len(headers_new) >= 1 and stop_new_listeners_token["stop"]:
+                stop_new_listeners_token["stop"]()
+
+        def error_handler(code, message) -> bool:
+            errors_new.append({"code": code, "message": message})
+            return True
+
+        # When
+
+        ok_new = await WocHeadersLiveListener(enqueue_handler, error_handler, stop_new_listeners_token, chain, print)
+
+        # Then
+        if errors_new:
+
+            print(json.dumps(errors_new))
+        assert len(errors_new) == 0
+        assert ok_new is True
+        assert len(headers_new) >= 0
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_get_latest_header_bytes(self) -> None:
+        """Given: ChaintracksFetch instance
+           When: Download latest header bytes from WhatsOnChain
+           Then: Successfully downloads header bytes and can deserialize latest header
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test('2 get latest header bytes')
+        """
+        # Given
+        fetch = ChaintracksFetch()
+
+        # When
+        bytes_data = await fetch.download("https://api.whatsonchain.com/v1/bsv/main/block/headers/latest")
+        print(f"headers: {len(bytes_data) / 80}")
+
+        latest = await fetch.download("https://api.whatsonchain.com/v1/bsv/main/block/headers/latest?count=1")
+        bh = deserialize_block_header(latest, 0, 0)
+        print(f"latest hash: {bh.hash}")
+
+        # Then
+        assert len(bytes_data) > 0
+        assert bh.hash is not None
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_get_headers(self) -> None:
+        """Given: ChaintracksFetch instance
+           When: Fetch headers JSON from WhatsOnChain
+           Then: Returns array of headers with height, hash, confirmations, nTx
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test('3 get headers')
+        """
+        # Given
+        fetch = ChaintracksFetch()
+
+        # When
+        headers = await fetch.fetch_json("https://api.whatsonchain.com/v1/bsv/main/block/headers")
+
+        log = ""
+        for h in headers:
+            log += f"{h['height']} {h['hash']} {h['confirmations']} {h['nTx']}\n"
+        print(log)
+
+        # Then
+        assert len(headers) > 0
+        assert "height" in headers[0]
+        assert "hash" in headers[0]
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
+    @pytest.mark.asyncio
+    async def test_get_header_byte_file_links(self) -> None:
+        """Given: WhatsOnChainServices instance
+           When: Get header byte file links for height range 907123-911000
+           Then: Returns 3 files with correct height ranges
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
+                   test('4 get header byte file links')
+        """
+        # Given
+        ChaintracksFetch()
+        woc = WhatsOnChainServices(WhatsOnChainServices.create_whats_on_chain_services_options("main"))
+
+        # When
+        files = await woc.get_header_byte_file_links(HeightRange(907123, 911000))
+
+        # Then
+        assert len(files) == 3
+        assert files[0].range.min_height == 906001
+        assert files[0].range.max_height == 908000
+        assert files[1].range.min_height == 908001
+        assert files[1].range.max_height == 910000
+        assert files[2].range.min_height == 910001
+        assert files[2].range.max_height > 910001

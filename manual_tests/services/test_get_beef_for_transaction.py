@@ -1,92 +1,57 @@
-"""Unit tests for getBeefForTransaction method.
+"""Manual tests for getBeefForTransaction service.
 
-These tests verify the BEEF (Background Evaluation Extended Format) retrieval
-for transactions.
+These tests verify BEEF (Background Evaluation Extended Format) retrieval
+for specific transactions.
 
-Reference: toolbox/ts-wallet-toolbox/src/storage/__test/getBeefForTransaction.test.ts
+Implementation Intent:
+- Test BEEF retrieval from transaction IDs
+- Verify BEEF format and structure
+- Test BEEF validation
+
+Why Manual Test:
+1. Requires live blockchain service connection
+2. Uses actual transaction data from blockchain
+3. Needs BEEF service endpoint
+4. Tests real BEEF generation and retrieval
+
+Reference: wallet-toolbox/test/WalletClient/getBeefForTransaction.man.test.ts (deprecated)
+           Functionality moved to services integration tests
 """
 
+import logging
+
 import pytest
+from bsv_wallet_toolbox.beef import Beef
+
+from bsv_wallet_toolbox.services import BEEFService
+
+logger = logging.getLogger(__name__)
 
 
-class TestGetBeefForTransaction:
-    """Test suite for getBeefForTransaction method.
-    
-    Reference: toolbox/ts-wallet-toolbox/src/storage/__test/getBeefForTransaction.test.ts
+@pytest.mark.skip(reason="Waiting for BEEF service implementation")
+@pytest.mark.asyncio
+async def test_get_beef_for_transaction() -> None:
+    """Given: Transaction ID
+       When: Request BEEF for transaction
+       Then: BEEF data is returned and valid
+
+    Note: This functionality is now part of services integration tests.
+          TypeScript deprecated this as a standalone test.
+
+    Reference: wallet-toolbox/test/WalletClient/getBeefForTransaction.man.test.ts
     """
-    
-    @pytest.mark.skip(reason="getBeefForTransaction requires network access and full storage implementation")
-    @pytest.mark.asyncio
-    async def test_protostorage_getbeeffortxid(self) -> None:
-        """Given: ProtoStorage instance with main chain and real transaction IDs
-           When: Call getBeefForTxid with valid txids
-           Then: Returns BEEF with bumps (Merkle proofs)
-           
-        Reference: toolbox/ts-wallet-toolbox/src/storage/__test/getBeefForTransaction.test.ts
-                   test('0 ProtoStorage.getBeefForTxid')
-        
-        Note: This is an integration test that requires:
-              - Network access to WhatsOnChain API
-              - Full StorageProvider implementation
-              - Services implementation
-              Real txids used:
-              - 794f836052ad73732a550c38bea3697a722c6a1e54bcbe63735ba79e0d23f623
-              - 53023657e79f446ca457040a0ab3b903000d7281a091397c7853f021726a560e
-        """
-        # Given
-        ps = ProtoStorage("main")
-        
-        # When - First txid
-        beef1 = await ps.get_beef_for_txid(
-            "794f836052ad73732a550c38bea3697a722c6a1e54bcbe63735ba79e0d23f623"
-        )
-        
-        # Then
-        assert len(beef1["bumps"]) > 0
-        
-        # When - Second txid
-        beef2 = await ps.get_beef_for_txid(
-            "53023657e79f446ca457040a0ab3b903000d7281a091397c7853f021726a560e"
-        )
-        
-        # Then
-        assert len(beef2["bumps"]) > 0
 
 
-class ProtoStorage:
-    """Mock ProtoStorage class for testing getBeefForTransaction.
-    
-    This is a minimal implementation that only implements the methods needed
-    for testing getBeefForTransaction. All other methods raise NotImplementedError.
-    
-    Reference: toolbox/ts-wallet-toolbox/src/storage/__test/getBeefForTransaction.test.ts
-               ProtoStorage class (lines 65-377)
-    """
-    
-    def __init__(self, chain: str) -> None:
-        """Initialize ProtoStorage with chain configuration.
-        
-        Args:
-            chain: 'main' or 'test'
-        """
-        self.chain = chain
-        self.gbo = {
-            "ignoreNewProven": True,
-            "ignoreServices": False,
-            "ignoreStorage": True
-        }
-        self.max_recursion_depth = 2
-        # Services would be initialized here with WhatsOnChain API
-    
-    async def get_beef_for_txid(self, txid: str) -> dict:
-        """Get BEEF for transaction ID.
-        
-        Args:
-            txid: Transaction ID (hex string)
-            
-        Returns:
-            BEEF dict with bumps (Merkle proofs)
-        """
-        # This would call the actual getBeefForTransaction implementation
-        raise NotImplementedError("get_beef_for_txid not implemented yet")
+    # Sample transaction ID
+    txid = "6dd8e416dfaf14c04899ccad2bf76a67c1d5598fece25cf4dcb7a076012b7d8d"
 
+    # Get BEEF
+    beef_service = BEEFService()
+    beef_data = await beef_service.get_beef_for_transaction(txid)
+
+    # Validate BEEF format
+    beef = Beef.from_binary(beef_data)
+    assert beef is not None
+    assert len(beef.txs) > 0
+
+    logger.info(f"Retrieved BEEF for transaction {txid}: {len(beef.txs)} transactions")

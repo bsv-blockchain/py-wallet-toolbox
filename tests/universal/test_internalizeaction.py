@@ -28,8 +28,8 @@ class TestUniversalVectorsInternalizeAction:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for internalizeAction
-           When: Call internalizeAction
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call internalizeAction
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("internalizeAction-simple")
@@ -47,4 +47,3 @@ class TestUniversalVectorsInternalizeAction:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
-

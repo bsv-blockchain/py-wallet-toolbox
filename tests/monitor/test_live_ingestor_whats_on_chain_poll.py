@@ -1,0 +1,64 @@
+"""Unit tests for LiveIngestorWhatsOnChainPoll.
+
+This module tests live header ingestion from WhatsOnChain API via polling.
+
+Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/LiveIngestorWhatsOnChainPoll.test.ts
+"""
+
+import asyncio
+
+import pytest
+
+try:
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import LiveIngestorWhatsOnChainPoll
+
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import BlockHeader
+
+    IMPORTS_AVAILABLE = True
+except ImportError:
+    IMPORTS_AVAILABLE = False
+
+
+class TestLiveIngestorWhatsOnChainPoll:
+    """Test suite for LiveIngestorWhatsOnChainPoll.
+
+    Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/LiveIngestorWhatsOnChainPoll.test.ts
+               describe('LiveIngestorWhatsOnChainPoll tests')
+    """
+
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LiveIngestorWhatsOnChainPoll implementation")
+    @pytest.mark.asyncio
+    async def test_listen_for_first_new_header(self) -> None:
+        """Given: LiveIngestorWhatsOnChainPoll with mainnet options
+           When: Start listening for new headers
+           Then: Receives at least one new header and can log it
+
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/LiveIngestorWhatsOnChainPoll.test.ts
+                   test('0 listen for first new header')
+        """
+        # Given
+        live_headers: list[BlockHeader] = []
+        options = LiveIngestorWhatsOnChainPoll.create_live_ingestor_whats_on_chain_options("main")
+        ingestor = LiveIngestorWhatsOnChainPoll(options)
+
+        # When
+        p = ingestor.start_listening(live_headers)
+        log = ""
+        count = 0
+
+        while True:
+            if live_headers:
+                h = live_headers.pop(0)
+                log += f"{h.height} {h.hash}\n"
+                count += 1
+            else:
+                if log:
+                    print(f"LiveIngestorWhatsOnChain received {count} headers:\n{log}")
+                    log = ""
+                    break
+                await asyncio.sleep(0.1)
+
+        # Then
+        ingestor.stop_listening()
+        await p
+        assert count > 0

@@ -2,7 +2,7 @@
 
 Ported from TypeScript implementation to ensure compatibility.
 
-Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getVersion.test.ts
+Reference: wallet-toolbox/test/Wallet/get/getVersion.test.ts
 """
 
 import pytest
@@ -19,7 +19,7 @@ class TestWalletGetVersion:
            When: get_version is called
            Then: Returns the correct wallet version
 
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getVersion.test.ts
+        Reference: wallet-toolbox/test/Wallet/get/getVersion.test.ts
                    test('should return the correct wallet version')
         """
         # Given

@@ -3,20 +3,17 @@
 This module tests how WalletPermissionsManager proxies calls to the underlying wallet,
 including permission checks, metadata encryption, and label management.
 
-Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
 """
 
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-import asyncio
-from typing import Optional, Dict, Any
-from unittest.mock import Mock, AsyncMock
 
 try:
-    from bsv_wallet_toolbox.wallet_permissions_manager import (
-        WalletPermissionsManager,
-        PermissionsManagerConfig
-    )
     from bsv.wallet.wallet_interface import WalletInterface
+    from bsv_wallet_toolbox.wallet_permissions_manager import PermissionsManagerConfig, WalletPermissionsManager
+
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
@@ -27,68 +24,65 @@ except ImportError:
 
 class TestWalletPermissionsManagerProxying:
     """Test suite for WalletPermissionsManager proxying behavior.
-    
-    Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+    Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                describe('WalletPermissionsManager - Regression & Integration with Underlying Wallet')
     """
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_pass_createaction_calls_through_label_them_handle_metadata_encryption_and_check_spending_authorization(self) -> None:
+    async def test_should_pass_createaction_calls_through_label_them_handle_metadata_encryption_and_check_spending_authorization(
+        self,
+    ) -> None:
         """Given: Manager with underlying wallet, non-admin creates action
            When: Call createAction with basket, labels, and metadata
            Then: Passes through with admin labels, encrypted metadata, spending auth checked
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should pass createAction calls through, label them, handle metadata encryption, and check spending authorization')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(return_value={
-            "signableTransaction": {
-                "tx": [0xde, 0xad],
-                "reference": "test-ref"
-            }
-        })
-        
+        mock_underlying_wallet.create_action = AsyncMock(
+            return_value={"signableTransaction": {"tx": [0xDE, 0xAD], "reference": "test-ref"}}
+        )
+
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
             config={
                 "seekSpendingPermissions": True,
                 "encryptWalletMetadata": True,
-                "seekBasketInsertionPermissions": True
-            }
+                "seekBasketInsertionPermissions": True,
+            },
         )
-        
+
         # Auto-grant all permissions
-        async def auto_grant(request):
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
-        
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
         manager.bind_callback("onBasketAccessRequested", auto_grant)
         manager.bind_callback("onSpendingAuthorizationRequested", auto_grant)
-        
+
         # When
         await manager.create_action(
             {
                 "description": "User purchase",
-                "inputs": [{
-                    "outpoint": "aaa.0",
-                    "unlockingScriptLength": 73,
-                    "inputDescription": "My input"
-                }],
-                "outputs": [{
-                    "lockingScript": "00abcd",
-                    "satoshis": 1000,
-                    "outputDescription": "Purchase output",
-                    "basket": "my-basket"
-                }],
-                "labels": ["user-label", "something-else"]
+                "inputs": [{"outpoint": "aaa.0", "unlockingScriptLength": 73, "inputDescription": "My input"}],
+                "outputs": [
+                    {
+                        "lockingScript": "00abcd",
+                        "satoshis": 1000,
+                        "outputDescription": "Purchase output",
+                        "basket": "my-basket",
+                    }
+                ],
+                "labels": ["user-label", "something-else"],
             },
-            "shop.example.com"
+            "shop.example.com",
         )
-        
+
         # Then
         assert mock_underlying_wallet.create_action.call_count == 1
         call_args = mock_underlying_wallet.create_action.call_args[0][0]
@@ -97,181 +91,177 @@ class TestWalletPermissionsManagerProxying:
         assert "something-else" in call_args["labels"]
         # Metadata should be encrypted (non-empty, different from plaintext)
         assert call_args.get("description") != "User purchase"  # encrypted
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_abort_the_action_if_spending_permission_is_denied(self) -> None:
         """Given: Manager with spending permission callback that denies
            When: createAction triggers spending authorization
            Then: Action is aborted, abortAction is called
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should abort the action if spending permission is denied')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(return_value={
-            "signableTransaction": {"tx": [0xde], "reference": "test-ref-2"}
-        })
+        mock_underlying_wallet.create_action = AsyncMock(
+            return_value={"signableTransaction": {"tx": [0xDE], "reference": "test-ref-2"}}
+        )
         mock_underlying_wallet.abort_action = AsyncMock()
-        
+
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekSpendingPermissions": True}
+            config={"seekSpendingPermissions": True},
         )
-        
+
         # Deny spending permission
-        async def deny_spending(request):
+        async def deny_spending(request) -> None:
             await manager.deny_permission(request["requestID"])
+
         manager.bind_callback("onSpendingAuthorizationRequested", deny_spending)
-        
+
         # When/Then
         with pytest.raises(ValueError, match="Permission denied"):
             await manager.create_action(
                 {
                     "description": "User tries to spend",
-                    "outputs": [{
-                        "lockingScript": "abc123",
-                        "satoshis": 100,
-                        "outputDescription": "some out desc",
-                        "basket": "some-basket"
-                    }]
+                    "outputs": [
+                        {
+                            "lockingScript": "abc123",
+                            "satoshis": 100,
+                            "outputDescription": "some out desc",
+                            "basket": "some-basket",
+                        }
+                    ],
                 },
-                "user.example.com"
+                "user.example.com",
             )
-        
+
         # abortAction should be called
         assert mock_underlying_wallet.abort_action.call_count == 1
         assert mock_underlying_wallet.abort_action.call_args[0][0]["reference"] == "test-ref-2"
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_throw_an_error_if_a_non_admin_tries_signandprocess_true(self) -> None:
         """Given: Non-admin user
            When: createAction with signAndProcess=true
            Then: Raises error (only admin can use signAndProcess)
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should throw an error if a non-admin tries signAndProcess=true')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When/Then
         with pytest.raises(ValueError, match="Only the admin originator can set signAndProcess=true"):
             await manager.create_action(
                 {
                     "description": "Trying signAndProcess from non-admin",
-                    "outputs": [{
-                        "lockingScript": "1234",
-                        "satoshis": 50,
-                        "basket": "user-basket",
-                        "outputDescription": "Description"
-                    }],
-                    "options": {"signAndProcess": True}
+                    "outputs": [
+                        {
+                            "lockingScript": "1234",
+                            "satoshis": 50,
+                            "basket": "user-basket",
+                            "outputDescription": "Description",
+                        }
+                    ],
+                    "options": {"signAndProcess": True},
                 },
-                "someuser.com"
+                "someuser.com",
             )
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_signaction_calls_directly_if_invoked_by_the_user(self) -> None:
         """Given: Manager with underlying wallet
            When: signAction is called
            Then: Proxies to underlying.signAction
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy signAction calls directly if invoked by the user')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.sign_action = AsyncMock(return_value={"rawTx": "signed"})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.sign_action(
-            {
-                "reference": "my-ref",
-                "spends": {"0": {"unlockingScript": "my-script"}}
-            },
-            "nonadmin.com"
+            {"reference": "my-ref", "spends": {"0": {"unlockingScript": "my-script"}}}, "nonadmin.com"
         )
-        
+
         # Then
         assert mock_underlying_wallet.sign_action.call_count == 1
         assert result == {"rawTx": "signed"}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_abortaction_calls_directly(self) -> None:
         """Given: Manager with underlying wallet
            When: abortAction is called
            Then: Proxies to underlying.abortAction
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy abortAction calls directly')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.abort_action = AsyncMock(return_value={"aborted": True})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.abort_action({"reference": "ref-123"}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.abort_action.call_count == 1
         assert result == {"aborted": True}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_call_listactions_on_the_underlying_wallet_and_decrypt_metadata_fields_if_encryptwalletmetadata_true(self) -> None:
+    async def test_should_call_listactions_on_the_underlying_wallet_and_decrypt_metadata_fields_if_encryptwalletmetadata_true(
+        self,
+    ) -> None:
         """Given: Manager with encryptWalletMetadata=true
            When: listActions is called
            Then: Calls underlying, decrypts metadata
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call listActions on the underlying wallet and decrypt metadata fields if encryptWalletMetadata=true')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.list_actions = AsyncMock(return_value={
-            "actions": [{"txid": "tx1", "description": "encrypted_data"}]
-        })
+        mock_underlying_wallet.list_actions = AsyncMock(
+            return_value={"actions": [{"txid": "tx1", "description": "encrypted_data"}]}
+        )
         mock_underlying_wallet.decrypt = AsyncMock(return_value="decrypted_data")
-        
+
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"encryptWalletMetadata": True}
+            config={"encryptWalletMetadata": True},
         )
-        
+
         # When
-        result = await manager.list_actions({}, "user.com")
-        
+        await manager.list_actions({}, "user.com")
+
         # Then
         assert mock_underlying_wallet.list_actions.call_count == 1
         assert mock_underlying_wallet.decrypt.call_count > 0
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_pass_internalizeaction_calls_to_underlying_after_ensuring_basket_permissions_and_encrypting_custominstructions_if_config_on(self) -> None:
+    async def test_should_pass_internalizeaction_calls_to_underlying_after_ensuring_basket_permissions_and_encrypting_custominstructions_if_config_on(
+        self,
+    ) -> None:
         """Given: Manager with basket permissions and metadata encryption
            When: internalizeAction is called
            Then: Checks permissions, encrypts customInstructions, passes to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should pass internalizeAction calls to underlying, after ensuring basket permissions and encrypting customInstructions if config=on')
         """
         # Given
@@ -280,68 +270,67 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={
-                "seekBasketInsertionPermissions": True,
-                "encryptWalletMetadata": True
-            }
+            config={"seekBasketInsertionPermissions": True, "encryptWalletMetadata": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onBasketAccessRequested", auto_grant)
-        
+
         # When
         await manager.internalize_action(
             {
                 "tx": "rawTx",
                 "outputs": [{"basket": "my-basket", "customInstructions": "instructions"}],
-                "description": "Internalize"
+                "description": "Internalize",
             },
-            "user.com"
+            "user.com",
         )
-        
+
         # Then
         assert mock_underlying_wallet.internalize_action.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_ensure_basket_listing_permission_then_call_listoutputs_decrypting_custominstructions(self) -> None:
+    async def test_should_ensure_basket_listing_permission_then_call_listoutputs_decrypting_custominstructions(
+        self,
+    ) -> None:
         """Given: Manager with basket listing permissions
            When: listOutputs is called
            Then: Checks permissions, calls underlying, decrypts customInstructions
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should ensure basket listing permission then call listOutputs, decrypting customInstructions')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.list_outputs = AsyncMock(return_value={
-            "outputs": [{"customInstructions": "encrypted"}]
-        })
+        mock_underlying_wallet.list_outputs = AsyncMock(return_value={"outputs": [{"customInstructions": "encrypted"}]})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekBasketListingPermissions": True}
+            config={"seekBasketListingPermissions": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onBasketAccessRequested", auto_grant)
-        
+
         # When
         await manager.list_outputs({"basket": "my-basket"}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.list_outputs.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_ensure_basket_removal_permission_then_call_relinquishoutput(self) -> None:
         """Given: Manager with basket removal permissions
            When: relinquishOutput is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should ensure basket removal permission then call relinquishOutput')
         """
         # Given
@@ -350,27 +339,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekBasketRemovalPermissions": True}
+            config={"seekBasketRemovalPermissions": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onBasketAccessRequested", auto_grant)
-        
+
         # When
         await manager.relinquish_output({"basket": "my-basket", "output": "tx.0"}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.relinquish_output.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_call_getpublickey_on_underlying_after_ensuring_protocol_permission(self) -> None:
         """Given: Manager with protocol permissions
            When: getPublicKey is called with protocolID
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call getPublicKey on underlying after ensuring protocol permission')
         """
         # Given
@@ -379,30 +369,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekPermissionsForPublicKeyRevelation": True}
+            config={"seekPermissionsForPublicKeyRevelation": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.get_public_key(
-            {"protocolID": [1, "my-protocol"], "keyID": "1"},
-            "user.com"
-        )
-        
+        await manager.get_public_key({"protocolID": [1, "my-protocol"], "keyID": "1"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.get_public_key.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_call_revealcounterpartykeylinkage_with_permission_check_pass_result(self) -> None:
         """Given: Manager with key linkage permissions
            When: revealCounterpartyKeyLinkage is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call revealCounterpartyKeyLinkage with permission check, pass result')
         """
         # Given
@@ -411,30 +399,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekPermissionsForKeyLinkageRevelation": True}
+            config={"seekPermissionsForKeyLinkageRevelation": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.reveal_counterparty_key_linkage(
-            {"protocolID": [1, "proto"], "counterparty": "user"},
-            "user.com"
-        )
-        
+        await manager.reveal_counterparty_key_linkage({"protocolID": [1, "proto"], "counterparty": "user"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.reveal_counterparty_key_linkage.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_call_revealspecifickeylinkage_with_permission_check_pass_result(self) -> None:
         """Given: Manager with key linkage permissions
            When: revealSpecificKeyLinkage is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call revealSpecificKeyLinkage with permission check, pass result')
         """
         # Given
@@ -443,30 +429,30 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekPermissionsForKeyLinkageRevelation": True}
+            config={"seekPermissionsForKeyLinkageRevelation": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
         await manager.reveal_specific_key_linkage(
-            {"protocolID": [1, "proto"], "counterparty": "user", "verifier": "v"},
-            "user.com"
+            {"protocolID": [1, "proto"], "counterparty": "user", "verifier": "v"}, "user.com"
         )
-        
+
         # Then
         assert mock_underlying_wallet.reveal_specific_key_linkage.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_encrypt_calls_after_checking_protocol_permission(self) -> None:
         """Given: Manager with protocol permissions
            When: encrypt is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy encrypt() calls after checking protocol permission')
         """
         # Given
@@ -475,30 +461,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekProtocolPermissionsForEncrypting": True}
+            config={"seekProtocolPermissionsForEncrypting": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.encrypt(
-            {"protocolID": [1, "proto"], "plaintext": "data"},
-            "user.com"
-        )
-        
+        await manager.encrypt({"protocolID": [1, "proto"], "plaintext": "data"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.encrypt.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_decrypt_calls_after_checking_protocol_permission(self) -> None:
         """Given: Manager with protocol permissions
            When: decrypt is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy decrypt() calls after checking protocol permission')
         """
         # Given
@@ -507,30 +491,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekProtocolPermissionsForEncrypting": True}
+            config={"seekProtocolPermissionsForEncrypting": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.decrypt(
-            {"protocolID": [1, "proto"], "ciphertext": "encrypted"},
-            "user.com"
-        )
-        
+        await manager.decrypt({"protocolID": [1, "proto"], "ciphertext": "encrypted"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.decrypt.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_createhmac_calls(self) -> None:
         """Given: Manager with underlying wallet
            When: createHmac is called
            Then: Checks permissions, proxies to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy createHmac() calls')
         """
         # Given
@@ -539,57 +521,51 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekProtocolPermissionsForHMAC": True}
+            config={"seekProtocolPermissionsForHMAC": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.create_hmac(
-            {"protocolID": [1, "proto"], "data": "data"},
-            "user.com"
-        )
-        
+        await manager.create_hmac({"protocolID": [1, "proto"], "data": "data"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.create_hmac.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_verifyhmac_calls(self) -> None:
         """Given: Manager with underlying wallet
            When: verifyHmac is called
            Then: Proxies to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy verifyHmac() calls')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.verify_hmac = AsyncMock(return_value={"valid": True})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
-        await manager.verify_hmac(
-            {"protocolID": [1, "proto"], "data": "data", "hmac": "mac"},
-            "user.com"
-        )
-        
+        await manager.verify_hmac({"protocolID": [1, "proto"], "data": "data", "hmac": "mac"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.verify_hmac.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_proxy_createsignature_calls_already_tested_the_netspent_logic_in_createaction_but_lets_double_check(self) -> None:
+    async def test_should_proxy_createsignature_calls_already_tested_the_netspent_logic_in_createaction_but_lets_double_check(
+        self,
+    ) -> None:
         """Given: Manager with underlying wallet
            When: createSignature is called
            Then: Checks permissions, proxies to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy createSignature() calls (already tested the netSpent logic in createAction, but let's double-check)')
         """
         # Given
@@ -598,57 +574,51 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekProtocolPermissionsForSigning": True}
+            config={"seekProtocolPermissionsForSigning": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.create_signature(
-            {"protocolID": [1, "proto"], "data": [1, 2, 3]},
-            "user.com"
-        )
-        
+        await manager.create_signature({"protocolID": [1, "proto"], "data": [1, 2, 3]}, "user.com")
+
         # Then
         assert mock_underlying_wallet.create_signature.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_verifysignature_calls(self) -> None:
         """Given: Manager with underlying wallet
            When: verifySignature is called
            Then: Proxies to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy verifySignature() calls')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.verify_signature = AsyncMock(return_value={"valid": True})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
-        await manager.verify_signature(
-            {"protocolID": [1, "proto"], "data": [1, 2, 3], "signature": "sig"},
-            "user.com"
-        )
-        
+        await manager.verify_signature({"protocolID": [1, "proto"], "data": [1, 2, 3], "signature": "sig"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.verify_signature.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_call_acquirecertificate_verifying_permission_if_config_seekcertificateacquisitionpermissions_true(self) -> None:
+    async def test_should_call_acquirecertificate_verifying_permission_if_config_seekcertificateacquisitionpermissions_true(
+        self,
+    ) -> None:
         """Given: Manager with certificate acquisition permissions
            When: acquireCertificate is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call acquireCertificate, verifying permission if config.seekCertificateAcquisitionPermissions=true')
         """
         # Given
@@ -657,30 +627,32 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekCertificateAcquisitionPermissions": True}
+            config={"seekCertificateAcquisitionPermissions": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
-        
+
         # When
         await manager.acquire_certificate(
-            {"type": "type", "certifier": "certifier", "acquisitionProtocol": "proto"},
-            "user.com"
+            {"type": "type", "certifier": "certifier", "acquisitionProtocol": "proto"}, "user.com"
         )
-        
+
         # Then
         assert mock_underlying_wallet.acquire_certificate.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_call_listcertificates_verifying_permission_if_config_seekcertificatelistingpermissions_true(self) -> None:
+    async def test_should_call_listcertificates_verifying_permission_if_config_seekcertificatelistingpermissions_true(
+        self,
+    ) -> None:
         """Given: Manager with certificate listing permissions
            When: listCertificates is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call listCertificates, verifying permission if config.seekCertificateListingPermissions=true')
         """
         # Given
@@ -689,30 +661,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekCertificateListingPermissions": True}
+            config={"seekCertificateListingPermissions": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
-        
+
         # When
-        await manager.list_certificates(
-            {"certifiers": ["certifier"], "types": ["type"]},
-            "user.com"
-        )
-        
+        await manager.list_certificates({"certifiers": ["certifier"], "types": ["type"]}, "user.com")
+
         # Then
         assert mock_underlying_wallet.list_certificates.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_call_provecertificate_after_ensuring_certificate_permission(self) -> None:
         """Given: Manager with certificate disclosure permissions
            When: proveCertificate is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call proveCertificate after ensuring certificate permission')
         """
         # Given
@@ -721,30 +691,30 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekCertificateDisclosurePermissions": True}
+            config={"seekCertificateDisclosurePermissions": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
-        
+
         # When
-        await manager.prove_certificate(
-            {"type": "type", "certifier": "certifier", "serialNumber": "123"},
-            "user.com"
-        )
-        
+        await manager.prove_certificate({"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.prove_certificate.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
-    async def test_should_call_relinquishcertificate_if_config_seekcertificaterelinquishmentpermissions_true(self) -> None:
+    async def test_should_call_relinquishcertificate_if_config_seekcertificaterelinquishmentpermissions_true(
+        self,
+    ) -> None:
         """Given: Manager with certificate relinquishment permissions
            When: relinquishCertificate is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call relinquishCertificate if config.seekCertificateRelinquishmentPermissions=true')
         """
         # Given
@@ -753,30 +723,30 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekCertificateRelinquishmentPermissions": True}
+            config={"seekCertificateRelinquishmentPermissions": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
-        
+
         # When
         await manager.relinquish_certificate(
-            {"type": "type", "certifier": "certifier", "serialNumber": "123"},
-            "user.com"
+            {"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com"
         )
-        
+
         # Then
         assert mock_underlying_wallet.relinquish_certificate.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_call_discoverbyidentitykey_after_ensuring_identity_resolution_permission(self) -> None:
         """Given: Manager with identity resolution permissions
            When: discoverByIdentityKey is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call discoverByIdentityKey after ensuring identity resolution permission')
         """
         # Given
@@ -785,30 +755,28 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekPermissionsForIdentityResolution": True}
+            config={"seekPermissionsForIdentityResolution": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.discover_by_identity_key(
-            {"identityKey": "key"},
-            "user.com"
-        )
-        
+        await manager.discover_by_identity_key({"identityKey": "key"}, "user.com")
+
         # Then
         assert mock_underlying_wallet.discover_by_identity_key.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_call_discoverbyattributes_after_ensuring_identity_resolution_permission(self) -> None:
         """Given: Manager with identity resolution permissions
            When: discoverByAttributes is called
            Then: Checks permissions, calls underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should call discoverByAttributes after ensuring identity resolution permission')
         """
         # Given
@@ -817,191 +785,167 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test",
-            config={"seekPermissionsForIdentityResolution": True}
+            config={"seekPermissionsForIdentityResolution": True},
         )
-        
-        async def auto_grant(request):
+
+        async def auto_grant(request) -> None:
             await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
-        
+
         # When
-        await manager.discover_by_attributes(
-            {"attributes": {"key": "value"}},
-            "user.com"
-        )
-        
+        await manager.discover_by_attributes({"attributes": {"key": "value"}}, "user.com")
+
         # Then
         assert mock_underlying_wallet.discover_by_attributes.call_count == 1
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_isauthenticated_without_any_special_permission_checks(self) -> None:
         """Given: Manager with underlying wallet
            When: isAuthenticated is called
            Then: Proxies directly to underlying (no permission checks)
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy isAuthenticated without any special permission checks')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.is_authenticated = AsyncMock(return_value={"authenticated": True})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.is_authenticated({}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.is_authenticated.call_count == 1
         assert result == {"authenticated": True}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_waitforauthentication_without_any_special_permission_checks(self) -> None:
         """Given: Manager with underlying wallet
            When: waitForAuthentication is called
            Then: Proxies directly to underlying (no permission checks)
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy waitForAuthentication without any special permission checks')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.wait_for_authentication = AsyncMock(return_value={"authenticated": True})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.wait_for_authentication({}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.wait_for_authentication.call_count == 1
         assert result == {"authenticated": True}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_getheight(self) -> None:
         """Given: Manager with underlying wallet
            When: getHeight is called
            Then: Proxies directly to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy getHeight')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.get_height = AsyncMock(return_value={"height": 100})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.get_height({}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.get_height.call_count == 1
         assert result == {"height": 100}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_getheaderforheight(self) -> None:
         """Given: Manager with underlying wallet
            When: getHeaderForHeight is called
            Then: Proxies directly to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy getHeaderForHeight')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.get_header_for_height = AsyncMock(return_value={"header": "header"})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.get_header_for_height({"height": 100}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.get_header_for_height.call_count == 1
         assert result == {"header": "header"}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_getnetwork(self) -> None:
         """Given: Manager with underlying wallet
            When: getNetwork is called
            Then: Proxies directly to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy getNetwork')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.get_network = AsyncMock(return_value={"network": "mainnet"})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.get_network({}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.get_network.call_count == 1
         assert result == {"network": "mainnet"}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_proxy_getversion(self) -> None:
         """Given: Manager with underlying wallet
            When: getVersion is called
            Then: Proxies directly to underlying
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should proxy getVersion')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.get_version = AsyncMock(return_value={"version": "1.0.0"})
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When
         result = await manager.get_version({}, "user.com")
-        
+
         # Then
         assert mock_underlying_wallet.get_version.call_count == 1
         assert result == {"version": "1.0.0"}
-    
+
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     @pytest.mark.asyncio
     async def test_should_propagate_errors_from_the_underlying_wallet_calls(self) -> None:
         """Given: Underlying wallet throws error
            When: Manager calls underlying method
            Then: Error is propagated to caller
-           
-        Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
+
+        Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                    test('should propagate errors from the underlying wallet calls')
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.get_version = AsyncMock(side_effect=RuntimeError("Underlying error"))
-        manager = WalletPermissionsManager(
-            underlying_wallet=mock_underlying_wallet,
-            admin_originator="admin.test"
-        )
-        
+        manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
+
         # When/Then
         with pytest.raises(RuntimeError, match="Underlying error"):
             await manager.get_version({}, "user.com")
-

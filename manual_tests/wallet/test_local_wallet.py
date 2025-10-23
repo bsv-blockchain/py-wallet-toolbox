@@ -1,470 +1,297 @@
-"""Manual tests for local wallet operations with live blockchain.
+"""Manual tests for local wallet operations.
 
-These tests require:
-- Network access to blockchain services (WhatsOnChain, ARC)
-- Test wallet with funded outputs
-- API keys (TAAL_API_KEY, etc.)
-- Real blockchain interaction (testnet recommended)
+These tests verify local wallet functionality including monitor operations,
+transaction creation, storage switching, and backup synchronization.
 
-Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+Implementation Intent:
+- Test monitor.runOnce() operations
+- Test transaction creation (delayed/immediate/nosend)
+- Test switching between local and cloud storage
+- Test sync chunk operations
+- Test backup operations
+
+Why Manual Test:
+1. Requires live wallet with real balance
+2. Uses actual monitor daemon
+3. Needs MySQL cloud storage connection
+4. Tests real blockchain operations
+
+Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
 """
 
-import os
+import logging
+
 import pytest
-from typing import Optional
-from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.storage import WalletStorageManager
-from bsv_wallet_toolbox.services import WalletServices
-from bsv_wallet_toolbox.monitor import WalletMonitor
-from bsv_wallet_toolbox.sdk.types import Chain
+from bsv_wallet_toolbox.storage.entities import EntitySyncState
+from bsv_wallet_toolbox.test_utils import create_one_sat_test_output, create_setup
+
+logger = logging.getLogger(__name__)
 
 
-# Helper function stubs - to be implemented
-def create_test_storage(chain: Chain):
-    """Create test storage for wallet.
-    
-    Raises:
-        NotImplementedError: This helper is not yet implemented
+@pytest.mark.skip(reason="Waiting for createSetup, Monitor, Services implementation")
+@pytest.mark.asyncio
+async def test_monitor_run_once() -> None:
+    """Given: Wallet setup with monitor
+       When: Call monitor.runOnce()
+       Then: Monitor tasks execute successfully and identity key matches
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('0 monitor runOnce')
     """
-    raise NotImplementedError(
-        "create_test_storage helper not implemented yet. "
-        "This requires porting test utilities from TypeScript."
-    )
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    # Verify identity key matches
+    key_result = await setup["wallet"].get_public_key({"identityKey": True})
+    assert key_result["publicKey"] == setup["identityKey"]
+
+    # Run monitor once
+    await setup["monitor"].run_once()
+
+    await setup["wallet"].destroy()
 
 
-def create_test_services(chain: Chain):
-    """Create test services for wallet.
-    
-    Raises:
-        NotImplementedError: This helper is not yet implemented
+@pytest.mark.skip(reason="Waiting for createSetup, Monitor, Services implementation")
+@pytest.mark.asyncio
+async def test_monitor_run_once_call_history() -> None:
+    """Given: Wallet setup with monitor and services
+       When: Call services.getRawTx() and monitor.runOnce()
+       Then: Monitor call history is tracked correctly
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('0a monitor runOnce call history')
     """
-    raise NotImplementedError(
-        "create_test_services helper not implemented yet. "
-        "This requires porting test utilities from TypeScript."
-    )
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    # Verify identity key
+    key_result = await setup["wallet"].get_public_key({"identityKey": True})
+    assert key_result["publicKey"] == setup["identityKey"]
+
+    # Call services to populate call history
+    await setup["services"].get_raw_tx("6dd8e416dfaf14c04899ccad2bf76a67c1d5598fece25cf4dcb7a076012b7d8d")
+    await setup["services"].get_raw_tx("ac9cced61e2491be55061ce6577e0c59b909922ba92d5cc1cd754b10d721ab0e")
+
+    # Run monitor
+    await setup["monitor"].run_once()
+
+    # Call more services (will fail - invalid txids)
+    await setup["services"].get_raw_tx("0000e416dfaf14c04899ccad2bf76a67c1d5598fece25cf4dcb7a076012b7d8d")
+    await setup["services"].get_raw_tx("0000ced61e2491be55061ce6577e0c59b909922ba92d5cc1cd754b10d721ab0e")
+
+    # Check monitor call history
+    history = await setup["monitor"].run_task("MonitorCallHistory")
+    logger.info(f"Monitor call history: {history}")
+
+    await setup["wallet"].destroy()
 
 
-async def create_local_wallet_setup(chain: Chain, identity_key: str, **options):
-    """Create local wallet setup with storage and services.
-    
-    Raises:
-        NotImplementedError: This helper is not yet implemented
+@pytest.mark.skip(reason="Waiting for createSetup, createOneSatTestOutput implementation")
+@pytest.mark.asyncio
+async def test_create_1_sat_delayed() -> None:
+    """Given: Wallet setup
+       When: Create 1 sat output with delayed broadcast (default)
+       Then: Transaction is created and broadcasted with delay
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('2 create 1 sat delayed')
     """
-    raise NotImplementedError(
-        "create_local_wallet_setup helper not implemented yet. "
-        "This requires porting test utilities from TypeScript."
-    )
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    # Create 1 sat output with default options (delayed broadcast)
+    await create_one_sat_test_output(setup, {}, 1)
+
+    # Note: TypeScript has trackReqByTxid commented out
+    # await track_req_by_txid(setup, car["txid"])
+
+    await setup["wallet"].destroy()
 
 
-async def create_one_sat_test_output(setup, options: dict, count: int):
-    """Create test output with 1 satoshi.
-    
-    Raises:
-        NotImplementedError: This helper is not yet implemented
+@pytest.mark.skip(reason="Waiting for createSetup, createOneSatTestOutput implementation")
+@pytest.mark.asyncio
+async def test_create_1_sat_immediate() -> None:
+    """Given: Wallet setup
+       When: Create 1 sat output with immediate broadcast
+       Then: Transaction is created and broadcasted immediately
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('2a create 1 sat immediate')
     """
-    raise NotImplementedError(
-        "create_one_sat_test_output helper not implemented yet. "
-        "This requires porting test utilities from TypeScript."
-    )
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    # Create 1 sat output with acceptDelayedBroadcast=False (immediate)
+    await create_one_sat_test_output(setup, {"acceptDelayedBroadcast": False}, 1)
+
+    # Note: TypeScript has trackReqByTxid commented out
+    # await track_req_by_txid(setup, car["txid"])
+
+    await setup["wallet"].destroy()
 
 
-def get_test_identity_key() -> Optional[str]:
-    """Get test identity key from environment.
-    
-    Returns:
-        Identity key if set, None otherwise
+@pytest.mark.skip(reason="Waiting for createSetup, createOneSatTestOutput implementation")
+@pytest.mark.asyncio
+async def test_create_2_nosend_and_send_with() -> None:
+    """Given: Wallet setup
+       When: Create 2 outputs with noSend option
+       Then: Transactions are created but not sent
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('2b create 2 nosend and sendWith')
     """
-    return os.getenv("MY_TEST_IDENTITY")
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    # Create 2 outputs with noSend=True
+    await create_one_sat_test_output(setup, {"noSend": True}, 2)
+
+    # Note: TypeScript has trackReqByTxid commented out
+    # await track_req_by_txid(setup, car["txid"])
+
+    await setup["wallet"].destroy()
 
 
-def get_test_storage_connection() -> Optional[dict]:
-    """Get test storage connection configuration.
-    
-    Returns:
-        Connection dict if configured, None otherwise
+@pytest.mark.skip(reason="Waiting for createSetup, WalletStorageManager.setActive implementation")
+@pytest.mark.asyncio
+async def test_return_active_to_cloud_client() -> None:
+    """Given: Wallet with local and cloud storage
+       When: Switch active storage from local to cloud
+       Then: Balance remains the same across storages
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('3 return active to cloud client')
     """
-    conn_str = os.getenv("TEST_STORAGE_CONNECTION")
-    if not conn_str:
-        return None
-    
-    try:
-        import json
-        return json.loads(conn_str)
-    except json.JSONDecodeError:
-        return None
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    # Get balance with local storage active
+    local_balance = await setup["wallet"].balance()
+
+    # Switch to cloud client storage
+    log = await setup["storage"].set_active(setup["clientStorageIdentityKey"])
+    logger.info(log)
+    logger.info(f"ACTIVE STORAGE: {setup['storage'].get_active_store_name()}")
+
+    # Get balance with cloud storage active
+    client_balance = await setup["wallet"].balance()
+
+    # Balances should match
+    assert local_balance == client_balance
+
+    await setup["wallet"].destroy()
 
 
-class TestLocalWalletMonitor:
-    """Test suite for local wallet with monitor operations.
-    
-    Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+@pytest.mark.skip(reason="Waiting for createSetup, EntitySyncState implementation")
+@pytest.mark.asyncio
+async def test_review_synchunk() -> None:
+    """Given: Wallet with backup storage
+       When: Request sync chunk from reader storage
+       Then: Sync chunk is retrieved successfully
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('5 review synchunk')
     """
-    
-    @pytest.mark.skip(reason="Requires test wallet and network access - run manually")
-    @pytest.mark.asyncio
-    async def test_monitor_run_once(self) -> None:
-        """Given: Local wallet with test identity key and monitor
-           When: Call monitor.runOnce to check for new transactions
-           Then: Monitor completes successfully without errors
-           
-        Note: Requires MY_TEST_IDENTITY environment variable.
-              Requires funded test wallet with existing outputs.
-              Connects to real testnet blockchain services.
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('0 monitor runOnce')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-         Create wallet with test identity
-        storage = create_test_storage(chain)
-        services = create_test_services(chain)
-        wallet = Wallet(chain=chain, storage=storage, services=services, identity_key=identity_key)
-        
-         Create monitor
-        monitor = WalletMonitor(wallet=wallet, services=services)
-        
-         Verify identity key
-        key_result = await wallet.get_public_key({"identityKey": True})
-        assert key_result["publicKey"] == identity_key
-        
-        # When
-        await monitor.run_once()
-        
-        # Then
-         No errors should occur
-        
-        # Cleanup
-        await wallet.destroy()
-    
-    @pytest.mark.skip(reason="Requires test wallet and network access - run manually")
-    @pytest.mark.asyncio
-    async def test_monitor_run_once_with_call_history(self) -> None:
-        """Given: Local wallet with monitor and service call history tracking
-           When: Make service calls and run monitor, then check call history
-           Then: Call history contains all service API calls
-           
-        Note: Tests that monitor's call history tracking works correctly.
-              Requires MY_TEST_IDENTITY environment variable.
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('0a monitor runOnce call history')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-         Create wallet and monitor with call history enabled
-        setup = await create_local_wallet_setup(chain, identity_key, track_calls=True)
-        
-         Make some service calls
-        await setup.services.get_raw_tx("6dd8e416dfaf14c04899ccad2bf76a67c1d5598fece25cf4dcb7a076012b7d8d")
-        await setup.services.get_raw_tx("ac9cced61e2491be55061ce6577e0c59b909922ba92d5cc1cd754b10d721ab0e")
-        
-        # When
-        await setup.monitor.run_once()
-        
-         Make more calls after monitor
-        await setup.services.get_raw_tx("0000e416dfaf14c04899ccad2bf76a67c1d5598fece25cf4dcb7a076012b7d8d")
-        await setup.services.get_raw_tx("0000ced61e2491be55061ce6577e0c59b909922ba92d5cc1cd754b10d721ab0e")
-        
-        # Then - Check call history
-        history = await setup.monitor.run_task("MonitorCallHistory")
-        assert len(history) > 0
-        assert any("get_raw_tx" in call["method"] for call in history)
-        
-        # Cleanup
-        await setup.wallet.destroy()
+
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
+
+    setup = await create_setup(chain, options)
+
+    identity_key = setup["identityKey"]
+    reader = setup["activeStorage"]
+    reader_settings = reader.get_settings()
+
+    # Get writer (first backup storage)
+    writer = setup["storage"]._backups[0].storage
+    writer_settings = writer.get_settings()
+
+    # Create sync state and request chunk
+    ss = await EntitySyncState.from_storage(writer, identity_key, reader_settings)
+    args = ss.make_request_sync_chunk_args(identity_key, writer_settings["storageIdentityKey"])
+    chunk = await reader.get_sync_chunk(args)
+
+    logger.info(f"Retrieved sync chunk: {len(chunk)} items")
+
+    await setup["wallet"].destroy()
 
 
-class TestLocalWalletActions:
-    """Test suite for local wallet createAction with real blockchain.
-    
-    Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+@pytest.mark.skip(reason="Waiting for createSetup, WalletStorageManager.updateBackups implementation")
+@pytest.mark.asyncio
+async def test_backup() -> None:
+    """Given: Wallet with backup configured
+       When: Call storage.updateBackups()
+       Then: Backup synchronization completes successfully
+
+    Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
+               test('6 backup')
     """
-    
-    @pytest.mark.skip(reason="Requires funded test wallet - run manually")
-    @pytest.mark.asyncio
-    async def test_create_one_sat_output_delayed_broadcast(self) -> None:
-        """Given: Funded test wallet
-           When: Create action with 1 sat output and delayed broadcast
-           Then: Action is created, queued, and eventually broadcast
-           
-        Note: Tests delayed broadcast mechanism with real blockchain.
-              Requires funded test wallet outputs.
-              Transaction will be broadcast to testnet!
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('2 create 1 sat delayed')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-        setup = await create_local_wallet_setup(chain, identity_key)
-        
-        # When - Create action with delayed broadcast
-        result = await setup.wallet.create_action({
-            "description": "Test 1 sat output",
-            "outputs": [{
-                "satoshis": 1,
-                "lockingScript": "...",  # P2PKH to test address
-                "description": "Test output"
-            }],
-            "acceptDelayedBroadcast": True
-        })
-        
-        # Then
-        assert result["txid"] is not None
-        assert result["status"] in ["queued", "sending"]
-        
-        # Note: TypeScript has trackReqByTxid commented out
-        # await track_req_by_txid(setup, result["txid"])
-        
-        # Cleanup
-        await setup.wallet.destroy()
-        
-    
-    @pytest.mark.skip(reason="Requires funded test wallet - run manually")
-    @pytest.mark.asyncio
-    async def test_create_one_sat_output_immediate_broadcast(self) -> None:
-        """Given: Funded test wallet
-           When: Create action with 1 sat output and immediate broadcast
-           Then: Action is created and immediately broadcast
-           
-        Note: Tests immediate broadcast with acceptDelayedBroadcast=False.
-              Requires funded test wallet outputs.
-              Transaction will be broadcast to testnet!
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('2a create 1 sat immediate')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-        setup = await create_local_wallet_setup(chain, identity_key)
-        
-        # When - Create action with immediate broadcast
-        result = await setup.wallet.create_action({
-             "description": "Test 1 sat immediate",
-             "outputs": [{
-                 "satoshis": 1,
-                 "lockingScript": "...",
-                 "description": "Test immediate output"
-             }],
-             "acceptDelayedBroadcast": False
-        })
-        
-        # Then
-        assert result["txid"] is not None
-        assert result["status"] == "success"
-        
-        # Note: TypeScript has trackReqByTxid commented out
-        # await track_req_by_txid(setup, result["txid"])
-        
-        # Cleanup
-        await setup.wallet.destroy()
-        
-    
-    @pytest.mark.skip(reason="Requires funded test wallet - run manually")
-    @pytest.mark.asyncio
-    async def test_create_nosend_and_send_with(self) -> None:
-        """Given: Funded test wallet
-           When: Create 2 actions with noSend=True, then sendWith to broadcast together
-           Then: Both actions are created but not sent, then sent together
-           
-        Note: Tests noSend and sendWith functionality for batch broadcasting.
-              Requires funded test wallet outputs.
-              Transactions will be broadcast to testnet!
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('2b create 2 nosend and sendWith')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-        setup = await create_local_wallet_setup(chain, identity_key)
-        
-        # When - Create first action with noSend
-        result1 = await setup.wallet.create_action({
-             "description": "Test nosend 1",
-             "outputs": [{"satoshis": 1, "lockingScript": "..."}],
-             "options": {"noSend": True}
-        })
-        
-        # Then
-        assert result1["txid"] is not None
-        assert result1["status"] == "nosend"
-        
-        # When - Create second action with noSend
-        result2 = await setup.wallet.create_action({
-             "description": "Test nosend 2",
-             "outputs": [{"satoshis": 1, "lockingScript": "..."}],
-             "options": {"noSend": True}
-        })
-        
-        # Then
-        assert result2["txid"] is not None
-        assert result2["status"] == "nosend"
-        
-        # When - Send both together with sendWith
-        send_result = await setup.wallet.send_with({
-             "txids": [result1["txid"], result2["txid"]]
-        })
-        
-        # Then
-        assert send_result["status"] == "success"
-        assert len(send_result["txids"]) == 2
-        
-        # Note: TypeScript has trackReqByTxid commented out
-        # await track_req_by_txid(setup, result1["txid"])
-        
-        # Cleanup
-        await setup.wallet.destroy()
-        
 
+    chain = "test"
+    options = {
+        "setActiveClient": False,
+        "useMySQLConnectionForClient": True,
+        "useTestIdentityKey": True,
+        "useIdentityKey2": False,
+    }
 
-class TestLocalWalletBalance:
-    """Test suite for wallet balance operations with real blockchain.
-    
-    Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-    """
-    
-    @pytest.mark.skip(reason="Requires test wallet - run manually")
-    @pytest.mark.asyncio
-    async def test_balance_consistency_across_storage(self) -> None:
-        """Given: Wallet with local and cloud storage
-           When: Check balance, switch to cloud storage, check balance again
-           Then: Balance is consistent across both storage backends
-           
-        Note: Tests that balance calculations are consistent when switching storage.
-              Requires wallet with both local and cloud storage configured.
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('3 return active to cloud client')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-        setup = await create_local_wallet_setup(chain, identity_key, with_cloud_client=True)
-        
-        # When - Get balance with local storage
-        local_balance = await setup.wallet.balance()
-        
-         Switch to cloud client storage
-        log = await setup.storage.set_active(setup.client_storage_identity_key)
-        print(f"Set active storage log: {log}")
-        print(f"Active storage: {setup.storage.get_active_storage_name()}")
-        
-         Get balance with cloud storage
-        client_balance = await setup.wallet.balance()
-        
-        # Then
-        assert local_balance == client_balance
-        
-        # Cleanup
-        await setup.wallet.destroy()
-        
+    setup = await create_setup(chain, options)
 
+    # Perform backup
+    log = await setup["storage"].update_backups()
+    logger.info(f"Backup result: {log}")
 
-class TestLocalWalletSync:
-    """Test suite for wallet sync operations.
-    
-    Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-    """
-    
-    @pytest.mark.skip(reason="Requires test wallet - run manually")
-    @pytest.mark.asyncio
-    async def test_review_sync_chunk(self) -> None:
-        """Given: Wallet with active storage and backup storage
-           When: Request sync chunk from active storage
-           Then: Returns sync chunk with entity data
-           
-        Note: Tests sync chunk generation for backup/replication.
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('5 review synchunk')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-        setup = await create_local_wallet_setup(chain, identity_key, with_backup=True)
-        
-        reader = setup.active_storage
-        reader_settings = reader.get_settings()
-        writer = setup.storage._backups[0].storage
-        writer_settings = writer.get_settings()
-        
-        # When - Create sync state and request chunk
-        sync_state = await EntitySyncState.from_storage(writer, identity_key, reader_settings)
-        args = sync_state.make_request_sync_chunk_args(identity_key, writer_settings.storage_identity_key)
-        chunk = await reader.get_sync_chunk(args)
-        
-        # Then
-        assert chunk is not None
-         Review chunk contents...
-        
-        # Cleanup
-        await setup.wallet.destroy()
-        
-    
-    @pytest.mark.skip(reason="Requires test wallet - run manually")
-    @pytest.mark.asyncio
-    async def test_backup_update(self) -> None:
-        """Given: Wallet with configured backup storage
-           When: Call updateBackups to sync data to backup
-           Then: Backup is updated with latest data
-           
-        Note: Tests automatic backup synchronization.
-              
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
-                   test('6 backup')
-        """
-        # Given
-        chain: Chain = "test"
-        identity_key = get_test_identity_key()
-        
-        if not identity_key:
-            pytest.skip("MY_TEST_IDENTITY not configured")
-        
-        setup = await create_local_wallet_setup(chain, identity_key, with_backup=True)
-        
-        # When
-        log = await setup.storage.update_backups()
-        print(f"Backup log: {log}")
-        
-        # Then
-        assert log["updated"] is True
-        assert log["records_synced"] >= 0
-        
-        # Cleanup
-        await setup.wallet.destroy()
-        
-
+    await setup["wallet"].destroy()

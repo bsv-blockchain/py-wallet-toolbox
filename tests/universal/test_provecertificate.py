@@ -28,8 +28,8 @@ class TestUniversalVectorsProveCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for proveCertificate
-           When: Call proveCertificate
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call proveCertificate
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("proveCertificate-simple")
@@ -47,4 +47,3 @@ class TestUniversalVectorsProveCertificate:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
-

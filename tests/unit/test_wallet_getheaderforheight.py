@@ -1,6 +1,6 @@
 """Unit tests for Wallet.get_header_for_height method.
 
-Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
+Reference: wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
 
 Note: TypeScript tests require full wallet setup with chaintracks.
       Python tests use MockWalletServices for interface verification.
@@ -31,7 +31,7 @@ class TestGetHeaderForHeightBasic:
            When: Call getHeaderForHeight with valid height
            Then: Returns header as non-empty hex string
 
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
+        Reference: wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
                    test('1 valid block height')
         """
         # Given
@@ -75,7 +75,7 @@ class TestGetHeaderForHeightValidation:
            When: Call getHeaderForHeight with height: -1
            Then: Raises InvalidParameterError
 
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
+        Reference: wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
                    test('0 invalid params')
         """
         # Given
@@ -115,7 +115,7 @@ class TestGetHeaderForHeightValidation:
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
         wallet = Wallet(chain="test", services=services)
-        invalid_height = "not_a_number"  # type: ignore
+        invalid_height = "not_a_number"
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
@@ -152,7 +152,7 @@ class TestGetHeaderForHeightIntegration:
            When: Call getHeaderForHeight
            Then: Returns header matching expected format
 
-        Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
+        Reference: wallet-toolbox/test/Wallet/get/getHeaderForHeight.test.ts
                    test('3 valid block height always returns a header')
         """
         # Given

@@ -19,4 +19,3 @@ __all__ = [
     "WalletServicesOptions",
     "create_default_options",
 ]
-

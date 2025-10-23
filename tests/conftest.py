@@ -6,6 +6,7 @@ These fixtures are automatically available to all test files.
 import json
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from bsv.chaintracker import ChainTracker
@@ -25,7 +26,7 @@ def test_vectors_dir() -> Path:
 
 
 @pytest.fixture
-def load_test_vectors(test_vectors_dir: Path) -> Callable[[str], tuple[dict, dict]]:
+def load_test_vectors(test_vectors_dir: Path) -> Callable[[str], tuple[dict[str, Any], dict[str, Any]]]:
     """Factory fixture to load Universal Test Vectors for any method.
 
     Returns:
@@ -35,7 +36,7 @@ def load_test_vectors(test_vectors_dir: Path) -> Callable[[str], tuple[dict, dic
         >>> args_data, result_data = load_test_vectors("getVersion-simple")
     """
 
-    def _load(test_name: str) -> tuple[dict, dict]:
+    def _load(test_name: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """Load test vectors for given test name.
 
         Args:

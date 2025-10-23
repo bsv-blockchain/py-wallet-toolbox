@@ -1,11 +1,12 @@
 """Unit tests for OutputBasket entity.
 
-Reference: src/storage/schema/entities/__tests/OutputBasketTests.test.ts
+Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputBasketTests.test.ts
 """
 
-import pytest
 from datetime import datetime
-from typing import Any
+
+import pytest
+from bsv_wallet_toolbox.storage.entities import OutputBasket
 
 
 class TestOutputBasketEntity:
@@ -14,18 +15,18 @@ class TestOutputBasketEntity:
     @pytest.mark.skip(reason="OutputBasket entity not implemented yet")
     @pytest.mark.asyncio
     async def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at(
-        self
+        self,
     ) -> None:
         """Given: OutputBasket entity with older updated_at
            When: Call merge_existing with newer updated_at
            Then: Entity and database are updated
-           
+
         Reference: src/storage/schema/entities/__tests/OutputBasketTests.test.ts
                   test('1_mergeExisting merges and updates entity when ei.updated_at > this.updated_at')
         """
         # Given
         from bsv_wallet_toolbox.storage.entities import OutputBasket
-        
+
         initial_data = {
             "basketId": 100,
             "created_at": datetime(2023, 1, 1),
@@ -34,28 +35,26 @@ class TestOutputBasketEntity:
             "name": "Basket1",
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 5000,
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity = OutputBasket(initial_data)
-        
+
         # Updated data with later timestamp
         updated_data = {
             **initial_data,
             "updated_at": datetime(2023, 1, 3),
             "numberOfDesiredUTXOs": 20,
             "minimumDesiredUTXOValue": 10000,
-            "isDeleted": True
+            "isDeleted": True,
         }
-        
+
         sync_map = {"outputBasket": {"idMap": {100: 100}}}
         mock_storage = type("MockStorage", (), {})()
-        
+
         # When
-        was_merged = await entity.merge_existing(
-            mock_storage, None, updated_data, sync_map, None
-        )
-        
+        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
+
         # Then
         assert was_merged is True
         assert entity.number_of_desired_utxos == 20
@@ -64,19 +63,16 @@ class TestOutputBasketEntity:
 
     @pytest.mark.skip(reason="OutputBasket entity not implemented yet")
     @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(
-        self
-    ) -> None:
+    async def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: OutputBasket entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
            Then: Entity is not updated
-           
+
         Reference: src/storage/schema/entities/__tests/OutputBasketTests.test.ts
                   test('2_mergeExisting does not merge when ei.updated_at <= this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputBasket
-        
+
         initial_data = {
             "basketId": 200,
             "created_at": datetime(2023, 1, 1),
@@ -85,28 +81,26 @@ class TestOutputBasketEntity:
             "name": "Basket2",
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 5000,
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity = OutputBasket(initial_data)
-        
+
         # Earlier data
         earlier_data = {
             **initial_data,
             "updated_at": datetime(2023, 1, 1),
             "numberOfDesiredUTXOs": 20,
             "minimumDesiredUTXOValue": 10000,
-            "isDeleted": True
+            "isDeleted": True,
         }
-        
+
         sync_map = {"outputBasket": {"idMap": {200: 200}}}
         mock_storage = type("MockStorage", (), {})()
-        
+
         # When
-        was_merged = await entity.merge_existing(
-            mock_storage, None, earlier_data, sync_map, None
-        )
-        
+        was_merged = await entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
+
         # Then
         assert was_merged is False
         assert entity.number_of_desired_utxos == 10
@@ -119,13 +113,12 @@ class TestOutputBasketEntity:
         """Given: Two OutputBasket entities with identical data
            When: Call equals method with and without syncMap
            Then: Returns True in both cases
-           
+
         Reference: src/storage/schema/entities/__tests/OutputBasketTests.test.ts
                   test('equals identifies matching entities with and without SyncMap')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputBasket
-        
+
         basket_data = {
             "basketId": 401,
             "created_at": datetime(2023, 1, 1),
@@ -134,14 +127,14 @@ class TestOutputBasketEntity:
             "name": "Test Basket",
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 1000,
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity1 = OutputBasket(basket_data)
         entity2 = OutputBasket(basket_data)
-        
+
         sync_map = {"outputBasket": {"idMap": {401: 401}}}
-        
+
         # When/Then
         assert entity1.equals(entity2.to_api()) is True
         assert entity1.equals(entity2.to_api(), sync_map) is True
@@ -152,13 +145,12 @@ class TestOutputBasketEntity:
         """Given: Two OutputBasket entities with different data
            When: Call equals method with and without syncMap
            Then: Returns False in both cases
-           
+
         Reference: src/storage/schema/entities/__tests/OutputBasketTests.test.ts
                   test('equals identifies non-matching entities')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputBasket
-        
+
         basket_data1 = {
             "basketId": 402,
             "created_at": datetime(2023, 1, 1),
@@ -167,9 +159,9 @@ class TestOutputBasketEntity:
             "name": "Test Basket 1",
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 1000,
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         basket_data2 = {
             "basketId": 403,
             "created_at": datetime(2023, 1, 1),
@@ -178,14 +170,14 @@ class TestOutputBasketEntity:
             "name": "Test Basket 2",
             "numberOfDesiredUTXOs": 5,
             "minimumDesiredUTXOValue": 500,
-            "isDeleted": True
+            "isDeleted": True,
         }
-        
+
         entity1 = OutputBasket(basket_data1)
         entity2 = OutputBasket(basket_data2)
-        
+
         sync_map = {"outputBasket": {"idMap": {1: 2}}}
-        
+
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
         assert entity1.equals(entity2.to_api(), sync_map) is False
@@ -195,13 +187,12 @@ class TestOutputBasketEntity:
         """Given: OutputBasket entity with initial data
            When: Get and set all properties
            Then: Getters and setters work correctly
-           
+
         Reference: src/storage/schema/entities/__tests/OutputBasketTests.test.ts
                   test('OutputBasket getters, setters, and updateApi')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputBasket
-        
+
         initial_data = {
             "basketId": 123,
             "created_at": datetime(2023, 1, 1),
@@ -210,11 +201,11 @@ class TestOutputBasketEntity:
             "name": "Test Basket",
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 1000,
-            "isDeleted": False
+            "isDeleted": False,
         }
-        
+
         entity = OutputBasket(initial_data)
-        
+
         # Validate getters
         assert entity.basket_id == 123
         assert entity.created_at == datetime(2023, 1, 1)
@@ -227,7 +218,7 @@ class TestOutputBasketEntity:
         assert entity.id == 123
         assert entity.entity_name == "outputBasket"
         assert entity.entity_table == "output_baskets"
-        
+
         # Validate setters
         entity.basket_id = 456
         entity.created_at = datetime(2023, 2, 1)
@@ -238,7 +229,7 @@ class TestOutputBasketEntity:
         entity.minimum_desired_utxo_value = 2000
         entity.is_deleted = True
         entity.id = 456
-        
+
         assert entity.basket_id == 456
         assert entity.created_at == datetime(2023, 2, 1)
         assert entity.updated_at == datetime(2023, 2, 2)
@@ -248,7 +239,6 @@ class TestOutputBasketEntity:
         assert entity.minimum_desired_utxo_value == 2000
         assert entity.is_deleted is True
         assert entity.id == 456
-        
+
         # Test update_api (even though it does nothing)
         entity.update_api()  # Should not raise
-

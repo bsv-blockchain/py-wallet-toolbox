@@ -3,27 +3,32 @@
 These tests verify the wallet monitor tasks including clock synchronization,
 header tracking, transaction sending, proof checking, and status review.
 
-Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+Reference: wallet-toolbox/test/monitor/Monitor.test.ts
 """
 
-import pytest
 import asyncio
-from typing import Optional, Dict, Any, List
+
+import pytest
 
 try:
     from bsv_wallet_toolbox.monitor import Monitor
     from bsv_wallet_toolbox.monitor.tasks import (
-        TaskClock, TaskNewHeader, TaskSendWaiting, 
-        TaskCheckForProofs, TaskReviewStatus
+        TaskCheckForProofs,
+        TaskClock,
+        TaskNewHeader,
+        TaskReviewStatus,
+        TaskSendWaiting,
     )
-    from bsv_wallet_toolbox.storage.entities import EntityProvenTxReq
     from bsv_wallet_toolbox.sdk.types import Chain
+    from bsv_wallet_toolbox.storage.entities import EntityProvenTxReq
+
     from tests.utils.test_utils_wallet_storage import (
-        create_sqlite_test_setup_1_wallet,
         create_legacy_wallet_sqlite_copy,
+        create_sqlite_test_setup_1_wallet,
+        mock_merkle_path_services_as_callback,
         mock_post_services_as_callback,
-        mock_merkle_path_services_as_callback
     )
+
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
@@ -38,11 +43,15 @@ MOCK_MERKLE_PATH_RESULTS = [
             "path": [
                 [
                     {"offset": 2, "hash": "74c55a15a08ea491e02c41a6934c4177666c0dbda2781d0cf9743d3ad68a4623"},
-                    {"offset": 3, "hash": "c099c52277426abb863dc902d0389b008ddf2301d6b40ac718746ac16ca59136", "txid": True}
+                    {
+                        "offset": 3,
+                        "hash": "c099c52277426abb863dc902d0389b008ddf2301d6b40ac718746ac16ca59136",
+                        "txid": True,
+                    },
                 ],
                 [{"offset": 0, "hash": "2574544a253c91e69c7d5b4478af95d39420ad2c8e44c78b280f1bd5e7a11849"}],
-                [{"offset": 1, "hash": "8903289601da1910820c3471d41ae9187a7d46d6e39e636840b176519bdc5d00"}]
-            ]
+                [{"offset": 1, "hash": "8903289601da1910820c3471d41ae9187a7d46d6e39e636840b176519bdc5d00"}],
+            ],
         },
         "header": {
             "version": 536870912,
@@ -52,8 +61,8 @@ MOCK_MERKLE_PATH_RESULTS = [
             "bits": 474103450,
             "nonce": 3894752803,
             "height": 1652142,
-            "hash": "000000000d9419a409f83f16e2c162b4e44266986d6b9ee02d1b97d9556d9a3a"
-        }
+            "hash": "000000000d9419a409f83f16e2c162b4e44266986d6b9ee02d1b97d9556d9a3a",
+        },
     },
     {
         "name": "WoCTsc",
@@ -61,12 +70,16 @@ MOCK_MERKLE_PATH_RESULTS = [
             "blockHeight": 1652142,
             "path": [
                 [
-                    {"offset": 4, "hash": "6935ce33b9e3b9ee60360ce0606aa0a0970b4840203f457b5559212676dc33ab", "txid": True},
-                    {"offset": 5, "duplicate": True}
+                    {
+                        "offset": 4,
+                        "hash": "6935ce33b9e3b9ee60360ce0606aa0a0970b4840203f457b5559212676dc33ab",
+                        "txid": True,
+                    },
+                    {"offset": 5, "duplicate": True},
                 ],
                 [{"offset": 3, "hash": "65b5a77f61ca87af5766546e4a22129da89f3378322ef29aac6cdc94c1f637f3"}],
-                [{"offset": 0, "hash": "0aeaa5c76cba5495f922ae0b52805c0d12c2ffa54d2829d250c958d67c7c5073"}]
-            ]
+                [{"offset": 0, "hash": "0aeaa5c76cba5495f922ae0b52805c0d12c2ffa54d2829d250c958d67c7c5073"}],
+            ],
         },
         "header": {
             "version": 536870912,
@@ -76,8 +89,8 @@ MOCK_MERKLE_PATH_RESULTS = [
             "bits": 474103450,
             "nonce": 3894752803,
             "height": 1652142,
-            "hash": "000000000d9419a409f83f16e2c162b4e44266986d6b9ee02d1b97d9556d9a3a"
-        }
+            "hash": "000000000d9419a409f83f16e2c162b4e44266986d6b9ee02d1b97d9556d9a3a",
+        },
     },
     {
         "name": "WoCTsc",
@@ -86,10 +99,14 @@ MOCK_MERKLE_PATH_RESULTS = [
             "path": [
                 [
                     {"offset": 0, "hash": "c160acfce1c29c648614b722f1c490473fd7aea0c60d21be95ae981eb0c9c4f0"},
-                    {"offset": 1, "hash": "67ca2475886b3fc2edd76a2eb8c32bd0bc308176c7dff463e0507942aeebcbec", "txid": True}
+                    {
+                        "offset": 1,
+                        "hash": "67ca2475886b3fc2edd76a2eb8c32bd0bc308176c7dff463e0507942aeebcbec",
+                        "txid": True,
+                    },
                 ],
-                [{"offset": 1, "hash": "c0eb049e4d3872d63bd3402dd4d6bc8022a170155493a994e1da692f08b2f2d0"}]
-            ]
+                [{"offset": 1, "hash": "c0eb049e4d3872d63bd3402dd4d6bc8022a170155493a994e1da692f08b2f2d0"}],
+            ],
         },
         "header": {
             "version": 536870912,
@@ -99,8 +116,8 @@ MOCK_MERKLE_PATH_RESULTS = [
             "bits": 474081547,
             "nonce": 740519774,
             "height": 1652145,
-            "hash": "0000000003ea4ecae9254b992f292137fde1de66cc809d1a81cfd60cab4ba160"
-        }
+            "hash": "0000000003ea4ecae9254b992f292137fde1de66cc809d1a81cfd60cab4ba160",
+        },
     },
     {
         "name": "WoCTsc",
@@ -108,11 +125,15 @@ MOCK_MERKLE_PATH_RESULTS = [
             "blockHeight": 1652145,
             "path": [
                 [
-                    {"offset": 2, "hash": "3fa94b62a3b10d8c18bada527a9b68c4e70db67140719df16c44fb0328782532", "txid": True},
-                    {"offset": 3, "duplicate": True}
+                    {
+                        "offset": 2,
+                        "hash": "3fa94b62a3b10d8c18bada527a9b68c4e70db67140719df16c44fb0328782532",
+                        "txid": True,
+                    },
+                    {"offset": 3, "duplicate": True},
                 ],
-                [{"offset": 0, "hash": "5eec838112f0eabc45e68c8ec14f76e74b0ea636180d91ccf034f5f3c5114edf"}]
-            ]
+                [{"offset": 0, "hash": "5eec838112f0eabc45e68c8ec14f76e74b0ea636180d91ccf034f5f3c5114edf"}],
+            ],
         },
         "header": {
             "version": 536870912,
@@ -122,8 +143,8 @@ MOCK_MERKLE_PATH_RESULTS = [
             "bits": 474081547,
             "nonce": 740519774,
             "height": 1652145,
-            "hash": "0000000003ea4ecae9254b992f292137fde1de66cc809d1a81cfd60cab4ba160"
-        }
+            "hash": "0000000003ea4ecae9254b992f292137fde1de66cc809d1a81cfd60cab4ba160",
+        },
     },
     {
         "name": "WoCTsc",
@@ -132,9 +153,13 @@ MOCK_MERKLE_PATH_RESULTS = [
             "path": [
                 [
                     {"offset": 0, "hash": "ee8d57d6c3f5be3238709f539dc224c44c2c848414cb5969bfa8c81c2768ad6b"},
-                    {"offset": 1, "hash": "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b", "txid": True}
+                    {
+                        "offset": 1,
+                        "hash": "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b",
+                        "txid": True,
+                    },
                 ]
-            ]
+            ],
         },
         "header": {
             "version": 536870912,
@@ -144,195 +169,191 @@ MOCK_MERKLE_PATH_RESULTS = [
             "bits": 474045917,
             "nonce": 2431702809,
             "height": 1652160,
-            "hash": "000000001c5d2b3beb2e1f1f21f69f77cb979ed92f99d2cdd1a2618349b575ca"
-        }
-    }
+            "hash": "000000001c5d2b3beb2e1f1f21f69f77cb979ed92f99d2cdd1a2618349b575ca",
+        },
+    },
 ]
 
 
 class TestMonitor:
     """Test suite for Monitor tasks."""
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value
            Then: nextMinute increases by one minute worth of msecs
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('0 TaskClock')
         """
         # Given
         ctx = await create_sqlite_test_setup_1_wallet(
-            database_name="walletMonitorMain",
-            chain="main",
-            root_key_hex="3" * 64
+            database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64
         )
-        
+
         monitor = ctx.monitor
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         # When
         task = TaskClock(monitor)
         monitor._tasks.append(task)
         msecs_first = task.next_minute
-        
+
         # Start tasks and wait >1 minute
         start_tasks_promise = monitor.start_tasks()
         await asyncio.sleep(Monitor.ONE_MINUTE * 1.1)
         msecs_next = task.next_minute
         monitor.stop_tasks()
-        
+
         # Then
         elapsed = (msecs_next - msecs_first) / Monitor.ONE_MINUTE
         assert elapsed == 1 or elapsed == 2
-        
+
         await start_tasks_promise
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_tasknewheader(self) -> None:
         """Given: Monitor with new header task running for 10+ seconds
            When: Check header and checkNow flag
            Then: Latest header is fetched and checkNow flag is set
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('1 TaskNewHeader')
         """
         # Given
         ctx = await create_sqlite_test_setup_1_wallet(
-            database_name="walletMonitorMain",
-            chain="main",
-            root_key_hex="3" * 64
+            database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64
         )
-        
+
         monitor = ctx.monitor
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         # When
         task = TaskNewHeader(monitor)
         monitor._tasks.append(task)
         assert TaskCheckForProofs.check_now is False
-        
+
         start_tasks_promise = monitor.start_tasks()
         await asyncio.sleep(Monitor.ONE_SECOND * 10)
-        
+
         # Then
         assert task.header is not None
         assert TaskCheckForProofs.check_now is True
-        
+
         monitor.stop_tasks()
         await start_tasks_promise
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_tasksendwaiting_success(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and mocked successful postBeef
            When: Execute TaskSendWaiting
            Then: All unsent transactions are broadcast successfully
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('3 TaskSendWaiting success')
         """
         # Given
         ctx = await create_legacy_wallet_sqlite_copy("monitorTest3")
         storage = ctx.active_storage
         monitor = ctx.monitor
-        
+
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         expected_txids = [
             "d9ec73b2e0f06e0f482d2d1db9ceccf2f212f0b24afbe10846ac907567be571f",
             "b7634f08d8c7f3c6244050bebf73a79f40e672aba7d5232663609a58b123b816",
             "3d2ea64ee584a1f6eb161dbedf3a8d299e3e4497ac7a203d23c044c998c6aa08",
             "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26",
-            "6d68cc6fa7363e59aaccbaa65f0ca613a6ae8af718453ab5d3a2b022c59b5cc6"
+            "6d68cc6fa7363e59aaccbaa65f0ca613a6ae8af718453ab5d3a2b022c59b5cc6",
         ]
-        
-        txids_posted: List[str] = []
-        
-        def post_beef_callback(beef, txids):
+
+        txids_posted: list[str] = []
+
+        def post_beef_callback(beef, txids) -> str:
             txids_posted.extend(txids)
             return "success"
-        
+
         mock_post_services_as_callback([ctx], post_beef_callback)
-        
+
         # Verify initial state
         for txid in expected_txids:
             req = (await storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
             assert req.status == "unsent"
-            
+
             notify = EntityProvenTxReq(req).notify
             notify_ids = notify.get("transactionIds", [])
             for transaction_id in notify_ids:
                 tx = await storage.find_transaction_by_id(transaction_id)
                 assert tx is not None
                 assert tx.status in ["nosend", "unprocessed", "sending"]
-        
+
         # When
         task = TaskSendWaiting(monitor, 1, 1)
         monitor._tasks.append(task)
         await monitor.run_task("SendWaiting")
-        
+
         # Then
         assert txids_posted == expected_txids
-        
+
         for txid in expected_txids:
             req = (await storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
             assert req.status == "unmined"
-            
+
             notify = EntityProvenTxReq(req).notify
             notify_ids = notify.get("transactionIds", [])
             for transaction_id in notify_ids:
                 tx = await storage.find_transaction_by_id(transaction_id)
                 assert tx is not None
                 assert tx.status == "unproven"
-        
+
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_taskcheckforproofs_success(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning valid proofs
            When: Execute TaskCheckForProofs
            Then: Proofs are retrieved, validated, and ProvenTxs are created with status 'completed'
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('5 TaskCheckForProofs success')
         """
         # Given
         ctx = await create_legacy_wallet_sqlite_copy("monitorTest5")
         storage = ctx.active_storage
         monitor = ctx.monitor
-        
+
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         expected_txids = [
             "c099c52277426abb863dc902d0389b008ddf2301d6b40ac718746ac16ca59136",
             "6935ce33b9e3b9ee60360ce0606aa0a0970b4840203f457b5559212676dc33ab",
             "67ca2475886b3fc2edd76a2eb8c32bd0bc308176c7dff463e0507942aeebcbec",
             "3fa94b62a3b10d8c18bada527a9b68c4e70db67140719df16c44fb0328782532",
-            "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b"
+            "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b",
         ]
-        
+
         mock_result_index = 0
-        
+
         async def merkle_path_callback(txid: str):
             nonlocal mock_result_index
             assert txid in expected_txids
             result = MOCK_MERKLE_PATH_RESULTS[mock_result_index]
             mock_result_index += 1
             return result
-        
+
         mock_merkle_path_services_as_callback([ctx], merkle_path_callback)
-        
+
         monitor.last_new_header = {
             "height": 999999999,
             "hash": "",
@@ -341,165 +362,165 @@ class TestMonitor:
             "previousHash": "",
             "merkleRoot": "",
             "bits": 0,
-            "nonce": 0
+            "nonce": 0,
         }
-        
+
         # Verify initial state
         for txid in expected_txids:
             proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
-            
+
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
-        
+
         # When
         task = TaskCheckForProofs(monitor, 1)
         monitor._tasks.append(task)
         await monitor.run_task("CheckForProofs")
-        
+
         # Then
         for txid in expected_txids:
             proven = (await storage.find_proven_txs({"partial": {"txid": txid}}))[0]
             assert proven.merkle_path is not None
-            
+
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "completed"
             assert req.proven_tx_id == proven.proven_tx_id
-        
+
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_taskcheckforproofs_fail(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning empty results
            When: Execute TaskCheckForProofs
            Then: No proofs are found, status remains 'unmined', attempts counter increments
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('6 TaskCheckForProofs fail')
         """
         # Given
         ctx = await create_legacy_wallet_sqlite_copy("monitorTest6")
         storage = ctx.active_storage
         monitor = ctx.monitor
-        
+
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         expected_txids = [
             "c099c52277426abb863dc902d0389b008ddf2301d6b40ac718746ac16ca59136",
             "6935ce33b9e3b9ee60360ce0606aa0a0970b4840203f457b5559212676dc33ab",
             "67ca2475886b3fc2edd76a2eb8c32bd0bc308176c7dff463e0507942aeebcbec",
             "3fa94b62a3b10d8c18bada527a9b68c4e70db67140719df16c44fb0328782532",
-            "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b"
+            "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b",
         ]
-        
+
         async def merkle_path_callback(txid: str):
             assert txid in expected_txids
             return {}  # Empty = no proof
-        
+
         mock_merkle_path_services_as_callback([ctx], merkle_path_callback)
-        
+
         # Record initial attempts
-        attempts: List[int] = []
+        attempts: list[int] = []
         for txid in expected_txids:
             proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
-            
+
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
             attempts.append(req.attempts)
-        
+
         # When
         task = TaskCheckForProofs(monitor, 1)
         monitor._tasks.append(task)
         await monitor.run_task("CheckForProofs")
-        
+
         # Then
         for i, txid in enumerate(expected_txids):
             proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
-            
+
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
             assert req.attempts >= attempts[i]
-        
+
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_taskreviewstatus(self) -> None:
         """Given: Storage with various transaction statuses including invalid ProvenTxReq
            When: Execute TaskReviewStatus
            Then: Transaction statuses are reviewed and corrected
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('7 TaskReviewStatus')
         """
         # Given
         ctx = await create_legacy_wallet_sqlite_copy("monitorTest7")
         storage = ctx.active_storage
         monitor = ctx.monitor
-        
+
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         # Setup: mark one as invalid, unlink provenTxId
         reqs = await storage.find_proven_tx_reqs({"partial": {"status": "unmined"}})
         await storage.update_proven_tx_req(reqs[0].proven_tx_req_id, {"status": "invalid"})
         await storage.update_transaction(23, {"provenTxId": None})
-        
+
         # When
         task = TaskReviewStatus(monitor, 1, 5000)
         monitor._tasks.append(task)
         log = await monitor.run_task("ReviewStatus")
-        
+
         # Then
         assert log is not None
-        
+
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_processproventransaction(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and onTransactionProven callback
            When: Execute TaskCheckForProofs to create ProvenTxs
            Then: onTransactionProven callback is invoked for each proven transaction
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('8 ProcessProvenTransaction')
         """
         # Given
         ctx = await create_legacy_wallet_sqlite_copy("monitorTest8")
         storage = ctx.active_storage
         monitor = ctx.monitor
-        
+
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         expected_txids = [
             "c099c52277426abb863dc902d0389b008ddf2301d6b40ac718746ac16ca59136",
             "6935ce33b9e3b9ee60360ce0606aa0a0970b4840203f457b5559212676dc33ab",
             "67ca2475886b3fc2edd76a2eb8c32bd0bc308176c7dff463e0507942aeebcbec",
             "3fa94b62a3b10d8c18bada527a9b68c4e70db67140719df16c44fb0328782532",
-            "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b"
+            "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b",
         ]
-        
+
         mock_result_index = 0
-        
+
         async def merkle_path_callback(txid: str):
             nonlocal mock_result_index
             assert txid in expected_txids
             result = MOCK_MERKLE_PATH_RESULTS[mock_result_index]
             mock_result_index += 1
             return result
-        
+
         mock_merkle_path_services_as_callback([ctx], merkle_path_callback)
-        
+
         monitor.last_new_header = {
             "height": 999999999,
             "hash": "",
@@ -508,110 +529,110 @@ class TestMonitor:
             "previousHash": "",
             "merkleRoot": "",
             "bits": 0,
-            "nonce": 0
+            "nonce": 0,
         }
-        
+
         updates_received = 0
-        
-        async def on_transaction_proven(tx_status):
+
+        async def on_transaction_proven(tx_status) -> None:
             nonlocal updates_received
             assert tx_status["txid"] is not None
             assert tx_status["blockHash"] is not None
             assert tx_status["blockHeight"] is not None
             assert tx_status["merkleRoot"] is not None
             updates_received += 1
-        
+
         monitor.on_transaction_proven = on_transaction_proven
-        
+
         # Verify initial state
         for txid in expected_txids:
             proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
-            
+
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
-        
+
         # When
         task = TaskCheckForProofs(monitor, 1)
         monitor._tasks.append(task)
         await monitor.run_task("CheckForProofs")
-        
+
         # Then
         for txid in expected_txids:
             proven = (await storage.find_proven_txs({"partial": {"txid": txid}}))[0]
             assert proven.merkle_path is not None
-            
+
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "completed"
             assert req.proven_tx_id == proven.proven_tx_id
-        
+
         assert updates_received == len(expected_txids)
-        
+
         await ctx.storage.destroy()
-    
+
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
     @pytest.mark.asyncio
     async def test_processbroadcastedtransactions(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and onTransactionBroadcasted callback
            When: Execute TaskSendWaiting to broadcast transactions
            Then: onTransactionBroadcasted callback is invoked for each broadcast
-           
-        Reference: toolbox/ts-wallet-toolbox/test/monitor/Monitor.test.ts
+
+        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('9 ProcessBroadcastedTransactions')
         """
         # Given
         ctx = await create_legacy_wallet_sqlite_copy("monitorTest8")
         storage = ctx.active_storage
         monitor = ctx.monitor
-        
+
         if monitor is None:
             raise ValueError("test requires setup with monitor")
-        
+
         expected_txids = [
             "d9ec73b2e0f06e0f482d2d1db9ceccf2f212f0b24afbe10846ac907567be571f",
             "b7634f08d8c7f3c6244050bebf73a79f40e672aba7d5232663609a58b123b816",
             "3d2ea64ee584a1f6eb161dbedf3a8d299e3e4497ac7a203d23c044c998c6aa08",
             "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26",
-            "6d68cc6fa7363e59aaccbaa65f0ca613a6ae8af718453ab5d3a2b022c59b5cc6"
+            "6d68cc6fa7363e59aaccbaa65f0ca613a6ae8af718453ab5d3a2b022c59b5cc6",
         ]
-        
-        txids_posted: List[str] = []
+
+        txids_posted: list[str] = []
         updates_received = 0
-        
-        def post_beef_callback(beef, txids):
+
+        def post_beef_callback(beef, txids) -> str:
             txids_posted.extend(txids)
             return "success"
-        
+
         mock_post_services_as_callback([ctx], post_beef_callback)
-        
-        async def on_transaction_broadcasted(broadcast_result):
+
+        async def on_transaction_broadcasted(broadcast_result) -> None:
             nonlocal updates_received
             assert broadcast_result["status"] == "success"
             assert broadcast_result["txid"] in expected_txids
             updates_received += 1
-        
+
         monitor.on_transaction_broadcasted = on_transaction_broadcasted
-        
+
         # Verify initial state
         for txid in expected_txids:
             req = await EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unsent"
-        
+
         # When
         task = TaskSendWaiting(monitor, 1, 1)
         monitor._tasks.append(task)
         await monitor.run_task("SendWaiting")
-        
+
         # Then
         assert txids_posted == expected_txids
-        
+
         for txid in expected_txids:
             req = (await storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
             assert req.status == "unmined"
-        
+
         assert updates_received == len(expected_txids)
-        
+
         await ctx.storage.destroy()

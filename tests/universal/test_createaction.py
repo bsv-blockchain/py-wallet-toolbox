@@ -30,8 +30,8 @@ class TestUniversalVectorsCreateAction:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for createAction (1 output)
-           When: Call createAction with 1 output
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call createAction with 1 output
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("createAction-1-out")
@@ -56,8 +56,8 @@ class TestUniversalVectorsCreateAction:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for createAction (no signAndProcess)
-           When: Call createAction without signAndProcess
-           Then: Result matches Universal Test Vector output (JSON)
+        When: Call createAction without signAndProcess
+        Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
         args_data, result_data = load_test_vectors("createAction-no-signAndProcess")
@@ -75,4 +75,3 @@ class TestUniversalVectorsCreateAction:
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
-

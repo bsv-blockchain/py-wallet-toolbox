@@ -1,11 +1,13 @@
 """Unit tests for Output entity.
 
-Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
+Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputTests.test.ts
 """
 
-import pytest
 from datetime import datetime
 from typing import Any
+
+import pytest
+from bsv_wallet_toolbox.storage.entities import Output
 
 
 class TestOutputEntity:
@@ -17,13 +19,12 @@ class TestOutputEntity:
         """Given: Two Output entities with same data
            When: Call equals with and without SyncMap
            Then: Returns True in both cases
-           
+
         Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
                   test('0_equals identifies matching entities with and without SyncMap')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Output
-        
+
         initial_data = {
             "outputId": 601,
             "created_at": datetime(2023, 1, 1),
@@ -47,17 +48,14 @@ class TestOutputEntity:
             "customInstructions": "none",
             "lockingScript": [1, 2, 3],
             "scriptLength": 10,
-            "scriptOffset": 0
+            "scriptOffset": 0,
         }
-        
+
         entity1 = Output(initial_data)
         entity2 = Output(initial_data)
-        
-        sync_map = {
-            "transaction": {"idMap": {100: 100}},
-            "outputBasket": {"idMap": {1: 1}}
-        }
-        
+
+        sync_map = {"transaction": {"idMap": {100: 100}}, "outputBasket": {"idMap": {1: 1}}}
+
         # When/Then
         assert entity1.equals(entity2.to_api()) is True
         assert entity1.equals(entity2.to_api(), sync_map) is True
@@ -68,13 +66,12 @@ class TestOutputEntity:
         """Given: Two Output entities with different satoshis
            When: Call equals method
            Then: Returns False
-           
+
         Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
                   test('1_equals identifies non-matching entities')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Output
-        
+
         initial_data = {
             "outputId": 602,
             "created_at": datetime(2023, 1, 1),
@@ -98,13 +95,13 @@ class TestOutputEntity:
             "customInstructions": "none",
             "lockingScript": [1, 2, 3],
             "scriptLength": 10,
-            "scriptOffset": 0
+            "scriptOffset": 0,
         }
-        
+
         entity1 = Output(initial_data)
         entity2_data = {**initial_data, "satoshis": 2000}
         entity2 = Output(entity2_data)
-        
+
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
@@ -114,13 +111,12 @@ class TestOutputEntity:
         """Given: Two Output entities with different lockingScript arrays
            When: Call equals method
            Then: Returns False for different arrays
-           
+
         Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
                   test('2_equals handles optional fields and arrays')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Output
-        
+
         initial_data = {
             "outputId": 603,
             "created_at": datetime(2023, 1, 1),
@@ -144,31 +140,31 @@ class TestOutputEntity:
             "customInstructions": "none",
             "lockingScript": [1, 2, 3],
             "scriptLength": 10,
-            "scriptOffset": 0
+            "scriptOffset": 0,
         }
-        
+
         entity1 = Output(initial_data)
         entity2_data = {**initial_data, "lockingScript": [1, 2, 4]}
         entity2 = Output(entity2_data)
-        
+
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
     @pytest.mark.skip(reason="Output entity not implemented yet")
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
-        self
+        self,
     ) -> None:
         """Given: Existing Output with old updated_at
            When: Call merge_existing with newer updated_at
            Then: Output is updated and returns True
-           
+
         Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
                   test('3_mergeExisting updates entity and database when ei.updated_at > this.updated_at')
         """
         # Given
         from bsv_wallet_toolbox.storage.entities import Output
-        
+
         initial_data = {
             "outputId": 701,
             "created_at": datetime(2023, 1, 1),
@@ -193,11 +189,11 @@ class TestOutputEntity:
             "lockingScript": [1, 2, 3],
             "scriptLength": 10,
             "scriptOffset": 0,
-            "spentBy": None
+            "spentBy": None,
         }
-        
+
         entity = Output(initial_data)
-        
+
         updated_data = {
             **initial_data,
             "updated_at": datetime(2023, 1, 3),  # Newer
@@ -213,33 +209,29 @@ class TestOutputEntity:
             "scriptLength": 15,
             "scriptOffset": 5,
             "lockingScript": [4, 5, 6],
-            "spentBy": 105
+            "spentBy": 105,
         }
-        
-        sync_map = {
-            "transaction": {"idMap": {103: 103, 105: 105}},
-            "outputBasket": {"idMap": {1: 1}}
-        }
-        
+
+        sync_map = {"transaction": {"idMap": {103: 103, 105: 105}}, "outputBasket": {"idMap": {1: 1}}}
+
         # Mock storage
         updated_records: list[dict[str, Any]] = []
-        
+
         async def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
             updated_records.append({"outputId": output_id, **data})
-        
+
         async def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             if updated_records:
                 return updated_records
             return []
-        
-        mock_storage = type("MockStorage", (), {
-            "update_output": mock_update_output,
-            "find_outputs": mock_find_outputs
-        })()
-        
+
+        mock_storage = type(
+            "MockStorage", (), {"update_output": mock_update_output, "find_outputs": mock_find_outputs}
+        )()
+
         # When
         was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
-        
+
         # Then
         assert was_merged is True
         assert entity.spent_by == 105
@@ -249,19 +241,16 @@ class TestOutputEntity:
 
     @pytest.mark.skip(reason="Output entity not implemented yet")
     @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(
-        self
-    ) -> None:
+    async def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: Existing Output with new updated_at
            When: Call merge_existing with older updated_at
            Then: Output is not updated and returns False
-           
+
         Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
                   test('4_mergeExisting does not update when ei.updated_at <= this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Output
-        
+
         initial_data = {
             "outputId": 702,
             "created_at": datetime(2023, 1, 1),
@@ -286,33 +275,24 @@ class TestOutputEntity:
             "lockingScript": [1, 2, 3],
             "scriptLength": 10,
             "scriptOffset": 0,
-            "spentBy": None
+            "spentBy": None,
         }
-        
+
         entity = Output(initial_data)
-        
-        earlier_data = {
-            **initial_data,
-            "updated_at": datetime(2023, 1, 1),  # Earlier
-            "spendable": False
-        }
-        
-        sync_map = {
-            "transaction": {"idMap": {104: 104}},
-            "outputBasket": {"idMap": {1: 1}}
-        }
-        
+
+        earlier_data = {**initial_data, "updated_at": datetime(2023, 1, 1), "spendable": False}  # Earlier
+
+        sync_map = {"transaction": {"idMap": {104: 104}}, "outputBasket": {"idMap": {1: 1}}}
+
         # Mock storage that should not be called
         async def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
             raise AssertionError("This should not be called")
-        
-        mock_storage = type("MockStorage", (), {
-            "update_output": mock_update_output
-        })()
-        
+
+        mock_storage = type("MockStorage", (), {"update_output": mock_update_output})()
+
         # When
         was_merged = await entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
-        
+
         # Then
         assert was_merged is False
         assert entity.spendable is True
@@ -322,13 +302,12 @@ class TestOutputEntity:
         """Given: Output instance
            When: Set and get all properties
            Then: Getters and setters work correctly
-           
+
         Reference: src/storage/schema/entities/__tests/OutputTests.test.ts
                   test('Output entity getters and setters')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Output
-        
+
         now = datetime.now()
         initial_data = {
             "outputId": 701,
@@ -354,11 +333,11 @@ class TestOutputEntity:
             "lockingScript": [1, 2, 3],
             "scriptLength": 10,
             "scriptOffset": 0,
-            "spentBy": 200
+            "spentBy": 200,
         }
-        
+
         entity = Output(initial_data)
-        
+
         # Validate getters
         assert entity.output_id == 701
         assert entity.user_id == 1
@@ -369,7 +348,7 @@ class TestOutputEntity:
         assert entity.satoshis == 1000
         assert entity.spendable is True
         assert entity.change is False
-        
+
         # Validate setters
         entity.output_id = 800
         entity.created_at = datetime(2024, 1, 1)
@@ -395,17 +374,16 @@ class TestOutputEntity:
         entity.locking_script = [4, 5, 6]
         entity.script_length = 15
         entity.script_offset = 5
-        
+
         assert entity.output_id == 800
         assert entity.satoshis == 2000
         assert entity.spendable is False
-        
+
         # Validate id setter and getter
         entity.id = 900
         assert entity.id == 900
         assert entity.output_id == 900
-        
+
         # Validate entity_name and entity_table
         assert entity.entity_name == "output"
         assert entity.entity_table == "outputs"
-

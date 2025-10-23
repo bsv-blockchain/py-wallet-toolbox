@@ -5,7 +5,6 @@ Main implementation of WalletServices interface with provider support.
 Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts
 """
 
-from typing import Union
 
 from bsv.chaintracker import ChainTracker
 
@@ -16,15 +15,15 @@ from .wallet_services_options import WalletServicesOptions
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
     """Create default WalletServicesOptions for a given chain.
-    
+
     Equivalent to TypeScript's Services.createDefaultOptions()
-    
+
     Args:
         chain: Blockchain network ('main' or 'test')
-        
+
     Returns:
         WalletServicesOptions with default values
-        
+
     Reference: toolbox/ts-wallet-toolbox/src/services/createDefaultWalletServicesOptions.ts
     """
     return WalletServicesOptions(chain=chain)
@@ -32,29 +31,29 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
 
 class Services(WalletServices):
     """Production-ready WalletServices implementation.
-    
+
     This is the Python equivalent of TypeScript's Services class.
     Supports multiple providers (WhatsOnChain, ARC, Bitails, etc.).
-    
+
     Current implementation status:
     - ✅ WhatsOnChain: Fully implemented
     - ❌ ARC (TAAL): Not yet implemented
     - ❌ ARC (GorillaPool): Not yet implemented
     - ❌ Bitails: Not yet implemented
-    
+
     Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts
-    
+
     Example:
         >>> # Simple usage with chain
         >>> services = Services("main")
-        >>> 
+        >>>
         >>> # Advanced usage with options
         >>> options = WalletServicesOptions(
         ...     chain="main",
         ...     whatsOnChainApiKey="your-api-key"
         ... )
         >>> services = Services(options)
-        >>> 
+        >>>
         >>> # Get blockchain height
         >>> height = await services.get_height()
         >>> print(height)
@@ -69,26 +68,26 @@ class Services(WalletServices):
     # arc_gorillapool: Optional[ARC]
     # bitails: Bitails
 
-    def __init__(self, options_or_chain: Union[Chain, WalletServicesOptions]) -> None:
+    def __init__(self, options_or_chain: Chain | WalletServicesOptions) -> None:
         """Initialize wallet services.
-        
+
         Equivalent to TypeScript's Services constructor which accepts either
         a Chain string or WalletServicesOptions object.
-        
+
         Args:
             options_or_chain: Either a Chain ('main'/'test') or full WalletServicesOptions
-            
+
         Example:
             >>> # Simple: Just pass chain
             >>> services = Services("main")
-            >>> 
+            >>>
             >>> # Advanced: Pass full options
             >>> options = WalletServicesOptions(
             ...     chain="main",
             ...     whatsOnChainApiKey="your-api-key"
             ... )
             >>> services = Services(options)
-        
+
         Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts constructor
         """
         # Determine chain and options (matching TypeScript logic)
@@ -120,9 +119,9 @@ class Services(WalletServices):
 
     async def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
-        
+
         Returns the WhatsOnChain ChainTracker implementation.
-        
+
         Returns:
             WhatsOnChain instance (implements ChaintracksClientApi)
         """
@@ -130,13 +129,13 @@ class Services(WalletServices):
 
     async def get_height(self) -> int:
         """Get current blockchain height from WhatsOnChain.
-        
+
         Equivalent to TypeScript's Services.getHeight()
         Uses py-sdk's WhatsOnChainTracker.current_height() (SDK method)
-        
+
         Returns:
             Current blockchain height
-            
+
         Raises:
             RuntimeError: If unable to retrieve height
         """
@@ -144,16 +143,16 @@ class Services(WalletServices):
 
     async def get_header_for_height(self, height: int) -> bytes:
         """Get block header at specified height from WhatsOnChain.
-        
+
         Equivalent to TypeScript's Services.getHeaderForHeight()
         Uses WhatsOnChain.get_header_bytes_for_height() helper method
-        
+
         Args:
             height: Block height (must be non-negative)
-            
+
         Returns:
             80-byte serialized block header
-            
+
         Raises:
             ValueError: If height is negative
             RuntimeError: If unable to retrieve header

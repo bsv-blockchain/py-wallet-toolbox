@@ -1,2 +1,1 @@
 """CWIStyleWalletManager integration tests module."""
-

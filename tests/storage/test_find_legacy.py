@@ -2,11 +2,11 @@
 
 These tests verify backward compatibility with legacy database schemas.
 
-Reference: test/storage/findLegacy.test.ts
+Reference: wallet-toolbox/test/storage/findLegacy.test.ts
 """
 
+
 import pytest
-from typing import Any
 
 
 class TestfindLegacy:
@@ -18,15 +18,14 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find ProvenTx
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('0 find ProvenTx')
         """
         # Given
-        from bsv_wallet_toolbox.storage import StorageProvider
-        
-        mock_storage = type("MockStorage", (), {})()
-        
+
+        type("MockStorage", (), {})()
+
         # When/Then - placeholder for legacy compatibility test
         assert True
 
@@ -36,15 +35,14 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find ProvenTxReq
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('1 find ProvenTxReq')
         """
         # Given
-        from bsv_wallet_toolbox.storage import StorageProvider
-        
-        mock_storage = type("MockStorage", (), {})()
-        
+
+        type("MockStorage", (), {})()
+
         # When/Then - placeholder for legacy compatibility test
         assert True
 
@@ -54,7 +52,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find User
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('2 find User')
         """
@@ -67,7 +65,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find Certificate
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('3 find Certificate')
         """
@@ -80,7 +78,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find CertificateField
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('4 find CertificateField')
         """
@@ -93,7 +91,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find OutputBasket
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('5 find OutputBasket')
         """
@@ -106,7 +104,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find Transaction
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('6 find Transaction')
         """
@@ -119,7 +117,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find Commission
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('7 find Commission')
         """
@@ -132,26 +130,25 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find Output with userId, basketId, and txStatus filters
            Then: Returns correct output matching legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('8 find Output')
         """
         # Given
-        from bsv_wallet_toolbox.storage import StorageProvider
-        
-        mock_storage = type("MockStorage", (), {
-            "find_outputs": lambda self, query: [{
-                "txid": "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26",
-                "vout": 2
-            }]
-        })()
-        
+
+        mock_storage = type(
+            "MockStorage",
+            (),
+            {
+                "find_outputs": lambda self, query: [
+                    {"txid": "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26", "vout": 2}
+                ]
+            },
+        )()
+
         # When
-        results = await mock_storage.find_outputs({
-            "partial": {"userId": 1, "basketId": 1},
-            "txStatus": ["sending"]
-        })
-        
+        results = await mock_storage.find_outputs({"partial": {"userId": 1, "basketId": 1}, "txStatus": ["sending"]})
+
         # Then
         assert len(results) == 1
         assert results[0]["txid"] == "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26"
@@ -163,7 +160,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find OutputTag
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('9 find OutputTag')
         """
@@ -176,7 +173,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find OutputTagMap
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('10 find OutputTagMap')
         """
@@ -189,7 +186,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find TxLabel
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('11 find TxLabel')
         """
@@ -202,7 +199,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find TxLabelMap
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('12 find TxLabelMap')
         """
@@ -215,7 +212,7 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find MonitorEvent
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('13 find MonitorEvent')
         """
@@ -228,10 +225,9 @@ class TestfindLegacy:
         """Given: Legacy storage with test data
            When: Find SyncState
            Then: Compatible with legacy schema
-           
+
         Reference: test/storage/findLegacy.test.ts
                   test('14 find SyncState')
         """
         # When/Then - placeholder for legacy compatibility test
         assert True
-
