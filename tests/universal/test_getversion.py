@@ -40,7 +40,7 @@ class TestUniversalVectorsGetVersion:
         """
         # Given
         args_data, result_data = load_test_vectors("getVersion-simple")
-        wallet = Wallet()  # Will use Wallet.VERSION (currently "0.1.0")
+        wallet = Wallet(chain="main")  # Will use Wallet.VERSION (currently "0.6.0")
 
         # When
         result = await wallet.get_version(args_data["json"], originator=None)

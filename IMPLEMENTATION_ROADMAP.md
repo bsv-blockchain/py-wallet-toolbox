@@ -302,7 +302,7 @@ async def test_returns_correct_version(self) -> None:
                test('should return the correct wallet version')
     """
     # Given
-    wallet = Wallet()
+    wallet = Wallet(chain="main")
     
     # When
     result = await wallet.get_version({})

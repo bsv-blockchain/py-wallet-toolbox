@@ -49,7 +49,7 @@ class TestGetHeightBasic:
               This test verifies Python's error handling when services are not configured.
         """
         # Given
-        wallet = Wallet()  # No services
+        wallet = Wallet(chain="test")  # No services
 
         # When/Then
         with pytest.raises(RuntimeError, match="Services must be configured"):

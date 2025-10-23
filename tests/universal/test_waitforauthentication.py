@@ -34,7 +34,7 @@ class TestUniversalVectorsWaitForAuthentication:
         """
         # Given
         args_data, result_data = load_test_vectors("waitForAuthentication-simple")
-        wallet = Wallet()
+        wallet = Wallet(chain="main")
 
         # When
         result = await wallet.wait_for_authentication(args_data["json"], originator=None)

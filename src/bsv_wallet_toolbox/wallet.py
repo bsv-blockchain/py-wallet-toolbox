@@ -35,29 +35,31 @@ class Wallet:
 
     Note:
         Version is hardcoded as a class constant, matching TypeScript implementation.
-        Python implementation uses "0.4.0" during development, will become "1.0.0"
+        Python implementation uses "0.6.0" during development, will become "1.0.0"
         when all 28 methods are implemented.
+        Chain parameter is required (no default value), matching TypeScript implementation.
 
     Example:
-        >>> wallet = Wallet()
+        >>> wallet = Wallet(chain="main")
         >>> result = await wallet.get_version({})
         >>> print(result["version"])
-        0.4.0
+        0.6.0
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
     VERSION = "0.6.0"  # Will become "1.0.0" when all 28 methods are complete (6/28 done)
 
-    def __init__(self, chain: Chain = "main", services: WalletServices | None = None) -> None:
+    def __init__(self, chain: Chain, services: WalletServices | None = None) -> None:
         """Initialize wallet.
 
         Args:
-            chain: Bitcoin network chain ('main' or 'test'). Defaults to 'main'.
+            chain: Bitcoin network chain ('main' or 'test'). Required parameter.
             services: Optional WalletServices instance for blockchain data access.
                      If None, some methods requiring services will not work.
 
         Note:
             Version is not configurable, it's a class constant.
+            Chain parameter is required (no default value), matching TypeScript implementation.
         """
         self.chain: Chain = chain
         self.services: WalletServices | None = services

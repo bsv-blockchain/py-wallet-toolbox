@@ -28,7 +28,7 @@ class TestIsAuthenticated:
               We test the successful case with normal originator.
         """
         # Given
-        wallet = Wallet()
+        wallet = Wallet(chain="test")
 
         # When
         result = await wallet.is_authenticated({}, originator="normal.com")

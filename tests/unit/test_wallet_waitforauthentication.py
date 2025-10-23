@@ -28,7 +28,7 @@ class TestWaitForAuthentication:
               Base Wallet class returns immediately since it's always authenticated.
         """
         # Given
-        wallet = Wallet()
+        wallet = Wallet(chain="test")
 
         # When
         result = await wallet.wait_for_authentication({}, originator="normal.com")

@@ -87,8 +87,8 @@ import asyncio
 from bsv_wallet_toolbox import Wallet
 
 async def main():
-    # Create a wallet instance
-    wallet = Wallet()
+    # Create a wallet instance (chain parameter is required)
+    wallet = Wallet(chain="main")  # or chain="test" for testnet
     
     # Get wallet version
     result = await wallet.get_version({})
@@ -108,7 +108,7 @@ if __name__ == "__main__":
 from bsv_wallet_toolbox import Wallet, InvalidParameterError
 
 async def example_with_error_handling():
-    wallet = Wallet()
+    wallet = Wallet(chain="main")
     
     try:
         # This will raise InvalidParameterError

@@ -34,7 +34,7 @@ class TestUniversalVectorsIsAuthenticated:
         """
         # Given
         args_data, result_data = load_test_vectors("isAuthenticated-simple")
-        wallet = Wallet()
+        wallet = Wallet(chain="main")
 
         # When
         result = await wallet.is_authenticated(args_data["json"], originator=None)

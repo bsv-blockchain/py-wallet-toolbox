@@ -59,7 +59,7 @@ class TestGetHeaderForHeightBasic:
               This test verifies Python's error handling when services are not configured.
         """
         # Given
-        wallet = Wallet()
+        wallet = Wallet(chain="test")
 
         # When / Then
         with pytest.raises(RuntimeError, match="Services must be configured"):
