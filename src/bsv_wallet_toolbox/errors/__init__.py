@@ -1,5 +1,5 @@
 """Wallet error classes."""
 
-from .wallet_errors import InvalidParameterError
+from .wallet_errors import InsufficientFundsError, InvalidParameterError
 
-__all__ = ["InvalidParameterError"]
+__all__ = ["InvalidParameterError", "InsufficientFundsError"]
