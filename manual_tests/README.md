@@ -90,6 +90,92 @@ Tests BEEF (Background Evaluation Extended Format) retrieval from blockchain ser
 - `794f836052ad73732a550c38bea3697a722c6a1e54bcbe63735ba79e0d23f623`
 - `53023657e79f446ca457040a0ab3b903000d7281a091397c7853f021726a560e`
 
+#### `test_arc.py`
+Tests ARC (Atomic Router and Cache) service for transaction broadcast and validation.
+
+- **Test 1**: `test_post_beef_testnet` - Post BEEF transactions to ARC testnet
+- **Test 2**: `test_post_beef_mainnet` - Post BEEF transactions to ARC mainnet
+- **Test 3**: `test_double_spend_detection` - Verify double spend detection
+- **Test 4**: `test_post_raw_tx_testnet` - Post raw transactions to ARC testnet
+- **Test 5**: `test_post_raw_tx_mainnet` - Post raw transactions to ARC mainnet
+
+**Requirements**: Network access, TAAL API key (optional), funded test wallet
+
+**Environment Variables**:
+- `TAAL_API_KEY` - API key for TAAL ARC service
+- `ARC_MAIN_URL` - Mainnet ARC endpoint (default: https://api.taal.com/arc)
+- `ARC_TEST_URL` - Testnet ARC endpoint (default: https://api.taal.com/arc/testnet)
+
+### Storage Tests (`storage/`)
+
+#### `test_database_backends.py`
+Tests storage operations across multiple database backends (SQLite, MySQL, PostgreSQL).
+
+- **Test 1**: `test_sqlite_storage_operations` - CRUD operations on SQLite
+- **Test 2**: `test_mysql_storage_operations` - CRUD operations on MySQL
+- **Test 3**: `test_postgresql_storage_operations` - CRUD operations on PostgreSQL
+- **Test 4**: `test_cross_database_sync` - Data synchronization between databases
+- **Test 5**: `test_sync_from_dojo_testnet` - Sync from MySQL Dojo Reader (testnet)
+- **Test 6**: `test_sync_from_dojo_mainnet` - Sync from MySQL Dojo Reader (mainnet)
+
+**Requirements**: Database access (MySQL/PostgreSQL), Dojo connection credentials
+
+**Environment Variables**:
+- `MYSQL_CONNECTION` - MySQL connection details (JSON)
+- `POSTGRESQL_CONNECTION` - PostgreSQL connection details (JSON)
+- `TEST_DOJO_CONNECTION` - Testnet Dojo MySQL connection (JSON)
+- `MAIN_DOJO_CONNECTION` - Mainnet Dojo MySQL connection (JSON)
+- `MY_TEST_IDENTITY` - Test identity key for sync operations
+
+**Connection Format (JSON)**:
+```json
+{
+  "host": "localhost",
+  "port": 3306,
+  "user": "username",
+  "password": "password",
+  "database": "database_name"
+}
+```
+
+### Wallet Tests (`wallet/`)
+
+#### `test_local_wallet.py`
+Tests local wallet operations with real blockchain interaction.
+
+- **Test 1**: `test_monitor_run_once` - Monitor checks for new transactions
+- **Test 2**: `test_monitor_run_once_with_call_history` - Monitor call history tracking
+- **Test 3**: `test_create_one_sat_output_delayed_broadcast` - Delayed broadcast
+- **Test 4**: `test_create_one_sat_output_immediate_broadcast` - Immediate broadcast
+- **Test 5**: `test_create_nosend_and_send_with` - Batch broadcasting with sendWith
+- **Test 6**: `test_balance_consistency_across_storage` - Balance across storage backends
+- **Test 7**: `test_review_sync_chunk` - Sync chunk generation
+- **Test 8**: `test_backup_update` - Automatic backup synchronization
+
+**Requirements**: Funded test wallet, network access, blockchain services
+
+**Environment Variables**:
+- `MY_TEST_IDENTITY` - Test wallet identity key
+- `TEST_STORAGE_CONNECTION` - Test storage connection (JSON)
+
+**WARNING**: Tests create real blockchain transactions. Use testnet recommended!
+
+#### `test_backup.py`
+Tests wallet backup and restore operations.
+
+- **Test 1**: `test_backup_to_local_file` - Backup wallet to local file
+- **Test 2**: `test_restore_from_local_file` - Restore wallet from backup file
+- **Test 3**: `test_backup_to_secondary_storage` - Multi-storage backup
+- **Test 4**: `test_backup_to_cloud_storage` - Cloud backup (if configured)
+- **Test 5**: `test_incremental_backup` - Incremental backup efficiency
+- **Test 6**: `test_backup_encryption` - Encrypted backups with password
+
+**Requirements**: Test wallet with data, storage backends
+
+**Environment Variables**:
+- `CLOUD_STORAGE_URL` - Cloud storage endpoint (optional)
+- `CLOUD_STORAGE_API_KEY` - Cloud storage API key (optional)
+
 ## Notes
 
 - These tests are **not run in CI/CD** by default
