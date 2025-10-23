@@ -229,8 +229,8 @@ class TestLocalWalletActions:
         assert result["txid"] is not None
         assert result["status"] in ["queued", "sending"]
         
-        # Track the request
-        # Wait for broadcast...
+        # Note: TypeScript has trackReqByTxid commented out
+        # await track_req_by_txid(setup, result["txid"])
         
         # Cleanup
         await setup.wallet.destroy()
@@ -273,6 +273,9 @@ class TestLocalWalletActions:
         # Then
         assert result["txid"] is not None
         assert result["status"] == "success"
+        
+        # Note: TypeScript has trackReqByTxid commented out
+        # await track_req_by_txid(setup, result["txid"])
         
         # Cleanup
         await setup.wallet.destroy()
@@ -331,6 +334,9 @@ class TestLocalWalletActions:
         # Then
         assert send_result["status"] == "success"
         assert len(send_result["txids"]) == 2
+        
+        # Note: TypeScript has trackReqByTxid commented out
+        # await track_req_by_txid(setup, result1["txid"])
         
         # Cleanup
         await setup.wallet.destroy()
