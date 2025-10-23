@@ -523,4 +523,296 @@ class TestWalletPermissionsManagerChecks:
         
         # Then - no basket permission check, underlying called
         mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_require_listing_permission_if_seekbasketlistingpermissions_true_and_no_token(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should require listing permission if seekBasketListingPermissions=true and no token')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.list_outputs = AsyncMock()
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekBasketListingPermissions": True}
+        )
+        def permission_callback(request):
+            manager.deny_permission(request["requestID"])
+        manager.bind_callback("onBasketAccessRequested", permission_callback)
+        with pytest.raises(ValueError, match="Permission denied"):
+            await manager.list_outputs({"basket": "user-basket"}, originator="some-user.com")
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_prompt_for_removal_permission_if_seekbasketremovalpermissions_true(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should prompt for removal permission if seekBasketRemovalPermissions=true')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.relinquish_output = AsyncMock(return_value={"txid": "test"})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekBasketRemovalPermissions": True}
+        )
+        async def permission_callback(request):
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onBasketAccessRequested", permission_callback)
+        await manager.relinquish_output({"output": "someTxid.1", "basket": "user-basket"}, originator="some-user.com")
+        mock_underlying_wallet.relinquish_output.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_skip_certificate_disclosure_permission_if_config_seekcertificatedisclosurepermissions_false(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should skip certificate disclosure permission if config.seekCertificateDisclosurePermissions=false')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekCertificateDisclosurePermissions": False}
+        )
+        await manager.prove_certificate({
+            "certificate": {"type": "KYC", "subject": "02abcdef", "serialNumber": "123", "certifier": "02ccc", "fields": {"name": "Alice"}},
+            "fieldsToReveal": ["name"],
+            "verifier": "02xyz",
+            "privileged": False
+        }, originator="nonadmin.com")
+        mock_underlying_wallet.prove_certificate.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_require_permission_if_seekcertificatedisclosurepermissions_true_no_valid_token(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should require permission if seekCertificateDisclosurePermissions=true, no valid token')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekCertificateDisclosurePermissions": True}
+        )
+        async def permission_callback(request):
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onCertificateAccessRequested", permission_callback)
+        await manager.prove_certificate({
+            "certificate": {"type": "KYC", "subject": "02abc", "serialNumber": "xyz", "certifier": "02dddd", "fields": {"name": "Bob"}},
+            "fieldsToReveal": ["name"],
+            "verifier": "02xxxx",
+            "privileged": False
+        }, originator="some-user.com")
+        mock_underlying_wallet.prove_certificate.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_check_that_requested_fields_are_a_subset_of_the_tokens_fields(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should check that requested fields are a subset of the token's fields')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekCertificateDisclosurePermissions": True}
+        )
+        existing_token = {"txid": "aabbcc", "outputIndex": 0, "originator": "some-user.com", "expiry": 9999999999,
+                          "privileged": False, "certType": "KYC", "certFields": ["name", "dob", "nationality"], "verifier": "02eeee"}
+        manager._find_certificate_token = AsyncMock(return_value=existing_token)
+        await manager.prove_certificate({
+            "certificate": {"type": "KYC", "certifier": "02eeee", "subject": "02some", "serialNumber": "", "fields": {"name": "Charlie", "dob": "1999-01-01"}},
+            "fieldsToReveal": ["name"],
+            "verifier": "02eeee",
+            "privileged": False
+        }, originator="some-user.com")
+        assert mock_underlying_wallet.prove_certificate.call_count == 1
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_prompt_for_renewal_if_token_is_expired_cert(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should prompt for renewal if token is expired')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekCertificateDisclosurePermissions": True}
+        )
+        expired_token = {"txid": "old-expired", "outputIndex": 0, "originator": "app.com", "expiry": 1,
+                         "privileged": False, "certType": "KYC", "certFields": ["name", "dob"], "verifier": "02verifier"}
+        manager._find_certificate_token = AsyncMock(return_value=expired_token)
+        async def permission_callback(request):
+            assert request["renewal"] is True
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onCertificateAccessRequested", permission_callback)
+        await manager.prove_certificate({
+            "certificate": {"type": "KYC", "fields": {"name": "Bob", "dob": "1970"}, "certifier": "02verifier"},
+            "fieldsToReveal": ["name"],
+            "verifier": "02verifier",
+            "privileged": False
+        }, originator="app.com")
+        mock_underlying_wallet.prove_certificate.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_skip_if_seekspendingpermissions_false(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should skip if seekSpendingPermissions=false')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "test123"})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekSpendingPermissions": False}
+        )
+        result = await manager.create_action({
+            "description": "Some spend transaction",
+            "outputs": [{"lockingScript": "1321", "satoshis": 200, "outputDescription": "Nothing to see here"}]
+        }, originator="user.com")
+        active_requests = getattr(manager, "_active_requests", {})
+        assert len(active_requests) == 0
+        mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_require_spending_token_if_netspent_gt_0_and_seekspendingpermissions_true(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should require spending token if netSpent > 0 and seekSpendingPermissions=true')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_action = AsyncMock(return_value={"signableTransaction": {"tx": [0x00], "reference": "ref1"}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekSpendingPermissions": True}
+        )
+        async def permission_callback(request):
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onSpendingAuthorizationRequested", permission_callback)
+        await manager.create_action({
+            "description": "Spend 200 sats",
+            "outputs": [{"lockingScript": "abcd", "satoshis": 200, "outputDescription": "test"}]
+        }, originator="user.com")
+        mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_check_monthly_limit_usage_and_prompt_renewal_if_insufficient(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should check monthly limit usage and prompt renewal if insufficient')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_action = AsyncMock(return_value={"signableTransaction": {"tx": [0x00], "reference": "ref1"}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekSpendingPermissions": True}
+        )
+        existing_token = {"txid": "spend-token", "outputIndex": 0, "originator": "user.com", "expiry": 9999999999,
+                          "privileged": False, "monthlyLimit": 1000, "usage": 950}
+        manager._find_spending_token = AsyncMock(return_value=existing_token)
+        async def permission_callback(request):
+            assert request.get("renewal") is True
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onSpendingAuthorizationRequested", permission_callback)
+        await manager.create_action({
+            "description": "Spend 100 sats",
+            "outputs": [{"lockingScript": "abcd", "satoshis": 100, "outputDescription": "test"}]
+        }, originator="user.com")
+        mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_pass_if_usage_plus_new_spend_is_within_the_monthly_limit(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should pass if usage plus new spend is within the monthly limit')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_action = AsyncMock(return_value={"signableTransaction": {"tx": [0x00], "reference": "ref1"}})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekSpendingPermissions": True}
+        )
+        existing_token = {"txid": "spend-token", "outputIndex": 0, "originator": "user.com", "expiry": 9999999999,
+                          "privileged": False, "monthlyLimit": 1000, "usage": 500}
+        manager._find_spending_token = AsyncMock(return_value=existing_token)
+        await manager.create_action({
+            "description": "Spend 100 sats",
+            "outputs": [{"lockingScript": "abcd", "satoshis": 100, "outputDescription": "test"}]
+        }, originator="user.com")
+        mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_fail_if_label_starts_with_admin(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should fail if label starts with')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com"
+        )
+        with pytest.raises(ValueError, match="admin-only"):
+            await manager.create_action({
+                "description": "test",
+                "labels": ["admin restricted-label"],
+                "outputs": [{"lockingScript": "abcd", "satoshis": 100}]
+            }, originator="user.com")
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_skip_label_permission_if_seekpermissionwhenapplyingactionlabels_false(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should skip label permission if seekPermissionWhenApplyingActionLabels=false')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "test"})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekPermissionWhenApplyingActionLabels": False, "seekSpendingPermissions": False}
+        )
+        await manager.create_action({
+            "description": "test",
+            "labels": ["user-label"],
+            "outputs": [{"lockingScript": "abcd", "satoshis": 100}]
+        }, originator="user.com")
+        mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_prompt_for_label_usage_if_seekpermissionwhenapplyingactionlabels_true(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should prompt for label usage if seekPermissionWhenApplyingActionLabels=true')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "test"})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekPermissionWhenApplyingActionLabels": True, "seekSpendingPermissions": False}
+        )
+        async def permission_callback(request):
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onLabelPermissionRequested", permission_callback)
+        await manager.create_action({
+            "description": "test",
+            "labels": ["user-label"],
+            "outputs": [{"lockingScript": "abcd", "satoshis": 100}]
+        }, originator="user.com")
+        mock_underlying_wallet.create_action.assert_called_once()
+    
+    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
+    @pytest.mark.asyncio
+    async def test_should_also_prompt_for_listing_actions_by_label_if_seekpermissionwhenlistingactionsbylabel_true(self) -> None:
+        """Reference: toolbox/ts-wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
+                   test('should also prompt for listing actions by label if seekPermissionWhenListingActionsByLabel=true')"""
+        mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.list_actions = AsyncMock(return_value={"totalActions": 0, "actions": []})
+        manager = WalletPermissionsManager(
+            underlying_wallet=mock_underlying_wallet,
+            admin_originator="admin.com",
+            config={"seekPermissionWhenListingActionsByLabel": True}
+        )
+        async def permission_callback(request):
+            await manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+        manager.bind_callback("onLabelPermissionRequested", permission_callback)
+        await manager.list_actions({"label": "user-label"}, originator="user.com")
+        mock_underlying_wallet.list_actions.assert_called_once()
 
