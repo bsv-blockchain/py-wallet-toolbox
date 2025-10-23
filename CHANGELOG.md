@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Complete test suite implementation (846 tests)
+- Manual tests directory with 29 integration tests
+- Type safety improvements (dict → dict[str, Any])
+
+### Changed
+- Reference format unified across 851 locations (TS/Go compliant)
+- Code quality improvements:
+  - Resolved all critical lint errors (F821, E501)
+  - Fixed type annotations for better mypy compatibility
+  - Improved code formatting and line length compliance
+
+### Fixed
+- ImportError in conftest.py (added `from __future__ import annotations`)
+- Line length violations in wallet.py
+- Undefined name errors in error classes
+
+## [0.6.0] - 2025-10-23
+
+### Added
+- Test infrastructure complete (Phase 0 finished)
+- 4 basic WalletInterface methods: getVersion, getNetwork, isAuthenticated, waitForAuthentication
+- Comprehensive test suite with 846 automated tests
+- Universal Test Vectors integration (155 tests)
+- Manual test framework (29 tests in manual_tests/ directory)
+- Code quality checks: ruff, mypy
+- Reference format standardization (wallet-toolbox/, go-wallet-toolbox/)
+
+### Technical Details
+- Python 3.11+ support
+- BRC-100 WalletInterface compliance
+- Compatible with TypeScript and Go implementations
+- Type hints with mypy strict mode
+- pytest framework with asyncio support
+- 100% lint critical error resolution
+
+### References
+- TypeScript implementation: wallet-toolbox
+- Go implementation: go-wallet-toolbox
+- Universal Test Vectors: brc100/
+
 ## [0.1.0] - 2025-01-16
 
 ### Added
