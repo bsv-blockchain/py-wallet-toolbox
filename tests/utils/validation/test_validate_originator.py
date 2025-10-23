@@ -16,7 +16,6 @@ class TestValidateOriginator:
     - Can be None (optional parameter)
     """
     
-    @pytest.mark.skip(reason="Waiting for validate_originator implementation")
     def test_validate_originator_valid(self) -> None:
         """Given: Valid originator values
            When: Call validate_originator
@@ -42,7 +41,6 @@ class TestValidateOriginator:
         for originator in valid_cases:
             validate_originator(originator)  # Should not raise
     
-    @pytest.mark.skip(reason="Waiting for validate_originator implementation")
     def test_validate_originator_invalid_type(self) -> None:
         """Given: Originator with invalid type
            When: Call validate_originator
@@ -69,7 +67,6 @@ class TestValidateOriginator:
                 validate_originator(originator)
             assert "originator" in str(exc_info.value).lower()
     
-    @pytest.mark.skip(reason="Waiting for validate_originator implementation")
     def test_validate_originator_too_long(self) -> None:
         """Given: Originator exceeding 250 bytes
            When: Call validate_originator

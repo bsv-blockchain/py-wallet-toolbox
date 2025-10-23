@@ -14,7 +14,6 @@ class TestValidateBasketConfig:
     - name: non-empty string, at least 1 character and at most 300 characters
     """
     
-    @pytest.mark.skip(reason="Waiting for validate_basket_config implementation")
     def test_validate_basket_config_valid_name(self) -> None:
         """Given: Valid BasketConfiguration with valid name
            When: Call validate_basket_config
@@ -33,7 +32,6 @@ class TestValidateBasketConfig:
         # When / Then
         validate_basket_config(valid_config)  # Should not raise
     
-    @pytest.mark.skip(reason="Waiting for validate_basket_config implementation")
     def test_validate_basket_config_exact_300_bytes(self) -> None:
         """Given: Valid BasketConfiguration with name exactly 300 bytes
            When: Call validate_basket_config
@@ -52,7 +50,6 @@ class TestValidateBasketConfig:
         # When / Then
         validate_basket_config(valid_config)  # Should not raise
     
-    @pytest.mark.skip(reason="Waiting for validate_basket_config implementation")
     def test_validate_basket_config_empty_name(self) -> None:
         """Given: BasketConfiguration with empty name
            When: Call validate_basket_config
@@ -75,7 +72,6 @@ class TestValidateBasketConfig:
         assert "name" in str(exc_info.value).lower()
         assert "at least 1" in str(exc_info.value).lower() or "length" in str(exc_info.value).lower()
     
-    @pytest.mark.skip(reason="Waiting for validate_basket_config implementation")
     def test_validate_basket_config_name_too_long(self) -> None:
         """Given: BasketConfiguration with name exceeding 300 bytes
            When: Call validate_basket_config
