@@ -19,6 +19,7 @@ from bsv_wallet_toolbox.utils.satoshi import (
     satoshi_sum,
     satoshi_to_uint64,
 )
+from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
 
 __all__ = [
     "validate_basket_config",
@@ -31,4 +32,5 @@ __all__ = [
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",
+    "generate_change_sdk",
 ]

@@ -18,7 +18,6 @@ class TestGenerateChangeSdk:
     Reference: wallet-toolbox/src/storage/methods/__test/GenerateChange/generateChangeSdk.test.ts
     """
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_two_outputs(self) -> None:
         """Given: Transaction with two fixed outputs (1234 sat + 2 sat) and available change inputs
@@ -65,7 +64,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 3479
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_two_outputs_exact_input(self) -> None:
         """Given: Transaction with two outputs and exact input amount (4715 sat)
@@ -112,7 +110,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 3479
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_two_outputs_666666_200(self) -> None:
         """Given: Transaction with 666666 sat + 200 sat outputs
@@ -159,7 +156,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 1
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_two_outputs_666666_200_two_change_inputs(self) -> None:
         """Given: Transaction requiring two change inputs to reach target amount
@@ -208,7 +204,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 2
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_two_outputs_four_change_outputs(self) -> None:
         """Given: Transaction with targetNetCount=4 for privacy
@@ -262,7 +257,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 1739466
         assert result["fee"] == 3479
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_werr_insufficient_funds(self) -> None:
         """Given: Transaction with insufficient available funds (limited inputs)
@@ -297,7 +291,6 @@ class TestGenerateChangeSdk:
         with pytest.raises(InsufficientFundsError):
             await generate_change_sdk(params, available_change)
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_werr_insufficient_funds_no_inputs(self) -> None:
         """Given: Transaction with no available inputs
@@ -327,7 +320,6 @@ class TestGenerateChangeSdk:
         with pytest.raises(InsufficientFundsError):
             await generate_change_sdk(params, available_change)
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_allocate_all(self) -> None:
         """Given: Transaction requiring all available inputs
@@ -367,7 +359,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 79
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_feemodel_5_sat_per_kb(self) -> None:
         """Given: Transaction with custom fee model (5 sat/kb instead of 2)
@@ -406,7 +397,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 198  # Higher fee
         assert result["satsPerKb"] == 5
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_feemodel_1_sat_per_kb(self) -> None:
         """Given: Transaction with custom fee model (1 sat/kb instead of 2)
@@ -445,7 +435,6 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 40  # Lower fee
         assert result["satsPerKb"] == 1
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_one_fixed_input(self) -> None:
         """Given: Transaction with one fixed input (1234 sat, 42 bytes) plus change inputs
@@ -499,7 +488,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 1739549
         assert result["fee"] == 3480
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_one_larger_fixed_input(self) -> None:
         """Given: Transaction with one larger fixed input (1234 sat, 242 bytes unlocking script)
@@ -546,7 +534,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 1739749  # Larger due to bigger input
         assert result["fee"] == 3480
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_one_fixed_input_1001_73(self) -> None:
         """Given: Transaction with small fixed input (1001 sat, 73 bytes) and no fixed outputs
@@ -589,7 +576,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 158
         assert result["fee"] == 1
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_no_fixed_outputs_one_fixed_input(self) -> None:
         """Given: Transaction with fixed input but no fixed outputs, targetNetCount=4
@@ -640,7 +626,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 411
         assert result["fee"] == 1
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_no_fixed_outputs_no_fixed_input(self) -> None:
         """Given: Transaction with no fixed inputs or outputs, targetNetCount=4
@@ -691,7 +676,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 328
         assert result["fee"] == 1
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_params_text4_d4(self) -> None:
         """Given: Complex test case with 309000 + 2 sat outputs and specific available inputs
@@ -737,7 +721,6 @@ class TestGenerateChangeSdk:
         assert result["size"] == 433
         assert result["fee"] == 1
 
-    @pytest.mark.skip(reason="generateChangeSdk API not implemented yet")
     @pytest.mark.asyncio
     async def test_params_text_d5_through_d14(self) -> None:
         """Given: Complex test cases with various parameters (d5-d14)
