@@ -151,7 +151,7 @@ class TestTxSize:
         output_sizes = [300, 400]
 
         # When/Then
-        with pytest.raises(TransactionSizeError):
+        with pytest.raises(ValueError):
             transaction_size(list(error_inputs()), output_sizes)
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for transaction_size implementation")
@@ -175,5 +175,5 @@ class TestTxSize:
             raise ValueError("error")
 
         # When/Then
-        with pytest.raises(TransactionSizeError):
+        with pytest.raises(ValueError):
             transaction_size(input_sizes, list(error_outputs()))

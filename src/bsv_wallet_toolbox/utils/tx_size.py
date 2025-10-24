@@ -48,3 +48,14 @@ def transaction_size(input_sizes, output_sizes) -> int:
     return size
 
 
+def inputs_outputs_sizes(unlocking_script_sizes: list[int], locking_script_sizes: list[int]) -> tuple[list[int], list[int]]:
+    """Return per-input and per-output sizes given script sizes.
+
+    The input size is 40 + unlocking_size + varint_len(unlocking_size).
+    The output size is 8 + locking_size + varint_len(locking_size).
+    """
+    inputs = [transaction_input_size(int(s)) for s in unlocking_script_sizes]
+    outputs = [transaction_output_size(int(s)) for s in locking_script_sizes]
+    return inputs, outputs
+
+
