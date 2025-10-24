@@ -10,9 +10,16 @@ from typing import Any
 
 import pytest
 from bsv.chaintracker import ChainTracker
+from bsv.keys import PrivateKey
+from bsv.wallet import KeyDeriver
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import WalletServices
+
+
+# Universal Test Vectors root private key (used in BRC-2/BRC-3 compliance vectors)
+# Reference: sdk/ts-sdk/src/wallet/__tests/ProtoWallet.test.ts
+UNIVERSAL_TEST_VECTORS_ROOT_KEY = "6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8"
 
 
 @pytest.fixture
@@ -172,3 +179,32 @@ def wallet_with_services(mock_services: MockWalletServices) -> Wallet:
         Wallet instance configured with MockWalletServices
     """
     return Wallet(chain="main", services=mock_services)
+
+
+@pytest.fixture
+def test_key_deriver() -> KeyDeriver:
+    """Create a KeyDeriver with Universal Test Vectors root key.
+
+    This key deriver uses the same root private key as TypeScript's
+    BRC-2/BRC-3 compliance vectors and Universal Test Vectors.
+
+    Reference: sdk/ts-sdk/src/wallet/__tests/ProtoWallet.test.ts
+
+    Returns:
+        KeyDeriver instance with Universal Test Vectors root key
+    """
+    root_key = PrivateKey(bytes.fromhex(UNIVERSAL_TEST_VECTORS_ROOT_KEY))
+    return KeyDeriver(root_key)
+
+
+@pytest.fixture
+def wallet_with_key_deriver(test_key_deriver: KeyDeriver) -> Wallet:
+    """Create a test wallet instance with Universal Test Vectors key deriver.
+
+    This wallet can be used to test key derivation methods (getPublicKey, etc.)
+    with expected results matching Universal Test Vectors.
+
+    Returns:
+        Wallet instance configured with Universal Test Vectors KeyDeriver
+    """
+    return Wallet(chain="main", key_deriver=test_key_deriver)

@@ -5,11 +5,14 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 
 from typing import Any, Literal
 
+from bsv.keys import PrivateKey, PublicKey
+from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
     GetHeaderResult,
     GetHeightResult,
     GetNetworkResult,
+    GetPublicKeyResult,
     GetVersionResult,
 )
 
@@ -24,6 +27,38 @@ WalletNetwork = Literal["mainnet", "testnet"]
 
 # Constants
 MAX_ORIGINATOR_LENGTH_BYTES = 250  # BRC-100 standard: originator must be under 250 bytes
+
+
+def _parse_counterparty(value: str | PublicKey) -> Counterparty:
+    """Parse counterparty value into Counterparty object.
+
+    Args:
+        value: 'self', 'anyone', or hex-encoded public key string, or PublicKey instance
+
+    Returns:
+        Counterparty object
+
+    Raises:
+        InvalidParameterError: If value is invalid
+    """
+    if isinstance(value, PublicKey):
+        return Counterparty(type=CounterpartyType.OTHER, counterparty=value)
+
+    if value == "self":
+        return Counterparty(type=CounterpartyType.SELF)
+
+    if value == "anyone":
+        return Counterparty(type=CounterpartyType.ANYONE)
+
+    # Assume it's a hex-encoded public key
+    try:
+        pub_key = PublicKey(value)
+        return Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
+    except Exception as e:
+        raise InvalidParameterError(
+            "counterparty",
+            f"'self', 'anyone', or a valid hex-encoded public key (got {value!r}, error: {e})"
+        ) from e
 
 
 class Wallet:
@@ -47,15 +82,22 @@ class Wallet:
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.6.0"  # Will become "1.0.0" when all 28 methods are complete (6/28 done)
+    VERSION = "0.6.0"  # Will become "1.0.0" when all 28 methods are complete (7/28 done)
 
-    def __init__(self, chain: Chain, services: WalletServices | None = None) -> None:
+    def __init__(
+        self,
+        chain: Chain,
+        services: WalletServices | None = None,
+        key_deriver: KeyDeriver | None = None,
+    ) -> None:
         """Initialize wallet.
 
         Args:
             chain: Bitcoin network chain ('main' or 'test'). Required parameter.
             services: Optional WalletServices instance for blockchain data access.
                      If None, some methods requiring services will not work.
+            key_deriver: Optional KeyDeriver instance for key derivation operations.
+                        If None, methods requiring key derivation will raise RuntimeError.
 
         Note:
             Version is not configurable, it's a class constant.
@@ -63,6 +105,7 @@ class Wallet:
         """
         self.chain: Chain = chain
         self.services: WalletServices | None = services
+        self.key_deriver: KeyDeriver | None = key_deriver
 
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.
@@ -326,3 +369,107 @@ class Wallet:
 
         # Convert bytes to hex string (matching TypeScript behavior)
         return {"header": header_bytes.hex()}
+
+    async def get_public_key(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> GetPublicKeyResult:
+        """Get a public key (identity or derived).
+
+        Retrieves either the wallet's identity public key or derives a public key
+        based on protocol ID, key ID, and counterparty.
+
+        Reference: ts-wallet-toolbox/src/Wallet.ts (Wallet.getPublicKey)
+                   sdk/ts-sdk/src/wallet/ProtoWallet.ts (ProtoWallet.getPublicKey)
+
+        Args:
+            args: Arguments dict containing:
+                - identityKey (bool, optional): If True, return root identity key.
+                                               If False/omitted, derive a key.
+                - protocolID (tuple, required if not identityKey): [security_level, protocol_name]
+                - keyID (str, required if not identityKey): Key identifier string
+                - counterparty (str, optional): 'self', 'anyone', or pubkey hex. Default: 'self'
+                - forSelf (bool, optional): If True, derive for self. Default: False
+            originator: Originator domain (optional)
+
+        Returns:
+            Dict with 'publicKey' field containing hex-encoded public key
+
+        Raises:
+            InvalidParameterError: If args are invalid
+            RuntimeError: If keyDeriver is not configured
+
+        Example:
+            >>> # Get identity key
+            >>> result = await wallet.get_public_key({"identityKey": True})
+            >>> print(result["publicKey"][:10])
+            02a1b2c3d4
+            
+            >>> # Derive a protocol-specific key
+            >>> result = await wallet.get_public_key({
+            ...     "protocolID": [0, "my protocol"],
+            ...     "keyID": "key1"
+            ... })
+            >>> print(result["publicKey"][:10])
+            03e5f6a7b8
+
+        Note:
+            Requires key_deriver to be configured. If key_deriver is None, raises RuntimeError.
+            TypeScript's ProtoWallet.getPublicKey validates protocolID and keyID when identityKey is false.
+        """
+        self._validate_originator(originator)
+
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        # Case 1: Identity key requested
+        if args.get("identityKey"):
+            # Return root public key (matches TS: this.keyDeriver.rootKey.toPublicKey().toString())
+            root_public_key = self.key_deriver._root_public_key
+            return {"publicKey": root_public_key.hex()}
+
+        # Case 2: Derive a key
+        # Validate required parameters (matching TS ProtoWallet.getPublicKey)
+        if "protocolID" not in args or "keyID" not in args:
+            raise InvalidParameterError(
+                "protocolID and keyID",
+                "required if identityKey is false or undefined"
+            )
+
+        protocol_id = args["protocolID"]
+        key_id = args["keyID"]
+
+        # Validate keyID is not empty (matching TS check)
+        if not key_id or key_id == "":
+            raise InvalidParameterError(
+                "keyID",
+                "a non-empty string"
+            )
+
+        # Convert TypeScript protocolID format [security_level, protocol_name] to Protocol
+        if not isinstance(protocol_id, (list, tuple)) or len(protocol_id) != 2:
+            raise InvalidParameterError(
+                "protocolID",
+                "a tuple/list of [security_level, protocol_name]"
+            )
+
+        security_level, protocol_name = protocol_id
+        protocol = Protocol(security_level=security_level, protocol=protocol_name)
+
+        # Get counterparty (default: 'self', matching TS)
+        counterparty_arg = args.get("counterparty", "self")
+        counterparty = _parse_counterparty(counterparty_arg)
+
+        # Get forSelf flag (default: False, matching TS)
+        for_self = args.get("forSelf", False)
+
+        # Derive public key
+        derived_pub = self.key_deriver.derive_public_key(
+            protocol=protocol,
+            key_id=key_id,
+            counterparty=counterparty,
+            for_self=for_self,
+        )
+
+        return {"publicKey": derived_pub.hex()}
