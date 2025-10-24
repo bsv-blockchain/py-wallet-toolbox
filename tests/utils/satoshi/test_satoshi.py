@@ -26,7 +26,6 @@ MAX_SATOSHIS = 2100000000000000
 class TestSatoshiAdd:
     """Tests for satoshi_add function."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_add implementation")
     def test_add_two_ints(self) -> None:
         """Given: Two positive integers
            When: Call satoshi_add
@@ -38,7 +37,6 @@ class TestSatoshiAdd:
         result = satoshi_add(1, 2)
         assert result == 3
 
-    @pytest.mark.skip(reason="Waiting for satoshi_add implementation")
     def test_add_two_max_satoshis(self) -> None:
         """Given: Two MAX_SATOSHIS values
            When: Call satoshi_add
@@ -51,7 +49,6 @@ class TestSatoshiAdd:
         with pytest.raises((InvalidParameterError, OverflowError)):
             satoshi_add(MAX_SATOSHIS, MAX_SATOSHIS)
 
-    @pytest.mark.skip(reason="Waiting for satoshi_add implementation")
     def test_add_two_negative_ints(self) -> None:
         """Given: Two negative integers
            When: Call satoshi_add
@@ -63,7 +60,6 @@ class TestSatoshiAdd:
         result = satoshi_add(-1, -2)
         assert result == -3
 
-    @pytest.mark.skip(reason="Waiting for satoshi_add implementation")
     def test_add_max_satoshis_and_negative_max_satoshis(self) -> None:
         """Given: MAX_SATOSHIS and -MAX_SATOSHIS
            When: Call satoshi_add
@@ -79,7 +75,6 @@ class TestSatoshiAdd:
 class TestSatoshiSubtract:
     """Tests for satoshi_subtract function."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_subtract implementation")
     def test_subtract_two_ints(self) -> None:
         """Given: Two integers (5 - 3)
            When: Call satoshi_subtract
@@ -91,7 +86,6 @@ class TestSatoshiSubtract:
         result = satoshi_subtract(5, 3)
         assert result == 2
 
-    @pytest.mark.skip(reason="Waiting for satoshi_subtract implementation")
     def test_subtract_resulting_in_zero(self) -> None:
         """Given: Two equal integers
            When: Call satoshi_subtract
@@ -103,7 +97,6 @@ class TestSatoshiSubtract:
         result = satoshi_subtract(2, 2)
         assert result == 0
 
-    @pytest.mark.skip(reason="Waiting for satoshi_subtract implementation")
     def test_subtract_to_obtain_negative_result(self) -> None:
         """Given: Two integers where first < second
            When: Call satoshi_subtract
@@ -115,7 +108,6 @@ class TestSatoshiSubtract:
         result = satoshi_subtract(3, 5)
         assert result == -2
 
-    @pytest.mark.skip(reason="Waiting for satoshi_subtract implementation")
     def test_subtract_exceeding_max_positive_value(self) -> None:
         """Given: MAX_SATOSHIS - (-1) which would overflow
            When: Call satoshi_subtract
@@ -132,7 +124,6 @@ class TestSatoshiSubtract:
 class TestSatoshiFrom:
     """Tests for satoshi_from function (validation)."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_from implementation")
     def test_from_positive_int(self) -> None:
         """Given: Positive integer
            When: Call satoshi_from
@@ -144,7 +135,6 @@ class TestSatoshiFrom:
         result = satoshi_from(1)
         assert result == 1
 
-    @pytest.mark.skip(reason="Waiting for satoshi_from implementation")
     def test_from_negative_int(self) -> None:
         """Given: Negative integer
            When: Call satoshi_from
@@ -156,7 +146,6 @@ class TestSatoshiFrom:
         result = satoshi_from(-1)
         assert result == -1
 
-    @pytest.mark.skip(reason="Waiting for satoshi_from implementation")
     def test_from_max_satoshi(self) -> None:
         """Given: MAX_SATOSHIS value
            When: Call satoshi_from
@@ -168,7 +157,6 @@ class TestSatoshiFrom:
         result = satoshi_from(MAX_SATOSHIS)
         assert result == MAX_SATOSHIS
 
-    @pytest.mark.skip(reason="Waiting for satoshi_from implementation")
     def test_from_max_satoshi_plus_one(self) -> None:
         """Given: MAX_SATOSHIS + 1 (exceeds limit)
            When: Call satoshi_from
@@ -185,7 +173,6 @@ class TestSatoshiFrom:
 class TestSatoshiSum:
     """Tests for satoshi_sum function."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_sum implementation")
     def test_sum_of_empty_sequence(self) -> None:
         """Given: Empty list
            When: Call satoshi_sum
@@ -197,7 +184,6 @@ class TestSatoshiSum:
         result = satoshi_sum([])
         assert result == 0
 
-    @pytest.mark.skip(reason="Waiting for satoshi_sum implementation")
     def test_sum_of_multiple_elements(self) -> None:
         """Given: List of integers [1, 2, 3]
            When: Call satoshi_sum
@@ -209,7 +195,6 @@ class TestSatoshiSum:
         result = satoshi_sum([1, 2, 3])
         assert result == 6
 
-    @pytest.mark.skip(reason="Waiting for satoshi_sum implementation")
     def test_sum_of_multiple_elements_with_different_signs(self) -> None:
         """Given: List of integers with mixed signs [1, -2, 3]
            When: Call satoshi_sum
@@ -221,7 +206,6 @@ class TestSatoshiSum:
         result = satoshi_sum([1, -2, 3])
         assert result == 2
 
-    @pytest.mark.skip(reason="Waiting for satoshi_sum implementation")
     def test_sum_exceeding_max_satoshi_value(self) -> None:
         """Given: List [MAX_SATOSHIS, 1] which would overflow
            When: Call satoshi_sum
@@ -238,7 +222,6 @@ class TestSatoshiSum:
 class TestSatoshiMultiply:
     """Tests for satoshi_multiply function."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_multiply implementation")
     def test_multiply_two_ints(self) -> None:
         """Given: Two integers (2 * 3)
            When: Call satoshi_multiply
@@ -250,7 +233,6 @@ class TestSatoshiMultiply:
         result = satoshi_multiply(2, 3)
         assert result == 6
 
-    @pytest.mark.skip(reason="Waiting for satoshi_multiply implementation")
     def test_multiplication_overflow(self) -> None:
         """Given: MAX_SATOSHIS * 2 which would overflow
            When: Call satoshi_multiply
@@ -263,7 +245,6 @@ class TestSatoshiMultiply:
         with pytest.raises((InvalidParameterError, OverflowError)):
             satoshi_multiply(MAX_SATOSHIS, 2)
 
-    @pytest.mark.skip(reason="Waiting for satoshi_multiply implementation")
     def test_multiply_negative_and_positive(self) -> None:
         """Given: Negative and positive integers (-2 * 4)
            When: Call satoshi_multiply
@@ -279,7 +260,6 @@ class TestSatoshiMultiply:
 class TestSatoshiEqual:
     """Tests for satoshi_equal function."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_equal implementation")
     def test_equal_numbers(self) -> None:
         """Given: Two equal numbers (10, 10)
            When: Call satoshi_equal
@@ -291,7 +271,6 @@ class TestSatoshiEqual:
         result = satoshi_equal(10, 10)
         assert result is True
 
-    @pytest.mark.skip(reason="Waiting for satoshi_equal implementation")
     def test_unequal_numbers(self) -> None:
         """Given: Two unequal numbers (10, 20)
            When: Call satoshi_equal
@@ -303,7 +282,6 @@ class TestSatoshiEqual:
         result = satoshi_equal(10, 20)
         assert result is False
 
-    @pytest.mark.skip(reason="Waiting for satoshi_equal implementation")
     def test_try_equal_with_max_satoshis_plus_one(self) -> None:
         """Given: 0 and MAX_SATOSHIS + 1 (invalid)
            When: Call satoshi_equal
@@ -320,7 +298,6 @@ class TestSatoshiEqual:
 class TestSatoshiToUint64:
     """Tests for satoshi_to_uint64 function."""
 
-    @pytest.mark.skip(reason="Waiting for satoshi_to_uint64 implementation")
     def test_positive_value(self) -> None:
         """Given: Positive Satoshi value (100)
            When: Call satoshi_to_uint64
@@ -332,7 +309,6 @@ class TestSatoshiToUint64:
         result = satoshi_to_uint64(100)
         assert result == 100
 
-    @pytest.mark.skip(reason="Waiting for satoshi_to_uint64 implementation")
     def test_negative_value(self) -> None:
         """Given: Negative Satoshi value (-50)
            When: Call satoshi_to_uint64
