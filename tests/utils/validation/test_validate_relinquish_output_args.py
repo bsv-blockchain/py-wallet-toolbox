@@ -18,7 +18,7 @@ class TestValidateRelinquishOutputArgs:
     - basket: string (can be empty or up to 300 characters)
     """
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_valid(self) -> None:
         """Given: Valid RelinquishOutputArgs
            When: Call validate_relinquish_output_args
@@ -37,7 +37,7 @@ class TestValidateRelinquishOutputArgs:
         # When / Then
         validate_relinquish_output_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_basket_min_length(self) -> None:
         """Given: Valid RelinquishOutputArgs with basket at minimum length (1 char)
            When: Call validate_relinquish_output_args
@@ -53,7 +53,7 @@ class TestValidateRelinquishOutputArgs:
         # When / Then
         validate_relinquish_output_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_basket_max_length(self) -> None:
         """Given: Valid RelinquishOutputArgs with basket at maximum length (300 chars)
            When: Call validate_relinquish_output_args
@@ -69,7 +69,7 @@ class TestValidateRelinquishOutputArgs:
         # When / Then
         validate_relinquish_output_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_empty_basket(self) -> None:
         """Given: Valid RelinquishOutputArgs with empty basket
            When: Call validate_relinquish_output_args
@@ -85,7 +85,7 @@ class TestValidateRelinquishOutputArgs:
         # When / Then
         validate_relinquish_output_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_missing_dot(self) -> None:
         """Given: RelinquishOutputArgs with outpoint missing dot separator
            When: Call validate_relinquish_output_args
@@ -103,7 +103,7 @@ class TestValidateRelinquishOutputArgs:
             validate_relinquish_output_args(invalid_args)
         assert "outpoint" in str(exc_info.value).lower() or "output" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_index_not_numeric(self) -> None:
         """Given: RelinquishOutputArgs with non-numeric outpoint index
            When: Call validate_relinquish_output_args
@@ -121,7 +121,7 @@ class TestValidateRelinquishOutputArgs:
             validate_relinquish_output_args(invalid_args)
         assert "outpoint" in str(exc_info.value).lower() or "index" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_empty_output(self) -> None:
         """Given: RelinquishOutputArgs with empty output
            When: Call validate_relinquish_output_args
@@ -139,7 +139,7 @@ class TestValidateRelinquishOutputArgs:
             validate_relinquish_output_args(invalid_args)
         assert "output" in str(exc_info.value).lower() or "required" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_output_args implementation")
+    
     def test_validate_relinquish_output_args_basket_too_long(self) -> None:
         """Given: RelinquishOutputArgs with basket exceeding 300 characters
            When: Call validate_relinquish_output_args

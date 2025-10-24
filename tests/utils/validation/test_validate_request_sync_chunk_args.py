@@ -25,7 +25,7 @@ class TestValidateRequestSyncChunkArgs:
     - offsets: optional list of sync offsets
     """
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_valid_all_fields(self) -> None:
         """Given: Valid RequestSyncChunkArgs with all fields
            When: Call validate_request_sync_chunk_args
@@ -49,7 +49,7 @@ class TestValidateRequestSyncChunkArgs:
         # When / Then
         validate_request_sync_chunk_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_valid_minimal_fields(self) -> None:
         """Given: Valid RequestSyncChunkArgs with minimal required fields
            When: Call validate_request_sync_chunk_args
@@ -71,7 +71,7 @@ class TestValidateRequestSyncChunkArgs:
         # When / Then
         validate_request_sync_chunk_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_missing_to_storage_identity_key(self) -> None:
         """Given: RequestSyncChunkArgs with missing toStorageIdentityKey
            When: Call validate_request_sync_chunk_args
@@ -95,7 +95,7 @@ class TestValidateRequestSyncChunkArgs:
             validate_request_sync_chunk_args(invalid_args)
         assert "tostorageidentitykey" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_missing_from_storage_identity_key(self) -> None:
         """Given: RequestSyncChunkArgs with missing fromStorageIdentityKey
            When: Call validate_request_sync_chunk_args
@@ -119,7 +119,7 @@ class TestValidateRequestSyncChunkArgs:
             validate_request_sync_chunk_args(invalid_args)
         assert "fromstorageidentitykey" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_missing_identity_key(self) -> None:
         """Given: RequestSyncChunkArgs with missing identityKey
            When: Call validate_request_sync_chunk_args
@@ -143,7 +143,7 @@ class TestValidateRequestSyncChunkArgs:
             validate_request_sync_chunk_args(invalid_args)
         assert "identitykey" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_max_items_zero(self) -> None:
         """Given: RequestSyncChunkArgs with maxItems=0
            When: Call validate_request_sync_chunk_args
@@ -167,7 +167,7 @@ class TestValidateRequestSyncChunkArgs:
             validate_request_sync_chunk_args(invalid_args)
         assert "maxitems" in str(exc_info.value).lower() or "greater than 0" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_request_sync_chunk_args implementation")
+    
     def test_validate_request_sync_chunk_args_max_rough_size_zero(self) -> None:
         """Given: RequestSyncChunkArgs with maxRoughSize=0
            When: Call validate_request_sync_chunk_args

@@ -19,7 +19,7 @@ class TestValidateRelinquishCertificateArgs:
     - certifier: non-empty hexadecimal string with even length
     """
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_certificate_args implementation")
+    
     def test_validate_relinquish_certificate_args_valid(self) -> None:
         """Given: Valid RelinquishCertificateArgs
            When: Call validate_relinquish_certificate_args
@@ -39,7 +39,7 @@ class TestValidateRelinquishCertificateArgs:
         # When / Then
         validate_relinquish_certificate_args(valid_args)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_certificate_args implementation")
+    
     def test_validate_relinquish_certificate_args_invalid_type(self) -> None:
         """Given: RelinquishCertificateArgs with invalid type (non-base64)
            When: Call validate_relinquish_certificate_args
@@ -61,7 +61,7 @@ class TestValidateRelinquishCertificateArgs:
             validate_relinquish_certificate_args(invalid_args)
         assert "type" in str(exc_info.value).lower() or "base64" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_certificate_args implementation")
+    
     def test_validate_relinquish_certificate_args_invalid_serial_number(self) -> None:
         """Given: RelinquishCertificateArgs with invalid serialNumber (non-base64)
            When: Call validate_relinquish_certificate_args
@@ -83,7 +83,7 @@ class TestValidateRelinquishCertificateArgs:
             validate_relinquish_certificate_args(invalid_args)
         assert "serial" in str(exc_info.value).lower() or "base64" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_certificate_args implementation")
+    
     def test_validate_relinquish_certificate_args_invalid_certifier_non_hex(self) -> None:
         """Given: RelinquishCertificateArgs with invalid certifier (non-hex)
            When: Call validate_relinquish_certificate_args
@@ -101,7 +101,7 @@ class TestValidateRelinquishCertificateArgs:
             validate_relinquish_certificate_args(invalid_args)
         assert "certifier" in str(exc_info.value).lower() or "hex" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_certificate_args implementation")
+    
     def test_validate_relinquish_certificate_args_certifier_odd_length(self) -> None:
         """Given: RelinquishCertificateArgs with odd-length certifier hex
            When: Call validate_relinquish_certificate_args
@@ -119,7 +119,7 @@ class TestValidateRelinquishCertificateArgs:
             validate_relinquish_certificate_args(invalid_args)
         assert "certifier" in str(exc_info.value).lower() or "even" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_relinquish_certificate_args implementation")
+    
     def test_validate_relinquish_certificate_args_empty_certifier(self) -> None:
         """Given: RelinquishCertificateArgs with empty certifier
            When: Call validate_relinquish_certificate_args
