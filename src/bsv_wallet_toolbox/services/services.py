@@ -273,18 +273,59 @@ class Services(WalletServices):
         return await self.whatsonchain.is_valid_root_for_height(root, height)
 
     async def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
-        """Get merkle path object for a transaction via provider.
+        """Get the Merkle path for a transaction (TS-compatible response shape).
 
-        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (getMerklePathForTransaction)
+        Delegates to the provider implementation (WhatsOnChain).
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+
+        Returns:
+            dict: On success, an object with keys "header" and "merklePath". If no data exists,
+                  returns the provider sentinel object (e.g., {"name": "WoCTsc", "notes": [...]})
+
+        Raises:
+            RuntimeError: If provider returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getMerklePathForTransaction
         """
         return await self.whatsonchain.get_merkle_path(txid, self)
 
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
-        """Get current BSV/USD exchange rate via provider."""
+        """Get the current BSV/USD exchange rate via provider.
+
+        Returns:
+            dict: { "base": "USD", "rate": number, "timestamp": number }
+
+        Raises:
+            RuntimeError: If provider returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#updateBsvExchangeRate
+        """
         return await self.whatsonchain.update_bsv_exchange_rate()
 
     async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
-        """Get fiat exchange rate via provider (TS-compatible)."""
+        """Get a fiat exchange rate for "currency" relative to "base".
+
+        The provider returns a base and a rates map. If the provider base matches the requested base,
+        this method returns rates[currency]. Otherwise it converts through the provider base.
+
+        Args:
+            currency: Target fiat currency code (e.g., 'USD', 'GBP', 'EUR')
+            base: Base fiat currency code to compare against (default 'USD')
+
+        Returns:
+            float: The fiat exchange rate of currency relative to base.
+
+        Raises:
+            RuntimeError: If provider returns a non-OK status.
+            ValueError: If currency/base cannot be resolved from provider rates.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getFiatExchangeRate
+        """
         return await self.whatsonchain.get_fiat_exchange_rate(currency, base)
 
     async def get_utxo_status(
@@ -294,5 +335,48 @@ class Services(WalletServices):
         outpoint: str | None = None,
         use_next: bool | None = None,
     ) -> dict[str, Any]:
-        """Get UTXO status via provider (TS-compatible)."""
+        """Get UTXO status via provider (TS-compatible response shape).
+
+        Supports the same input conventions as the TS implementation:
+        - output_format determines how "output" is interpreted: 'hashLE' | 'hashBE' | 'script' | 'outpoint'.
+        - When output_format == 'outpoint', the optional 'outpoint' ('txid:vout') can be provided.
+        - Provider selection (use_next) is accepted for parity but ignored here.
+
+        Args:
+            output: Locking script hex, script hash, or outpoint descriptor depending on output_format
+            output_format: One of 'hashLE', 'hashBE', 'script', 'outpoint'
+            outpoint: Optional 'txid:vout' specifier when needed
+            use_next: Provider selection hint (ignored)
+
+        Returns:
+            dict: TS-like { "details": [{ "outpoint": str, "spent": bool, ... }] }.
+
+        Raises:
+            RuntimeError: If provider returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
+        """
         return await self.whatsonchain.get_utxo_status(output, output_format, outpoint, use_next)
+
+    async def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:
+        """Get script history via provider (TS-compatible response shape).
+
+        Returns two arrays, matching TS semantics:
+        - confirmed: Transactions confirmed on-chain spending/creating outputs related to the script hash
+        - unconfirmed: Transactions seen but not yet confirmed
+
+        Args:
+            script_hash: The script hash (usually little-endian for WoC) required by the provider
+            use_next: Provider selection hint (ignored; kept for parity with TS)
+
+        Returns:
+            dict: { "confirmed": [...], "unconfirmed": [...] }
+
+        Raises:
+            RuntimeError: If provider returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
+        """
+        return await self.whatsonchain.get_script_history(script_hash, use_next)

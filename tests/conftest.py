@@ -1,6 +1,26 @@
-"""Common pytest fixtures for all tests.
+"""Global pytest fixtures and test infrastructure (TS-parity focused).
 
-These fixtures are automatically available to all test files.
+This module provides:
+
+1) Universal Test Vector helpers
+   - test_vectors_dir / load_test_vectors: convenience loaders for JSON-based
+     vectors used across wallet and utility tests.
+
+2) Wallet test fixtures
+   - wallet / testnet_wallet: minimal Wallet instances for mainnet/testnet
+   - wallet_with_services: wallet wired to a simple MockWalletServices
+   - wallet_with_key_deriver: wallet wired to a universal-vector-compatible KeyDeriver
+
+3) Autouse HTTP mocking for external providers (WhatsOnChain)
+   - mock_whatsonchain_default_http: replaces the default HTTP client used by
+     the provider with a small fake that returns recorded responses. This keeps
+     tests deterministic and network-free, mirroring the TS test approach
+     (recorded fixtures/mocks injected at setup time).
+
+Design goals:
+   - Strict TS compatibility in I/O shapes (inputs/outputs/edge cases)
+   - No network access during tests
+   - Easy to extend: add a URL branch + canned response in FakeClient.fetch
 """
 
 import json
@@ -217,13 +237,21 @@ def wallet_with_key_deriver(test_key_deriver: KeyDeriver) -> Wallet:
 
 @pytest.fixture(autouse=True)
 def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Provide recorded responses for WhatsOnChain endpoints used in tests.
+    """Autouse fixture: recorded HTTP responses for WhatsOnChain endpoints.
 
-    - getRawTx: /tx/{txid}/hex
-    - getMerklePath: /tx/{txid}/merklepath
+    Covered endpoints and return shapes (TS-compatible):
+    - getRawTx:              /tx/{txid}/hex -> { data: string | undefined }
+    - getMerklePath:         /tx/{txid}/merklepath -> { header: {...}, merklePath: {...} } | { name, notes }
+    - updateBsvExchangeRate: /exchange-rate/bsvusd -> { base: 'USD', rate: number, timestamp: number }
+    - getFiatExchangeRate:   /getFiatExchangeRates -> { base: string, rates: Record<string, number> }
+    - getUtxoStatus:         /getUtxoStatus?output=... -> { details: Array<{ outpoint, spent, ... }> }
+    - getScriptHistory:      /getScriptHistory?hash=... -> { confirmed: [...], unconfirmed: [...] }
 
-    This mirrors the TS test pattern where HTTP is stubbed/mocked at setup,
-    keeping individual tests minimal and focused on comparing expected values (TS-equivalent shape).
+    Notes:
+    - Shapes intentionally match TS tests and provider contracts so test bodies
+      can remain minimal and focus on expected values.
+    - To extend, add a new URL branch in FakeClient.fetch and return a canned
+      response that mirrors the TS contract.
     """
 
     class Resp:
@@ -306,7 +334,29 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
     }
 
     class FakeClient:
+        """Minimal HTTP client stub used to provide recorded responses.
+
+        Purpose:
+            - Replace the provider's default HTTP client with deterministic, network-free replies
+            - Mirror the response shapes expected by TS tests (parity of contracts)
+        Extend:
+            - Add a new URL branch inside fetch() and return a canned object following TS contracts
+        """
+
         async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002
+            """Return a recorded response for supported WhatsOnChain/Chaintracks URLs.
+
+            Covered endpoints:
+                - /tx/{txid}/hex
+                - /tx/{txid}/merklepath
+                - /exchange-rate/bsvusd
+                - /getFiatExchangeRates
+                - /getUtxoStatus?output=...
+                - /getScriptHistory?hash=...
+
+            Returns:
+                Resp: An object with .ok, .status_code, and .json() -> dict
+            """
             # getRawTx
             if "/tx/" in url and url.endswith("/hex"):
                 txid = url.split("/tx/")[-1].split("/")[0]
@@ -336,12 +386,28 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 if output == "1" * 64:
                     return Resp(True, 200, {"details": []})
                 return Resp(True, 200, {"details": [{"outpoint": outpoint or "tx:0", "spent": False}]})
+            # getScriptHistory
+            if url.startswith("https://mainnet-chaintracks.babbage.systems/getScriptHistory"):
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(url).query)
+                h = (qs.get("hash") or [""])[0]
+                if h == "1" * 64:
+                    return Resp(True, 200, {"confirmed": [], "unconfirmed": []})
+                return Resp(True, 200, {
+                    "confirmed": [{"txid": "aa" * 32, "vout": 0, "satoshis": 1000}],
+                    "unconfirmed": [{"txid": "bb" * 32, "vout": 1, "satoshis": 200}],
+                })
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker
     from bsv.chaintrackers.whatsonchain import default_http_client as _default
 
     def fake_default_http_client():
+        """Factory returning the FakeClient used to stub provider HTTP.
+
+        This mirrors TS test setup where a recorded/mocked HTTP client is
+        injected globally so tests are deterministic and network-free.
+        """
         return FakeClient()
 
     monkeypatch.setattr("bsv.chaintrackers.whatsonchain.default_http_client", fake_default_http_client)

@@ -295,15 +295,25 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError(f"Failed to get header for height {height}: {response.json()}")
 
     async def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:  # noqa: ARG002
-        """Get merkle path structure for a transaction.
+        """Fetch the Merkle path for a transaction (TS-compatible response shape).
 
-        This method mirrors the TS provider behavior. The concrete HTTP shape is
-        intentionally simple so that tests can mock `http_client.fetch` and inject
-        recorded responses (equivalent to TS recorded fixtures) without changing production code.
+        Behavior (aligned with ts-wallet-toolbox providers/WhatsOnChain):
+        - On success: returns an object with a block header (header) and a Merkle path (merklePath)
+          that contains the blockHeight and a path matrix of sibling hashes with offsets.
+        - On not found (404): returns a sentinel object with name/notes indicating "getMerklePathNoData".
+        - On errors: raises RuntimeError with provider-specific error information.
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+            services: WalletServices instance (not used by this provider; reserved for parity with TS)
 
         Returns:
-            A dict containing header and merklePath or an object with `name`/`notes`
-            when no data is found (matching TS test expectations).
+            dict: A dictionary with either {"header": {...}, "merklePath": {...}, "name": "WoCTsc", "notes": [...]} on success,
+                  or {"name": "WoCTsc", "notes": [{..."getMerklePathNoData"...}]} if no data is available.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
+            - toolbox/ts-wallet-toolbox/docs/services.md#getmerklepath
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Endpoint path is not critical; tests will monkeypatch fetch()
@@ -317,9 +327,16 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
 
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
-        """Fetch current BSV/USD exchange rate (shape matches TS tests).
+        """Fetch the current BSV/USD exchange rate (TS-compatible shape).
 
-        Returns dict like { base: 'USD', rate: number, timestamp: number }.
+        Returns:
+            dict: { "base": "USD", "rate": number, "timestamp": number }
+
+        Raises:
+            RuntimeError: If the provider request fails or returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         response = await self.http_client.fetch(f"{self.URL}/exchange-rate/bsvusd", request_options)
@@ -329,10 +346,27 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         raise RuntimeError("Failed to update BSV exchange rate")
 
     async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
-        """Get fiat exchange rate for a currency relative to base.
+        """Get a fiat exchange rate for "currency" relative to "base" (TS-compatible logic).
 
-        Expected response shape (TS-compatible):
-            { base: 'USD', rates: { USD: 1, GBP: 0.8, EUR: 0.9 } }
+        Provider contract (as used in TS):
+        - Endpoint returns an object like: { base: 'USD', rates: { USD: 1, GBP: 0.8, EUR: 0.9 } }
+        - If currency == base, this function returns 1.0.
+        - If the provider's base equals the requested base, returns rates[currency].
+        - Otherwise converts via provider base (rate_currency / rate_base).
+
+        Args:
+            currency: Target fiat currency code (e.g., 'USD', 'GBP', 'EUR')
+            base: Base fiat currency code to compare against (default 'USD')
+
+        Returns:
+            float: The fiat exchange rate of currency relative to base.
+
+        Raises:
+            RuntimeError: If the provider request fails or returns a non-OK status.
+            ValueError: If the requested currency or base cannot be resolved from provider rates.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getFiatExchangeRate
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Chaintracks fiat endpoint (tests will mock this URL)
@@ -366,11 +400,25 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     ) -> dict[str, Any]:
         """Get UTXO status for an output descriptor (TS-compatible shape).
 
+        Supports the same input conventions as TS:
+        - output_format controls how "output" is interpreted ('hashLE' | 'hashBE' | 'script' | 'outpoint').
+        - When output_format == 'outpoint', the optional outpoint 'txid:vout' can be provided.
+        - Provider selection (use_next) is accepted for parity but ignored here.
+
         Args:
-            output: locking script hex, script hash, or outpoint descriptor depending on format
-            output_format: e.g., 'hashLE' | 'hashBE' | 'script' | 'outpoint'
-            outpoint: optional 'txid:vout' when needed
-            use_next: provider selection hint (ignored here)
+            output: Locking script hex, script hash, or outpoint descriptor depending on output_format
+            output_format: One of 'hashLE', 'hashBE', 'script', 'outpoint'
+            outpoint: Optional 'txid:vout' specifier when needed
+            use_next: Provider selection hint (ignored)
+
+        Returns:
+            dict: TS-like { "details": [{ "outpoint": str, "spent": bool, ... }] } or empty details when not found.
+
+        Raises:
+            RuntimeError: If the provider request fails or returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Chaintracks-like endpoint (tests will mock this)
@@ -390,16 +438,52 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError("Failed to get UTXO status")
         return response.json() or {}
 
-    async def get_raw_tx(self, txid: str) -> str | None:
-        """Get raw transaction hex for a given txid.
+    async def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:
+        """Get script history for a given script hash (TS-compatible response shape).
 
-        Reference: toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
+        Returns two arrays, matching TS semantics:
+        - confirmed: Transactions confirmed on-chain spending/creating outputs related to the script hash
+        - unconfirmed: Transactions seen but not yet confirmed
 
         Args:
-            txid: Transaction ID (64-hex string)
+            script_hash: The script hash (typically little-endian) as required by the provider
+            use_next: Provider selection hint (ignored here; kept for parity with TS)
 
         Returns:
-            Raw transaction hex string if found, otherwise None
+            dict: { "confirmed": [...], "unconfirmed": [...] }
+
+        Raises:
+            RuntimeError: If the provider request fails or returns a non-OK status.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
+        """
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        base_url = "https://mainnet-chaintracks.babbage.systems/getScriptHistory"
+        from urllib.parse import urlencode
+
+        url = f"{base_url}?{urlencode({'hash': script_hash})}"
+        response = await self.http_client.fetch(url, request_options)
+        if not response.ok:
+            raise RuntimeError("Failed to get script history")
+        return response.json() or {"confirmed": [], "unconfirmed": []}
+
+    async def get_raw_tx(self, txid: str) -> str | None:
+        """Get raw transaction hex for a given txid (TS-compatible optional result).
+
+        Behavior:
+        - Returns the raw transaction hex string when available.
+        - Returns None when the transaction is not found (404) or provider returns empty body.
+        - Performs basic txid validation (64 hex chars) for early return.
+
+        Args:
+            txid: Transaction ID (64 hex chars, big-endian)
+
+        Returns:
+            Optional[str]: Raw transaction hex when found; otherwise None.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
         if not isinstance(txid, str) or len(txid) != 64:
             return None
