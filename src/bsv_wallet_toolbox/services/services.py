@@ -72,6 +72,10 @@ class Services(WalletServices):
     # arc_gorillapool: Optional[ARC]
     # bitails: Bitails
 
+    @staticmethod
+    def create_default_options(chain: Chain) -> WalletServicesOptions:
+        return create_default_options(chain)
+
     def __init__(self, options_or_chain: Chain | WalletServicesOptions) -> None:
         """Initialize wallet services.
 
@@ -251,3 +255,19 @@ class Services(WalletServices):
             Raw transaction hex string if found, otherwise None
         """
         return await self.whatsonchain.get_raw_tx(txid)
+
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
+        """Verify if a Merkle root is valid for a given block height.
+
+        Delegates to provider's ChainTracker implementation (WhatsOnChainTracker).
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (isValidRootForHeight)
+
+        Args:
+            root: Merkle root hex string
+            height: Block height
+
+        Returns:
+            True if the Merkle root matches the header's merkleRoot at the height
+        """
+        return await self.whatsonchain.is_valid_root_for_height(root, height)

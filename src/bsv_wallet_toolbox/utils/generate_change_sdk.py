@@ -334,7 +334,7 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
         v = next_random_val()
         return int(v * (max_incl - min_incl + 1)) + min_incl
 
-    # Distribute excess into change outputs (TS準拠)
+    # Distribute excess into change outputs (TS-compliant)
     # Step 1: bring first output up to changeInitialSatoshis if below
     if len(result["changeOutputs"]) > 0 and int(result["changeOutputs"][0]["satoshis"]) < change_initial:
         missing = change_initial - int(result["changeOutputs"][0]["satoshis"])

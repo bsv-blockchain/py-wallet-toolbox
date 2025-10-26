@@ -7,6 +7,8 @@ Reference: wallet-toolbox/src/services/__tests/getRawTx.test.ts
 
 import pytest
 
+from typing import Any
+
 try:
     from bsv_wallet_toolbox.services import Services
 
@@ -28,7 +30,7 @@ class TestGetRawTx:
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     @pytest.mark.asyncio
-    async def test_get_raw_tx(self) -> None:
+    async def test_get_raw_tx(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Given: Services with testnet configuration
            When: Get raw transaction for a known txid
            Then: Returns raw transaction data
@@ -39,6 +41,19 @@ class TestGetRawTx:
         # Given
         options = Services.create_default_options("test")
         services = Services(options)
+
+        # Mock: inject canned response into provider HTTP layer (equivalent to TS recorded fixtures)
+        async def fake_fetch(url: str, request_options: dict[str, Any]) -> Any:  # noqa: ARG001
+            class Resp:
+                ok = True
+                status_code = 200
+
+                def json(self) -> dict[str, str]:
+                    return {"data": "01000000"}  # truthy
+
+            return Resp()
+
+        monkeypatch.setattr(services.whatsonchain.http_client, "fetch", fake_fetch)
 
         # When
         result = await services.get_raw_tx("c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76")

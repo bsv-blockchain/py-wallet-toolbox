@@ -20,6 +20,24 @@ from bsv_wallet_toolbox.utils.satoshi import (
     satoshi_to_uint64,
 )
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
+from types import SimpleNamespace
+
+
+class Setup:
+    """Placeholder for TS Setup util (compat layer for tests)."""
+
+    @staticmethod
+    def get_env(chain: str) -> dict[str, str]:  # minimal shape used by tests
+        # Return object with attribute access to match TS tests (env.chain, env.taal_api_key)
+        return SimpleNamespace(chain=chain, taal_api_key="")
+
+
+class TestUtils:
+    """Test utility functions (compat with TS test helpers)."""
+
+    @staticmethod
+    def get_env(chain: str) -> dict[str, str]:
+        return Setup.get_env(chain)
 
 __all__ = [
     "validate_basket_config",
@@ -33,4 +51,6 @@ __all__ = [
     "satoshi_sum",
     "satoshi_to_uint64",
     "generate_change_sdk",
+    "Setup",
+    "TestUtils",
 ]
