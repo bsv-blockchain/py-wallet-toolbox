@@ -234,3 +234,20 @@ class Services(WalletServices):
 
         height = await self.get_height()
         return n_lock_time < int(height)
+
+    #
+    # WalletServices external service methods
+    #
+
+    async def get_raw_tx(self, txid: str) -> str | None:
+        """Get raw transaction hex for a given txid via WhatsOnChain.
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (getRawTx)
+
+        Args:
+            txid: Transaction ID (64-hex string)
+
+        Returns:
+            Raw transaction hex string if found, otherwise None
+        """
+        return await self.whatsonchain.get_raw_tx(txid)

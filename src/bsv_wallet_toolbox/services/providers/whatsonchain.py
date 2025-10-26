@@ -293,3 +293,34 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError(f"No header found for height {height}")
         else:
             raise RuntimeError(f"Failed to get header for height {height}: {response.json()}")
+
+    async def get_raw_tx(self, txid: str) -> str | None:
+        """Get raw transaction hex for a given txid.
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
+
+        Args:
+            txid: Transaction ID (64-hex string)
+
+        Returns:
+            Raw transaction hex string if found, otherwise None
+        """
+        if not isinstance(txid, str) or len(txid) != 64:
+            return None
+        try:
+            # Validate hex
+            bytes.fromhex(txid)
+        except ValueError:
+            return None
+
+        request_options = {"method": "GET", "headers": self.get_headers()}
+        response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/hex", request_options)
+
+        if response.ok:
+            # WhatsOnChain responses are wrapped in { data: ... }
+            body = response.json()
+            return body.get("data") or None
+        elif response.status_code == 404:
+            return None
+        else:
+            raise RuntimeError(f"Failed to get raw tx for {txid}: {response.json()}")
