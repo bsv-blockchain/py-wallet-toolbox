@@ -271,3 +271,14 @@ class Services(WalletServices):
             True if the Merkle root matches the header's merkleRoot at the height
         """
         return await self.whatsonchain.is_valid_root_for_height(root, height)
+
+    async def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
+        """Get merkle path object for a transaction via provider.
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (getMerklePathForTransaction)
+        """
+        return await self.whatsonchain.get_merkle_path(txid, self)
+
+    async def update_bsv_exchange_rate(self) -> dict[str, Any]:
+        """Get current BSV/USD exchange rate via provider."""
+        return await self.whatsonchain.update_bsv_exchange_rate()

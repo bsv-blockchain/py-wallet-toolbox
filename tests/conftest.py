@@ -319,6 +319,9 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 if txid in recorded_merkle:
                     return Resp(True, 200, recorded_merkle[txid])
                 return Resp(False, 404, {})
+            # updateBsvExchangeRate
+            if url.endswith("/exchange-rate/bsvusd"):
+                return Resp(True, 200, {"base": "USD", "rate": 50.0, "timestamp": 1739329877})
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker

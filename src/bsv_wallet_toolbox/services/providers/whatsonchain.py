@@ -316,6 +316,18 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return {"name": "WoCTsc", "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}]}
         raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
 
+    async def update_bsv_exchange_rate(self) -> dict[str, Any]:
+        """Fetch current BSV/USD exchange rate (shape matches TS tests).
+
+        Returns dict like { base: 'USD', rate: number, timestamp: number }.
+        """
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        response = await self.http_client.fetch(f"{self.URL}/exchange-rate/bsvusd", request_options)
+        if response.ok:
+            body = response.json() or {}
+            return body
+        raise RuntimeError("Failed to update BSV exchange rate")
+
     async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid.
 
