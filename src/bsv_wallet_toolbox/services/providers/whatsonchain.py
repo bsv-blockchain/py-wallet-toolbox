@@ -328,6 +328,35 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return body
         raise RuntimeError("Failed to update BSV exchange rate")
 
+    async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
+        """Get fiat exchange rate for a currency relative to base.
+
+        Expected response shape (TS-compatible):
+            { base: 'USD', rates: { USD: 1, GBP: 0.8, EUR: 0.9 } }
+        """
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        # Chaintracks fiat endpoint (tests will mock this URL)
+        url = "https://mainnet-chaintracks.babbage.systems/getFiatExchangeRates"
+        response = await self.http_client.fetch(url, request_options)
+        if not response.ok:
+            raise RuntimeError("Failed to get fiat exchange rates")
+        body = response.json() or {}
+        rates = (body.get("rates") or {})
+        base0 = body.get("base") or "USD"
+        if currency == base:
+            return 1.0
+        if base0 == base:
+            rate = rates.get(currency)
+            if rate is None:
+                raise ValueError(f"Unknown currency: {currency}")
+            return float(rate)
+        # Different base: convert via provided table if possible
+        rate_currency = rates.get(currency)
+        rate_base = rates.get(base)
+        if rate_currency is None or rate_base is None:
+            raise ValueError(f"Unknown currency/base: {currency}/{base}")
+        return float(rate_currency) / float(rate_base)
+
     async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid.
 

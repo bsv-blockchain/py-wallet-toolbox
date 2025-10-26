@@ -322,6 +322,9 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             # updateBsvExchangeRate
             if url.endswith("/exchange-rate/bsvusd"):
                 return Resp(True, 200, {"base": "USD", "rate": 50.0, "timestamp": 1739329877})
+            # getFiatExchangeRate (Chaintracks endpoint)
+            if url.endswith("/getFiatExchangeRates"):
+                return Resp(True, 200, {"base": "USD", "rates": {"USD": 1, "GBP": 0.78, "EUR": 0.92}})
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker

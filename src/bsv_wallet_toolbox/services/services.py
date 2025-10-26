@@ -282,3 +282,7 @@ class Services(WalletServices):
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Get current BSV/USD exchange rate via provider."""
         return await self.whatsonchain.update_bsv_exchange_rate()
+
+    async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
+        """Get fiat exchange rate via provider (TS-compatible)."""
+        return await self.whatsonchain.get_fiat_exchange_rate(currency, base)
