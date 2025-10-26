@@ -286,3 +286,13 @@ class Services(WalletServices):
     async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
         """Get fiat exchange rate via provider (TS-compatible)."""
         return await self.whatsonchain.get_fiat_exchange_rate(currency, base)
+
+    async def get_utxo_status(
+        self,
+        output: str,
+        output_format: str | None = None,
+        outpoint: str | None = None,
+        use_next: bool | None = None,
+    ) -> dict[str, Any]:
+        """Get UTXO status via provider (TS-compatible)."""
+        return await self.whatsonchain.get_utxo_status(output, output_format, outpoint, use_next)

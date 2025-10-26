@@ -357,6 +357,39 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise ValueError(f"Unknown currency/base: {currency}/{base}")
         return float(rate_currency) / float(rate_base)
 
+    async def get_utxo_status(
+        self,
+        output: str,
+        output_format: str | None = None,
+        outpoint: str | None = None,
+        use_next: bool | None = None,
+    ) -> dict[str, Any]:
+        """Get UTXO status for an output descriptor (TS-compatible shape).
+
+        Args:
+            output: locking script hex, script hash, or outpoint descriptor depending on format
+            output_format: e.g., 'hashLE' | 'hashBE' | 'script' | 'outpoint'
+            outpoint: optional 'txid:vout' when needed
+            use_next: provider selection hint (ignored here)
+        """
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        # Chaintracks-like endpoint (tests will mock this)
+        base_url = "https://mainnet-chaintracks.babbage.systems/getUtxoStatus"
+        # Compose querystring minimally
+        from urllib.parse import urlencode
+
+        params = {"output": output}
+        if output_format:
+            params["outputFormat"] = output_format
+        if outpoint:
+            params["outpoint"] = outpoint
+        url = f"{base_url}?{urlencode(params)}"
+
+        response = await self.http_client.fetch(url, request_options)
+        if not response.ok:
+            raise RuntimeError("Failed to get UTXO status")
+        return response.json() or {}
+
     async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid.
 

@@ -325,6 +325,17 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             # getFiatExchangeRate (Chaintracks endpoint)
             if url.endswith("/getFiatExchangeRates"):
                 return Resp(True, 200, {"base": "USD", "rates": {"USD": 1, "GBP": 0.78, "EUR": 0.92}})
+            # getUtxoStatus (Chaintracks-like)
+            if url.startswith("https://mainnet-chaintracks.babbage.systems/getUtxoStatus"):
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(url).query)
+                output = (qs.get("output") or [""])[0]
+                output_format = (qs.get("outputFormat") or [""])[0]
+                outpoint = (qs.get("outpoint") or [None])[0]
+                # Return a minimal TS-like shape
+                if output == "1" * 64:
+                    return Resp(True, 200, {"details": []})
+                return Resp(True, 200, {"details": [{"outpoint": outpoint or "tx:0", "spent": False}]})
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker
