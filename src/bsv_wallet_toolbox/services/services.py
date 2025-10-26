@@ -7,10 +7,14 @@ Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts
 
 
 from bsv.chaintracker import ChainTracker
+from time import time
+from typing import Any
 
 from .providers.whatsonchain import WhatsOnChain
 from .wallet_services import Chain, WalletServices
 from .wallet_services_options import WalletServicesOptions
+from ..utils.script_hash import hash_output_script as utils_hash_output_script
+from bsv.transaction import Transaction
 
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
@@ -158,3 +162,75 @@ class Services(WalletServices):
             RuntimeError: If unable to retrieve header
         """
         return await self.whatsonchain.get_header_bytes_for_height(height)
+
+    #
+    # WalletServices local-calculation methods (no external API calls)
+    #
+
+    def hashOutputScript(self, script_hex: str) -> str:
+        """Hash a locking script in hex and return little-endian hex string.
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (hashOutputScript)
+        Reference: toolbox/go-wallet-toolbox/pkg/internal/txutils/script_hash.go
+
+        Args:
+            script_hex: Locking script as hexadecimal string
+
+        Returns:
+            Little-endian hex string of SHA-256(script)
+        """
+        return utils_hash_output_script(script_hex)
+
+    async def nLockTimeIsFinal(self, tx_or_locktime: Any) -> bool:
+        """Determine if an nLockTime value (or transaction) is final.
+
+        Logic matches TypeScript Services.nLockTimeIsFinal:
+        - If given a transaction (hex/bytes/Transaction), return True if all sequences are MAXINT
+          otherwise use the transaction's locktime
+        - Threshold 500,000,000 separates height-based vs timestamp-based locktimes
+        - Timestamp branch: compare strictly with current unix time (nLockTime < now)
+        - Height branch: compare strictly with chain height (nLockTime < height)
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (nLockTimeIsFinal)
+        Reference: toolbox/go-wallet-toolbox/pkg/wdk/locktime.go
+
+        Args:
+            tx_or_locktime: int locktime, tx hex string, bytes, or Transaction
+
+        Returns:
+            True if considered final
+        """
+        MAXINT = 0xFFFFFFFF
+        BLOCK_LIMIT = 500_000_000
+
+        n_lock_time: int | None = None
+        tx: Transaction | None = None
+
+        if isinstance(tx_or_locktime, int):
+            n_lock_time = tx_or_locktime
+        else:
+            # Try to parse a Transaction from hex/bytes/Reader
+            if isinstance(tx_or_locktime, Transaction):
+                tx = tx_or_locktime
+            elif isinstance(tx_or_locktime, (bytes, str)):
+                tx = Transaction.from_hex(tx_or_locktime)
+                if tx is None:
+                    raise ValueError("Invalid transaction hex provided to nLockTimeIsFinal")
+            else:
+                raise TypeError("nLockTimeIsFinal expects int, hex str/bytes, or Transaction")
+
+            # If all input sequences are MAXINT -> final (TS behavior)
+            if tx.inputs and all(i.sequence == MAXINT for i in tx.inputs):
+                return True
+            n_lock_time = int(tx.locktime)
+
+        if n_lock_time is None:
+            raise ValueError("Unable to determine nLockTime")
+
+        if n_lock_time >= BLOCK_LIMIT:
+            # Timestamp-based: strict less-than vs current unix seconds
+            now_sec = int(time())
+            return n_lock_time < now_sec
+
+        height = await self.get_height()
+        return n_lock_time < int(height)
