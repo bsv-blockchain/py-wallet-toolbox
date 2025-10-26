@@ -468,6 +468,35 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError("Failed to get script history")
         return response.json() or {"confirmed": [], "unconfirmed": []}
 
+    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+        """Get transaction status for a given txid (TS-compatible response shape).
+
+        Behavior (aligned with ts-wallet-toolbox):
+        - Returns an object describing the transaction status (e.g., confirmed/unconfirmed/pending)
+          and optional confirmation metadata (confirmations count, block height/hash, etc.).
+        - On errors: raises RuntimeError with provider-specific error information.
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+            use_next: Provider selection hint (ignored here; kept for parity with TS)
+
+        Returns:
+            dict: A dictionary describing the transaction status. The exact fields depend on the provider,
+                  but tests expect a TS-compatible shape (e.g., { "status": "confirmed", ... }).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
+        """
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        base_url = "https://mainnet-chaintracks.babbage.systems/getTransactionStatus"
+        from urllib.parse import urlencode
+
+        url = f"{base_url}?{urlencode({'txid': txid})}"
+        response = await self.http_client.fetch(url, request_options)
+        if not response.ok:
+            raise RuntimeError("Failed to get transaction status")
+        return response.json() or {"status": "unknown"}
+
     async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid (TS-compatible optional result).
 

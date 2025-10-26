@@ -397,6 +397,14 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                     "confirmed": [{"txid": "aa" * 32, "vout": 0, "satoshis": 1000}],
                     "unconfirmed": [{"txid": "bb" * 32, "vout": 1, "satoshis": 200}],
                 })
+            # getTransactionStatus
+            if url.startswith("https://mainnet-chaintracks.babbage.systems/getTransactionStatus"):
+                from urllib.parse import urlparse, parse_qs
+                qs = parse_qs(urlparse(url).query)
+                t = (qs.get("txid") or [""])[0]
+                if t == "1" * 64:
+                    return Resp(True, 200, {"status": "not_found"})
+                return Resp(True, 200, {"status": "confirmed", "confirmations": 6})
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker

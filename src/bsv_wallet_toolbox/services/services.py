@@ -380,3 +380,15 @@ class Services(WalletServices):
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
         """
         return await self.whatsonchain.get_script_history(script_hash, use_next)
+
+    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+        """Get transaction status via provider (TS-compatible response shape).
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+            use_next: Provider selection hint (ignored)
+
+        Returns:
+            dict: Provider-specific status object (TS-compatible shape expected by tests)
+        """
+        return await self.whatsonchain.get_transaction_status(txid, use_next)
