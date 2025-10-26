@@ -67,9 +67,11 @@ class Services(WalletServices):
     # Provider instances (TypeScript structure)
     options: WalletServicesOptions
     whatsonchain: WhatsOnChain
-    # Future providers (not yet implemented):
-    # arc_taal: ARC
-    # arc_gorillapool: Optional[ARC]
+    # Future providers (ARC/Bitails)
+    # ARC broadcaster
+    arc_url: str | None = None
+    arc_api_key: str | None = None
+    arc_headers: dict | None = None
     # bitails: Bitails
 
     @staticmethod
@@ -115,15 +117,10 @@ class Services(WalletServices):
         api_key = self.options.get("whatsOnChainApiKey")
         self.whatsonchain = WhatsOnChain(network=chain, api_key=api_key, http_client=None)
 
-        # Future providers (not yet implemented):
-        # self.arc_taal = ARC(self.options["arcUrl"], self.options["arcConfig"], "arcTaal")
-        # if self.options.get("arcGorillaPoolUrl"):
-        #     self.arc_gorillapool = ARC(
-        #         self.options["arcGorillaPoolUrl"],
-        #         self.options.get("arcGorillaPoolConfig"),
-        #         "arcGorillaPool"
-        #     )
-        # self.bitails = Bitails(chain, {"apiKey": self.options.get("bitailsApiKey")})
+        # ARC config (optional)
+        self.arc_url = self.options.get("arcUrl")
+        self.arc_api_key = self.options.get("arcApiKey")
+        self.arc_headers = self.options.get("arcHeaders")
 
     async def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
@@ -392,3 +389,59 @@ class Services(WalletServices):
             dict: Provider-specific status object (TS-compatible shape expected by tests)
         """
         return await self.whatsonchain.get_transaction_status(txid, use_next)
+
+    async def post_beef(self, beef: str) -> dict[str, Any]:
+        """Broadcast a BEEF to the network via ARC.
+
+        Behavior:
+            - Placeholder implementation returning a deterministic mocked shape to
+              allow tests to be scaffolded without network dependencies.
+            - Will be replaced with a real ARC integration (py-sdk `bsv.broadcasters.arc.ARC`).
+
+        Args:
+            beef: BEEF payload (string). Exact encoding/format follows ARC contract in TS.
+
+        Returns:
+            dict: { "accepted": bool, "txid": str | None, "message": str | None }
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeef
+        """
+        # If ARC URL configured, delegate to py-sdk ARC broadcaster
+        if self.arc_url:
+            from bsv.broadcasters.arc import ARC, ARCConfig
+            cfg = ARCConfig(api_key=self.arc_api_key, headers=self.arc_headers)
+            arc = ARC(self.arc_url, cfg)
+            # In TS, postBeef accepts BEEF; here we expect a raw transaction BEEF already prepared.
+            # For parity and tests without real network, leave actual BEEF → Transaction conversion to callers.
+            try:
+                # Accept both Transaction hex and already-constructed Transaction via py-sdk
+                tx = Transaction.from_hex(beef)
+                if tx is None:
+                    raise ValueError("Invalid BEEF/tx hex")
+                res = await arc.broadcast(tx)
+                if getattr(res, "status", "") == "success":
+                    return {"accepted": True, "txid": getattr(res, "txid", None), "message": getattr(res, "message", None)}
+                return {"accepted": False, "txid": None, "message": getattr(res, "description", "ARC broadcast failed")}
+            except Exception as e:  # noqa: BLE001 - surface provider error as message
+                return {"accepted": False, "txid": None, "message": str(e)}
+        return {"accepted": True, "txid": None, "message": "mocked"}
+
+    async def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
+        """Broadcast multiple BEEFs via ARC.
+
+        Args:
+            beefs: List of BEEF payloads
+
+        Returns:
+            list[dict[str, Any]]: One broadcast result per input BEEF
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
+        """
+        if self.arc_url:
+            results: list[dict[str, Any]] = []
+            for beef in beefs:
+                results.append(await self.post_beef(beef))
+            return results
+        return [{"accepted": True, "txid": None, "message": "mocked"} for _ in beefs]

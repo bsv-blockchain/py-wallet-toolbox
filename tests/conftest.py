@@ -405,6 +405,10 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 if t == "1" * 64:
                     return Resp(True, 200, {"status": "not_found"})
                 return Resp(True, 200, {"status": "confirmed", "confirmations": 6})
+            # ARC broadcast (placeholder)
+            if url.startswith("https://arc.mock/v1/tx"):
+                # Simulate ARC success response shape used by py-sdk ARC
+                return Resp(True, 200, {"data": {"txid": "aa" * 32, "txStatus": "OK", "extraInfo": ""}})
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker

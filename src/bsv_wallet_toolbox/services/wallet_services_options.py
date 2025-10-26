@@ -34,11 +34,13 @@ class WalletServicesOptions(TypedDict, total=False):
 
     chain: Chain  # Required field
     whatsOnChainApiKey: str | None
+    # ARC (broadcast) related options (TS parity; optional)
+    arcUrl: str | None
+    arcApiKey: str | None
+    arcHeaders: dict | None
     # Future fields (not yet implemented):
     # taalApiKey: Optional[str]
     # bitailsApiKey: Optional[str]
-    # arcUrl: Optional[str]
-    # arcConfig: Optional[Any]
     # arcGorillaPoolUrl: Optional[str]
     # arcGorillaPoolConfig: Optional[Any]
     # chaintracks: Optional[Any]

@@ -1,3 +1,24 @@
+"""Placeholder tests for postBeef/postBeefArray.
+
+These tests are intentionally skipped because there is no
+corresponding TS/So test to port yet. Once the TS tests are
+available, replace these with assertions matching TS behavior.
+"""
+
+import pytest
+
+
+@pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
+def test_post_beef_placeholder() -> None:
+    """Placeholder for postBeef until TS/So test is available."""
+    pass
+
+
+@pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
+def test_post_beef_array_placeholder() -> None:
+    """Placeholder for postBeefArray until TS/So test is available."""
+    pass
+
 """Unit tests for postBeef service.
 
 This module tests postBeef service functionality for mainnet and testnet.
