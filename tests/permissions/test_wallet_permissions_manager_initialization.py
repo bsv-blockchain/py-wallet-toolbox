@@ -229,8 +229,6 @@ class TestWalletPermissionsManagerInitialization:
         manager._find_protocol_token = AsyncMock(return_value=None)
 
         # When - non-admin origin tries createSignature
-        import asyncio
-
         create_sig_promise = asyncio.create_task(
             manager.create_signature(
                 {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
@@ -275,7 +273,10 @@ class TestWalletPermissionsManagerInitialization:
         # Spending authorization is still required, grant it
         def auto_grant_spending(request) -> None:
 
-            asyncio.create_task(manager.grant_permission({"requestID": request["requestID"], "ephemeral": True}))
+            _task = asyncio.create_task(
+                manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+            )
+            _task.add_done_callback(lambda _fut: None)
 
         manager.bind_callback("onSpendingAuthorizationRequested", auto_grant_spending)
 

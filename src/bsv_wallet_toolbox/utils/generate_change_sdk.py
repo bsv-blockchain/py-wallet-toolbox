@@ -1,20 +1,15 @@
-from __future__ import annotations
-
 """Generate change inputs/outputs for transaction construction.
 
 Reference (TS): toolbox/ts-wallet-toolbox/src/storage/methods/generateChange.ts
 """
 
-from typing import Any, Dict, List, Tuple
+from __future__ import annotations
+
 import random
+from typing import Any
 
 from bsv_wallet_toolbox.errors import InsufficientFundsError
-from bsv_wallet_toolbox.utils.tx_size import (
-    transaction_input_size,
-    transaction_output_size,
-    transaction_size,
-)
-
+from bsv_wallet_toolbox.utils.tx_size import transaction_size
 
 MAX_POSSIBLE_SATOSHIS = 2_099_999_999_999_999
 
@@ -29,7 +24,7 @@ def _varint_len(n: int) -> int:
     return 9
 
 
-async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str, Any]]) -> dict[str, Any]:
     """Generate change inputs/outputs for transaction construction (SDK-backed).
 
     Port of ts-wallet-toolbox generateChangeSdk with scoped simplifications:
@@ -38,8 +33,8 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
     - Local storage allocator over provided available_change
     """
 
-    fixed_inputs: List[Dict[str, int]] = list(params.get("fixedInputs", []))
-    fixed_outputs: List[Dict[str, int]] = list(params.get("fixedOutputs", []))
+    fixed_inputs: list[dict[str, int]] = list(params.get("fixedInputs", []))
+    fixed_outputs: list[dict[str, int]] = list(params.get("fixedOutputs", []))
     fee_model = params.get("feeModel", {"model": "sat/kb", "value": 0})
     sats_per_kb: int = int(fee_model.get("value", 0))
     target_net_count = params.get("targetNetCount")
@@ -51,19 +46,19 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
     change_unlock_len = int(params.get("changeUnlockingScriptLength", 0))
 
     # Storage over available change
-    change_store: List[Dict[str, Any]] = [
+    change_store: list[dict[str, Any]] = [
         {"satoshis": int(c["satoshis"]), "outputId": int(c["outputId"]), "spendable": True}
         for c in available_change
     ]
     change_store.sort(key=lambda c: (c["satoshis"], c["outputId"]))
 
-    log: List[str] = []
+    # log removed (unused)
 
-    def allocate(c: Dict[str, Any]) -> Dict[str, Any]:
+    def allocate(c: dict[str, Any]) -> dict[str, Any]:
         c["spendable"] = False
         return {"satoshis": c["satoshis"], "outputId": c["outputId"], "spendable": False}
 
-    async def allocate_change_input(target_satoshis: int, exact_satoshis: int | None = None) -> Dict[str, Any] | None:
+    async def allocate_change_input(target_satoshis: int, exact_satoshis: int | None = None) -> dict[str, Any] | None:
         if exact_satoshis is not None:
             exact = next((c for c in change_store if c["spendable"] and c["satoshis"] == exact_satoshis), None)
             if exact:
@@ -82,7 +77,7 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
         if c and not c["spendable"]:
             c["spendable"] = True
 
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "allocatedChangeInputs": [],
         "changeOutputs": [],
         "size": 0,
@@ -195,8 +190,11 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
             while len(change_inputs_copy) > 1 and len(result["changeOutputs"]) > 1:
                 last_output = result["changeOutputs"][-1]
                 idx = next(
-                    (i for i, ci in enumerate(change_inputs_copy) if int(ci["satoshis"]) <= int(last_output["satoshis"]))
-                    ,
+                    (
+                        i
+                        for i, ci in enumerate(change_inputs_copy)
+                        if int(ci["satoshis"]) <= int(last_output["satoshis"])
+                    ),
                     -1,
                 )
                 if idx < 0:
@@ -226,7 +224,7 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
 
     # Prepare TS-like random sequence
     # Use TS test vector randomVals if provided, else fall back to built-in series copied from TS
-    random_vals: List[float] = list(params.get("randomVals", []))
+    random_vals: list[float] = list(params.get("randomVals", []))
     if not random_vals:
         random_vals = [
             0.3145996888882596,
@@ -354,8 +352,7 @@ async def generate_change_sdk(params: Dict[str, Any], available_change: List[Dic
             # sats = max(1, floor((rand(2500,5000)/10000) * feeExcessNow))
             pct = rand(2500, 5000)
             sats = max(1, (pct * fee_excess_now) // 10000)
-            if sats > fee_excess_now:
-                sats = fee_excess_now
+            sats = min(sats, fee_excess_now)
             fee_excess_now -= sats
             index = rand(0, len(result["changeOutputs"]) - 1)
             result["changeOutputs"][index]["satoshis"] = int(result["changeOutputs"][index]["satoshis"]) + sats

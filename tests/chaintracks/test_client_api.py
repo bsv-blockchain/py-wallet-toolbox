@@ -24,7 +24,7 @@ try:
     )
     from bsv_wallet_toolbox.types import BaseBlockHeader, Chain
 
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks import Chaintracks, ChaintracksService
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks import ChaintracksService
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import ChaintracksClientApi
 
     IMPORTS_AVAILABLE = True

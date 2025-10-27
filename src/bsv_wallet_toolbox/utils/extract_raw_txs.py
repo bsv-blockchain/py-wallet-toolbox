@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Iterable, List, Union
+from collections.abc import Iterable
 
 
-def extract_raw_txs(items: Iterable[Union[str, bytes, dict]]) -> List[str]:
-    raws: List[str] = []
+def extract_raw_txs(items: Iterable[str | bytes | dict]) -> list[str]:
+    raws: list[str] = []
     for it in items:
         if isinstance(it, (bytes, bytearray)):
             raws.append(bytes(it).hex())

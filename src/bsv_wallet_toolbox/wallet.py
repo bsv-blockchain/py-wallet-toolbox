@@ -5,7 +5,7 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 
 from typing import Any, Literal
 
-from bsv.keys import PrivateKey, PublicKey
+from bsv.keys import PublicKey
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,

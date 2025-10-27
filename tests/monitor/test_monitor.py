@@ -19,7 +19,6 @@ try:
         TaskReviewStatus,
         TaskSendWaiting,
     )
-    from bsv_wallet_toolbox.sdk.types import Chain
     from bsv_wallet_toolbox.storage.entities import EntityProvenTxReq
 
     from tests.utils.test_utils_wallet_storage import (

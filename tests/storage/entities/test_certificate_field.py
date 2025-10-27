@@ -104,7 +104,6 @@ class TestCertificateFieldEntity:
                   test('mergeExisting updates entity and database when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import CertificateField
 
         now = datetime.now()
         certificate_id = 400
@@ -152,7 +151,6 @@ class TestCertificateFieldEntity:
                   test('mergeExisting does not update entity when ei.updated_at <= this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import CertificateField
 
         now = datetime.now()
         certificate_id = 401

@@ -25,7 +25,6 @@ class TestOutputTagEntity:
                   test('0_mergeExisting merges and updates entity when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputTag
 
         initial_data = {
             "outputTagId": 401,

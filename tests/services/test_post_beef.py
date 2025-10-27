@@ -1,23 +1,73 @@
-"""Placeholder tests for postBeef/postBeefArray.
+"""Placeholder tests for `postBeef`/`postBeefArray` (TS-parity policy).
 
-These tests are intentionally skipped because there is no
-corresponding TS/So test to port yet. Once the TS tests are
-available, replace these with assertions matching TS behavior.
+Overview:
+    - Intentionally skipped because there is no corresponding TS/So test to port yet.
+    - When upstream TS tests become available, replace these with assertions that
+      match the TS behavior, shapes, and edge cases (success, double-spend, errors).
+
+Rationale:
+    - Keep placeholders to make intended coverage explicit while avoiding Python-only
+      expectations that drift from TS.
+
+Reference:
+    - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeef
+    - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
 """
 
 import pytest
 
+# =============================
+# Section B: Minimal (enabled)
+# =============================
+from bsv_wallet_toolbox.services import Services
+
+
+@pytest.mark.asyncio
+async def test_post_beef_arc_minimal_enabled() -> None:
+    """Ensure ARC path returns TS-like shape for single BEEF (mocked).
+
+    - Uses conftest's FakeClient to avoid network.
+    - Asserts only TS-like return shape and basic types.
+    """
+    options = Services.create_default_options("main")
+    options["arcUrl"] = "https://arc.mock"
+    options["arcApiKey"] = "test"
+    services = Services(options)
+
+    res = await services.post_beef("00")
+    assert isinstance(res, dict)
+    assert set(res.keys()) == {"accepted", "txid", "message"}
+    assert res["accepted"] in (True, False)
+
+
+@pytest.mark.asyncio
+async def test_post_beef_array_arc_minimal_enabled() -> None:
+    """Ensure ARC path returns TS-like shape for multiple BEEFs (mocked).
+
+    - Uses conftest's FakeClient to avoid network.
+    - Asserts only TS-like return shape and basic types.
+    """
+    options = Services.create_default_options("main")
+    options["arcUrl"] = "https://arc.mock"
+    options["arcApiKey"] = "test"
+    services = Services(options)
+
+    res_list = await services.post_beef_array(["00", "01"])
+    assert isinstance(res_list, list)
+    assert len(res_list) == 2
+    for res in res_list:
+        assert isinstance(res, dict)
+        assert set(res.keys()) == {"accepted", "txid", "message"}
+        assert res["accepted"] in (True, False)
 
 @pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
 def test_post_beef_placeholder() -> None:
-    """Placeholder for postBeef until TS/So test is available."""
-    pass
+    """Placeholder for `postBeef` until TS/So test is available."""
 
 
 @pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
 def test_post_beef_array_placeholder() -> None:
-    """Placeholder for postBeefArray until TS/So test is available."""
-    pass
+    """Placeholder for `postBeefArray` until TS/So test is available."""
 
 """Unit tests for postBeef service.
 
@@ -26,10 +76,9 @@ This module tests postBeef service functionality for mainnet and testnet.
 Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
 """
 
-import pytest
 
 try:
-    from bsv_wallet_toolbox.beef import Beef, BeefTx
+    from bsv_wallet_toolbox.beef import BeefTx
 
     from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.utils import Setup, TestUtils, logger

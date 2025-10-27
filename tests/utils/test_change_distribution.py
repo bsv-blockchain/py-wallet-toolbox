@@ -166,7 +166,7 @@ class TestChangeDistribution:
             },
         }
 
-        for name, test in tests.items():
+        for _name, test in tests.items():
             # Given
             dist = ChangeDistribution(test["initial_value"], test["randomizer"])
 
@@ -174,7 +174,7 @@ class TestChangeDistribution:
             values = list(dist.distribute(test["count"], test["amount"]))
 
             # Then
-            assert values == test["expected"], f"Test '{name}' failed"
+            assert values == test["expected"], f"Test '{_name}' failed"
 
 
 class TestChangeDistributionPanics:
@@ -214,7 +214,7 @@ class TestChangeDistributionPanics:
             },
         }
 
-        for name, test in tests.items():
+        for _name, test in tests.items():
             # Given
             dist = ChangeDistribution(test["initial_value"], test["randomizer"])
 

@@ -13,7 +13,7 @@ import pytest
 try:
     from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.services.providers import WhatsOnChain
-    from bsv_wallet_toolbox.utils import Setup, TestUtils
+    from bsv_wallet_toolbox.utils import TestUtils
 
     IMPORTS_AVAILABLE = True
 except ImportError:

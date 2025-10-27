@@ -15,8 +15,6 @@ try:
         transaction_size,
     )
 
-    from bsv_wallet_toolbox.errors import TransactionSizeError
-
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False

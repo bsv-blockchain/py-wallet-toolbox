@@ -16,9 +16,8 @@ try:
     from bsv_wallet_toolbox.hash import sha256
     from bsv_wallet_toolbox.private_key import PrivateKey
     from bsv_wallet_toolbox.privileged_key_manager import PrivilegedKeyManager
-    from bsv_wallet_toolbox.random import random_bytes
 
-    from bsv_wallet_toolbox.utils import to_array, to_hex, to_utf8
+    from bsv_wallet_toolbox.utils import to_array, to_utf8
 
     IMPORTS_AVAILABLE = True
 except ImportError:

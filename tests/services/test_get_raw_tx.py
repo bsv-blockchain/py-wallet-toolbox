@@ -5,9 +5,9 @@ This module tests getRawTx service functionality.
 Reference: wallet-toolbox/src/services/__tests/getRawTx.test.ts
 """
 
-import pytest
-
 from typing import Any
+
+import pytest
 
 try:
     from bsv_wallet_toolbox.services import Services
@@ -43,7 +43,7 @@ class TestGetRawTx:
         services = Services(options)
 
         # Mock: inject canned response into provider HTTP layer (equivalent to TS recorded fixtures)
-        async def fake_fetch(url: str, request_options: dict[str, Any]) -> Any:  # noqa: ARG001
+        async def fake_fetch(url: str, request_options: dict[str, Any]) -> Any:
             class Resp:
                 ok = True
                 status_code = 200

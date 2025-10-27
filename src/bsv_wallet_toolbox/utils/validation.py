@@ -4,8 +4,8 @@ Reference: toolbox/ts-wallet-toolbox/src/utility/utilityHelpers.ts
 Reference: toolbox/go-wallet-toolbox/pkg/internal/validate/
 """
 
-from typing import Any
 import base64
+from typing import Any
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
@@ -352,8 +352,17 @@ def validate_insert_certificate_auth_args(args: dict[str, Any]) -> None:
     if not isinstance(sn, str) or not _is_base64_string(sn):
         raise InvalidParameterError("serialNumber", "a base64 string")
     certifier = args.get("certifier")
-    if not isinstance(certifier, str) or len(certifier) == 0 or len(certifier) > 300 or (len(certifier) % 2 != 0) or not _is_hex_string(certifier):
-        raise InvalidParameterError("certifier", "a non-empty even-length hexadecimal string up to 300 chars")
+    if (
+        not isinstance(certifier, str)
+        or len(certifier) == 0
+        or len(certifier) > 300
+        or (len(certifier) % 2 != 0)
+        or not _is_hex_string(certifier)
+    ):
+        raise InvalidParameterError(
+            "certifier",
+            "a non-empty even-length hexadecimal string up to 300 chars",
+        )
     subject = args.get("subject")
     if not isinstance(subject, str) or len(subject) == 0:
         raise InvalidParameterError("subject", "a non-empty string")

@@ -15,6 +15,7 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 import pytest
 
 try:
+    from bsv.sdk import SymmetricKey
     from bsv.wallet.wallet_interface import WalletInterface
     from bsv_wallet_toolbox.cwi_style_wallet_manager import (
         PBKDF2_NUM_ROUNDS,
@@ -67,14 +68,15 @@ def make_outpoint(txid: str, vout: int) -> str:
     return f"{txid}:{vout}"
 
 
-async def create_mock_ump_token(
+async def create_mock_ump_token(  # noqa: PLR0913
     presentation_key: bytes,
     recovery_key: bytes,
-    password_salt: bytes,
     password_key: bytes,
+    password_salt: bytes,
+    iterations: int,
     primary_key: bytes,
     privileged_key: bytes,
-) -> UMPToken:
+) -> dict[str, bytes]:
     """Create a minimal valid UMP token for testing.
 
     Args:
@@ -88,8 +90,6 @@ async def create_mock_ump_token(
     Returns:
         UMP token dictionary
     """
-    from bsv.sdk import SymmetricKey
-
     presentation_password = SymmetricKey(xor_bytes(presentation_key, password_key))
     presentation_recovery = SymmetricKey(xor_bytes(presentation_key, recovery_key))
     recovery_password = SymmetricKey(xor_bytes(recovery_key, password_key))
@@ -235,7 +235,7 @@ class TestCWIStyleWalletManagerExistingUser:
         privileged_key = os.urandom(32)
 
         existing_token = await create_mock_ump_token(
-            presentation_key, recovery_key, password_salt, password_key, primary_key, privileged_key
+            presentation_key, recovery_key, password_key, password_salt, PBKDF2_NUM_ROUNDS, primary_key, privileged_key
         )
 
         mock_underlying_wallet = MagicMock(spec=WalletInterface)
@@ -277,7 +277,7 @@ class TestCWIStyleWalletManagerExistingUser:
         privileged_key = os.urandom(32)
 
         existing_token = await create_mock_ump_token(
-            presentation_key, recovery_key, password_salt, password_key, primary_key, privileged_key
+            presentation_key, recovery_key, password_key, password_salt, PBKDF2_NUM_ROUNDS, primary_key, privileged_key
         )
 
         mock_underlying_wallet = MagicMock(spec=WalletInterface)
@@ -347,7 +347,7 @@ class TestCWIStyleWalletManagerExistingUser:
         privileged_key = os.urandom(32)
 
         existing_token = await create_mock_ump_token(
-            presentation_key, recovery_key, password_salt, password_key, primary_key, privileged_key
+            presentation_key, recovery_key, password_key, password_salt, PBKDF2_NUM_ROUNDS, primary_key, privileged_key
         )
 
         mock_underlying_wallet = MagicMock(spec=WalletInterface)
@@ -422,7 +422,7 @@ class TestCWIStyleWalletManagerSnapshot:
         privileged_key = os.urandom(32)
 
         existing_token = await create_mock_ump_token(
-            presentation_key, recovery_key, password_salt, password_key, primary_key, privileged_key
+            presentation_key, recovery_key, password_key, password_salt, PBKDF2_NUM_ROUNDS, primary_key, privileged_key
         )
 
         mock_underlying_wallet = MagicMock(spec=WalletInterface)

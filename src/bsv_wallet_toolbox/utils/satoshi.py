@@ -9,7 +9,7 @@ References:
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
 

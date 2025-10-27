@@ -7,6 +7,8 @@ including overflow/underflow checks and proper handling of MaxSatoshis constant.
 """
 
 import pytest
+
+from bsv_wallet_toolbox.errors import InvalidParameterError
 from bsv_wallet_toolbox.utils.satoshi import (
     satoshi_add,
     satoshi_equal,
@@ -16,8 +18,6 @@ from bsv_wallet_toolbox.utils.satoshi import (
     satoshi_sum,
     satoshi_to_uint64,
 )
-
-from bsv_wallet_toolbox.errors import InvalidParameterError
 
 # MaxSatoshis constant (from BRC-100 specification)
 MAX_SATOSHIS = 2100000000000000

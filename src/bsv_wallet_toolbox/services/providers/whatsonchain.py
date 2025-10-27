@@ -9,6 +9,7 @@ Reference:
 """
 
 from typing import Any
+from urllib.parse import urlencode
 
 from bsv.chaintrackers.whatsonchain import WhatsOnChainTracker
 
@@ -308,8 +309,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             services: WalletServices instance (not used by this provider; reserved for parity with TS)
 
         Returns:
-            dict: A dictionary with either {"header": {...}, "merklePath": {...}, "name": "WoCTsc", "notes": [...]} on success,
-                  or {"name": "WoCTsc", "notes": [{..."getMerklePathNoData"...}]} if no data is available.
+            dict: A dictionary with either {"header": {...}, "merklePath": {...},
+                  "name": "WoCTsc", "notes": [...]} on success, or a sentinel
+                  {"name": "WoCTsc", "notes": [{..."getMerklePathNoData"...}]}
+                  if no data is available.
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
@@ -323,7 +326,12 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return body
         if response.status_code == 404:
             # Match TS tests expected empty result shape
-            return {"name": "WoCTsc", "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}]}
+            return {
+                "name": "WoCTsc",
+                "notes": [
+                    {"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}
+                ],
+            }
         raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
 
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
@@ -396,7 +404,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         output: str,
         output_format: str | None = None,
         outpoint: str | None = None,
-        use_next: bool | None = None,
+        use_next: bool | None = None,  # noqa: ARG002
     ) -> dict[str, Any]:
         """Get UTXO status for an output descriptor (TS-compatible shape).
 
@@ -423,9 +431,6 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Chaintracks-like endpoint (tests will mock this)
         base_url = "https://mainnet-chaintracks.babbage.systems/getUtxoStatus"
-        # Compose querystring minimally
-        from urllib.parse import urlencode
-
         params = {"output": output}
         if output_format:
             params["outputFormat"] = output_format
@@ -438,7 +443,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError("Failed to get UTXO status")
         return response.json() or {}
 
-    async def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:
+    async def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
         """Get script history for a given script hash (TS-compatible response shape).
 
         Returns two arrays, matching TS semantics:
@@ -460,15 +465,13 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         base_url = "https://mainnet-chaintracks.babbage.systems/getScriptHistory"
-        from urllib.parse import urlencode
-
         url = f"{base_url}?{urlencode({'hash': script_hash})}"
         response = await self.http_client.fetch(url, request_options)
         if not response.ok:
             raise RuntimeError("Failed to get script history")
         return response.json() or {"confirmed": [], "unconfirmed": []}
 
-    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
         """Get transaction status for a given txid (TS-compatible response shape).
 
         Behavior (aligned with ts-wallet-toolbox):
@@ -489,8 +492,6 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         base_url = "https://mainnet-chaintracks.babbage.systems/getTransactionStatus"
-        from urllib.parse import urlencode
-
         url = f"{base_url}?{urlencode({'txid': txid})}"
         response = await self.http_client.fetch(url, request_options)
         if not response.ok:

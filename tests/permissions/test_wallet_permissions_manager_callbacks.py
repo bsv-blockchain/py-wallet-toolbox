@@ -6,6 +6,7 @@ for permission requests in WalletPermissionsManager.
 Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.callbacks.test.ts
 """
 
+import asyncio
 from typing import Never
 from unittest.mock import AsyncMock, Mock
 
@@ -314,8 +315,6 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - make multiple parallel requests for same protocol
-        import asyncio
-
         results = await asyncio.gather(
             manager.get_public_key(
                 {"identityKey": True, "protocolID": [1, "test"], "keyID": "1"}, originator="example.com"
@@ -366,8 +365,6 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - make parallel requests for different protocols
-        import asyncio
-
         results = await asyncio.gather(
             manager.get_public_key(
                 {"identityKey": True, "protocolID": [1, "protocol-A"], "keyID": "1"}, originator="example.com"

@@ -15,7 +15,7 @@ try:
     from bsv_wallet_toolbox.setup import Setup
 
     from bsv_wallet_toolbox.errors import TransactionBroadcastError
-    from bsv_wallet_toolbox.wallet import Wallet
+    
 
     IMPORTS_AVAILABLE = True
 except ImportError:

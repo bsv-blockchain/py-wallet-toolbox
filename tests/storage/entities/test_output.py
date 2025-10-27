@@ -163,7 +163,6 @@ class TestOutputEntity:
                   test('3_mergeExisting updates entity and database when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Output
 
         initial_data = {
             "outputId": 701,

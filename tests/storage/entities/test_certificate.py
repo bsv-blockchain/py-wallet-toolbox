@@ -104,7 +104,6 @@ class TestCertificateEntity:
                   test('2_mergeExisting updates entity and database when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Certificate
 
         now = datetime.now()
         certificate_id = 600
@@ -166,7 +165,6 @@ class TestCertificateEntity:
                   test('3_mergeExisting does not update entity when ei.updated_at <= this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Certificate
 
         now = datetime.now()
         certificate_id = 601

@@ -27,6 +27,7 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from bsv.chaintracker import ChainTracker
@@ -35,7 +36,6 @@ from bsv.wallet import KeyDeriver
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import WalletServices
-
 
 # Universal Test Vectors root private key (used in BRC-2/BRC-3 compliance vectors)
 # Reference: sdk/ts-sdk/src/wallet/__tests/ProtoWallet.test.ts
@@ -164,7 +164,7 @@ class MockWalletServices(WalletServices):
         """
         return self._height
 
-    async def get_header_for_height(self, height: int) -> bytes:
+    async def get_header_for_height(self, height: int) -> bytes:  # noqa: ARG002
         """Get mock block header.
 
         Args:
@@ -246,6 +246,7 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
     - getFiatExchangeRate:   /getFiatExchangeRates -> { base: string, rates: Record<string, number> }
     - getUtxoStatus:         /getUtxoStatus?output=... -> { details: Array<{ outpoint, spent, ... }> }
     - getScriptHistory:      /getScriptHistory?hash=... -> { confirmed: [...], unconfirmed: [...] }
+    - ARC broadcast:         https://arc.mock/v1/tx -> { data: { txid, txStatus, extraInfo } }
 
     Notes:
     - Shapes intentionally match TS tests and provider contracts so test bodies
@@ -343,7 +344,7 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             - Add a new URL branch inside fetch() and return a canned object following TS contracts
         """
 
-        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002
+        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002, PLR0911
             """Return a recorded response for supported WhatsOnChain/Chaintracks URLs.
 
             Covered endpoints:
@@ -377,10 +378,9 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 return Resp(True, 200, {"base": "USD", "rates": {"USD": 1, "GBP": 0.78, "EUR": 0.92}})
             # getUtxoStatus (Chaintracks-like)
             if url.startswith("https://mainnet-chaintracks.babbage.systems/getUtxoStatus"):
-                from urllib.parse import urlparse, parse_qs
                 qs = parse_qs(urlparse(url).query)
                 output = (qs.get("output") or [""])[0]
-                output_format = (qs.get("outputFormat") or [""])[0]
+                # output_format exists in query but is not needed by the fake
                 outpoint = (qs.get("outpoint") or [None])[0]
                 # Return a minimal TS-like shape
                 if output == "1" * 64:
@@ -388,7 +388,6 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 return Resp(True, 200, {"details": [{"outpoint": outpoint or "tx:0", "spent": False}]})
             # getScriptHistory
             if url.startswith("https://mainnet-chaintracks.babbage.systems/getScriptHistory"):
-                from urllib.parse import urlparse, parse_qs
                 qs = parse_qs(urlparse(url).query)
                 h = (qs.get("hash") or [""])[0]
                 if h == "1" * 64:
@@ -399,7 +398,6 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 })
             # getTransactionStatus
             if url.startswith("https://mainnet-chaintracks.babbage.systems/getTransactionStatus"):
-                from urllib.parse import urlparse, parse_qs
                 qs = parse_qs(urlparse(url).query)
                 t = (qs.get("txid") or [""])[0]
                 if t == "1" * 64:
@@ -412,8 +410,6 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             return Resp(False, 404, {})
 
     # Patch default_http_client used by WhatsOnChainTracker
-    from bsv.chaintrackers.whatsonchain import default_http_client as _default
-
     def fake_default_http_client():
         """Factory returning the FakeClient used to stub provider HTTP.
 
@@ -423,3 +419,8 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
         return FakeClient()
 
     monkeypatch.setattr("bsv.chaintrackers.whatsonchain.default_http_client", fake_default_http_client)
+    # Also patch ARC broadcaster default HTTP client to use FakeClient
+    try:
+        monkeypatch.setattr("bsv.broadcasters.arc.default_http_client", fake_default_http_client)
+    except Exception:
+        pass

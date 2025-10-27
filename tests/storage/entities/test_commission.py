@@ -103,7 +103,6 @@ class TestCommissionEntity:
                   test('2_mergeExisting updates entity and database when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import Commission
 
         now = datetime.now()
         initial_data = {

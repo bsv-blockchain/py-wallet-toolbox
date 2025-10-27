@@ -5,14 +5,13 @@ Reference: go-wallet-toolbox/pkg/internal/txutils/script_hash.go
 Reference: go-wallet-toolbox/pkg/wdk/locktime.go
 """
 
-import asyncio
 from time import time
 
 import pytest
-
-from bsv_wallet_toolbox.services.services import Services
 from bsv.transaction import Transaction
 from bsv.transaction_input import TransactionInput
+
+from bsv_wallet_toolbox.services.services import Services
 
 
 class TestHashOutputScript:
@@ -25,7 +24,7 @@ class TestHashOutputScript:
         )
 
         # When
-        result = services.hashOutputScript(script_hex)
+        result = services.hash_output_script(script_hex)
 
         # Then
         assert result == expected_le
@@ -46,7 +45,7 @@ class TestNLockTimeIsFinal:
         services = Services("main")
 
         # When
-        result = await services.nLockTimeIsFinal(tx)
+        result = await services.n_lock_time_is_final(tx)
 
         # Then
         assert result is True
@@ -62,8 +61,8 @@ class TestNLockTimeIsFinal:
         monkeypatch.setattr(services, "get_height", fake_get_height)
 
         # When / Then
-        assert await services.nLockTimeIsFinal(799_999) is True
-        assert await services.nLockTimeIsFinal(800_000) is False
+        assert await services.n_lock_time_is_final(799_999) is True
+        assert await services.n_lock_time_is_final(800_000) is False
 
     @pytest.mark.asyncio
     async def test_timestamp_based_locktime_strict_less_than(self) -> None:
@@ -72,7 +71,7 @@ class TestNLockTimeIsFinal:
         now = int(time())
 
         # When / Then
-        assert await services.nLockTimeIsFinal(now - 10) is True
-        assert await services.nLockTimeIsFinal(now + 3600) is False
+        assert await services.n_lock_time_is_final(now - 10) is True
+        assert await services.n_lock_time_is_final(now + 3600) is False
 
 

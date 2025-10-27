@@ -17,18 +17,18 @@ Setup Required:
 """
 
 import os
+from typing import Any, ClassVar
 
 import pytest
 
 try:
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.storage import ChaintracksStorageKnex
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.tests import LocalCdnServer
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.util import (
         BulkFileDataManager,
-        BulkHeaderFileInfo,
         ChaintracksFs,
         deserialize_block_headers,
     )
-    from bsv_wallet_toolbox.types import BlockHeader, Chain
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -69,17 +69,17 @@ class TestBulkFileDataManager:
                describe('BulkFileDataManager tests')
     """
 
-    chain = "main"
-    fs = ChaintracksFs if IMPORTS_AVAILABLE else None
+    chain: ClassVar[str] = "main"
+    fs: ClassVar[Any] = ChaintracksFs if IMPORTS_AVAILABLE else None
     # Note: This path should be adjusted to point to copied TypeScript test data
-    root_folder = "./test_data/chaintracks"
-    headers300_399 = []
-    headers400_499 = []
-    server349 = None
-    server379 = None
-    server399 = None
-    server402 = None
-    server499 = None
+    root_folder: ClassVar[str] = "./test_data/chaintracks"
+    headers300_399: ClassVar[list] = []
+    headers400_499: ClassVar[list] = []
+    server349: ClassVar[Any] = None
+    server379: ClassVar[Any] = None
+    server399: ClassVar[Any] = None
+    server402: ClassVar[Any] = None
+    server499: ClassVar[Any] = None
 
     @pytest.fixture(scope="class", autouse=True)
     async def setup_servers(self):
@@ -90,8 +90,6 @@ class TestBulkFileDataManager:
 
         Note: Requires LocalCdnServer implementation and test data copied from TypeScript.
         """
-        from bsv_wallet_toolbox.services.chaintracker.chaintracks.tests import LocalCdnServer
-
         # Load test data
         data300_399 = await ChaintracksFs.read_file(self.fs.path_join(self.root_folder, "cdnTest499/mainNet_3.headers"))
         data400_499 = await ChaintracksFs.read_file(self.fs.path_join(self.root_folder, "cdnTest499/mainNet_4.headers"))

@@ -25,7 +25,7 @@ def transaction_output_size(locking_script_size: int) -> int:
     return 8 + int(locking_script_size) + _varint_len(int(locking_script_size))
 
 
-def transaction_size(input_sizes, output_sizes) -> int:
+def transaction_size(input_sizes: list[int], output_sizes: list[int]) -> int:
     size = 8  # tx envelope (version + locktime)
     try:
         size += _varint_len(len(input_sizes))
@@ -48,7 +48,9 @@ def transaction_size(input_sizes, output_sizes) -> int:
     return size
 
 
-def inputs_outputs_sizes(unlocking_script_sizes: list[int], locking_script_sizes: list[int]) -> tuple[list[int], list[int]]:
+def inputs_outputs_sizes(
+    unlocking_script_sizes: list[int], locking_script_sizes: list[int]
+) -> tuple[list[int], list[int]]:
     """Return per-input and per-output sizes given script sizes.
 
     The input size is 40 + unlocking_size + varint_len(unlocking_size).

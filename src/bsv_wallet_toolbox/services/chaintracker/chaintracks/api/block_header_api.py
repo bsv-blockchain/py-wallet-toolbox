@@ -5,7 +5,7 @@ This module defines types for block headers used by ChaintracksClientApi.
 Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/Api/BlockHeaderApi.ts
 """
 
-from typing import TypedDict, Union
+from typing import TypedDict
 
 
 class BaseBlockHeader(TypedDict):
@@ -89,7 +89,7 @@ class ChaintracksInfo(TypedDict):
 
 
 # Type aliases for type guard functions
-BlockHeaderTypes = Union[BaseBlockHeader, BlockHeader, LiveBlockHeader]
+BlockHeaderTypes = BaseBlockHeader | BlockHeader | LiveBlockHeader
 
 
 def is_live(header: BlockHeader | LiveBlockHeader) -> bool:

@@ -134,7 +134,6 @@ class TestOutputTagMapEntity:
                   test('3_mergeExisting merges and updates entity when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputTagMap
 
         initial_data = {
             "created_at": datetime(2023, 1, 1),

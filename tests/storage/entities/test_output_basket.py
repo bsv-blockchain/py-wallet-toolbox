@@ -25,7 +25,6 @@ class TestOutputBasketEntity:
                   test('1_mergeExisting merges and updates entity when ei.updated_at > this.updated_at')
         """
         # Given
-        from bsv_wallet_toolbox.storage.entities import OutputBasket
 
         initial_data = {
             "basketId": 100,

@@ -6,15 +6,21 @@ Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts
 """
 
 
-from bsv.chaintracker import ChainTracker
 from time import time
 from typing import Any
 
+from bsv.broadcasters.arc import ARC, ARCConfig
+from bsv.chaintracker import ChainTracker
+from bsv.transaction import Transaction
+
+from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .providers.whatsonchain import WhatsOnChain
 from .wallet_services import Chain, WalletServices
 from .wallet_services_options import WalletServicesOptions
-from ..utils.script_hash import hash_output_script as utils_hash_output_script
-from bsv.transaction import Transaction
+
+# Module-level constants (PEP8 compliant)
+MAXINT: int = 0xFFFFFFFF
+BLOCK_LIMIT: int = 500_000_000
 
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
@@ -168,7 +174,7 @@ class Services(WalletServices):
     # WalletServices local-calculation methods (no external API calls)
     #
 
-    def hashOutputScript(self, script_hex: str) -> str:
+    def hash_output_script(self, script_hex: str) -> str:
         """Hash a locking script in hex and return little-endian hex string.
 
         Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (hashOutputScript)
@@ -182,7 +188,8 @@ class Services(WalletServices):
         """
         return utils_hash_output_script(script_hex)
 
-    async def nLockTimeIsFinal(self, tx_or_locktime: Any) -> bool:
+
+    async def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
         """Determine if an nLockTime value (or transaction) is final.
 
         Logic matches TypeScript Services.nLockTimeIsFinal:
@@ -201,9 +208,6 @@ class Services(WalletServices):
         Returns:
             True if considered final
         """
-        MAXINT = 0xFFFFFFFF
-        BLOCK_LIMIT = 500_000_000
-
         n_lock_time: int | None = None
         tx: Transaction | None = None
 
@@ -235,6 +239,7 @@ class Services(WalletServices):
 
         height = await self.get_height()
         return n_lock_time < int(height)
+
 
     #
     # WalletServices external service methods
@@ -391,25 +396,34 @@ class Services(WalletServices):
         return await self.whatsonchain.get_transaction_status(txid, use_next)
 
     async def post_beef(self, beef: str) -> dict[str, Any]:
-        """Broadcast a BEEF to the network via ARC.
+        """Broadcast a BEEF via ARC (TS-compatible behavior and shape).
 
         Behavior:
-            - Placeholder implementation returning a deterministic mocked shape to
-              allow tests to be scaffolded without network dependencies.
-            - Will be replaced with a real ARC integration (py-sdk `bsv.broadcasters.arc.ARC`).
+            - If ARC is configured (via options: arcUrl, arcApiKey, arcHeaders), this method delegates
+              to py-sdk `bsv.broadcasters.arc.ARC.broadcast` using a Transaction decoded from the provided
+              BEEF/hex. On success, returns an acceptance object with a txid and message.
+            - If ARC is not configured, returns a deterministic mocked shape to allow tests without
+              network dependencies. This matches the project policy to avoid Python-only semantics while
+              keeping TS parity in I/O shapes.
 
         Args:
-            beef: BEEF payload (string). Exact encoding/format follows ARC contract in TS.
+            beef: BEEF payload string. In TS, postBeef may accept BEEF objects; here we currently accept
+                  transaction hex (or a BEEF string compatible with py-sdk Transaction.from_hex). If the
+                  input cannot be parsed, an error result is returned.
 
         Returns:
-            dict: { "accepted": bool, "txid": str | None, "message": str | None }
+            dict: TS-like broadcast result: { "accepted": bool, "txid": str | None, "message": str | None }.
+
+        Raises:
+            TypeError: If an unexpected type is passed (future-proof; current signature expects str).
+            (Provider errors are surfaced as a message in the returned dict for parity with TS tests.)
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeef
+            - sdk/py-sdk/bsv/broadcasters/arc.py (ARC.broadcast behavior and response mapping)
         """
         # If ARC URL configured, delegate to py-sdk ARC broadcaster
         if self.arc_url:
-            from bsv.broadcasters.arc import ARC, ARCConfig
             cfg = ARCConfig(api_key=self.arc_api_key, headers=self.arc_headers)
             arc = ARC(self.arc_url, cfg)
             # In TS, postBeef accepts BEEF; here we expect a raw transaction BEEF already prepared.
@@ -421,20 +435,33 @@ class Services(WalletServices):
                     raise ValueError("Invalid BEEF/tx hex")
                 res = await arc.broadcast(tx)
                 if getattr(res, "status", "") == "success":
-                    return {"accepted": True, "txid": getattr(res, "txid", None), "message": getattr(res, "message", None)}
-                return {"accepted": False, "txid": None, "message": getattr(res, "description", "ARC broadcast failed")}
-            except Exception as e:  # noqa: BLE001 - surface provider error as message
+                    return {
+                        "accepted": True,
+                        "txid": getattr(res, "txid", None),
+                        "message": getattr(res, "message", None),
+                    }
+                return {
+                    "accepted": False,
+                    "txid": None,
+                    "message": getattr(res, "description", "ARC broadcast failed"),
+                }
+            except Exception as e:
                 return {"accepted": False, "txid": None, "message": str(e)}
         return {"accepted": True, "txid": None, "message": "mocked"}
 
     async def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
-        """Broadcast multiple BEEFs via ARC.
+        """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).
+
+        Behavior:
+            - Processes the list sequentially, returning one result object per input BEEF.
+            - When ARC is configured, delegates each element to post_beef (which invokes ARC.broadcast).
+            - When ARC is not configured, returns deterministic mocked results maintaining TS-like shape.
 
         Args:
-            beefs: List of BEEF payloads
+            beefs: List of BEEF payload strings. Each element follows the same expectations as `post_beef`.
 
         Returns:
-            list[dict[str, Any]]: One broadcast result per input BEEF
+            list[dict[str, Any]]: Array of result objects, length equals the input list length.
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
