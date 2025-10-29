@@ -22,10 +22,10 @@ class TestUniversalVectorsEncrypt:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for encrypt implementation")
+    @pytest.mark.skip(reason="Non-deterministic ECIES output; enable after deterministic RNG or TS parity")
     @pytest.mark.asyncio
     async def test_encrypt_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for encrypt
         When: Call encrypt
@@ -33,7 +33,7 @@ class TestUniversalVectorsEncrypt:
         """
         # Given
         args_data, result_data = load_test_vectors("encrypt-simple")
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         result = await wallet.encrypt(args_data["json"], originator=None)

@@ -25,7 +25,7 @@ class TestUniversalVectorsDecrypt:
     @pytest.mark.skip(reason="Waiting for decrypt implementation")
     @pytest.mark.asyncio
     async def test_decrypt_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for decrypt
         When: Call decrypt
@@ -33,7 +33,7 @@ class TestUniversalVectorsDecrypt:
         """
         # Given
         args_data, result_data = load_test_vectors("decrypt-simple")
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         result = await wallet.decrypt(args_data["json"], originator=None)

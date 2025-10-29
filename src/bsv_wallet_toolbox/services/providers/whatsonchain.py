@@ -172,15 +172,53 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError(f"Failed to get header for height {height}: {response.json()}")
 
     async def find_header_for_block_hash(self, hash: str) -> BlockHeader | None:
-        """Get block header for a given block hash.
+        """Get a block header by block hash.
 
-        Not implemented: WoC public API does not expose a direct
-        header-by-hash endpoint compatible with this call.
+        Summary:
+            Resolve a single block header from WhatsOnChain using the hash.
+            Returns a structured `BlockHeader` (toolbox shape) or None when
+            the hash is unknown (404) or invalid.
+
+        TS parity:
+            Matches the TypeScript provider’s intent: given a block hash,
+            provide a structured header object with version/prevHash/merkleRoot/
+            time/bits/nonce/height/hash fields.
+
+        Args:
+            hash: 64-character hex string of the block hash (big-endian)
+
+        Returns:
+            BlockHeader | None: Structured header on success; None if not found
 
         Raises:
-            NotImplementedError: Always (no direct API)
+            RuntimeError: On non-OK provider responses other than 404
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
-        raise NotImplementedError("find_header_for_block_hash() is not yet implemented for WhatsOnChain provider")
+        if not isinstance(hash, str) or len(hash) != 64:
+            return None
+
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+
+        response = await self.http_client.fetch(f"{self.URL}/block/hash/{hash}", request_options)
+        if response.ok:
+            data = response.json().get("data") or {}
+            if not data:
+                return None
+            return BlockHeader(
+                version=data.get("version", 0),
+                previousHash=data.get("previousblockhash", ""),
+                merkleRoot=data.get("merkleroot", ""),
+                time=data.get("time", 0),
+                bits=data.get("bits", 0),
+                nonce=data.get("nonce", 0),
+                height=int(data.get("height", 0)),
+                hash=data.get("hash", hash),
+            )
+        if response.status_code == 404:
+            return None
+        raise RuntimeError(f"Failed to get header for hash {hash}: {response.json()}")
 
     async def add_header(self, header: BaseBlockHeader) -> None:
         """Submit a possibly new header for adding.

@@ -22,10 +22,10 @@ class TestUniversalVectorsVerifyHmac:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for verify_hmac implementation")
+    @pytest.mark.skip(reason="KeyDeriver parity with TS/Go required; HMAC verify will not match JSON vector yet")
     @pytest.mark.asyncio
     async def test_verifyhmac_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for verifyHmac
         When: Call verifyHmac
@@ -33,7 +33,7 @@ class TestUniversalVectorsVerifyHmac:
         """
         # Given
         args_data, result_data = load_test_vectors("verifyHmac-simple")
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         result = await wallet.verify_hmac(args_data["json"], originator=None)
