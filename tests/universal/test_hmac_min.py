@@ -10,7 +10,8 @@ async def test_create_hmac_and_verify_roundtrip(wallet_with_key_deriver):
     res = await wallet_with_key_deriver.create_hmac(args)
     assert isinstance(res, dict)
     tag = res.get("hmac")
-    assert isinstance(tag, (bytes, bytearray))
+    assert isinstance(tag, list)
+    assert all(isinstance(x, int) and 0 <= x <= 255 for x in tag)
 
     vres = await wallet_with_key_deriver.verify_hmac(
         {"data": data, "hmac": tag, "protocolID": [2, "ctx"], "keyID": "default", "counterparty": "self"}
@@ -23,8 +24,8 @@ async def test_create_hmac_and_verify_roundtrip(wallet_with_key_deriver):
 async def test_verify_hmac_fail_on_tamper(wallet_with_key_deriver):
     data = b"auth data"
     res = await wallet_with_key_deriver.create_hmac({"data": data, "protocolID": [2, "ctx"], "keyID": "default"})
-    tag = bytearray(res["hmac"])  # mutate one byte
-    tag[0] ^= 0x01
+    tag = list(res["hmac"])  # mutate one byte in JSON array
+    tag[0] = (int(tag[0]) ^ 0x01) & 0xFF
     vres = await wallet_with_key_deriver.verify_hmac(
         {"data": data, "hmac": bytes(tag), "protocolID": [2, "ctx"], "keyID": "default"}
     )

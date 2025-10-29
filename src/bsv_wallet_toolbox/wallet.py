@@ -62,6 +62,34 @@ def _parse_counterparty(value: str | PublicKey) -> Counterparty:
         ) from e
 
 
+def _as_bytes(value: Any, field_name: str) -> bytes:
+    """Normalize bytes-like or list[int] into bytes.
+
+    Accepts bytes, bytearray, or a list/tuple of integers (0-255). Raises
+    InvalidParameterError for unsupported types or invalid values.
+
+    Args:
+        value: Input value to normalize
+        field_name: Name for error messages
+
+    Returns:
+        bytes: Normalized bytes value
+    """
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    if isinstance(value, (list, tuple)):
+        try:
+            return bytes(int(b) & 0xFF for b in value)
+        except Exception as exc:  # pragma: no cover - defensive
+            raise InvalidParameterError(field_name, "list[int] 0-255 expected") from exc
+    raise InvalidParameterError(field_name, "bytes-like or list[int] expected")
+
+
+def _to_byte_list(value: bytes | bytearray) -> list[int]:
+    """Convert bytes/bytearray to JSON-friendly list[int] (0-255)."""
+    return list(bytes(value))
+
+
 class Wallet:
     """BRC-100 compliant wallet implementation.
 
@@ -537,21 +565,17 @@ class Wallet:
         # Decide message to sign
         h_direct = args.get("hashToDirectlySign")
         if h_direct is not None:
-            if isinstance(h_direct, (bytes, bytearray)):
-                to_sign = bytes(h_direct)
-            else:
-                raise InvalidParameterError("hashToDirectlySign", "bytes-like expected")
+            to_sign = _as_bytes(h_direct, "hashToDirectlySign")
         else:
             data = args.get("data", b"")
-            if not isinstance(data, (bytes, bytearray)):
-                raise InvalidParameterError("data", "bytes-like expected when hash not provided")
+            buf = _as_bytes(data, "data")
             import hashlib
 
-            to_sign = hashlib.sha256(bytes(data)).digest()
+            to_sign = hashlib.sha256(buf).digest()
 
         # Sign without extra hashing (TS parity)
         signature: bytes = priv.sign(to_sign, hasher=lambda m: m)
-        return {"signature": signature}
+        return {"signature": _to_byte_list(signature)}
 
     async def verify_signature(
         self,
@@ -602,8 +626,7 @@ class Wallet:
         if not protocol_id or not key_id or signature is None:
             raise InvalidParameterError("protocolID/keyID/signature", "required")
 
-        if not isinstance(signature, (bytes, bytearray)):
-            raise InvalidParameterError("signature", "bytes-like expected")
+        signature_bytes = _as_bytes(signature, "signature")
 
         protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
         counterparty = _parse_counterparty(counterparty_arg)
@@ -618,20 +641,16 @@ class Wallet:
 
         h_direct = args.get("hashToDirectlyVerify")
         if h_direct is not None:
-            if isinstance(h_direct, (bytes, bytearray)):
-                digest = bytes(h_direct)
-            else:
-                raise InvalidParameterError("hashToDirectlyVerify", "bytes-like expected")
+            digest = _as_bytes(h_direct, "hashToDirectlyVerify")
         else:
             data = args.get("data", b"")
-            if not isinstance(data, (bytes, bytearray)):
-                raise InvalidParameterError("data", "bytes-like expected when hash not provided")
+            buf = _as_bytes(data, "data")
             import hashlib
 
-            digest = hashlib.sha256(bytes(data)).digest()
+            digest = hashlib.sha256(buf).digest()
 
         # Verify without extra hashing (TS parity)
-        valid = pub.verify(signature, digest, hasher=lambda m: m)
+        valid = pub.verify(signature_bytes, digest, hasher=lambda m: m)
         return {"valid": bool(valid)}
 
     async def encrypt(
@@ -669,9 +688,7 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        plaintext = args.get("plaintext")
-        if not isinstance(plaintext, (bytes, bytearray)):
-            raise InvalidParameterError("plaintext", "bytes-like expected")
+        plaintext = _as_bytes(args.get("plaintext"), "plaintext")
 
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
@@ -689,8 +706,8 @@ class Wallet:
             counterparty=counterparty,
             for_self=for_self,
         )
-        ciphertext: bytes = pub.encrypt(bytes(plaintext))
-        return {"ciphertext": ciphertext}
+        ciphertext: bytes = pub.encrypt(plaintext)
+        return {"ciphertext": _to_byte_list(ciphertext)}
 
     async def decrypt(
         self,
@@ -723,9 +740,7 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        ciphertext = args.get("ciphertext")
-        if not isinstance(ciphertext, (bytes, bytearray)):
-            raise InvalidParameterError("ciphertext", "bytes-like expected")
+        ciphertext = _as_bytes(args.get("ciphertext"), "ciphertext")
 
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
@@ -741,8 +756,8 @@ class Wallet:
             key_id=key_id,
             counterparty=counterparty,
         )
-        plaintext: bytes = priv.decrypt(bytes(ciphertext))
-        return {"plaintext": plaintext}
+        plaintext: bytes = priv.decrypt(ciphertext)
+        return {"plaintext": _to_byte_list(plaintext)}
 
     async def create_hmac(
         self,
@@ -778,9 +793,7 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        data = args.get("data")
-        if not isinstance(data, (bytes, bytearray)):
-            raise InvalidParameterError("data", "bytes-like expected")
+        data = _as_bytes(args.get("data"), "data")
 
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
@@ -795,8 +808,8 @@ class Wallet:
         import hmac as _hmac
         import hashlib as _hashlib
 
-        tag = _hmac.new(sym_key, bytes(data), _hashlib.sha256).digest()
-        return {"hmac": tag}
+        tag = _hmac.new(sym_key, data, _hashlib.sha256).digest()
+        return {"hmac": _to_byte_list(tag)}
 
     async def verify_hmac(
         self,
@@ -830,12 +843,8 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        data = args.get("data")
-        provided = args.get("hmac")
-        if not isinstance(data, (bytes, bytearray)):
-            raise InvalidParameterError("data", "bytes-like expected")
-        if not isinstance(provided, (bytes, bytearray)):
-            raise InvalidParameterError("hmac", "bytes-like expected")
+        data = _as_bytes(args.get("data"), "data")
+        provided = _as_bytes(args.get("hmac"), "hmac")
 
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
@@ -850,6 +859,6 @@ class Wallet:
         import hmac as _hmac
         import hashlib as _hashlib
 
-        expected = _hmac.new(sym_key, bytes(data), _hashlib.sha256).digest()
-        valid = _hmac.compare_digest(expected, bytes(provided))
+        expected = _hmac.new(sym_key, data, _hashlib.sha256).digest()
+        valid = _hmac.compare_digest(expected, provided)
         return {"valid": bool(valid)}

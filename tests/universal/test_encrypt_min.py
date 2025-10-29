@@ -19,7 +19,9 @@ async def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
     assert isinstance(enc, dict)
     assert "ciphertext" in enc
     ct = enc["ciphertext"]
-    assert isinstance(ct, (bytes, bytearray))
+    # JSON byte array
+    assert isinstance(ct, list)
+    assert all(isinstance(x, int) and 0 <= x <= 255 for x in ct)
 
     dec = await wallet_with_key_deriver.decrypt(
         {
@@ -30,7 +32,9 @@ async def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
         }
     )
     assert isinstance(dec, dict)
-    assert dec.get("plaintext") == plaintext
+    pt = dec.get("plaintext")
+    assert isinstance(pt, list)
+    assert bytes(pt) == plaintext
 
 
 @pytest.mark.asyncio

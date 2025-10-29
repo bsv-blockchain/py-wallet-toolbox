@@ -20,7 +20,9 @@ async def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
     assert isinstance(res, dict)
     assert "signature" in res
     sig = res["signature"]
-    assert isinstance(sig, (bytes, bytearray))
+    # JSON byte array (list[int])
+    assert isinstance(sig, list)
+    assert all(isinstance(x, int) and 0 <= x <= 255 for x in sig)
 
     # Verify OK
     vres = await wallet_with_key_deriver.verify_signature(
