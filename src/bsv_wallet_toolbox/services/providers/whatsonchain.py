@@ -1,7 +1,13 @@
 """WhatsOnChain provider implementation.
 
-This module provides WhatsOnChain-based implementations of chain tracking
-and blockchain data access.
+Summary:
+    Adapter over py-sdk's WhatsOnChainTracker to provide toolbox-level
+    ChaintracksClientApi and TS-compatible shapes for select methods.
+
+TS parity:
+    - Mirrors the TypeScript provider layering where SdkWhatsOnChain
+      supplies core tracker functionality and the higher-level class
+      adds toolbox-specific methods and response shapes.
 
 Reference:
     - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
@@ -27,40 +33,25 @@ from ..wallet_services import Chain
 class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     """WhatsOnChain implementation of ChaintracksClientApi.
 
-    This is the Python equivalent of TypeScript's WhatsOnChain class.
-    Extends py-sdk's WhatsOnChainTracker (equivalent to TS SdkWhatsOnChain)
-    to implement ChaintracksClientApi.
+    Summary:
+        Python equivalent of the TS provider that relies on py-sdk's
+        WhatsOnChainTracker for core RPCs while exposing toolbox-level
+        methods and TS-compatible return shapes where needed.
 
-    TypeScript class hierarchy:
-    - SdkWhatsOnChain implements ChainTracker
-    - WhatsOnChainNoServices extends SdkWhatsOnChain
-    - WhatsOnChain extends WhatsOnChainNoServices
+    TS parity:
+        - Class layering matches TS: base tracker + toolbox adapter.
+        - Methods that surface data to higher layers return shapes used
+          by TS tests (e.g., MerklePath, UTXO status, tx status).
 
-    Python class hierarchy:
-    - WhatsOnChainTracker (py-sdk) ≈ SdkWhatsOnChain (ts-sdk)
-    - WhatsOnChain (toolbox) ≈ WhatsOnChain (ts-toolbox)
+    Implemented highlights:
+        - current_height / is_valid_root_for_height via py-sdk (tracker)
+        - find_header_for_height returns BlockHeader objects
+        - find_chain_tip_header/hash derived from current tip height
 
-    Implemented methods:
-    - is_valid_root_for_height() - SDK method (from WhatsOnChainTracker)
-    - current_height() - SDK method (from WhatsOnChainTracker)
-    - get_chain() - Returns the configured chain
-    - find_header_for_height() - Returns block header as BlockHeader object
-
-    Not implemented (WhatsOnChain API limitations):
-    - get_info() - Chaintracks-specific
-    - get_present_height() - Uses current_height() instead
-    - get_headers() - Bulk header retrieval not supported
-    - find_chain_tip_header() - Can be implemented
-    - find_chain_tip_hash() - Can be implemented
-    - find_header_for_block_hash() - Requires additional API calls
-    - add_header() - Not supported by WhatsOnChain API
-    - start_listening() - Event listening not supported
-    - listening() - Event listening not supported
-    - is_listening() - Event listening not supported
-    - is_synchronized() - Event listening not supported
-    - subscribe_headers() - Event listening not supported
-    - subscribe_reorgs() - Event listening not supported
-    - unsubscribe() - Event listening not supported
+    Unsupported / out of scope:
+        - Bulk headers and event streaming (no WoC API)
+        - add_header (read-only provider)
+        - find_header_for_block_hash (no direct WoC endpoint)
 
     Reference:
         - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
@@ -88,10 +79,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     async def get_info(self) -> ChaintracksInfo:
         """Get summary of configuration and state.
 
-        Not implemented for WhatsOnChain (Chaintracks-specific feature).
+        Not implemented: Chaintracks-specific feature absent in WoC API.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support this)
+            NotImplementedError: Always (not provided by WoC)
         """
         raise NotImplementedError("get_info() is not supported by WhatsOnChain provider")
 
@@ -109,44 +100,48 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     async def get_headers(self, height: int, count: int) -> str:
         """Get headers in serialized format.
 
-        Not implemented for WhatsOnChain (requires bulk header retrieval).
+        Not implemented: WoC lacks bulk header endpoint required for this.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support bulk header retrieval)
+            NotImplementedError: Always (no bulk header API)
         """
         raise NotImplementedError("get_headers() is not supported by WhatsOnChain provider")
 
     async def find_chain_tip_header(self) -> BlockHeader:
         """Get the active chain tip header.
 
-        Not yet implemented but can be implemented using current_height() + find_header_for_height().
+        Implementation strategy: use current_height() and then find_header_for_height().
 
-        Raises:
-            NotImplementedError: Always (not yet implemented)
+        Returns:
+            BlockHeader: Header at the current tip height.
         """
-        raise NotImplementedError("find_chain_tip_header() is not yet implemented for WhatsOnChain provider")
+        tip_height = await self.current_height()
+        header = await self.find_header_for_height(int(tip_height))
+        if header is None:
+            raise RuntimeError("Failed to resolve chain tip header")
+        return header
 
     async def find_chain_tip_hash(self) -> str:
         """Get the block hash of the active chain tip.
 
-        Not yet implemented but can be implemented using find_chain_tip_header().
-
-        Raises:
-            NotImplementedError: Always (not yet implemented)
+        Returns:
+            str: Block hash hex string of the chain tip.
         """
-        raise NotImplementedError("find_chain_tip_hash() is not yet implemented for WhatsOnChain provider")
+        h = await self.find_chain_tip_header()
+        return h.hash
 
     async def find_header_for_height(self, height: int) -> BlockHeader | None:
         """Get block header for a given block height on active chain.
 
-        Returns BlockHeader object (not bytes). For bytes representation,
-        use the internal helper method.
+        TS parity:
+            - Returns a structured header object. Use
+              `get_header_bytes_for_height` when byte serialization is needed.
 
         Args:
-            height: Block height
+            height: Block height (non-negative)
 
         Returns:
-            BlockHeader object or None if not found
+            BlockHeader | None: Header at height or None when missing
         """
         if height < 0:
             raise ValueError(f"Height {height} must be a non-negative integer")
@@ -179,10 +174,11 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     async def find_header_for_block_hash(self, hash: str) -> BlockHeader | None:
         """Get block header for a given block hash.
 
-        Not yet implemented (requires additional API endpoint).
+        Not implemented: WoC public API does not expose a direct
+        header-by-hash endpoint compatible with this call.
 
         Raises:
-            NotImplementedError: Always (not yet implemented)
+            NotImplementedError: Always (no direct API)
         """
         raise NotImplementedError("find_header_for_block_hash() is not yet implemented for WhatsOnChain provider")
 
@@ -199,70 +195,70 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     async def start_listening(self) -> None:
         """Start listening for new headers.
 
-        Not supported by WhatsOnChain (no event stream).
+        Not supported: WoC does not provide a header event stream.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support event streams)
+            NotImplementedError: Always
         """
         raise NotImplementedError("start_listening() is not supported by WhatsOnChain provider")
 
     async def listening(self) -> None:
         """Wait for listening state.
 
-        Not supported by WhatsOnChain (no event stream).
+        Not supported: WoC does not provide a header event stream.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support event streams)
+            NotImplementedError: Always
         """
         raise NotImplementedError("listening() is not supported by WhatsOnChain provider")
 
     async def is_listening(self) -> bool:
         """Check if actively listening.
 
-        Not supported by WhatsOnChain (no event stream).
+        Not supported: always returns False.
 
         Returns:
-            Always False (WhatsOnChain does not support event streams)
+            bool: False
         """
         return False
 
     async def is_synchronized(self) -> bool:
         """Check if synchronized.
 
-        WhatsOnChain is always synchronized (no local state).
+        WoC is stateless from our perspective; queries are live.
 
         Returns:
-            Always True (WhatsOnChain queries live data)
+            bool: True
         """
         return True
 
     async def subscribe_headers(self, listener: HeaderListener) -> str:
         """Subscribe to header events.
 
-        Not supported by WhatsOnChain (no event stream).
+        Not supported: no header event stream.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support event streams)
+            NotImplementedError: Always
         """
         raise NotImplementedError("subscribe_headers() is not supported by WhatsOnChain provider")
 
     async def subscribe_reorgs(self, listener: ReorgListener) -> str:
         """Subscribe to reorganization events.
 
-        Not supported by WhatsOnChain (no event stream).
+        Not supported: no reorg event stream.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support event streams)
+            NotImplementedError: Always
         """
         raise NotImplementedError("subscribe_reorgs() is not supported by WhatsOnChain provider")
 
     async def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel subscriptions.
 
-        Not supported by WhatsOnChain (no event stream).
+        Not supported: no subscription lifecycle.
 
         Raises:
-            NotImplementedError: Always (WhatsOnChain does not support event streams)
+            NotImplementedError: Always
         """
         raise NotImplementedError("unsubscribe() is not supported by WhatsOnChain provider")
 
