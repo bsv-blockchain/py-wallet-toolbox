@@ -756,6 +756,120 @@ class Wallet:
             raise RuntimeError("Services must be configured to use post_beef_array")
         return await self.services.post_beef_array(beefs)
 
+    # ---------------------------------------------------------------------
+    # Certificates / Proof-related (stubs; Storage/Services dependent)
+    # ---------------------------------------------------------------------
+    async def acquire_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Acquire a certificate (stub).
+
+        Summary:
+            Placeholder for certificate issuance/acquisition flows. In the TS
+            implementation, this operation depends on Storage + Services
+            (issuer validation, persistence, and proof generation). The
+            dependencies are not yet available in this codebase.
+
+        TS parity:
+            - High-level API involving signing, verification, and persistence.
+            - Will expose the same I/O shape as TS once dependencies are ready.
+
+        Args:
+            args: Parameters required for certificate acquisition (TBD; TS parity later)
+            originator: Optional caller identity (under 250 bytes)
+
+        Returns:
+            dict: TS-compatible certificate object (not implemented)
+
+        Raises:
+            NotImplementedError: Storage/Services are not implemented yet
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts#acquireCertificate
+            - toolbox/ts-wallet-toolbox/src/signer/methods/acquireDirectCertificate.ts
+        """
+        self._validate_originator(originator)
+        raise NotImplementedError("acquire_certificate is not implemented yet (Storage/Services required)")
+
+    async def prove_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Prove a certificate (stub).
+
+        Summary:
+            High-level API for generating and verifying proofs
+            (Merkle/signing/on-chain checks). In TS it spans Storage/Services/Signer;
+            not available here yet.
+
+        TS parity:
+            - Includes subject/protocol (BRC), verification strategy, persistence.
+            - Will match TS I/O once dependencies are ready.
+
+        Args:
+            args: Parameters for proof generation/verification (TBD; TS parity later)
+            originator: Optional caller identity (under 250 bytes)
+
+        Returns:
+            dict: TS-compatible verification result/proof object (not implemented)
+
+        Raises:
+            NotImplementedError: Storage/Services are not implemented yet
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts#proveCertificate
+            - toolbox/ts-wallet-toolbox/src/signer/methods/proveCertificate.ts
+        """
+        self._validate_originator(originator)
+        raise NotImplementedError("prove_certificate is not implemented yet (Storage/Services required)")
+
+    async def reveal_counterparty_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Reveal counterparty key linkage (stub).
+
+        Summary:
+            API to reveal counterparty key linkage. Depends on history/persistence
+            and signing; not implemented here yet.
+
+        TS parity:
+            - Arguments/return shape will follow TS later.
+
+        Args:
+            args: Parameters required to reveal linkage (TBD)
+            originator: Optional caller identity
+
+        Returns:
+            dict: Linkage reveal result (not implemented)
+
+        Raises:
+            NotImplementedError: Storage/Services are not implemented yet
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts#revealCounterpartyKeyLinkage
+        """
+        self._validate_originator(originator)
+        raise NotImplementedError("reveal_counterparty_key_linkage is not implemented yet (Storage/Services required)")
+
+    async def reveal_specific_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Reveal specific key linkage (stub).
+
+        Summary:
+            Reveal linkage for a specific key. Depends on history/persistence
+            and verification; not implemented here yet.
+
+        TS parity:
+            - Arguments/return shape will follow TS later.
+
+        Args:
+            args: Parameters required to reveal linkage (TBD)
+            originator: Optional caller identity
+
+        Returns:
+            dict: Linkage reveal result (not implemented)
+
+        Raises:
+            NotImplementedError: Storage/Services are not implemented yet
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts#revealSpecificKeyLinkage
+        """
+        self._validate_originator(originator)
+        raise NotImplementedError("reveal_specific_key_linkage is not implemented yet (Storage/Services required)")
+
     async def get_public_key(
         self,
         args: dict[str, Any],
