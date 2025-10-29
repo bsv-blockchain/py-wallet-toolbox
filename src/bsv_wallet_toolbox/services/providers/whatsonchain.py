@@ -316,7 +316,6 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
-            - toolbox/ts-wallet-toolbox/docs/services.md#getmerklepath
         """
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Endpoint path is not critical; tests will monkeypatch fetch()
