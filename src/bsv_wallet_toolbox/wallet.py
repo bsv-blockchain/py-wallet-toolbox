@@ -399,6 +399,363 @@ class Wallet:
         # Convert bytes to hex string (matching TypeScript behavior)
         return {"header": header_bytes.hex()}
 
+    # ---------------------------------------------------------------------
+    # Convenience methods (non-ABI) delegating to Services for chain helpers
+    # ---------------------------------------------------------------------
+    async def get_present_height(self) -> int:
+        """Get latest chain height via configured services.
+
+        Summary:
+            Delegates to Services.get_present_height (provider present height).
+
+        Returns:
+            int: Latest chain height
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (getPresentHeight)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_present_height")
+        return await self.services.get_present_height()
+
+    async def get_chain(self) -> str:
+        """Return configured chain identifier ('main' | 'test').
+
+        Summary:
+            If services are configured, defer to Services.get_chain; otherwise
+            return the wallet's local chain.
+
+        Returns:
+            str: 'main' or 'test'
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (getChain)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
+        """
+        if self.services is None:
+            # Fallback to local chain if services not set
+            return self.chain
+        return await self.services.get_chain()
+
+    async def find_chain_tip_header(self) -> dict[str, Any]:
+        """Return structured header for the active chain tip.
+
+        Summary:
+            Delegates to Services.find_chain_tip_header and returns a
+            version/previousHash/merkleRoot/time/bits/nonce/height/hash dict.
+
+        Returns:
+            dict: Structured block header at current chain tip
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (findChainTipHeader)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#findChainTipHeader
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use find_chain_tip_header")
+        return await self.services.find_chain_tip_header()
+
+    async def find_chain_tip_hash(self) -> str:
+        """Return active chain tip hash (hex).
+
+        Returns:
+            str: Block hash of current chain tip
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (findChainTipHash)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#findChainTipHash
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use find_chain_tip_hash")
+        return await self.services.find_chain_tip_hash()
+
+    async def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
+        """Return structured header for the given block hash, or None.
+
+        Args:
+            block_hash: 64-hex block hash (big-endian)
+
+        Returns:
+            dict | None: Structured header if found; otherwise None
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (findHeaderForBlockHash)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForBlockHash
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use find_header_for_block_hash")
+        return await self.services.find_header_for_block_hash(block_hash)
+
+    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+        """Return structured header for the given height, or None.
+
+        Args:
+            height: Block height (non-negative)
+
+        Returns:
+            dict | None: Structured header if found; otherwise None
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (findHeaderForHeight)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use find_header_for_height")
+        return await self.services.find_header_for_height(height)
+
+    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+        """Return provider-specific transaction propagation info.
+
+        Args:
+            txid: Transaction ID (64 hex chars, big-endian)
+
+        Returns:
+            dict: Provider response containing propagation details
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (getTxPropagation)
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTxPropagation
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_tx_propagation")
+        return await self.services.get_tx_propagation(txid)
+
+    # ---------------------------------------------------------------------
+    # Services convenience wrappers (TS parity shapes where applicable)
+    # ---------------------------------------------------------------------
+    async def get_utxo_status(
+        self,
+        output: str,
+        output_format: str | None = None,
+        outpoint: str | None = None,
+    ) -> dict[str, Any]:
+        """Get UTXO status for an output descriptor.
+
+        Summary:
+            Delegates to Services.get_utxo_status. Returns a TS-like shape
+            with a "details" array describing outpoints and spent status.
+
+        TS parity:
+            - outputFormat controls interpretation of "output": 'hashLE' | 'hashBE' | 'script' | 'outpoint'
+            - When outputFormat == 'outpoint', the optional 'outpoint' ('txid:vout') can be provided
+
+        Args:
+            output: Locking script hex, script hash, or outpoint descriptor depending on outputFormat
+            output_format: One of 'hashLE', 'hashBE', 'script', 'outpoint'
+            outpoint: Optional 'txid:vout' specifier when needed
+
+        Returns:
+            dict: TS-like { "details": [{ "outpoint": str, "spent": bool, ... }] }
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_utxo_status")
+        return await self.services.get_utxo_status(output, output_format, outpoint)
+
+    async def get_script_history(self, script_hash: str) -> dict[str, Any]:
+        """Get script history for a script hash.
+
+        Summary:
+            Delegates to Services.get_script_history and returns a TS-like
+            object with "confirmed" and "unconfirmed" arrays.
+
+        Args:
+            script_hash: Provider-expected script hash (often little-endian)
+
+        Returns:
+            dict: { "confirmed": [...], "unconfirmed": [...] }
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_script_history")
+        return await self.services.get_script_history(script_hash)
+
+    async def get_transaction_status(self, txid: str) -> dict[str, Any]:
+        """Get transaction status for a given txid.
+
+        Summary:
+            Delegates to Services.get_transaction_status. Returns a provider
+            response with a TS-compatible shape (e.g., { "status": "confirmed", ... }).
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+
+        Returns:
+            dict: Provider-specific status object (TS-compatible fields)
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_transaction_status")
+        return await self.services.get_transaction_status(txid)
+
+    async def get_raw_tx(self, txid: str) -> dict[str, Any]:
+        """Get raw transaction hex.
+
+        Summary:
+            Delegates to Services.get_raw_tx and wraps the optional hex string
+            into a TS-provider-like object: { "data": string | None }.
+
+        Args:
+            txid: Transaction ID (64 hex chars, big-endian)
+
+        Returns:
+            dict: { "data": string | None }
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_raw_tx")
+        hex_or_none = await self.services.get_raw_tx(txid)
+        return {"data": hex_or_none}
+
+    async def update_bsv_exchange_rate(self) -> dict[str, Any]:
+        """Fetch the current BSV/USD exchange rate.
+
+        Returns:
+            dict: { "base": "USD", "rate": number, "timestamp": number }
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#updateBsvExchangeRate
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use update_bsv_exchange_rate")
+        return await self.services.update_bsv_exchange_rate()
+
+    async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
+        """Get fiat exchange rate for currency relative to base.
+
+        Args:
+            currency: Target fiat currency code (e.g., 'USD', 'GBP', 'EUR')
+            base: Base fiat currency code to compare against (default 'USD')
+
+        Returns:
+            float: The fiat exchange rate of currency relative to base
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getFiatExchangeRate
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_fiat_exchange_rate")
+        return await self.services.get_fiat_exchange_rate(currency, base)
+
+    async def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
+        """Get Merkle path for a transaction.
+
+        Summary:
+            Delegates to Services.get_merkle_path_for_transaction. Returns a
+            TS-compatible object with header and merklePath or a sentinel.
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+
+        Returns:
+            dict: { "header": {...}, "merklePath": {...} } or provider sentinel
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getMerklePathForTransaction
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use get_merkle_path_for_transaction")
+        return await self.services.get_merkle_path_for_transaction(txid)
+
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
+        """Verify if a Merkle root is valid for a given block height.
+
+        Args:
+            root: Merkle root hex string
+            height: Block height
+
+        Returns:
+            bool: True if the root matches the block header's merkleRoot at height
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#isValidRootForHeight
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use is_valid_root_for_height")
+        return await self.services.is_valid_root_for_height(root, height)
+
+    async def post_beef(self, beef: str) -> dict[str, Any]:
+        """Broadcast a BEEF via configured services (ARC).
+
+        Returns a TS-like broadcast result:
+            { "accepted": bool, "txid": str | None, "message": str | None }
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeef
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use post_beef")
+        return await self.services.post_beef(beef)
+
+    async def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
+        """Broadcast multiple BEEFs via configured services (ARC batch).
+
+        Returns an array of TS-like broadcast results.
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
+        """
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use post_beef_array")
+        return await self.services.post_beef_array(beefs)
+
     async def get_public_key(
         self,
         args: dict[str, Any],
