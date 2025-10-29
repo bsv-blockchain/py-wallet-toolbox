@@ -9,6 +9,7 @@ from bsv.keys import PublicKey
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
+    CreateSignatureResult,
     GetHeaderResult,
     GetHeightResult,
     GetNetworkResult,
@@ -473,3 +474,162 @@ class Wallet:
         )
 
         return {"publicKey": derived_pub.hex()}
+
+    async def create_signature(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> CreateSignatureResult:
+        """Create a digital signature for provided data or a precomputed hash.
+
+        TS parity:
+        - If 'hashToDirectlySign' is provided, sign that exact digest (no extra hashing).
+        - Otherwise, compute SHA-256 over 'data' (bytes-like) and sign that digest.
+        - Key selection follows protocolID/keyID/counterparty/forSelf semantics via KeyDeriver.
+
+        Args:
+            args: Dictionary containing:
+                - data (bytes | bytearray, optional): Raw data to be hashed and signed
+                - hashToDirectlySign (bytes | bytearray, optional): Precomputed digest to sign as-is
+                - protocolID (tuple[int, str]): Security level and protocol string, e.g., (2, "auth message signature")
+                - keyID (str): Key identifier
+                - counterparty (str | PublicKey, optional): 'self' | 'anyone' | hex pubkey | PublicKey
+                - forSelf (bool, optional): Whether to derive vs self when applicable (affects public pathing)
+            originator: Optional FQDN of the requesting application
+
+        Returns:
+            CreateSignatureResult: dict with key 'signature' (DER-encoded ECDSA bytes)
+
+        Raises:
+            InvalidParameterError: On missing/invalid arguments or types
+            RuntimeError: If keyDeriver is not configured
+
+        Reference:
+        - sdk/py-sdk/bsv/wallet/wallet_interface.py (create_signature)
+        - sdk/ts-sdk/src/wallet/Wallet.interfaces.ts (createSignature)
+        - toolbox/ts-wallet-toolbox/src/Wallet.ts
+        - toolbox/py-wallet-toolbox/tests/universal/test_signature_min.py
+        """
+        self._validate_originator(originator)
+
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        # Inputs
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+        for_self = args.get("forSelf", False)
+
+        if not protocol_id or not key_id:
+            raise InvalidParameterError("protocolID/keyID", "required")
+
+        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+        counterparty = _parse_counterparty(counterparty_arg)
+
+        # Derive private key for signing
+        priv = self.key_deriver.derive_private_key(
+            protocol=protocol,
+            key_id=key_id,
+            counterparty=counterparty,
+        )
+
+        # Decide message to sign
+        h_direct = args.get("hashToDirectlySign")
+        if h_direct is not None:
+            if isinstance(h_direct, (bytes, bytearray)):
+                to_sign = bytes(h_direct)
+            else:
+                raise InvalidParameterError("hashToDirectlySign", "bytes-like expected")
+        else:
+            data = args.get("data", b"")
+            if not isinstance(data, (bytes, bytearray)):
+                raise InvalidParameterError("data", "bytes-like expected when hash not provided")
+            import hashlib
+
+            to_sign = hashlib.sha256(bytes(data)).digest()
+
+        # Sign without extra hashing (TS parity)
+        signature: bytes = priv.sign(to_sign, hasher=lambda m: m)
+        return {"signature": signature}
+
+    async def verify_signature(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Verify a digital signature for provided data or a precomputed hash.
+
+        TS parity:
+        - If 'hashToDirectlyVerify' is provided, verify against that digest (no extra hashing).
+        - Otherwise, compute SHA-256 over 'data' (bytes-like) and verify against that digest.
+
+        Args:
+            args: Dictionary containing:
+                - data (bytes | bytearray, optional): Raw data to be hashed for verification
+                - hashToDirectlyVerify (bytes | bytearray, optional): Precomputed digest to verify as-is
+                - protocolID (tuple[int, str]): Security level and protocol string
+                - keyID (str): Key identifier
+                - counterparty (str | PublicKey, optional): 'self' | 'anyone' | hex pubkey | PublicKey
+                - forSelf (bool, optional): Whether to derive vs self when applicable
+                - signature (bytes | bytearray): DER-encoded ECDSA signature
+            originator: Optional FQDN of the requesting application
+
+        Returns:
+            dict: {'valid': bool}
+
+        Raises:
+            InvalidParameterError: On missing/invalid arguments or types
+            RuntimeError: If keyDeriver is not configured
+
+        Reference:
+        - sdk/py-sdk/bsv/wallet/wallet_interface.py (verify_signature)
+        - sdk/ts-sdk/src/wallet/Wallet.interfaces.ts (verifySignature)
+        - toolbox/ts-wallet-toolbox/src/Wallet.ts
+        - toolbox/py-wallet-toolbox/tests/universal/test_signature_min.py
+        """
+        self._validate_originator(originator)
+
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        signature = args.get("signature")
+        counterparty_arg = args.get("counterparty", "self")
+        for_self = args.get("forSelf", False)
+
+        if not protocol_id or not key_id or signature is None:
+            raise InvalidParameterError("protocolID/keyID/signature", "required")
+
+        if not isinstance(signature, (bytes, bytearray)):
+            raise InvalidParameterError("signature", "bytes-like expected")
+
+        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+        counterparty = _parse_counterparty(counterparty_arg)
+
+        # Derive public key for verification
+        pub = self.key_deriver.derive_public_key(
+            protocol=protocol,
+            key_id=key_id,
+            counterparty=counterparty,
+            for_self=for_self,
+        )
+
+        h_direct = args.get("hashToDirectlyVerify")
+        if h_direct is not None:
+            if isinstance(h_direct, (bytes, bytearray)):
+                digest = bytes(h_direct)
+            else:
+                raise InvalidParameterError("hashToDirectlyVerify", "bytes-like expected")
+        else:
+            data = args.get("data", b"")
+            if not isinstance(data, (bytes, bytearray)):
+                raise InvalidParameterError("data", "bytes-like expected when hash not provided")
+            import hashlib
+
+            digest = hashlib.sha256(bytes(data)).digest()
+
+        # Verify without extra hashing (TS parity)
+        valid = pub.verify(signature, digest, hasher=lambda m: m)
+        return {"valid": bool(valid)}
