@@ -152,6 +152,20 @@ class Services(WalletServices):
         """
         return await self.whatsonchain.current_height()
 
+    async def get_present_height(self) -> int:
+        """Get latest chain height (provider's present height).
+
+        TS parity:
+            Mirrors Services.getPresentHeight by delegating to provider.
+
+        Returns:
+            int: Latest chain height
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
+        """
+        return await self.whatsonchain.get_present_height()
+
     async def get_header_for_height(self, height: int) -> bytes:
         """Get block header at specified height from WhatsOnChain.
 
@@ -169,6 +183,91 @@ class Services(WalletServices):
             RuntimeError: If unable to retrieve header
         """
         return await self.whatsonchain.get_header_bytes_for_height(height)
+
+    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+        """Get a structured block header at a given height.
+
+        Args:
+            height: Block height (non-negative)
+
+        Returns:
+            dict | None: Structured header if found; otherwise None
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
+        """
+        h = await self.whatsonchain.find_header_for_height(height)
+        if h is None:
+            return None
+        return {
+            "version": h.version,
+            "previousHash": h.previousHash,
+            "merkleRoot": h.merkleRoot,
+            "time": h.time,
+            "bits": h.bits,
+            "nonce": h.nonce,
+            "height": h.height,
+            "hash": h.hash,
+        }
+
+    async def get_chain(self) -> str:
+        """Return configured chain identifier ('main' | 'test').
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
+        """
+        return await self.whatsonchain.get_chain()
+
+    async def get_info(self) -> dict[str, Any]:
+        """Get provider configuration/state summary (if available).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getInfo
+        """
+        return await self.whatsonchain.get_info()  # may raise NotImplementedError
+
+    async def get_headers(self, height: int, count: int) -> str:
+        """Get serialized headers starting at height (provider-dependent).
+
+        Returns:
+            str: Provider-specific serialized headers representation
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getHeaders
+        """
+        return await self.whatsonchain.get_headers(height, count)
+
+    async def add_header(self, header: Any) -> None:
+        """Submit a possibly new header (if provider supports it)."""
+        return await self.whatsonchain.add_header(header)
+
+    async def start_listening(self) -> None:
+        """Start listening for new headers (if provider supports it)."""
+        return await self.whatsonchain.start_listening()
+
+    async def listening(self) -> None:
+        """Wait for listening state (if provider supports it)."""
+        return await self.whatsonchain.listening()
+
+    async def is_listening(self) -> bool:
+        """Whether provider is actively listening (event stream)."""
+        return await self.whatsonchain.is_listening()
+
+    async def is_synchronized(self) -> bool:
+        """Whether provider is synchronized (no local lag)."""
+        return await self.whatsonchain.is_synchronized()
+
+    async def subscribe_headers(self, listener: Any) -> str:
+        """Subscribe to header events (if supported)."""
+        return await self.whatsonchain.subscribe_headers(listener)
+
+    async def subscribe_reorgs(self, listener: Any) -> str:
+        """Subscribe to reorg events (if supported)."""
+        return await self.whatsonchain.subscribe_reorgs(listener)
+
+    async def unsubscribe(self, subscription_id: str) -> bool:
+        """Cancel a subscription (if supported)."""
+        return await self.whatsonchain.unsubscribe(subscription_id)
 
     #
     # WalletServices local-calculation methods (no external API calls)
@@ -294,6 +393,64 @@ class Services(WalletServices):
         """
         return await self.whatsonchain.get_merkle_path(txid, self)
 
+    async def find_chain_tip_header(self) -> dict[str, Any]:
+        """Return the active chain tip header (structured dict).
+
+        TS parity:
+            Mirrors provider behavior; returns a structured header object with
+            version/previousHash/merkleRoot/time/bits/nonce/height/hash.
+
+        Returns:
+            dict: Structured block header for the current tip
+
+        Raises:
+            RuntimeError: If the provider cannot resolve the tip header
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts (findChainTipHeader)
+        """
+        h = await self.whatsonchain.find_chain_tip_header()
+        return {
+            "version": h.version,
+            "previousHash": h.previousHash,
+            "merkleRoot": h.merkleRoot,
+            "time": h.time,
+            "bits": h.bits,
+            "nonce": h.nonce,
+            "height": h.height,
+            "hash": h.hash,
+        }
+
+    async def find_chain_tip_hash(self) -> str:
+        """Return the active chain tip hash (hex string)."""
+        return await self.whatsonchain.find_chain_tip_hash()
+
+    async def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
+        """Get a structured block header by its block hash.
+
+        Args:
+            block_hash: 64-hex characters of the block hash (big-endian)
+
+        Returns:
+            dict | None: Structured header if found; otherwise None
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts (findHeaderForBlockHash)
+        """
+        h = await self.whatsonchain.find_header_for_block_hash(block_hash)
+        if h is None:
+            return None
+        return {
+            "version": h.version,
+            "previousHash": h.previousHash,
+            "merkleRoot": h.merkleRoot,
+            "time": h.time,
+            "bits": h.bits,
+            "nonce": h.nonce,
+            "height": h.height,
+            "hash": h.hash,
+        }
+
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Get the current BSV/USD exchange rate via provider.
 
@@ -394,6 +551,14 @@ class Services(WalletServices):
             dict: Provider-specific status object (TS-compatible shape expected by tests)
         """
         return await self.whatsonchain.get_transaction_status(txid, use_next)
+
+    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+        """Get transaction propagation info via provider.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTxPropagation
+        """
+        return await self.whatsonchain.get_tx_propagation(txid)
 
     async def post_beef(self, beef: str) -> dict[str, Any]:
         """Broadcast a BEEF via ARC (TS-compatible behavior and shape).

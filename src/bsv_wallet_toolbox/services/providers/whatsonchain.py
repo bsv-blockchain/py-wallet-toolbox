@@ -569,3 +569,32 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return None
         # Unknown error or empty body; treat as None to match TS optional return
         return None
+
+    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+        """Get transaction propagation info for a given txid (TS-compatible intent).
+
+        Summary:
+            Returns provider-specific propagation information. Exact fields may
+            vary; this method surfaces the response body as-is for higher-level
+            handling/tests.
+
+        Args:
+            txid: Transaction ID (64 hex chars, big-endian)
+
+        Returns:
+            dict: Provider response body (may include counts or peer details)
+
+        Raises:
+            RuntimeError: If the provider request fails or returns non-OK
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts#getTxPropagation
+        """
+        if not isinstance(txid, str) or len(txid) != 64:
+            raise ValueError("invalid txid length; expected 64 hex characters")
+        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        url = f"{self.URL}/tx/{txid}/propagation"
+        response = await self.http_client.fetch(url, request_options)
+        if not response.ok:
+            raise RuntimeError("Failed to get tx propagation")
+        return response.json() or {}
