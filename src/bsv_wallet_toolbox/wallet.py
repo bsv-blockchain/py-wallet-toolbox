@@ -633,3 +633,113 @@ class Wallet:
         # Verify without extra hashing (TS parity)
         valid = pub.verify(signature, digest, hasher=lambda m: m)
         return {"valid": bool(valid)}
+
+    async def encrypt(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Encrypt plaintext using a derived or identity public key.
+
+        TS parity:
+        - Use derived public key from protocolID/keyID/counterparty unless forSelf uses identity pathing.
+
+        Args:
+            args: Dictionary containing:
+                - plaintext (bytes | bytearray): Data to encrypt
+                - protocolID (tuple[int, str]): Security level and protocol string
+                - keyID (str): Key identifier
+                - counterparty (str | PublicKey, optional): 'self' | 'anyone' | hex pubkey | PublicKey
+                - forSelf (bool, optional): Whether to derive vs self
+            originator: Optional FQDN of the requesting application
+
+        Returns:
+            dict: {'ciphertext': bytes}
+
+        Raises:
+            InvalidParameterError: On missing/invalid arguments or types
+            RuntimeError: If keyDeriver is not configured
+
+        Reference:
+        - sdk/ts-sdk/src/wallet/Wallet.interfaces.ts (encrypt)
+        - toolbox/ts-wallet-toolbox/src/Wallet.ts
+        - sdk/py-sdk/bsv/wallet/wallet_interface.py (encrypt)
+        """
+        self._validate_originator(originator)
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        plaintext = args.get("plaintext")
+        if not isinstance(plaintext, (bytes, bytearray)):
+            raise InvalidParameterError("plaintext", "bytes-like expected")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+        for_self = args.get("forSelf", False)
+        if not protocol_id or not key_id:
+            raise InvalidParameterError("protocolID/keyID", "required")
+
+        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+        counterparty = _parse_counterparty(counterparty_arg)
+
+        pub = self.key_deriver.derive_public_key(
+            protocol=protocol,
+            key_id=key_id,
+            counterparty=counterparty,
+            for_self=for_self,
+        )
+        ciphertext: bytes = pub.encrypt(bytes(plaintext))
+        return {"ciphertext": ciphertext}
+
+    async def decrypt(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Decrypt ciphertext using a derived private key.
+
+        Args:
+            args: Dictionary containing:
+                - ciphertext (bytes | bytearray): Data to decrypt
+                - protocolID (tuple[int, str]): Security level and protocol string
+                - keyID (str): Key identifier
+                - counterparty (str | PublicKey, optional): 'self' | 'anyone' | hex pubkey | PublicKey
+            originator: Optional FQDN of the requesting application
+
+        Returns:
+            dict: {'plaintext': bytes}
+
+        Raises:
+            InvalidParameterError: On missing/invalid arguments or types
+            RuntimeError: If keyDeriver is not configured
+
+        Reference:
+        - sdk/ts-sdk/src/wallet/Wallet.interfaces.ts (decrypt)
+        - toolbox/ts-wallet-toolbox/src/Wallet.ts
+        - sdk/py-sdk/bsv/wallet/wallet_interface.py (decrypt)
+        """
+        self._validate_originator(originator)
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        ciphertext = args.get("ciphertext")
+        if not isinstance(ciphertext, (bytes, bytearray)):
+            raise InvalidParameterError("ciphertext", "bytes-like expected")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+        if not protocol_id or not key_id:
+            raise InvalidParameterError("protocolID/keyID", "required")
+
+        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+        counterparty = _parse_counterparty(counterparty_arg)
+
+        priv = self.key_deriver.derive_private_key(
+            protocol=protocol,
+            key_id=key_id,
+            counterparty=counterparty,
+        )
+        plaintext: bytes = priv.decrypt(bytes(ciphertext))
+        return {"plaintext": plaintext}
