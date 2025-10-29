@@ -743,3 +743,113 @@ class Wallet:
         )
         plaintext: bytes = priv.decrypt(bytes(ciphertext))
         return {"plaintext": plaintext}
+
+    async def create_hmac(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Create HMAC-SHA256 using derived symmetric key.
+
+        TS parity:
+        - Symmetric key derived from protocolID/keyID/counterparty via KeyDeriver.
+
+        Args:
+            args: Dictionary containing:
+                - data (bytes | bytearray): Message to authenticate
+                - protocolID (tuple[int, str]): Security level and protocol string
+                - keyID (str): Key identifier
+                - counterparty (str | PublicKey, optional): 'self' | 'anyone' | hex pubkey | PublicKey
+            originator: Optional FQDN of the requesting application
+
+        Returns:
+            dict: {'hmac': bytes}
+
+        Raises:
+            InvalidParameterError: On missing/invalid arguments or types
+            RuntimeError: If keyDeriver is not configured
+
+        Reference:
+        - sdk/ts-sdk/src/wallet/Wallet.interfaces.ts (createHmac)
+        - toolbox/ts-wallet-toolbox/src/Wallet.ts
+        - sdk/py-sdk/bsv/wallet/wallet_interface.py (create_hmac)
+        """
+        self._validate_originator(originator)
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        data = args.get("data")
+        if not isinstance(data, (bytes, bytearray)):
+            raise InvalidParameterError("data", "bytes-like expected")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+        if not protocol_id or not key_id:
+            raise InvalidParameterError("protocolID/keyID", "required")
+
+        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+        counterparty = _parse_counterparty(counterparty_arg)
+
+        sym_key = self.key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
+        import hmac as _hmac
+        import hashlib as _hashlib
+
+        tag = _hmac.new(sym_key, bytes(data), _hashlib.sha256).digest()
+        return {"hmac": tag}
+
+    async def verify_hmac(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Verify HMAC-SHA256 using derived symmetric key.
+
+        Args:
+            args: Dictionary containing:
+                - data (bytes | bytearray): Message to authenticate
+                - hmac (bytes | bytearray): Expected tag
+                - protocolID (tuple[int, str]): Security level and protocol string
+                - keyID (str): Key identifier
+                - counterparty (str | PublicKey, optional): 'self' | 'anyone' | hex pubkey | PublicKey
+            originator: Optional FQDN of the requesting application
+
+        Returns:
+            dict: {'valid': bool}
+
+        Raises:
+            InvalidParameterError: On missing/invalid arguments or types
+            RuntimeError: If keyDeriver is not configured
+
+        Reference:
+        - sdk/ts-sdk/src/wallet/Wallet.interfaces.ts (verifyHmac)
+        - toolbox/ts-wallet-toolbox/src/Wallet.ts
+        - sdk/py-sdk/bsv/wallet/wallet_interface.py (verify_hmac)
+        """
+        self._validate_originator(originator)
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        data = args.get("data")
+        provided = args.get("hmac")
+        if not isinstance(data, (bytes, bytearray)):
+            raise InvalidParameterError("data", "bytes-like expected")
+        if not isinstance(provided, (bytes, bytearray)):
+            raise InvalidParameterError("hmac", "bytes-like expected")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+        if not protocol_id or not key_id:
+            raise InvalidParameterError("protocolID/keyID", "required")
+
+        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+        counterparty = _parse_counterparty(counterparty_arg)
+        sym_key = self.key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
+
+        import hmac as _hmac
+        import hashlib as _hashlib
+
+        expected = _hmac.new(sym_key, bytes(data), _hashlib.sha256).digest()
+        valid = _hmac.compare_digest(expected, bytes(provided))
+        return {"valid": bool(valid)}
