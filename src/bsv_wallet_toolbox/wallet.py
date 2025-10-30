@@ -118,6 +118,7 @@ class Wallet:
         chain: Chain,
         services: WalletServices | None = None,
         key_deriver: KeyDeriver | None = None,
+        storage_provider: Any | None = None,
     ) -> None:
         """Initialize wallet.
 
@@ -135,6 +136,7 @@ class Wallet:
         self.chain: Chain = chain
         self.services: WalletServices | None = services
         self.key_deriver: KeyDeriver | None = key_deriver
+        self.storage_provider: Any | None = storage_provider
 
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.
@@ -165,6 +167,82 @@ class Wallet:
             Wallet network name ('mainnet' or 'testnet')
         """
         return "mainnet" if chain == "main" else "testnet"
+
+    async def list_outputs(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """List outputs via Storage provider (minimal TS-like shape).
+
+        Summary:
+            Wallet API that delegates to Storage to enumerate outputs. Returns
+            TS-like minimal keys used by tests and callers.
+        TS parity:
+            Matches TypeScript Wallet listOutputs minimal result keys and input
+            expectations (auth.userId present in args).
+        Args:
+            args: Input dict including 'auth' (with 'userId') and optional filters.
+            originator: Optional originator domain string (<250 bytes).
+        Returns:
+            Dict with keys: totalOutputs, outputs.
+        Raises:
+            InvalidParameterError: If originator is invalid.
+            RuntimeError: If storage provider is not configured.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+        auth = args.get("auth") or {}
+        return self.storage_provider.list_outputs(auth, args)
+
+    async def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """List certificates via Storage provider (minimal TS-like shape).
+
+        Summary:
+            Wallet API delegating to Storage to enumerate certificates with minimal
+            TS-like shape.
+        TS parity:
+            Matches TypeScript Wallet listCertificates minimal result keys.
+        Args:
+            args: Input dict including 'auth' (with 'userId') and optional filters.
+            originator: Optional originator domain string.
+        Returns:
+            Dict with keys: totalCertificates, certificates.
+        Raises:
+            InvalidParameterError: If originator is invalid.
+            RuntimeError: If storage provider is not configured.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+        auth = args.get("auth") or {}
+        return self.storage_provider.list_certificates(auth, args)
+
+    async def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """List actions via Storage provider (minimal TS-like shape).
+
+        Summary:
+            Placeholder Wallet API that returns a valid TS-like list result while
+            action workflow is implemented.
+        TS parity:
+            Matches TypeScript Wallet listActions minimal result keys.
+        Args:
+            args: Input dict including 'auth' (with 'userId'); currently unused.
+            originator: Optional originator domain string.
+        Returns:
+            Dict with keys: totalActions, actions.
+        Raises:
+            InvalidParameterError: If originator is invalid.
+            RuntimeError: If storage provider is not configured.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+        auth = args.get("auth") or {}
+        return self.storage_provider.list_actions(auth, args)
 
     async def get_network(
         self,
