@@ -19,6 +19,7 @@ classifiers = [
 
 dependencies = [
     "bsv-sdk @ git+https://github.com/bsv-blockchain/py-sdk.git@develop-port",
+    "SQLAlchemy>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +30,10 @@ dev = [
     "mypy>=1.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
+]
+db = [
+    "pymysql>=1.1",
+    "psycopg[binary]>=3.1",
 ]
 
 [build-system]

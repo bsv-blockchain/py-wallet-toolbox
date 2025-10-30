@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .db import create_session_factory, session_scope
-from .models import Base, Output, Settings, User
+from .models import Base, Output, OutputBasket, OutputTag, OutputTagMap, Settings, TxLabel, TxLabelMap, User
 
 
 class StorageProvider:
@@ -111,7 +111,24 @@ class StorageProvider:
             q = select(Settings).where(Settings.storage_identity_key == self.storage_identity_key)
             row = s.execute(q).scalar_one_or_none()
             if row is None:
-                row = Settings(chain=self.chain, storage_identity_key=self.storage_identity_key)
+                # Derive dbtype for settings record
+                dialect = self.engine.dialect.name
+                if dialect == "sqlite":
+                    dbtype = "SQLite"
+                elif dialect.startswith("mysql"):
+                    dbtype = "MySQL"
+                elif dialect.startswith("postgres"):
+                    dbtype = "PostgreSQL"
+                else:
+                    dbtype = dialect
+
+                row = Settings(
+                    chain=self.chain,
+                    storage_identity_key=self.storage_identity_key,
+                    storage_name="default",
+                    dbtype=dbtype,
+                    max_output_script=10_000_000,
+                )
                 s.add(row)
                 try:
                     s.flush()
@@ -121,7 +138,10 @@ class StorageProvider:
                     row = s.execute(q).scalar_one()
             return {
                 "storageIdentityKey": row.storage_identity_key,
+                "storageName": row.storage_name,
                 "chain": row.chain,
+                "dbtype": row.dbtype,
+                "maxOutputScript": row.max_output_script,
             }
 
     # ------------------------------------------------------------------
@@ -190,10 +210,22 @@ class StorageProvider:
             offset = -offset - 1
 
         with session_scope(self.SessionLocal) as s:
-            # Query only spendable outputs (spent == False) for minimal parity
-            q = select(Output).where((Output.user_id == user_id) & (Output.spent.is_(False)))
-            q_count = s.execute(q).scalars().all()
-            total = len(q_count)
+            # Base filter: user and spendable
+            q = select(Output).where((Output.user_id == user_id) & (Output.spendable.is_(True)))
+
+            # Optional basket name filter
+            basket_name = args.get("basket")
+            if basket_name:
+                bq = select(OutputBasket.basket_id).where(
+                    (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
+                )
+                bid = s.execute(bq).scalar_one_or_none()
+                if bid is None:
+                    return {"totalOutputs": 0, "outputs": []}
+                q = q.where(Output.basket_id == bid)
+
+            # Count total first
+            total = len(s.execute(q).scalars().all())
 
             # Ordered by primary key for determinism
             q = q.order_by(Output.output_id).limit(limit).offset(offset)
@@ -206,10 +238,162 @@ class StorageProvider:
                     "spendable": True,
                     "outpoint": f"{o.txid}.{o.vout}",
                 }
-                if include_scripts and o.script:
-                    wo["lockingScript"] = o.script
+                if include_scripts and (o.locking_script or o.script):
+                    wo["lockingScript"] = (o.locking_script or o.script)
                 outputs.append(wo)
 
             return {"totalOutputs": total, "outputs": outputs}
+
+    # ------------------------------------------------------------------
+    # Additional find/list helpers
+    # ------------------------------------------------------------------
+    def find_output_baskets_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
+        """Find output baskets for a user.
+
+        Summary:
+            Minimal filter by user and optional name.
+        TS parity:
+            Returns subset: basketId, name.
+        Args:
+            auth: Dict with 'userId'.
+            args: Dict with optional 'name'.
+        Returns:
+            List of baskets.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        user_id = int(auth["userId"])  # KeyError if missing
+        name = args.get("name")
+        with session_scope(self.SessionLocal) as s:
+            q = select(OutputBasket).where((OutputBasket.user_id == user_id) & (OutputBasket.is_deleted.is_(False)))
+            if name:
+                q = q.where(OutputBasket.name == name)
+            rows = s.execute(q).scalars().all()
+            return [{"basketId": r.basket_id, "name": r.name} for r in rows]
+
+    def get_tags_for_output_id(self, output_id: int) -> list[dict[str, Any]]:
+        """Return tags associated with an output.
+
+        Summary:
+            Joins tag maps and returns tag strings.
+        TS parity:
+            Returns subset: outputTagId, tag.
+        Args:
+            output_id: Output primary key.
+        Returns:
+            List of tag dicts.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        with session_scope(self.SessionLocal) as s:
+            mq = select(OutputTagMap.output_tag_id).where(
+                (OutputTagMap.output_id == output_id) & (OutputTagMap.is_deleted.is_(False))
+            )
+            tag_ids = [i for i in s.execute(mq).scalars().all()]
+            if not tag_ids:
+                return []
+            tq = select(OutputTag).where(OutputTag.output_tag_id.in_(tag_ids), OutputTag.is_deleted.is_(False))
+            rows = s.execute(tq).scalars().all()
+            return [{"outputTagId": r.output_tag_id, "tag": r.tag} for r in rows]
+
+    def get_labels_for_transaction_id(self, transaction_id: int) -> list[dict[str, Any]]:
+        """Return labels associated with a transaction.
+
+        Summary:
+            Joins label maps and returns label strings.
+        TS parity:
+            Returns subset: txLabelId, label.
+        Args:
+            transaction_id: Transaction primary key.
+        Returns:
+            List of label dicts.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        with session_scope(self.SessionLocal) as s:
+            mq = select(TxLabelMap.tx_label_id).where(TxLabelMap.transaction_id == transaction_id)
+            label_ids = [i for i in s.execute(mq).scalars().all()]
+            if not label_ids:
+                return []
+            tq = select(TxLabel).where(TxLabel.tx_label_id.in_(label_ids), TxLabel.is_deleted.is_(False))
+            rows = s.execute(tq).scalars().all()
+            return [{"txLabelId": r.tx_label_id, "label": r.label} for r in rows]
+
+    def find_outputs_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
+        """Find outputs by partial filters for a user.
+
+        Summary:
+            Minimal filter supporting basket and spendable.
+        TS parity:
+            Returns TS-like rows subset.
+        Args:
+            auth: Dict with 'userId'.
+            args: Dict with optional 'basket', 'spendable'.
+        Returns:
+            List of outputs as dicts.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        user_id = int(auth["userId"])  # KeyError if missing
+        basket_name = args.get("basket")
+        spendable = args.get("spendable", None)
+        with session_scope(self.SessionLocal) as s:
+            q = select(Output).where(Output.user_id == user_id)
+            if spendable is not None:
+                q = q.where(Output.spendable.is_(bool(spendable)))
+            if basket_name:
+                bq = select(OutputBasket.basket_id).where(
+                    (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
+                )
+                bid = s.execute(bq).scalar_one_or_none()
+                if bid is None:
+                    return []
+                q = q.where(Output.basket_id == bid)
+            rows: Iterable[Output] = s.execute(q).scalars().all()
+            r: list[dict[str, Any]] = []
+            for o in rows:
+                r.append(
+                    {
+                        "outputId": o.output_id,
+                        "transactionId": None,
+                        "basketId": o.basket_id,
+                        "spendable": bool(o.spendable),
+                        "txid": o.txid,
+                        "vout": int(o.vout),
+                        "satoshis": int(o.satoshis),
+                        "lockingScript": o.locking_script or o.script,
+                    }
+                )
+            return r
+
+    def relinquish_output(self, auth: dict[str, Any], outpoint: str) -> int:
+        """Unset basket on an output identified by 'txid.vout'.
+
+        Summary:
+            Matches TS relinquishOutput minimal effect.
+        TS parity:
+            Only clears basket association.
+        Args:
+            auth: Dict with 'userId'.
+            outpoint: String format 'txid.vout'.
+        Returns:
+            Number of rows affected (0 or 1).
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        user_id = int(auth["userId"])  # KeyError if missing
+        try:
+            txid, vout_s = outpoint.split(".")
+            vout = int(vout_s)
+        except Exception:
+            return 0
+        with session_scope(self.SessionLocal) as s:
+            q = select(Output).where((Output.user_id == user_id) & (Output.txid == txid) & (Output.vout == vout))
+            o = s.execute(q).scalar_one_or_none()
+            if not o:
+                return 0
+            o.basket_id = None
+            s.add(o)
+            return 1
 
 
