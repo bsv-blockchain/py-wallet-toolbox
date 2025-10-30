@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from typing import Any, Iterable
+import asyncio
+from bsv.transaction import Transaction
+from bsv.merkle_path import MerklePath
 
 from sqlalchemy import select, func
 from sqlalchemy.engine import Engine
@@ -65,6 +68,33 @@ class StorageProvider:
         self.chain = chain
         self.storage_identity_key = storage_identity_key
         self.max_output_script_length = max_output_script_length
+        # Optional Services handle (wired by Wallet). Needed by some SpecOps.
+        self._services: Any | None = None
+
+    def set_services(self, services: Any) -> None:
+        """Attach a Services instance for network-backed checks.
+
+        Summary:
+            Stores a handle to `Services` so storage operations that need
+            provider access (e.g., SpecOp invalid change) can delegate.
+        TS parity:
+            Mirrors TS StorageProvider.setServices/getServices.
+        Args:
+            services: WalletServices-compatible instance.
+        Returns:
+            None
+        """
+        self._services = services
+
+    def get_services(self) -> Any:
+        """Return the attached Services instance or raise if missing.
+
+        Raises:
+            RuntimeError: If services have not been attached.
+        """
+        if self._services is None:
+            raise RuntimeError("Services must be set via set_services() before use")
+        return self._services
 
     # ------------------------------------------------------------------
     # Lifecycle / availability
@@ -198,26 +228,36 @@ class StorageProvider:
     # listOutputs (minimal subset)
     # ------------------------------------------------------------------
     def list_outputs(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-        """List wallet outputs for a user with TS-like shape.
+        """List wallet outputs with TS parity (SpecOps and includes).
 
         Summary:
-            Minimal implementation returning spendable outputs only (spent == False)
-            ordered by primary key, supporting limit/offset. Optional inclusion of
-            lockingScript when present.
+            Returns a paginated list of outputs for the authenticated user,
+            honoring basket, tag filters, and include flags. Supports TypeScript
+            SpecOps for the `basket` field (wallet balance, invalid change,
+            set wallet change params) and tag SpecOps ('all'|'change'|'spent'|'unspent').
+            When `includeTransactions` is true, attaches a minimal BEEF placeholder.
         TS parity:
-            Aligns output JSON shape for WalletOutput fields used by tests:
-            satoshis, spendable, outpoint, lockingScript (optional). Basket/tags/labels
-            and transaction inclusion are omitted.
+            - Basket SpecOps:
+              - specOpWalletBalance (or its id): use basket 'default', ignore limit; result has totalOutputs=sum(satoshis) and outputs=[].
+              - specOpInvalidChange (or its id): use basket 'default', includeOutputScripts=true, includeSpent=false; filters to invalid change via network checks (placeholder here).
+              - specOpSetWalletChangeParams (or its id): tags [numberOfDesiredUTXOs, minimumDesiredUTXOValue] update default basket params; returns empty result.
+            - Tag SpecOps: 'all' (ignore basket, include spent), 'change' (change only), 'spent'/'unspent'.
+            - Include flags: includeLockingScripts/includeCustomInstructions/includeTags/includeLabels.
+            - includeTransactions: minimal BEEF (rawTx concat) until full Proven flow is available.
         Args:
-            auth: Dict with 'userId'.
-            args: Dict with optional keys 'limit' (int), 'offset' (int),
-                  'includeLockingScripts' (bool).
+            auth: Dict containing 'userId' (int).
+            args: Dict with keys such as basket, tags, tagQueryMode ('any'|'all'),
+                  limit, offset, includeLockingScripts, includeCustomInstructions,
+                  includeTags, includeLabels, includeTransactions,
+                  knownTxids (list[str], optional; do not descend into these when building BEEF).
         Returns:
-            Dict with keys: totalOutputs, outputs[].
+            dict: { totalOutputs: int, outputs: WalletOutput[], BEEF?: bytes }
         Raises:
-            KeyError: If auth.userId is missing.
+            KeyError: If 'userId' is missing from auth.
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/methods/listOutputsKnex.ts
+            toolbox/ts-wallet-toolbox/src/storage/methods/ListOutputsSpecOp.ts
+            toolbox/py-wallet-toolbox/tests
         """
         user_id = int(auth["userId"])  # KeyError if missing
         limit = int(args.get("limit", 10))
@@ -230,19 +270,95 @@ class StorageProvider:
         include_spent = bool(args.get("includeSpent", False))
         tag_query_mode = args.get("tagQueryMode", "any")  # 'any' | 'all'
         tags: list[str] = list(args.get("tags", []) or [])
+        filter_change_only = False
+
+        # Basket SpecOps (TS parity). Support both constant values and friendly names.
+        SPECOP_INVALID_CHANGE = "5a76fd430a311f8bc0553859061710a4475c19fed46e2ff95969aa918e612e57"
+        SPECOP_SET_CHANGE = "a4979d28ced8581e9c1c92f1001cc7cb3aabf8ea32e10888ad898f0a509a3929"
+        SPECOP_WALLET_BAL = "893b7646de0e1c9f741bd6e9169b76a8847ae34adef7bef1e6a285371206d2e8"
+
+        basket_name = args.get("basket")
+
+        def resolve_specop(name: str | None) -> str | None:
+            if not name:
+                return None
+            mapping: dict[str, str] = {
+                SPECOP_WALLET_BAL: "wallet_balance",
+                SPECOP_INVALID_CHANGE: "invalid_change",
+                SPECOP_SET_CHANGE: "set_change",
+                # Friendly aliases (dev convenience)
+                "specOpWalletBalance": "wallet_balance",
+                "specOpInvalidChange": "invalid_change",
+                "specOpSetWalletChangeParams": "set_change",
+            }
+            return mapping.get(name)
+
+        specop = resolve_specop(basket_name)
+        specop_ignore_limit = False
+        specop_include_scripts = False
+        specop_include_spent: bool | None = None
+        specop_tags: list[str] = []
+
+        # Handle SpecOp tag parameters/intercepts
+        if specop == "set_change":
+            if len(tags) >= 2:
+                specop_tags = tags[:2]
+                tags = tags[2:]
+        if specop == "invalid_change":
+            intercepted: list[str] = []
+            for t in list(tags):
+                if t in ("release", "all"):
+                    intercepted.append(t)
+                    tags.remove(t)
+                    if t == "all":
+                        basket_name = None
+            specop_tags = intercepted
+
+        if specop == "wallet_balance":
+            basket_name = "default"
+            specop_ignore_limit = True
+        elif specop == "invalid_change":
+            basket_name = "default" if basket_name else "default"
+            specop_ignore_limit = True
+            specop_include_scripts = True
+            specop_include_spent = False
 
         if offset < 0:
             offset = -offset - 1
 
         with session_scope(self.SessionLocal) as s:
+            # SpecOp (TS compatibility): interpret special tags to alter query behavior
+            # - 'all': ignore basket filter and include spent outputs
+            # - 'change': include only change outputs
+            # - 'spent': include spent outputs as well
+            # - 'unspent': exclude spent outputs（default）
+            if tags:
+                if "all" in tags:
+                    basket_name = None
+                    include_spent = True
+                    tags = [t for t in tags if t != "all"]
+                if "change" in tags:
+                    filter_change_only = True
+                    tags = [t for t in tags if t != "change"]
+                if "spent" in tags:
+                    include_spent = True
+                    tags = [t for t in tags if t != "spent"]
+                if "unspent" in tags:
+                    include_spent = False
+                    tags = [t for t in tags if t != "unspent"]
+
             # Base filter: user, spendability unless include_spent
             base = (Output.user_id == user_id)
+            if specop_include_spent is not None:
+                include_spent = specop_include_spent
             if not include_spent:
                 base = base & (Output.spendable.is_(True))
             q = select(Output).where(base)
 
-            # Optional basket name filter
-            basket_name = args.get("basket")
+            if filter_change_only:
+                q = q.where(Output.change.is_(True))
+
+            # Optional basket name filter (may be overridden by SpecOp)
             if basket_name:
                 bq = select(OutputBasket.basket_id).where(
                     (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
@@ -284,9 +400,53 @@ class StorageProvider:
             # Count total first (before limit/offset)
             total = s.execute(q.with_only_columns(func.count())).scalar_one()
 
-            # Ordered by primary key for determinism
-            q = q.order_by(Output.output_id).limit(limit).offset(offset)
+            # Ordered by primary key for determinism (SpecOp may ignore limit)
+            q = q.order_by(Output.output_id)
+            if not specop_ignore_limit:
+                q = q.limit(limit).offset(offset)
             rows: Iterable[Output] = s.execute(q).scalars().all()
+
+            # SpecOp: invalidChange -> filter to outputs that are NOT UTXOs per services
+            if specop == "invalid_change":
+                filtered_rows: list[Output] = []
+                services = None
+                try:
+                    services = self.get_services()
+                except Exception:
+                    services = None
+
+                for output_row in rows:
+                    # Ensure script is available
+                    self.validate_output_script(output_row=output_row, session=s)
+                    if not output_row.locking_script or len(output_row.locking_script) == 0:
+                        continue
+                    ok: bool | None = None
+                    if services is not None:
+                        # Build TS-like object for services.is_utxo
+                        out = {
+                            "txid": output_row.txid,
+                            "vout": int(output_row.vout),
+                            "lockingScript": output_row.locking_script,
+                        }
+                        try:
+                            # Run only when no running loop is present
+                            asyncio.get_running_loop()
+                            ok = None  # cannot await here; skip network check
+                        except RuntimeError:
+                            try:
+                                ok = bool(asyncio.run(services.is_utxo(out)))
+                            except Exception:
+                                ok = None
+                    # If explicit False -> invalid change
+                    if ok is False:
+                        # Optional 'release' tag: mark unspendable
+                        if "release" in specop_tags:
+                            try:
+                                self.update_output(output_row.output_id, {"spendable": False})
+                            except Exception:
+                                pass
+                        filtered_rows.append(output_row)
+                rows = filtered_rows
 
             outputs: list[dict[str, Any]] = []
             for output_row in rows:
@@ -297,7 +457,7 @@ class StorageProvider:
                 }
                 if include_custom_instructions and output_row.custom_instructions:
                     wo["customInstructions"] = output_row.custom_instructions
-                if include_scripts:
+                if include_scripts or specop_include_scripts:
                     # TS uses short names like 'o'/'s'; Python uses descriptive names for clarity.
                     self.validate_output_script(output_row=output_row, session=s)
                     if output_row.locking_script:
@@ -310,10 +470,51 @@ class StorageProvider:
                     wo["tags"] = [t["tag"] for t in self.get_tags_for_output_id(output_row.output_id)]
                 outputs.append(wo)
 
+            # SpecOp: set wallet change params (side-effect only, empty result)
+            if specop == "set_change":
+                try:
+                    ndutxos = int(specop_tags[0]) if len(specop_tags) > 0 else None
+                    mduv = int(specop_tags[1]) if len(specop_tags) > 1 else None
+                except Exception:
+                    ndutxos, mduv = None, None
+                if ndutxos is not None and mduv is not None:
+                    bq = select(OutputBasket).where(
+                        (OutputBasket.user_id == user_id)
+                        & (OutputBasket.name == "default")
+                        & (OutputBasket.is_deleted.is_(False))
+                    )
+                    b = s.execute(bq).scalar_one_or_none()
+                    if b is not None:
+                        b.number_of_desired_utxos = ndutxos
+                        b.minimum_desired_utxo_value = mduv
+                        s.add(b)
+                return {"totalOutputs": 0, "outputs": []}
+
+            # SpecOp: wallet balance -> sum satoshis, outputs empty
+            if specop == "wallet_balance":
+                total_outputs = 0
+                for o in rows:
+                    total_outputs += int(o.satoshis)
+                return {"totalOutputs": int(total_outputs), "outputs": []}
+
+            # SpecOp: invalid_change -> totalOutputs equals filtered length
+            if specop == "invalid_change":
+                result: dict[str, Any] = {"totalOutputs": len(outputs), "outputs": outputs}
+                return result
+
             result: dict[str, Any] = {"totalOutputs": int(total), "outputs": outputs}
             if include_transactions:
-                # Minimal: do not generate full BEEF yet; maintain key presence for callers
-                result["BEEF"] = bytes()
+                # Build minimal BEEF by merging rawTx for listed outputs (unique txids)
+                txids: list[str] = []
+                seen: set[str] = set()
+                for output_row in rows:
+                    if output_row.txid and output_row.txid not in seen:
+                        seen.add(output_row.txid)
+                        txids.append(output_row.txid)
+                known_txids = args.get("knownTxids") or []
+                if not isinstance(known_txids, list):
+                    known_txids = []
+                result["BEEF"] = self._build_recursive_beef_for_txids(txids, known_txids=known_txids)
             return result
 
     def validate_output_script(self, output_row: Output, session: Session | None = None) -> None:
@@ -342,6 +543,123 @@ class StorageProvider:
         )
         if script:
             output_row.locking_script = script
+
+    def _build_minimal_beef_for_txids(self, txids: list[str]) -> bytes:
+        """Construct a minimal BEEF-like binary by concatenating rawTx blobs.
+
+        Summary:
+            This is a pragmatic interim implementation: for each txid, include its
+            rawTx if known. It does not yet recursively include inputs or Merkle
+            paths. Sufficient to unblock `includeTransactions` clients expecting a
+            non-empty BEEF when transactions are requested.
+        TS parity:
+            Approximates BEEF merging from TS; full parity (inputs/paths) will be
+            implemented alongside Proven utilities.
+        Args:
+            txids: Unique list of transaction ids to include.
+        Returns:
+            Bytes blob representing a minimal BEEF.
+        """
+        chunks: list[bytes] = []
+        seen: set[str] = set()
+        for txid in txids:
+            if txid in seen:
+                continue
+            seen.add(txid)
+            r = self.get_proven_or_raw_tx(txid)
+            raw = r.get("rawTx")
+            if isinstance(raw, (bytes, bytearray)):
+                chunks.append(bytes(raw))
+            # If this tx has an input BEEF from storage (req), append it as a minimal ancestry hint
+            ib = r.get("inputBEEF")
+            if isinstance(ib, (bytes, bytearray)) and len(ib) > 0:
+                chunks.append(bytes(ib))
+        return b"".join(chunks)
+
+    def _build_recursive_beef_for_txids(self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None) -> bytes:
+        """Construct a more complete BEEF-like binary including ancestors.
+
+        Summary:
+            Starting from txids, append known rawTx bytes and any stored inputBEEF,
+            then recursively traverse inputs (by parsing rawTx) up to max_depth to
+            append ancestor rawTx blobs. This is still a placeholder and does not
+            encode BUMP structures; it is a pragmatic superset of the minimal form.
+        Args:
+            txids: Starting transaction ids.
+            max_depth: Maximum recursion depth.
+        Returns:
+            bytes: Concatenated bytes representing a BEEF-like payload.
+        """
+        chunks: list[bytes] = []
+        seen: set[str] = set()
+        known: set[str] = set(known_txids or [])
+        first_beef: bytes | None = None
+
+        def add_tx_and_ancestors(cur_txid: str, depth: int) -> None:
+            if cur_txid in seen or depth > max_depth:
+                return
+            seen.add(cur_txid)
+            r = self.get_proven_or_raw_tx(cur_txid)
+            raw = r.get("rawTx")
+            if isinstance(raw, (bytes, bytearray)):
+                # Attempt to parse and follow inputs (and attach MerklePath)
+                try:
+                    tx = Transaction.from_hex(raw)
+                    if tx and getattr(tx, "inputs", None):
+                        mpb = r.get("merklePath")
+                        if isinstance(mpb, (bytes, bytearray)) and len(mpb) > 0:
+                            try:
+                                tx.merkle_path = MerklePath.from_binary(bytes(mpb))
+                            except Exception:
+                                pass
+                        for txin in tx.inputs:
+                            src = getattr(txin, "source_txid", None)
+                            if isinstance(src, str) and src and src != "00" * 32:
+                                # If the caller already knows this txid, do not fetch/descend further
+                                if src not in known:
+                                    add_tx_and_ancestors(src, depth + 1)
+                                # Try to hydrate parent transaction for to_beef ancestry
+                                try:
+                                    pr = self.get_proven_or_raw_tx(src)
+                                    praw = pr.get("rawTx")
+                                    if isinstance(praw, (bytes, bytearray)):
+                                        parent_tx = Transaction.from_hex(praw)
+                                        if parent_tx is not None:
+                                            txin.source_transaction = parent_tx
+                                except Exception:
+                                    pass
+                        try:
+                            beef_bytes = tx.to_beef()
+                            if first_beef is None:
+                                first_beef = beef_bytes
+                            chunks.append(beef_bytes)
+                        except Exception:
+                            chunks.append(bytes(raw))
+                    else:
+                        chunks.append(bytes(raw))
+                except Exception:
+                    chunks.append(bytes(raw))
+            ib = r.get("inputBEEF")
+            if isinstance(ib, (bytes, bytearray)) and len(ib) > 0:
+                chunks.append(bytes(ib))
+
+        for tid in txids:
+            add_tx_and_ancestors(tid, 0)
+
+        # Prefer a single BEEF if constructed for the primary tx
+        if first_beef is not None:
+            return first_beef
+
+        # Deduplicate identical fragments to approximate normalization (fallback)
+        unique_chunks: list[bytes] = []
+        seen_hashes: set[int] = set()
+        for c in chunks:
+            h = hash(c)
+            if h in seen_hashes:
+                continue
+            seen_hashes.add(h)
+            unique_chunks.append(c)
+        return b"".join(unique_chunks)
 
     # ------------------------------------------------------------------
     # Additional find/list helpers
@@ -508,6 +826,41 @@ class StorageProvider:
             s.add(o)
             return 1
 
+    def update_output(self, output_id: int, patch: dict[str, Any]) -> int:
+        """Update fields on an `Output` row by id (minimal keys).
+
+        Summary:
+            Minimal updater to support SpecOps like 'release' (set spendable=false)
+            and basket reassignment. Only a safe subset of fields is supported.
+        TS parity:
+            Mirrors intent of TS `updateOutput` used by SpecOps and workflows.
+        Args:
+            output_id: Primary key of output to update.
+            patch: Dict of fields to update. Supported keys:
+                - 'spendable': bool
+                - 'basketId': int | None
+        Returns:
+            int: Number of rows affected (0 or 1).
+        Raises:
+            N/A
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        allowed = {"spendable", "basketId"}
+        to_apply = {k: v for k, v in patch.items() if k in allowed}
+        if not to_apply:
+            return 0
+        with session_scope(self.SessionLocal) as s:
+            o = s.execute(select(Output).where(Output.output_id == output_id)).scalar_one_or_none()
+            if not o:
+                return 0
+            if "spendable" in to_apply:
+                o.spendable = bool(to_apply["spendable"])
+            if "basketId" in to_apply:
+                o.basket_id = to_apply["basketId"]
+            s.add(o)
+            return 1
+
     # ------------------------------------------------------------------
     # Certificates / Proven / Utility
     # ------------------------------------------------------------------
@@ -605,7 +958,11 @@ class StorageProvider:
         with session_scope(self.SessionLocal) as s:
             p = s.execute(select(ProvenTx).where(ProvenTx.txid == txid)).scalar_one_or_none()
             if p is not None:
-                return {"proven": {"provenTxId": p.proven_tx_id}, "rawTx": p.raw_tx}
+                return {
+                    "proven": {"provenTxId": p.proven_tx_id},
+                    "rawTx": p.raw_tx,
+                    "merklePath": p.merkle_path,
+                }
             r = s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid)).scalar_one_or_none()
             if r is None:
                 return {"proven": None, "rawTx": None}
@@ -657,6 +1014,117 @@ class StorageProvider:
         """
         r = self.get_proven_or_raw_tx(txid)
         return bool(r.get("proven") or r.get("rawTx"))
+
+    def get_valid_beef_for_txid(self, txid: str, known_txids: list[str] | None = None) -> bytes:
+        """Return a BEEF-like bytes blob for a known txid (minimal parity).
+
+        Summary:
+            Builds a BEEF-style payload for the txid using any known rawTx and
+            optionally attached MerklePath (ProvenTx). Recursively includes
+            ancestors up to a small depth, skipping any ids listed in known_txids.
+        TS parity:
+            Minimal approximation of getValidBeefForTxid.
+        Args:
+            txid: Subject transaction id.
+            known_txids: Optional list of txids to treat as already known.
+        Returns:
+            bytes: BEEF-like payload (may be a single-tx BEEF when possible).
+        """
+        return self._build_recursive_beef_for_txids([txid], known_txids=known_txids)
+
+    # ------------------------------------------------------------------
+    # Proven helpers
+    # ------------------------------------------------------------------
+    def find_or_insert_proven_tx(self, api: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        """Find or insert a ProvenTx row by txid.
+
+        Summary:
+            Idempotent upsert using txid uniqueness. Returns (row_dict, is_new).
+        TS parity:
+            Mirrors StorageProvider.findOrInsertProvenTx minimal behavior.
+        Args:
+            api: Dict with keys {txid,height,index,merklePath,rawTx,blockHash,merkleRoot}.
+        Returns:
+            Tuple (row, is_new) where row has keys: provenTxId, txid, height, index.
+        Raises:
+            sqlalchemy.exc.SQLAlchemyError on DB errors.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        txid = api.get("txid")
+        if not isinstance(txid, str) or len(txid) != 64:
+            raise ValueError("txid must be 64-hex string")
+        with session_scope(self.SessionLocal) as s:
+            row = s.execute(select(ProvenTx).where(ProvenTx.txid == txid)).scalar_one_or_none()
+            is_new = False
+            if row is None:
+                row = ProvenTx(
+                    txid=txid,
+                    height=int(api.get("height", 0)),
+                    index=int(api.get("index", 0)),
+                    merkle_path=api.get("merklePath") or b"",
+                    raw_tx=api.get("rawTx") or b"",
+                    block_hash=api.get("blockHash") or "0" * 64,
+                    merkle_root=api.get("merkleRoot") or "0" * 64,
+                )
+                s.add(row)
+                s.flush()
+                is_new = True
+            return (
+                {
+                    "provenTxId": row.proven_tx_id,
+                    "txid": row.txid,
+                    "height": int(row.height),
+                    "index": int(row.index),
+                },
+                is_new,
+            )
+
+    def update_proven_tx_req_with_new_proven_tx(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Attach a new ProvenTx to an existing ProvenTxReq and mark completed.
+
+        Summary:
+            Inserts (or finds) a ProvenTx, updates the ProvenTxReq with its id and
+            status 'completed'. Returns minimal TS-like result with status/history/provenTxId.
+        TS parity:
+            Minimal subset of TS updateProvenTxReqWithNewProvenTx.
+        Args:
+            args: Dict with keys {provenTxReqId, txid, height, index, merklePath, rawTx, blockHash, merkleRoot}.
+        Returns:
+            Dict: { status: str, provenTxId: int, history: str }
+        Raises:
+            ValueError: If req not found or txid mismatch.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        req_id = int(args.get("provenTxReqId", 0))
+        txid = args.get("txid")
+        with session_scope(self.SessionLocal) as s:
+            req = s.execute(select(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id == req_id)).scalar_one_or_none()
+            if req is None:
+                raise ValueError("ProvenTxReq not found")
+            if txid and req.txid != txid:
+                raise ValueError("txid mismatch with ProvenTxReq")
+
+            # Insert/find ProvenTx
+            row_dict, _ = self.find_or_insert_proven_tx(
+                {
+                    "txid": req.txid,
+                    "height": args.get("height", 0),
+                    "index": args.get("index", 0),
+                    "merklePath": args.get("merklePath") or b"",
+                    "rawTx": args.get("rawTx") or req.raw_tx,
+                    "blockHash": args.get("blockHash") or "0" * 64,
+                    "merkleRoot": args.get("merkleRoot") or "0" * 64,
+                }
+            )
+
+            # Update req
+            req.proven_tx_id = row_dict["provenTxId"]
+            req.status = "completed"
+            s.add(req)
+
+            return {"status": req.status, "history": req.history, "provenTxId": req.proven_tx_id}
 
     # ------------------------------------------------------------------
     # Listing APIs (minimal shapes)

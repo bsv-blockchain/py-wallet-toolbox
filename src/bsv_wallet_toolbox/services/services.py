@@ -637,3 +637,45 @@ class Services(WalletServices):
                 results.append(await self.post_beef(beef))
             return results
         return [{"accepted": True, "txid": None, "message": "mocked"} for _ in beefs]
+
+    async def is_utxo(self, output: Any) -> bool:
+        """Return True if the given output appears unspent per provider.
+
+        Summary:
+            TS parity helper used by SpecOps (invalid change). Computes the
+            locking script hash and queries provider UTXO status. If an outpoint
+            is known, requires an exact unspent match.
+        TS parity:
+            Mirrors toolbox/ts-wallet-toolbox Services.isUtxo behavior.
+        Args:
+            output: Object or dict with fields/keys 'txid', 'vout', 'lockingScript'.
+        Returns:
+            bool: True if the script is observed unspent (and matches outpoint when provided).
+        Reference:
+            toolbox/ts-wallet-toolbox/src/services/Services.ts
+        """
+        txid = getattr(output, "txid", None) if not isinstance(output, dict) else output.get("txid")
+        vout = getattr(output, "vout", None) if not isinstance(output, dict) else output.get("vout")
+        script = getattr(output, "locking_script", None) if not isinstance(output, dict) else output.get("lockingScript")
+        if script is None or len(script) == 0:
+            return False
+        try:
+            script_hex = script if isinstance(script, str) else bytes(script).hex()
+        except Exception:
+            return False
+        script_hash_le = self.hash_output_script(script_hex)
+        outpoint = f"{txid}.{vout}" if txid and vout is not None else None
+        r = await self.get_utxo_status(script_hash_le, "hashLE", outpoint)
+        # Prefer explicit isUtxo when provided by provider; otherwise derive from details
+        if isinstance(r, dict) and r.get("isUtxo") is True:
+            return True
+        details = r.get("details") if isinstance(r, dict) else None
+        if not isinstance(details, list):
+            return False
+        if outpoint:
+            for d in details:
+                if d.get("outpoint") == outpoint and not d.get("spent", False):
+                    return True
+            return False
+        # No outpoint requirement: any unspent occurrence counts
+        return any((not d.get("spent", False)) for d in details if isinstance(d, dict))

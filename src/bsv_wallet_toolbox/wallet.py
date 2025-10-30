@@ -128,6 +128,10 @@ class Wallet:
                      If None, some methods requiring services will not work.
             key_deriver: Optional KeyDeriver instance for key derivation operations.
                         If None, methods requiring key derivation will raise RuntimeError.
+            storage_provider: Optional StorageProvider instance. When both
+                services and storage_provider are provided, the storage will be
+                wired with services (set_services) for SpecOps that require
+                network checks.
 
         Note:
             Version is not configurable, it's a class constant.
@@ -137,6 +141,14 @@ class Wallet:
         self.services: WalletServices | None = services
         self.key_deriver: KeyDeriver | None = key_deriver
         self.storage_provider: Any | None = storage_provider
+        # Wire services into storage for TS parity SpecOps (e.g., invalid change)
+        try:
+            if self.services is not None and self.storage_provider is not None:
+                # set_services exists on our StorageProvider implementation
+                getattr(self.storage_provider, "set_services")(self.services)
+        except Exception:
+            # Best-effort wiring; storage providers without set_services are tolerated
+            pass
 
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.
