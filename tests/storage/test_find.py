@@ -12,7 +12,7 @@ import pytest
 class Testfind:
     """Test suite for database FIND/SELECT operations."""
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_proventx(self) -> None:
         """Given: Mock storage with test data
@@ -32,7 +32,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_proventxreq(self) -> None:
         """Given: Mock storage with test data
@@ -52,7 +52,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_user(self) -> None:
         """Given: Mock storage with test data
@@ -72,7 +72,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_certificate(self) -> None:
         """Given: Mock storage with test data
@@ -100,7 +100,7 @@ class Testfind:
         assert len(results_certifiers) >= 0
         assert len(results_types) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_certificatefield(self) -> None:
         """Given: Mock storage with test data
@@ -128,7 +128,7 @@ class Testfind:
         assert len(results_user) >= 0
         assert len(results_field) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_outputbasket(self) -> None:
         """Given: Mock storage with test data
@@ -152,7 +152,7 @@ class Testfind:
         assert len(results_all) >= 0
         assert len(results_since) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_transaction(self) -> None:
         """Given: Mock storage with test data
@@ -172,7 +172,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_commission(self) -> None:
         """Given: Mock storage with test data
@@ -192,7 +192,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_output(self) -> None:
         """Given: Mock storage with test data
@@ -212,7 +212,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_outputtag(self) -> None:
         """Given: Mock storage with test data
@@ -232,7 +232,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_outputtagmap(self) -> None:
         """Given: Mock storage with test data
@@ -252,7 +252,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_txlabel(self) -> None:
         """Given: Mock storage with test data
@@ -272,7 +272,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_txlabelmap(self) -> None:
         """Given: Mock storage with test data
@@ -292,7 +292,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_monitorevent(self) -> None:
         """Given: Mock storage with test data
@@ -312,7 +312,7 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_find_syncstate(self) -> None:
         """Given: Mock storage with test data

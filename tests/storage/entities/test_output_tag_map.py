@@ -12,7 +12,7 @@ from bsv_wallet_toolbox.storage.entities import OutputTagMap
 class TestOutputTagMapEntity:
     """Test suite for OutputTagMap entity."""
 
-    @pytest.mark.skip(reason="OutputTagMap entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_outputtagmap_getters_and_setters(self) -> None:
         """Given: OutputTagMap entity
@@ -56,7 +56,7 @@ class TestOutputTagMapEntity:
         with pytest.raises(Exception):
             _ = output_tag_map.id
 
-    @pytest.mark.skip(reason="OutputTagMap entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_returns_true_for_matching_entities(self) -> None:
         """Given: Two OutputTagMap entities with matching data
@@ -84,7 +84,7 @@ class TestOutputTagMapEntity:
         # When/Then
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    @pytest.mark.skip(reason="OutputTagMap entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_returns_false_for_non_matching_entities(self) -> None:
         """Given: Two OutputTagMap entities with different data
@@ -121,7 +121,7 @@ class TestOutputTagMapEntity:
         assert entity1.equals(entity2.to_api(), sync_map) is False
         assert entity1.equals(entity2.to_api()) is False
 
-    @pytest.mark.skip(reason="OutputTagMap entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at_at(
         self,
@@ -158,7 +158,7 @@ class TestOutputTagMapEntity:
         assert was_merged is True
         assert entity.is_deleted == 1
 
-    @pytest.mark.skip(reason="OutputTagMap entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at_at(self) -> None:
         """Given: OutputTagMap entity with same or newer updated_at

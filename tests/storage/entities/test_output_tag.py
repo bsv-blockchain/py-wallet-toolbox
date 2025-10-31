@@ -12,7 +12,7 @@ from bsv_wallet_toolbox.storage.entities import OutputTag
 class TestOutputTagEntity:
     """Test suite for OutputTag entity."""
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at(
         self,
@@ -50,7 +50,7 @@ class TestOutputTagEntity:
         assert was_merged is True
         assert entity.is_deleted == 1
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: OutputTag entity with same or newer updated_at
@@ -86,7 +86,7 @@ class TestOutputTagEntity:
         assert was_merged is False
         assert entity.is_deleted == 0
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_entities_without_syncmap(self) -> None:
         """Given: Two OutputTag entities with identical data
@@ -113,7 +113,7 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is True
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_entities_when_tags_differ(self) -> None:
         """Given: Two OutputTag entities with different tags
@@ -141,7 +141,7 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_entities_when_isdeleted_differs(self) -> None:
         """Given: Two OutputTag entities with different isDeleted
@@ -169,7 +169,7 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_entities_with_syncmap(self) -> None:
         """Given: Two OutputTag entities with identical data
@@ -198,7 +198,7 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_entities_when_userids_differ_and_no_syncmap_is_provided(self) -> None:
         """Given: Two OutputTag entities with different userIds
@@ -226,7 +226,7 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    @pytest.mark.skip(reason="OutputTag entity not implemented yet")
+    
     def test_getters_and_setters_work_as_expected_for_outputtag(self) -> None:
         """Given: OutputTag entity
            When: Set and get all properties

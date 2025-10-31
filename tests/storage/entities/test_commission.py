@@ -12,7 +12,7 @@ from bsv_wallet_toolbox.storage.entities import Commission
 class TestCommissionEntity:
     """Test suite for Commission entity."""
 
-    @pytest.mark.skip(reason="Commission entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_commission_entities(self) -> None:
         """Given: Two Commission entities with identical data
@@ -46,7 +46,7 @@ class TestCommissionEntity:
         assert entity1.equals(entity2.to_api()) is True
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    @pytest.mark.skip(reason="Commission entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_commission_entities(self) -> None:
         """Given: Two Commission entities with different data
@@ -90,7 +90,7 @@ class TestCommissionEntity:
             assert entity1.equals(mismatched_entity.to_api()) is False
             assert entity1.equals(mismatched_entity.to_api(), sync_map) is False
 
-    @pytest.mark.skip(reason="Commission entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
@@ -133,7 +133,7 @@ class TestCommissionEntity:
         assert was_merged is True
         assert entity.is_redeemed is True
 
-    @pytest.mark.skip(reason="Commission entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: Commission entity with same or newer updated_at
@@ -174,7 +174,7 @@ class TestCommissionEntity:
         assert was_merged is False
         assert entity.is_redeemed is False
 
-    @pytest.mark.skip(reason="Commission entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_commission_entity_getters_and_setters(self) -> None:
         """Given: Commission entity with initial data

@@ -13,7 +13,7 @@ from bsv_wallet_toolbox.storage.entities import Output
 class TestOutputEntity:
     """Test suite for Output entity."""
 
-    @pytest.mark.skip(reason="Output entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_entities_with_and_without_syncmap(self) -> None:
         """Given: Two Output entities with same data
@@ -60,7 +60,7 @@ class TestOutputEntity:
         assert entity1.equals(entity2.to_api()) is True
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    @pytest.mark.skip(reason="Output entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two Output entities with different satoshis
@@ -105,7 +105,7 @@ class TestOutputEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    @pytest.mark.skip(reason="Output entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_handles_optional_fields_and_arrays(self) -> None:
         """Given: Two Output entities with different lockingScript arrays
@@ -150,7 +150,7 @@ class TestOutputEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    @pytest.mark.skip(reason="Output entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
@@ -238,7 +238,7 @@ class TestOutputEntity:
         assert entity.change is True
         assert entity.type == "p2sh"
 
-    @pytest.mark.skip(reason="Output entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: Existing Output with new updated_at
@@ -296,7 +296,7 @@ class TestOutputEntity:
         assert was_merged is False
         assert entity.spendable is True
 
-    @pytest.mark.skip(reason="Output entity not implemented yet")
+    
     def test_output_entity_getters_and_setters(self) -> None:
         """Given: Output instance
            When: Set and get all properties

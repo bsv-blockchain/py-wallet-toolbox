@@ -10,7 +10,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .db import create_session_factory, session_scope
+from .db import create_session_factory, async_session_scope
 from .models import (
     Base,
     Output,
@@ -64,14 +64,14 @@ class StorageProvider:
         max_output_script_length: int | None = None,
     ) -> None:
         self.engine = engine
-        self.SessionLocal = create_session_factory(engine)
+        self.AsyncSessionLocal = create_session_factory(engine)
         self.chain = chain
         self.storage_identity_key = storage_identity_key
         self.max_output_script_length = max_output_script_length
         # Optional Services handle (wired by Wallet). Needed by some SpecOps.
         self._services: Any | None = None
 
-    def set_services(self, services: Any) -> None:
+    async def set_services(self, services: Any) -> None:
         """Attach a Services instance for network-backed checks.
 
         Summary:
@@ -86,7 +86,7 @@ class StorageProvider:
         """
         self._services = services
 
-    def get_services(self) -> Any:
+    async def get_services(self) -> Any:
         """Return the attached Services instance or raise if missing.
 
         Raises:
@@ -99,7 +99,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Lifecycle / availability
     # ------------------------------------------------------------------
-    def migrate(self) -> None:
+    async def migrate(self) -> None:
         """Create all tables if missing.
 
         Summary:
@@ -115,9 +115,13 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/schema/KnexMigrations.ts
         """
-        Base.metadata.create_all(self.engine)
+        async with self.engine.begin() as conn:
+            def _create_tables(sync_conn):
+                Base.metadata.create_all(bind=sync_conn)
+            
+            await conn.run_sync(_create_tables)
 
-    def is_available(self) -> bool:
+    async def is_available(self) -> bool:
         """Return True if storage is initialized.
 
         Summary:
@@ -133,11 +137,11 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Settings).where(Settings.storage_identity_key == self.storage_identity_key)
             return s.execute(q).scalar_one_or_none() is not None
 
-    def make_available(self) -> dict[str, Any]:
+    async def make_available(self) -> dict[str, Any]:
         """Ensure storage is initialized and return settings info.
 
         Summary:
@@ -154,10 +158,11 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageKnex.ts
         """
-        self.migrate()
-        with session_scope(self.SessionLocal) as s:
+        await self.migrate()
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Settings).where(Settings.storage_identity_key == self.storage_identity_key)
-            row = s.execute(q).scalar_one_or_none()
+            _exec_result = await s.execute(q)
+            row = _exec_result.scalar_one_or_none()
             if row is None:
                 # Derive dbtype for settings record
                 dialect = self.engine.dialect.name
@@ -179,11 +184,12 @@ class StorageProvider:
                 )
                 s.add(row)
                 try:
-                    s.flush()
+                    await s.flush()
                 except IntegrityError:
                     s.rollback()
                     # Race insert: re-read
-                    row = s.execute(q).scalar_one()
+                    _exec_result = await s.execute(q)
+                    row = _exec_result.scalar_one()
             return {
                 "storageIdentityKey": row.storage_identity_key,
                 "storageName": row.storage_name,
@@ -195,7 +201,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Users
     # ------------------------------------------------------------------
-    def find_or_insert_user(self, identity_key: str) -> dict[str, int | str]:
+    async def find_or_insert_user(self, identity_key: str) -> dict[str, int | str]:
         """Find existing user or insert a new one by identity_key.
 
         Summary:
@@ -211,23 +217,25 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(User).where(User.identity_key == identity_key)
-            u = s.execute(q).scalar_one_or_none()
+            _exec_result = await s.execute(q)
+            u = _exec_result.scalar_one_or_none()
             if u is None:
                 u = User(identity_key=identity_key)
                 s.add(u)
                 try:
-                    s.flush()
+                    await s.flush()
                 except IntegrityError:
                     s.rollback()
-                    u = s.execute(q).scalar_one()
+                    _exec_result = await s.execute(q)
+                    u = _exec_result.scalar_one()
             return {"userId": u.user_id, "identityKey": u.identity_key}
 
     # ------------------------------------------------------------------
     # listOutputs (minimal subset)
     # ------------------------------------------------------------------
-    def list_outputs(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    async def list_outputs(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """List wallet outputs with TS parity (SpecOps and includes).
 
         Summary:
@@ -326,7 +334,7 @@ class StorageProvider:
         if offset < 0:
             offset = -offset - 1
 
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             # SpecOp (TS compatibility): interpret special tags to alter query behavior
             # - 'all': ignore basket filter and include spent outputs
             # - 'change': include only change outputs
@@ -363,7 +371,8 @@ class StorageProvider:
                 bq = select(OutputBasket.basket_id).where(
                     (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
                 )
-                bid = s.execute(bq).scalar_one_or_none()
+                _exec_result = await s.execute(bq)
+                bid = _exec_result.scalar_one_or_none()
                 if bid is None:
                     return {"totalOutputs": 0, "outputs": []}
                 q = q.where(Output.basket_id == bid)
@@ -371,7 +380,7 @@ class StorageProvider:
             # Optional tag filters
             if tags:
                 # Resolve tag ids for user
-                tag_ids = s.execute(
+                tag_ids = await s.execute(
                     select(OutputTag.output_tag_id)
                     .where(OutputTag.user_id == user_id)
                     .where(OutputTag.is_deleted.is_(False))
@@ -398,13 +407,16 @@ class StorageProvider:
                         q = q.where(m.c.tc > 0)
 
             # Count total first (before limit/offset)
-            total = s.execute(q.with_only_columns(func.count())).scalar_one()
+            _result_count = await s.execute(q.with_only_columns(func.count()))
+            total = _result_count.scalar_one()
 
             # Ordered by primary key for determinism (SpecOp may ignore limit)
             q = q.order_by(Output.output_id)
             if not specop_ignore_limit:
                 q = q.limit(limit).offset(offset)
-            rows: Iterable[Output] = s.execute(q).scalars().all()
+            _result = await s.execute(q)
+
+            rows: Iterable[Output] = _result.scalars().all()
 
             # SpecOp: invalidChange -> filter to outputs that are NOT UTXOs per services
             if specop == "invalid_change":
@@ -483,7 +495,8 @@ class StorageProvider:
                         & (OutputBasket.name == "default")
                         & (OutputBasket.is_deleted.is_(False))
                     )
-                    b = s.execute(bq).scalar_one_or_none()
+                    _exec_result = await s.execute(bq)
+                    b = _exec_result.scalar_one_or_none()
                     if b is not None:
                         b.number_of_desired_utxos = ndutxos
                         b.minimum_desired_utxo_value = mduv
@@ -514,10 +527,10 @@ class StorageProvider:
                 known_txids = args.get("knownTxids") or []
                 if not isinstance(known_txids, list):
                     known_txids = []
-                result["BEEF"] = self._build_recursive_beef_for_txids(txids, known_txids=known_txids)
+                result["BEEF"] = await self._build_recursive_beef_for_txids(txids, known_txids=known_txids)
             return result
 
-    def validate_output_script(self, output_row: Output, session: Session | None = None) -> None:
+    async def validate_output_script(self, output_row: Output, session: Session | None = None) -> None:
         """Ensure `locking_script` is populated using rawTx slice if needed.
 
         Summary:
@@ -544,7 +557,7 @@ class StorageProvider:
         if script:
             output_row.locking_script = script
 
-    def _build_minimal_beef_for_txids(self, txids: list[str]) -> bytes:
+    async def _build_minimal_beef_for_txids(self, txids: list[str]) -> bytes:
         """Construct a minimal BEEF-like binary by concatenating rawTx blobs.
 
         Summary:
@@ -566,7 +579,7 @@ class StorageProvider:
             if txid in seen:
                 continue
             seen.add(txid)
-            r = self.get_proven_or_raw_tx(txid)
+            r = await self.get_proven_or_raw_tx(txid)
             raw = r.get("rawTx")
             if isinstance(raw, (bytes, bytearray)):
                 chunks.append(bytes(raw))
@@ -576,7 +589,7 @@ class StorageProvider:
                 chunks.append(bytes(ib))
         return b"".join(chunks)
 
-    def _build_recursive_beef_for_txids(self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None) -> bytes:
+    async def _build_recursive_beef_for_txids(self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None) -> bytes:
         """Construct a more complete BEEF-like binary including ancestors.
 
         Summary:
@@ -595,11 +608,11 @@ class StorageProvider:
         known: set[str] = set(known_txids or [])
         first_beef: bytes | None = None
 
-        def add_tx_and_ancestors(cur_txid: str, depth: int) -> None:
+        async def add_tx_and_ancestors(cur_txid: str, depth: int) -> None:
             if cur_txid in seen or depth > max_depth:
                 return
             seen.add(cur_txid)
-            r = self.get_proven_or_raw_tx(cur_txid)
+            r = await self.get_proven_or_raw_tx(cur_txid)
             raw = r.get("rawTx")
             if isinstance(raw, (bytes, bytearray)):
                 # Attempt to parse and follow inputs (and attach MerklePath)
@@ -617,10 +630,10 @@ class StorageProvider:
                             if isinstance(src, str) and src and src != "00" * 32:
                                 # If the caller already knows this txid, do not fetch/descend further
                                 if src not in known:
-                                    add_tx_and_ancestors(src, depth + 1)
+                                    await add_tx_and_ancestors(src, depth + 1)
                                 # Try to hydrate parent transaction for to_beef ancestry
                                 try:
-                                    pr = self.get_proven_or_raw_tx(src)
+                                    pr = await self.get_proven_or_raw_tx(src)
                                     praw = pr.get("rawTx")
                                     if isinstance(praw, (bytes, bytearray)):
                                         parent_tx = Transaction.from_hex(praw)
@@ -644,7 +657,7 @@ class StorageProvider:
                 chunks.append(bytes(ib))
 
         for tid in txids:
-            add_tx_and_ancestors(tid, 0)
+            await add_tx_and_ancestors(tid, 0)
 
         # Prefer a single BEEF if constructed for the primary tx
         if first_beef is not None:
@@ -664,7 +677,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Additional find/list helpers
     # ------------------------------------------------------------------
-    def find_output_baskets_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
+    async def find_output_baskets_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
         """Find output baskets for a user.
 
         Summary:
@@ -684,14 +697,15 @@ class StorageProvider:
         """
         user_id = int(auth["userId"])  # KeyError if missing
         name = args.get("name")
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(OutputBasket).where((OutputBasket.user_id == user_id) & (OutputBasket.is_deleted.is_(False)))
             if name:
                 q = q.where(OutputBasket.name == name)
-            rows = s.execute(q).scalars().all()
+            _exec_result = await s.execute(q)
+            rows = _exec_result.scalars()
             return [{"basketId": r.basket_id, "name": r.name} for r in rows]
 
-    def get_tags_for_output_id(self, output_id: int) -> list[dict[str, Any]]:
+    async def get_tags_for_output_id(self, output_id: int) -> list[dict[str, Any]]:
         """Return tags associated with an output.
 
         Summary:
@@ -707,7 +721,7 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             mq = select(OutputTagMap.output_tag_id).where(
                 (OutputTagMap.output_id == output_id) & (OutputTagMap.is_deleted.is_(False))
             )
@@ -715,10 +729,11 @@ class StorageProvider:
             if not tag_ids:
                 return []
             tq = select(OutputTag).where(OutputTag.output_tag_id.in_(tag_ids), OutputTag.is_deleted.is_(False))
-            rows = s.execute(tq).scalars().all()
+            _exec_result = await s.execute(tq)
+            rows = _exec_result.scalars()
             return [{"outputTagId": r.output_tag_id, "tag": r.tag} for r in rows]
 
-    def get_labels_for_transaction_id(self, transaction_id: int) -> list[dict[str, Any]]:
+    async def get_labels_for_transaction_id(self, transaction_id: int) -> list[dict[str, Any]]:
         """Return labels associated with a transaction.
 
         Summary:
@@ -734,16 +749,17 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             mq = select(TxLabelMap.tx_label_id).where(TxLabelMap.transaction_id == transaction_id)
             label_ids = [i for i in s.execute(mq).scalars().all()]
             if not label_ids:
                 return []
             tq = select(TxLabel).where(TxLabel.tx_label_id.in_(label_ids), TxLabel.is_deleted.is_(False))
-            rows = s.execute(tq).scalars().all()
+            _exec_result = await s.execute(tq)
+            rows = _exec_result.scalars()
             return [{"txLabelId": r.tx_label_id, "label": r.label} for r in rows]
 
-    def find_outputs_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
+    async def find_outputs_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
         """Find outputs by partial filters for a user.
 
         Summary:
@@ -765,7 +781,7 @@ class StorageProvider:
         user_id = int(auth["userId"])  # KeyError if missing
         basket_name = args.get("basket")
         spendable = args.get("spendable", None)
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Output).where(Output.user_id == user_id)
             if spendable is not None:
                 q = q.where(Output.spendable.is_(bool(spendable)))
@@ -773,11 +789,14 @@ class StorageProvider:
                 bq = select(OutputBasket.basket_id).where(
                     (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
                 )
-                bid = s.execute(bq).scalar_one_or_none()
+                _exec_result = await s.execute(bq)
+                bid = _exec_result.scalar_one_or_none()
                 if bid is None:
                     return []
                 q = q.where(Output.basket_id == bid)
-            rows: Iterable[Output] = s.execute(q).scalars().all()
+            _result = await s.execute(q)
+
+            rows: Iterable[Output] = _result.scalars().all()
             r: list[dict[str, Any]] = []
             for o in rows:
                 r.append(
@@ -794,7 +813,7 @@ class StorageProvider:
                 )
             return r
 
-    def relinquish_output(self, auth: dict[str, Any], outpoint: str) -> int:
+    async def relinquish_output(self, auth: dict[str, Any], outpoint: str) -> int:
         """Unset basket on an output identified by 'txid.vout'.
 
         Summary:
@@ -817,16 +836,17 @@ class StorageProvider:
             vout = int(vout_s)
         except Exception:
             return 0
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Output).where((Output.user_id == user_id) & (Output.txid == txid) & (Output.vout == vout))
-            o = s.execute(q).scalar_one_or_none()
+            _exec_result = await s.execute(q)
+            o = _exec_result.scalar_one_or_none()
             if not o:
                 return 0
             o.basket_id = None
             s.add(o)
             return 1
 
-    def update_output(self, output_id: int, patch: dict[str, Any]) -> int:
+    async def update_output(self, output_id: int, patch: dict[str, Any]) -> int:
         """Update fields on an `Output` row by id (minimal keys).
 
         Summary:
@@ -850,8 +870,9 @@ class StorageProvider:
         to_apply = {k: v for k, v in patch.items() if k in allowed}
         if not to_apply:
             return 0
-        with session_scope(self.SessionLocal) as s:
-            o = s.execute(select(Output).where(Output.output_id == output_id)).scalar_one_or_none()
+        async with async_session_scope(self.AsyncSessionLocal) as s:
+            _result = await s.execute(select(Output).where(Output.output_id == output_id))
+            o = _result.scalar_one_or_none()
             if not o:
                 return 0
             if "spendable" in to_apply:
@@ -864,7 +885,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Certificates / Proven / Utility
     # ------------------------------------------------------------------
-    def find_certificates_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
+    async def find_certificates_auth(self, auth: dict[str, Any], args: dict[str, Any]) -> list[dict[str, Any]]:
         """Find certificates for a user (subset fields).
 
         Summary:
@@ -882,7 +903,7 @@ class StorageProvider:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
         user_id = int(auth["userId"])  # KeyError if missing
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Certificate).where(Certificate.user_id == user_id, Certificate.is_deleted.is_(False))
             if t := args.get("type"):
                 q = q.where(Certificate.type == t)
@@ -890,7 +911,8 @@ class StorageProvider:
                 q = q.where(Certificate.certifier == c)
             if sn := args.get("serialNumber"):
                 q = q.where(Certificate.serial_number == sn)
-            rows = s.execute(q).scalars().all()
+            _exec_result = await s.execute(q)
+            rows = _exec_result.scalars()
             return [
                 {
                     "certificateId": r.certificate_id,
@@ -903,7 +925,7 @@ class StorageProvider:
                 for r in rows
             ]
 
-    def find_proven_tx_reqs(self, args: dict[str, Any]) -> list[dict[str, Any]]:
+    async def find_proven_tx_reqs(self, args: dict[str, Any]) -> list[dict[str, Any]]:
         """Find ProvenTxReq rows by partial filters (subset fields).
 
         Summary:
@@ -919,7 +941,7 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(ProvenTxReq)
             if txid := args.get("txid"):
                 q = q.where(ProvenTxReq.txid == txid)
@@ -927,7 +949,8 @@ class StorageProvider:
                 q = q.where(ProvenTxReq.status == status)
             if batch := args.get("batch"):
                 q = q.where(ProvenTxReq.batch == batch)
-            rows = s.execute(q).scalars().all()
+            _exec_result = await s.execute(q)
+            rows = _exec_result.scalars()
             return [
                 {
                     "provenTxReqId": r.proven_tx_req_id,
@@ -939,7 +962,7 @@ class StorageProvider:
                 for r in rows
             ]
 
-    def get_proven_or_raw_tx(self, txid: str) -> dict[str, Any]:
+    async def get_proven_or_raw_tx(self, txid: str) -> dict[str, Any]:
         """Return proven or raw tx for a txid if known (subset fields).
 
         Summary:
@@ -955,20 +978,22 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        with session_scope(self.SessionLocal) as s:
-            p = s.execute(select(ProvenTx).where(ProvenTx.txid == txid)).scalar_one_or_none()
+        async with async_session_scope(self.AsyncSessionLocal) as s:
+            _result = await s.execute(select(ProvenTx).where(ProvenTx.txid == txid))
+            p = _result.scalar_one_or_none()
             if p is not None:
                 return {
                     "proven": {"provenTxId": p.proven_tx_id},
                     "rawTx": p.raw_tx,
                     "merklePath": p.merkle_path,
                 }
-            r = s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid)).scalar_one_or_none()
+            _result = await s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid))
+            r = _result.scalar_one_or_none()
             if r is None:
                 return {"proven": None, "rawTx": None}
             return {"proven": None, "rawTx": r.raw_tx, "inputBEEF": r.input_beef}
 
-    def get_raw_tx_of_known_valid_transaction(
+    async def get_raw_tx_of_known_valid_transaction(
         self, txid: str | None, offset: int | None, length: int | None
     ) -> bytes | None:
         """Return rawTx slice for a known transaction (if available).
@@ -991,7 +1016,7 @@ class StorageProvider:
         """
         if not txid:
             return None
-        r = self.get_proven_or_raw_tx(txid)
+        r = await self.get_proven_or_raw_tx(txid)
         raw = r.get("rawTx")
         if not raw:
             return None
@@ -999,7 +1024,7 @@ class StorageProvider:
             return raw
         return bytes(raw[offset : offset + length])
 
-    def verify_known_valid_transaction(self, txid: str) -> bool:
+    async def verify_known_valid_transaction(self, txid: str) -> bool:
         """Return True if txid is known proven or rawTx is present.
 
         Summary:
@@ -1012,10 +1037,10 @@ class StorageProvider:
         Returns:
             True if proven or rawTx present; otherwise False.
         """
-        r = self.get_proven_or_raw_tx(txid)
+        r = await self.get_proven_or_raw_tx(txid)
         return bool(r.get("proven") or r.get("rawTx"))
 
-    def get_valid_beef_for_txid(self, txid: str, known_txids: list[str] | None = None) -> bytes:
+    async def get_valid_beef_for_txid(self, txid: str, known_txids: list[str] | None = None) -> bytes:
         """Return a BEEF-like bytes blob for a known txid (minimal parity).
 
         Summary:
@@ -1030,12 +1055,12 @@ class StorageProvider:
         Returns:
             bytes: BEEF-like payload (may be a single-tx BEEF when possible).
         """
-        return self._build_recursive_beef_for_txids([txid], known_txids=known_txids)
+        return await self._build_recursive_beef_for_txids([txid], known_txids=known_txids)
 
     # ------------------------------------------------------------------
     # Proven helpers
     # ------------------------------------------------------------------
-    def find_or_insert_proven_tx(self, api: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    async def find_or_insert_proven_tx(self, api: dict[str, Any]) -> tuple[dict[str, Any], bool]:
         """Find or insert a ProvenTx row by txid.
 
         Summary:
@@ -1054,8 +1079,9 @@ class StorageProvider:
         txid = api.get("txid")
         if not isinstance(txid, str) or len(txid) != 64:
             raise ValueError("txid must be 64-hex string")
-        with session_scope(self.SessionLocal) as s:
-            row = s.execute(select(ProvenTx).where(ProvenTx.txid == txid)).scalar_one_or_none()
+        async with async_session_scope(self.AsyncSessionLocal) as s:
+            _result = await s.execute(select(ProvenTx).where(ProvenTx.txid == txid))
+            row = _result.scalar_one_or_none()
             is_new = False
             if row is None:
                 row = ProvenTx(
@@ -1068,7 +1094,7 @@ class StorageProvider:
                     merkle_root=api.get("merkleRoot") or "0" * 64,
                 )
                 s.add(row)
-                s.flush()
+                await s.flush()
                 is_new = True
             return (
                 {
@@ -1080,7 +1106,7 @@ class StorageProvider:
                 is_new,
             )
 
-    def update_proven_tx_req_with_new_proven_tx(self, args: dict[str, Any]) -> dict[str, Any]:
+    async def update_proven_tx_req_with_new_proven_tx(self, args: dict[str, Any]) -> dict[str, Any]:
         """Attach a new ProvenTx to an existing ProvenTxReq and mark completed.
 
         Summary:
@@ -1099,15 +1125,16 @@ class StorageProvider:
         """
         req_id = int(args.get("provenTxReqId", 0))
         txid = args.get("txid")
-        with session_scope(self.SessionLocal) as s:
-            req = s.execute(select(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id == req_id)).scalar_one_or_none()
+        async with async_session_scope(self.AsyncSessionLocal) as s:
+            _result = await s.execute(select(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id == req_id))
+            req = _result.scalar_one_or_none()
             if req is None:
                 raise ValueError("ProvenTxReq not found")
             if txid and req.txid != txid:
                 raise ValueError("txid mismatch with ProvenTxReq")
 
             # Insert/find ProvenTx
-            row_dict, _ = self.find_or_insert_proven_tx(
+            row_dict, _ = await self.find_or_insert_proven_tx(
                 {
                     "txid": req.txid,
                     "height": args.get("height", 0),
@@ -1129,7 +1156,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Listing APIs (minimal shapes)
     # ------------------------------------------------------------------
-    def list_certificates(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    async def list_certificates(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """List certificates (TS-like minimal shape).
 
         Summary:
@@ -1146,10 +1173,10 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        rows = self.find_certificates_auth(auth, args)
+        rows = await self.find_certificates_auth(auth, args)
         return {"totalCertificates": len(rows), "certificates": rows}
 
-    def list_actions(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    async def list_actions(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """List actions (minimal placeholder: empty list).
 
         Summary:
@@ -1172,7 +1199,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Change selection helpers (minimal)
     # ------------------------------------------------------------------
-    def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
+    async def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
         """Count spendable outputs in a basket (optionally excluding 'sending').
 
         Summary:
@@ -1188,13 +1215,15 @@ class StorageProvider:
         Returns:
             Integer count of available change inputs.
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Output).where(
                 (Output.user_id == user_id)
                 & (Output.basket_id == basket_id)
                 & (Output.spendable.is_(True))
             )
-            rows: Iterable[Output] = s.execute(q).scalars().all()
+            _result = await s.execute(q)
+
+            rows: Iterable[Output] = _result.scalars().all()
             if not exclude_sending:
                 return len(rows)
 
@@ -1205,7 +1234,7 @@ class StorageProvider:
                 if output_row.spent_by is None:
                     count += 1
                 else:
-                    tx = s.execute(
+                    tx = await s.execute(
                         select(ProvenTxReq).where(ProvenTxReq.proven_tx_id == output_row.spent_by)
                     ).scalar_one_or_none()
                     # If req not found or not 'sending', still count
@@ -1213,7 +1242,7 @@ class StorageProvider:
                         count += 1
             return count
 
-    def allocate_change_input(
+    async def allocate_change_input(
         self,
         user_id: int,
         basket_id: int,
@@ -1240,26 +1269,31 @@ class StorageProvider:
         Returns:
             Minimal output dict or None.
         """
-        with session_scope(self.SessionLocal) as s:
+        async with async_session_scope(self.AsyncSessionLocal) as s:
             q = select(Output).where(
                 (Output.user_id == user_id)
                 & (Output.basket_id == basket_id)
                 & (Output.spendable.is_(True))
             )
-            rows: list[Output] = s.execute(q).scalars().all()
+            _exec_result = await s.execute(q)
+            rows: list[Output] = _exec_result.scalars().all()
             # Apply exclude_sending filter (approximate)
-            def ok(output_row: Output) -> bool:
+            async def ok(output_row: Output) -> bool:
                 if exclude_sending and output_row.spent_by is not None:
-                    req = s.execute(
+                    _exec_result_inner = await s.execute(
                         select(ProvenTxReq).where(ProvenTxReq.proven_tx_id == output_row.spent_by)
-                    ).scalar_one_or_none()
+                    )
+                    req = _exec_result_inner.scalar_one_or_none()
                     if req and req.status == "sending":
                         return False
                 if exact_satoshis is not None:
                     return int(output_row.satoshis) == int(exact_satoshis)
                 return int(output_row.satoshis) >= int(target_satoshis)
 
-            candidates = [output_row for output_row in rows if ok(output_row)]
+            candidates = []
+            for output_row in rows:
+                if await ok(output_row):
+                    candidates.append(output_row)
             if not candidates:
                 return None
             # Choose smallest sufficient (greedy)

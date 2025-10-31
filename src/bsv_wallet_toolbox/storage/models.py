@@ -5,6 +5,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     ForeignKey,
     Index,
     Integer,
@@ -35,7 +36,7 @@ class TimestampMixin:
         DateTime(timezone=False)
         .with_variant(mysql.DATETIME(fsp=3), "mysql")
         .with_variant(postgresql.TIMESTAMP(precision=3), "postgresql"),
-        server_default=text("CURRENT_TIMESTAMP(3)"),
+        server_default=text("CURRENT_TIMESTAMP"),
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
@@ -43,7 +44,7 @@ class TimestampMixin:
         DateTime(timezone=False)
         .with_variant(mysql.DATETIME(fsp=3), "mysql")
         .with_variant(postgresql.TIMESTAMP(precision=3), "postgresql"),
-        server_default=text("CURRENT_TIMESTAMP(3)"),
+        server_default=text("CURRENT_TIMESTAMP"),
         nullable=False,
     )
 

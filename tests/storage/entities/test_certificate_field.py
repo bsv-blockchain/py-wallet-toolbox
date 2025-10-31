@@ -12,7 +12,7 @@ from bsv_wallet_toolbox.storage.entities import CertificateField
 class TestCertificateFieldEntity:
     """Test suite for CertificateField entity."""
 
-    @pytest.mark.skip(reason="CertificateField entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_certificatefield_entities(self) -> None:
         """Given: Two CertificateField entities with identical data
@@ -45,7 +45,7 @@ class TestCertificateFieldEntity:
         assert entity1.equals(entity2.to_api()) is True
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    @pytest.mark.skip(reason="CertificateField entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_certificatefield_entities(self) -> None:
         """Given: Two CertificateField entities with different data
@@ -91,7 +91,7 @@ class TestCertificateFieldEntity:
             sync_map = {"certificate": {"idMap": {certificate_id1: certificate_id1, certificate_id2: certificate_id2}}}
             assert entity1.equals(mismatched_entity.to_api(), sync_map) is False
 
-    @pytest.mark.skip(reason="CertificateField entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
@@ -138,7 +138,7 @@ class TestCertificateFieldEntity:
         assert entity.field_value == "updatedValue"
         assert entity.master_key == "updatedMasterKey"
 
-    @pytest.mark.skip(reason="CertificateField entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_update_entity_when_ei_updated_at_less_than_or_equal_this_updated_at(
         self,
@@ -185,7 +185,7 @@ class TestCertificateFieldEntity:
         assert entity.field_value == "value1"
         assert entity.master_key == "masterKey1"
 
-    @pytest.mark.skip(reason="CertificateField entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_certificatefield_getters_and_setters(self) -> None:
         """Given: CertificateField entity with initial data

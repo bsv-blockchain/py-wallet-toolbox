@@ -14,7 +14,7 @@ from bsv_wallet_toolbox.storage.entities import User
 class TestUsersEntity:
     """Test suite for User entity."""
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_creates_user_with_default_values(self) -> None:
         """Given: Default User constructor
            When: Create User with no arguments
@@ -34,7 +34,7 @@ class TestUsersEntity:
         assert isinstance(user.updated_at, datetime)
         assert user.created_at <= user.updated_at
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_creates_user_with_provided_api_object(self) -> None:
         """Given: API object with user data
            When: Create User with provided API object
@@ -63,7 +63,7 @@ class TestUsersEntity:
         assert user.created_at == now
         assert user.updated_at == now
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_getters_and_setters_work_correctly(self) -> None:
         """Given: User instance
            When: Set values using setters
@@ -91,7 +91,7 @@ class TestUsersEntity:
         assert user.updated_at == now
         assert user.active_storage == "testActiveStorage"
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_entities(self) -> None:
         """Given: Two User entities with same identityKey but different IDs
@@ -126,7 +126,7 @@ class TestUsersEntity:
         # When/Then
         assert user1.equals(user2_api, sync_map) is True
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two User entities with different identityKeys
@@ -161,7 +161,7 @@ class TestUsersEntity:
         # When/Then
         assert user1.equals(user2_api, sync_map) is False
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_handles_edge_cases_in_constructor(self) -> None:
         """Given: Partial API object with missing fields
            When: Create User with partial API object
@@ -186,7 +186,7 @@ class TestUsersEntity:
         assert user.created_at == past_date
         assert user.updated_at is None  # Default None for missing field
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_handles_large_input_values(self) -> None:
         """Given: API object with large values
            When: Create User with large userId and long identityKey
@@ -217,7 +217,7 @@ class TestUsersEntity:
         assert user.user_id == large_user_id
         assert user.identity_key == long_identity_key
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_handles_empty_api_object(self) -> None:
         """Given: Empty API object
            When: Create User with empty dict
@@ -239,7 +239,7 @@ class TestUsersEntity:
         assert user.created_at is None
         assert user.updated_at is None
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_id_getter_and_setter_work_correctly(self) -> None:
         """Given: User instance
            When: Set id property
@@ -258,7 +258,7 @@ class TestUsersEntity:
         # Then
         assert user.id == 123
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_entityname_returns_user(self) -> None:
         """Given: User instance
            When: Access entity_name property
@@ -274,7 +274,7 @@ class TestUsersEntity:
         # When/Then
         assert user.entity_name == "user"
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     def test_entitytable_returns_users(self) -> None:
         """Given: User instance
            When: Access entity_table property
@@ -290,7 +290,7 @@ class TestUsersEntity:
         # When/Then
         assert user.entity_table == "users"
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_user_when_ei_updated_at_is_newer(self) -> None:
         """Given: Existing User with old updated_at
@@ -340,7 +340,7 @@ class TestUsersEntity:
         assert user.active_storage == "newStorage"
         assert update_called
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_update_user_when_ei_updated_at_is_older(self) -> None:
         """Given: Existing User with new updated_at
@@ -383,7 +383,7 @@ class TestUsersEntity:
         assert result is False
         assert user.active_storage == "oldStorage"
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_user_with_trx(self) -> None:
         """Given: Existing User and transaction token
@@ -436,7 +436,7 @@ class TestUsersEntity:
         assert user.active_storage == "newStorage"
         assert update_called
 
-    @pytest.mark.skip(reason="User entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergenew_always_throws_error(self) -> None:
         """Given: User instance

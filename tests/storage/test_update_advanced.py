@@ -13,7 +13,7 @@ import pytest
 class Testupdate2:
     """Test suite for advanced database UPDATE operations."""
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventx(self) -> None:
         """Given: Mock storage with existing ProvenTx records
@@ -46,7 +46,7 @@ class Testupdate2:
             assert len(updated) == 1
             assert updated[0]["provenTxId"] == record["provenTxId"]
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventx_193(self) -> None:
         """Given: Mock storage with existing ProvenTx records
@@ -87,7 +87,7 @@ class Testupdate2:
             # Then
             assert result == 1
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventx_set_created_at_and_updated_at_time(self) -> None:
         """Given: Mock storage with existing ProvenTx records
@@ -132,7 +132,7 @@ class Testupdate2:
                 # Should handle invalid timestamps appropriately
                 await mock_storage.update_proven_tx(record["provenTxId"], scenario["updates"])
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventx_setting_individual_values(self) -> None:
         """Given: Mock storage with newly inserted ProvenTx
@@ -175,7 +175,7 @@ class Testupdate2:
         await mock_storage.update_proven_tx(3, {"blockHash": "newHash"})
         await mock_storage.update_proven_tx(3, {"height": 12345})
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventxreq(self) -> None:
         """Given: Mock storage with existing ProvenTxReq records
@@ -217,7 +217,7 @@ class Testupdate2:
             # Then
             assert result == 1
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventxreq_set_created_at_and_updated_at_time(self) -> None:
         """Given: Mock storage with existing ProvenTxReq records
@@ -261,7 +261,7 @@ class Testupdate2:
             for scenario in scenarios:
                 await mock_storage.update_proven_tx_req(record["provenTxReqId"], scenario["updates"])
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_proventxreq_setting_individual_values(self) -> None:
         """Given: Mock storage with newly inserted ProvenTxReq records
@@ -303,7 +303,7 @@ class Testupdate2:
         await mock_storage.update_proven_tx_req(3, {"status": "completed"})
         await mock_storage.update_proven_tx_req(3, {"attempts": 5})
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_user(self) -> None:
         """Given: Mock storage with existing User records
@@ -340,7 +340,7 @@ class Testupdate2:
             # Then
             assert result == 1
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_user_set_created_at_and_updated_at_time(self) -> None:
         """Given: Mock storage with existing User records
@@ -381,7 +381,7 @@ class Testupdate2:
             for scenario in scenarios:
                 await mock_storage.update_user(record["userId"], scenario["updates"])
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_user_trigger_db_unique_constraint_errors(self) -> None:
         """Given: Mock storage with multiple User records
@@ -401,7 +401,7 @@ class Testupdate2:
         with pytest.raises(Exception):
             await mock_storage.update_user(2, {"identityKey": "mockDupIdentityKey"})
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_user_trigger_db_foreign_key_constraint_errors(self) -> None:
         """Given: Mock storage with User records
@@ -421,7 +421,7 @@ class Testupdate2:
         with pytest.raises(Exception):
             await mock_storage.update_user(1, {"userId": 0})
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_user_table_setting_individual_values(self) -> None:
         """Given: Mock storage with newly inserted User
@@ -458,7 +458,7 @@ class Testupdate2:
         # Then - can update individual fields
         await mock_storage.update_user(3, {"identityKey": "newKey"})
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_certificate(self) -> None:
         """Given: Mock storage with existing Certificate records
@@ -500,7 +500,7 @@ class Testupdate2:
             # Then
             assert result == 1
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_certificate_set_created_at_and_updated_at_time(self) -> None:
         """Given: Mock storage with existing Certificate records
@@ -544,7 +544,7 @@ class Testupdate2:
             for scenario in scenarios:
                 await mock_storage.update_certificate(record["certificateId"], scenario["updates"])
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_certificate_trigger_db_unique_constraint_errors(self) -> None:
         """Given: Mock storage with multiple Certificate records
@@ -564,7 +564,7 @@ class Testupdate2:
         with pytest.raises(Exception):
             await mock_storage.update_certificate(2, {"serialNumber": "mockDupSerial"})
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_update_certificate_trigger_db_foreign_key_constraint_errors(self) -> None:
         """Given: Mock storage with Certificate records

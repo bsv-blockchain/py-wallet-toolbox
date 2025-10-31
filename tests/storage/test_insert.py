@@ -10,7 +10,7 @@ import pytest
 class Testinsert:
     """Test suite for database INSERT operations."""
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_proventx(self) -> None:
         """Given: Mock storage with test ProvenTx data
@@ -37,7 +37,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_proven_tx(ptx)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_proventxreq(self) -> None:
         """Given: Mock storage with test ProvenTxReq data
@@ -64,7 +64,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_proven_tx_req(ptxreq)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_user(self) -> None:
         """Given: Mock storage with test User data
@@ -91,7 +91,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_user(user)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_certificate(self) -> None:
         """Given: Mock storage with test Certificate data
@@ -127,7 +127,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_certificate(cert)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_certificatefield(self) -> None:
         """Given: Mock storage with test CertificateField data
@@ -162,7 +162,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_certificate_field(field)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_outputbasket(self) -> None:
         """Given: Mock storage with test OutputBasket data
@@ -198,7 +198,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_output_basket(basket)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_transaction(self) -> None:
         """Given: Mock storage with test Transaction data
@@ -236,7 +236,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_transaction(tx)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_commission(self) -> None:
         """Given: Mock storage with test Commission data
@@ -273,7 +273,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_commission(commission)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_output(self) -> None:
         """Given: Mock storage with test Output data
@@ -312,7 +312,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_output(output)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_outputtag(self) -> None:
         """Given: Mock storage with test OutputTag data
@@ -347,7 +347,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_output_tag(tag)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_outputtagmap(self) -> None:
         """Given: Mock storage with test OutputTagMap data
@@ -374,7 +374,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_output_tag_map(tagmap)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_txlabel(self) -> None:
         """Given: Mock storage with test TxLabel data
@@ -409,7 +409,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_tx_label(label)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_txlabelmap(self) -> None:
         """Given: Mock storage with test TxLabelMap data
@@ -436,7 +436,7 @@ class Testinsert:
         with pytest.raises(Exception):
             await mock_storage.insert_tx_label_map(labelmap)
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_monitorevent(self) -> None:
         """Given: Mock storage with test MonitorEvent data
@@ -458,7 +458,7 @@ class Testinsert:
         # Then
         assert event_id > 0
 
-    @pytest.mark.skip(reason="Storage implementation not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_insert_syncstate(self) -> None:
         """Given: Mock storage with test SyncState data

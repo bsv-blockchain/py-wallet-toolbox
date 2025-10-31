@@ -14,7 +14,7 @@ from bsv_wallet_toolbox.storage.entities import Transaction
 class TestTransactionEntity:
     """Test suite for Transaction entity."""
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_creates_instance_with_default_values(self) -> None:
         """Given: Default Transaction constructor
            When: Create Transaction with no arguments
@@ -44,7 +44,7 @@ class TestTransactionEntity:
         assert tx.created_at <= now
         assert tx.updated_at <= now
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_creates_instance_with_provided_api_object(self) -> None:
         """Given: API object with transaction data
            When: Create Transaction with provided API object
@@ -88,7 +88,7 @@ class TestTransactionEntity:
         assert tx.created_at == now
         assert tx.updated_at == now
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_getters_and_setters_work_correctly(self) -> None:
         """Given: Transaction instance
            When: Set values using setters including version and lockTime
@@ -134,7 +134,7 @@ class TestTransactionEntity:
         assert tx.version == 2
         assert tx.lock_time == 5000
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_getbsvtx_returns_parsed_transaction(self) -> None:
         """Given: Transaction with rawTx bytes
            When: Call get_bsv_tx
@@ -154,7 +154,7 @@ class TestTransactionEntity:
         # Then
         assert isinstance(bsv_tx, BsvTransaction)
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_getbsvtx_returns_undefined_if_no_rawtx(self) -> None:
         """Given: Transaction without rawTx
            When: Call get_bsv_tx
@@ -173,7 +173,7 @@ class TestTransactionEntity:
         # Then
         assert bsv_tx is None
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_getbsvtxins_returns_inputs(self) -> None:
         """Given: Transaction with rawTx bytes
            When: Call get_bsv_tx_ins
@@ -193,7 +193,7 @@ class TestTransactionEntity:
         # Then
         assert isinstance(inputs, list)
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getinputs_combines_spentby_and_rawtx_inputs(self) -> None:
         """Given: Transaction with outputs linked by spentBy
@@ -225,7 +225,7 @@ class TestTransactionEntity:
         assert any(inp["vout"] == 0 and inp["satoshis"] == 100 for inp in inputs)
         assert any(inp["vout"] == 1 and inp["satoshis"] == 200 for inp in inputs)
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_when_ei_updated_at_is_newer(self) -> None:
         """Given: Existing Transaction with old updated_at
@@ -282,7 +282,7 @@ class TestTransactionEntity:
         found_txs = await mock_storage.find_transactions({"partial": {"transactionId": 123}})
         assert found_txs[0]["txid"] == "newTxId"
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_getbsvtx_handles_undefined_rawtx(self) -> None:
         """Given: Transaction with no rawTx
            When: Call get_bsv_tx
@@ -301,7 +301,7 @@ class TestTransactionEntity:
         # Then
         assert bsv_tx is None
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getinputs_handles_storage_lookups_and_input_merging(self) -> None:
         """Given: Transaction with complex input sources
@@ -328,7 +328,7 @@ class TestTransactionEntity:
         assert isinstance(inputs, list)
         # Verify proper merging logic
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getproventx_retrieves_proven_transaction(self) -> None:
         """Given: Transaction with valid provenTxId
@@ -359,7 +359,7 @@ class TestTransactionEntity:
         assert retrieved_proven_tx is not None
         assert retrieved_proven_tx["provenTxId"] == 123
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getproventx_returns_undefined_when_proventxid_is_not_set(self) -> None:
         """Given: Transaction without provenTxId
@@ -382,7 +382,7 @@ class TestTransactionEntity:
         # Then
         assert retrieved_proven_tx is None
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getproventx_returns_undefined_when_no_matching_proventx_is_found(self) -> None:
         """Given: Transaction with provenTxId that doesn't exist
@@ -408,7 +408,7 @@ class TestTransactionEntity:
         # Then
         assert retrieved_proven_tx is None
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getinputs_merges_known_inputs_correctly(self) -> None:
         """Given: Transaction with multiple input sources
@@ -439,7 +439,7 @@ class TestTransactionEntity:
         assert any(inp.get("outputId") == 1 for inp in inputs)
         assert any(inp.get("outputId") == 2 for inp in inputs)
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_get_version_returns_api_version(self) -> None:
         """Given: Transaction with version property
            When: Access version property
@@ -455,7 +455,7 @@ class TestTransactionEntity:
         # When/Then
         assert tx.version == 2
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_get_locktime_returns_api_locktime(self) -> None:
         """Given: Transaction with lockTime property
            When: Access lock_time property
@@ -471,7 +471,7 @@ class TestTransactionEntity:
         # When/Then
         assert tx.lock_time == 5000
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_set_id_updates_transactionid(self) -> None:
         """Given: Transaction instance
            When: Set id property
@@ -491,7 +491,7 @@ class TestTransactionEntity:
         assert tx.transaction_id == 456
         assert tx.id == 456
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_get_entityname_returns_correct_value(self) -> None:
         """Given: Transaction instance
            When: Access entity_name property
@@ -507,7 +507,7 @@ class TestTransactionEntity:
         # When/Then
         assert tx.entity_name == "transaction"
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_get_entitytable_returns_correct_value(self) -> None:
         """Given: Transaction instance
            When: Access entity_table property
@@ -523,7 +523,7 @@ class TestTransactionEntity:
         # When/Then
         assert tx.entity_table == "transactions"
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_returns_false_for_mismatched_other_properties(self) -> None:
         """Given: Two transactions with different properties
@@ -549,7 +549,7 @@ class TestTransactionEntity:
         # When/Then
         assert tx1.equals(tx2_api, sync_map) is False
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_getinputs_handles_known_and_unknown_inputs(self) -> None:
         """Given: Transaction with both known and unknown inputs
@@ -576,7 +576,7 @@ class TestTransactionEntity:
         assert isinstance(inputs, list)
         assert len(inputs) >= 1
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_equals_identifies_matching_entities(self) -> None:
         """Given: Two Transaction entities with matching properties
            When: Call equals method
@@ -601,7 +601,7 @@ class TestTransactionEntity:
         # When/Then
         assert tx1.equals(tx2_api, sync_map) is True
 
-    @pytest.mark.skip(reason="Transaction entity not implemented yet")
+    
     def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two Transaction entities with different properties
            When: Call equals method

@@ -12,7 +12,7 @@ from bsv_wallet_toolbox.storage.entities import Certificate
 class TestCertificateEntity:
     """Test suite for Certificate entity."""
 
-    @pytest.mark.skip(reason="Certificate entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_matching_certificate_entities(self) -> None:
         """Given: Two Certificate entities with identical data
@@ -46,7 +46,7 @@ class TestCertificateEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is True
 
-    @pytest.mark.skip(reason="Certificate entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_equals_identifies_non_matching_certificate_entities(self) -> None:
         """Given: Two Certificate entities with different data
@@ -91,7 +91,7 @@ class TestCertificateEntity:
             # When/Then
             assert entity1.equals(mismatched_entity.to_api()) is False
 
-    @pytest.mark.skip(reason="Certificate entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
@@ -152,7 +152,7 @@ class TestCertificateEntity:
         assert entity.verifier == "updatedVerifier"
         assert entity.is_deleted == 1
 
-    @pytest.mark.skip(reason="Certificate entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_mergeexisting_does_not_update_entity_when_ei_updated_at_less_than_or_equal_this_updated_at(
         self,
@@ -203,7 +203,7 @@ class TestCertificateEntity:
         assert entity.type == "exampleType"
         assert entity.subject == "02c123eabcdeff1234567890abcdef1234567890abcdef1234567890abcdef5678"
 
-    @pytest.mark.skip(reason="Certificate entity not implemented yet")
+    
     @pytest.mark.asyncio
     async def test_certificate_class_getters_and_setters(self) -> None:
         """Given: Certificate entity with initial data
