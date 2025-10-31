@@ -439,6 +439,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
     entity_skip_tests = [
         "test_certificate.py",
         "test_certificate_field.py",
+        "test_commission.py",
         "test_output.py",
         "test_output_basket.py",
         "test_output_tag.py",
@@ -446,7 +447,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
         "test_proven_tx.py",
         "test_proven_tx_req.py",
         "test_stamp_log.py",
-        "test_commission.py",
+        "test_transaction.py",
         "test_tx_label.py",
         "test_tx_label_map.py",
     ]

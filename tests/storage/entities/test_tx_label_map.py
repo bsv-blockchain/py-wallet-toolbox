@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.models import TxLabelMap
+from bsv_wallet_toolbox.storage.entities import TxLabelMap
 
 
 class TestTxLabelMapEntity:
