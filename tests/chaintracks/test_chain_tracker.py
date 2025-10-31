@@ -23,8 +23,7 @@ class TestChaintracksChainTracker:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksChainTracker implementation")
-    @pytest.mark.asyncio
-    async def test_test(self) -> None:
+    def test_test(self) -> None:
         """Given: ChainTracker for testnet
            When: Get current height and verify merkle roots
            Then: Height > 877598, and validates testnet root correctly
@@ -40,11 +39,10 @@ class TestChaintracksChainTracker:
         #       All assertions are in the helper function _test_chaintracks_chaintracker().
 
         # Given/When/Then
-        await self._test_chaintracks_chaintracker("test")
+        self._test_chaintracks_chaintracker("test")
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksChainTracker implementation")
-    @pytest.mark.asyncio
-    async def test_main(self) -> None:
+    def test_main(self) -> None:
         """Given: ChainTracker for mainnet
            When: Get current height and verify merkle roots
            Then: Height > 877598, and validates mainnet root correctly
@@ -57,7 +55,7 @@ class TestChaintracksChainTracker:
         #       All assertions are in the helper function _test_chaintracks_chaintracker().
 
         # Given/When/Then
-        await self._test_chaintracks_chaintracker("main")
+        self._test_chaintracks_chaintracker("main")
 
     async def _test_chaintracks_chaintracker(self, chain: str) -> None:
         """Test ChainTracker for given chain.
@@ -69,13 +67,13 @@ class TestChaintracksChainTracker:
         tracker = ChaintracksChainTracker(chain)
 
         # When
-        height = await tracker.current_height()
+        height = tracker.current_height()
 
         # Then
         assert height > 877598
 
         # When - Check mainnet root
-        ok_main = await tracker.is_valid_root_for_height(
+        ok_main = tracker.is_valid_root_for_height(
             "2bf2edb5fa42aa773c6c13bc90e097b4e7de7ca1df2227f433be75ceace339e9", 877599
         )
 
@@ -83,7 +81,7 @@ class TestChaintracksChainTracker:
         assert ok_main == (chain == "main")
 
         # When - Check testnet root
-        ok_test = await tracker.is_valid_root_for_height(
+        ok_test = tracker.is_valid_root_for_height(
             "5513f13554442588dd9acf395072bf1d2e7d5d360fbc42d3ab1fa2026b17c200", 1654265
         )
 

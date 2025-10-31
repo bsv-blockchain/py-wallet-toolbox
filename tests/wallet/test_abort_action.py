@@ -13,8 +13,7 @@ class TestWalletAbortAction:
     """Test suite for Wallet.abort_action method."""
 
     @pytest.mark.skip(reason="Waiting for abort_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_reference(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_reference(self, wallet: Wallet) -> None:
         """Given: AbortActionArgs with empty reference
            When: Call abort_action
            Then: Raises InvalidParameterError
@@ -27,11 +26,10 @@ class TestWalletAbortAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.abort_action(invalid_args)
+            wallet.abort_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for abort_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_invalid_base64(self, wallet: Wallet) -> None:
+    def test_invalid_params_invalid_base64(self, wallet: Wallet) -> None:
         """Given: AbortActionArgs with invalid base64 reference
            When: Call abort_action
            Then: Raises InvalidParameterError
@@ -44,11 +42,10 @@ class TestWalletAbortAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.abort_action(invalid_args)
+            wallet.abort_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for abort_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_reference_too_long(self, wallet: Wallet) -> None:
+    def test_invalid_params_reference_too_long(self, wallet: Wallet) -> None:
         """Given: AbortActionArgs with reference exceeding 300 characters
            When: Call abort_action
            Then: Raises InvalidParameterError
@@ -61,11 +58,10 @@ class TestWalletAbortAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.abort_action(invalid_args)
+            wallet.abort_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for abort_action implementation with test database")
-    @pytest.mark.asyncio
-    async def test_abort_specific_reference(self, wallet: Wallet) -> None:
+    def test_abort_specific_reference(self, wallet: Wallet) -> None:
         """Given: Valid AbortActionArgs with existing action reference
            When: Call abort_action
            Then: Action is successfully aborted
@@ -79,7 +75,7 @@ class TestWalletAbortAction:
         valid_args = {"reference": "Sfh42EBViQ=="}  # Base64 reference from test data
 
         # When
-        await wallet.abort_action(valid_args)
+        wallet.abort_action(valid_args)
 
         # Then
         # No exception raised = success

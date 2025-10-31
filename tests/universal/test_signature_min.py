@@ -7,8 +7,7 @@
 import pytest
 
 
-@pytest.mark.asyncio
-async def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
+def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
     # Sign data (implicit: SHA-256 のハッシュを直接署名)
     args = {
         "data": b"hello world",
@@ -16,7 +15,7 @@ async def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
         "keyID": "default",
         "counterparty": "self",
     }
-    res = await wallet_with_key_deriver.create_signature(args)
+    res = wallet_with_key_deriver.create_signature(args)
     assert isinstance(res, dict)
     assert "signature" in res
     sig = res["signature"]
@@ -25,7 +24,7 @@ async def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
     assert all(isinstance(x, int) and 0 <= x <= 255 for x in sig)
 
     # Verify OK
-    vres = await wallet_with_key_deriver.verify_signature(
+    vres = wallet_with_key_deriver.verify_signature(
         {
             "data": b"hello world",
             "protocolID": [2, "auth message signature"],
@@ -38,18 +37,17 @@ async def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
     assert vres.get("valid") is True
 
 
-@pytest.mark.asyncio
-async def test_verify_signature_fail_on_modified_data(wallet_with_key_deriver):
+def test_verify_signature_fail_on_modified_data(wallet_with_key_deriver):
     args = {
         "data": b"original",
         "protocolID": [2, "auth message signature"],
         "keyID": "default",
     }
-    res = await wallet_with_key_deriver.create_signature(args)
+    res = wallet_with_key_deriver.create_signature(args)
     sig = res["signature"]
 
     # 異なるデータで検証 → False
-    vres = await wallet_with_key_deriver.verify_signature(
+    vres = wallet_with_key_deriver.verify_signature(
         {
             "data": b"tampered",
             "protocolID": [2, "auth message signature"],
@@ -60,15 +58,14 @@ async def test_verify_signature_fail_on_modified_data(wallet_with_key_deriver):
     assert vres.get("valid") is False
 
 
-@pytest.mark.asyncio
-async def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
+def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
     # 事前ハッシュを直接署名/検証
     import hashlib
 
     data = b"hash me"
     digest = hashlib.sha256(data).digest()
 
-    sres = await wallet_with_key_deriver.create_signature(
+    sres = wallet_with_key_deriver.create_signature(
         {
             "hashToDirectlySign": digest,
             "protocolID": [2, "auth message signature"],
@@ -77,7 +74,7 @@ async def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
     )
     sig = sres["signature"]
 
-    vres = await wallet_with_key_deriver.verify_signature(
+    vres = wallet_with_key_deriver.verify_signature(
         {
             "hashToDirectlyVerify": digest,
             "protocolID": [2, "auth message signature"],

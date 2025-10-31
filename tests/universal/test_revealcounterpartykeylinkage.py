@@ -23,8 +23,7 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
     """
 
     @pytest.mark.skip(reason="Waiting for reveal_counterparty_key_linkage implementation")
-    @pytest.mark.asyncio
-    async def test_revealcounterpartykeylinkage_json_matches_universal_vectors(
+    def test_revealcounterpartykeylinkage_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for revealCounterpartyKeyLinkage
@@ -36,14 +35,13 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
         wallet = Wallet(chain="main")
 
         # When
-        result = await wallet.reveal_counterparty_key_linkage(args_data["json"], originator=None)
+        result = wallet.reveal_counterparty_key_linkage(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_revealcounterpartykeylinkage_wire_matches_universal_vectors(
+    def test_revealcounterpartykeylinkage_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""

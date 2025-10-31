@@ -27,8 +27,7 @@ class TestGetMerklePath:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_get_merkle_path(self) -> None:
+    def test_get_merkle_path(self) -> None:
         """Given: Services with mainnet configuration
            When: Get merkle path for a known txid
            Then: Returns merkle path with correct height and merkle proof
@@ -43,7 +42,7 @@ class TestGetMerklePath:
         txid = "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"
 
         # When
-        result = await services.get_merkle_path(txid)
+        result = services.get_merkle_path(txid)
 
         # Then
         assert result.header is not None

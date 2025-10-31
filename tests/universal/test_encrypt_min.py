@@ -6,16 +6,15 @@
 import pytest
 
 
-@pytest.mark.asyncio
-async def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
+def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
     plaintext = b"secret message"
     args = {
         "plaintext": plaintext,
-        "protocolID": [2, "ctx"],
+        "protocolID": [2, "encryption"],
         "keyID": "default",
         "counterparty": "self",
     }
-    enc = await wallet_with_key_deriver.encrypt(args)
+    enc = wallet_with_key_deriver.encrypt(args)
     assert isinstance(enc, dict)
     assert "ciphertext" in enc
     ct = enc["ciphertext"]
@@ -23,10 +22,10 @@ async def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
     assert isinstance(ct, list)
     assert all(isinstance(x, int) and 0 <= x <= 255 for x in ct)
 
-    dec = await wallet_with_key_deriver.decrypt(
+    dec = wallet_with_key_deriver.decrypt(
         {
             "ciphertext": ct,
-            "protocolID": [2, "ctx"],
+            "protocolID": [2, "encryption"],
             "keyID": "default",
             "counterparty": "self",
         }
@@ -37,11 +36,10 @@ async def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
     assert bytes(pt) == plaintext
 
 
-@pytest.mark.asyncio
-async def test_encrypt_requires_bytes(wallet_with_key_deriver):
+def test_encrypt_requires_bytes(wallet_with_key_deriver):
     with pytest.raises(Exception):
-        await wallet_with_key_deriver.encrypt(
-            {"plaintext": "not-bytes", "protocolID": [2, "ctx"], "keyID": "default"}
+        wallet_with_key_deriver.encrypt(
+            {"plaintext": "not-bytes", "protocolID": [2, "encryption"], "keyID": "default"}
         )
 
 

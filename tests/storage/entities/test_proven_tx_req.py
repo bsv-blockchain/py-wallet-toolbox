@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import ProvenTxReq
+from bsv_wallet_toolbox.storage.models import ProvenTxReq
 
 
 class TestProvenTxReqEntity:
@@ -95,8 +95,7 @@ class TestProvenTxReqEntity:
         # Test implementation details
 
     
-    @pytest.mark.asyncio
-    async def test_updatestorage(self) -> None:
+    def test_updatestorage(self) -> None:
         """Given: ProvenTxReq instance
            When: Call update_storage
            Then: Updates storage and can fetch back the record
@@ -137,16 +136,15 @@ class TestProvenTxReqEntity:
         )()
 
         # When
-        await proven_tx_req.update_storage(mock_storage)
+        proven_tx_req.update_storage(mock_storage)
 
         # Then
-        fetched = await mock_storage.find_proven_tx_reqs({"partial": {"txid": "test-txid"}})
+        fetched = mock_storage.find_proven_tx_reqs({"partial": {"txid": "test-txid"}})
         assert len(fetched) == 1
         assert fetched[0]["txid"] == "test-txid"
 
     
-    @pytest.mark.asyncio
-    async def test_insertormerge(self) -> None:
+    def test_insertormerge(self) -> None:
         """Given: ProvenTxReq instance
            When: Call insert_or_merge
            Then: Inserts or merges record and returns result
@@ -178,14 +176,13 @@ class TestProvenTxReqEntity:
         mock_storage = type("MockStorage", (), {"insert_or_merge_proven_tx_req": mock_insert_or_merge})()
 
         # When
-        result = await proven_tx_req.insert_or_merge(mock_storage)
+        result = proven_tx_req.insert_or_merge(mock_storage)
 
         # Then
         assert result["txid"] == "test-txid-merge"
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_entities(self) -> None:
+    def test_equals_identifies_matching_entities(self) -> None:
         """Given: Two ProvenTxReq entities with matching data
            When: Call equals method
            Then: Returns True
@@ -231,8 +228,7 @@ class TestProvenTxReqEntity:
         assert proven_tx_req1.equals(proven_tx_req2_api, sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_entities(self) -> None:
+    def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two ProvenTxReq entities with different data
            When: Call equals method
            Then: Returns False
@@ -376,8 +372,7 @@ class TestProvenTxReqEntity:
         # Test implementation pending
 
     
-    @pytest.mark.asyncio
-    async def test_isterminalstatus_with_real_data(self) -> None:
+    def test_isterminalstatus_with_real_data(self) -> None:
         """Given: ProvenTxReq with various statuses
            When: Call is_terminal_status
            Then: Correctly identifies terminal statuses
@@ -397,8 +392,7 @@ class TestProvenTxReqEntity:
             assert proven_tx_req.is_terminal_status() == expected_terminal
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_real_data(self) -> None:
+    def test_mergeexisting_real_data(self) -> None:
         """Given: Existing ProvenTxReq
            When: Call merge_existing with updated data
            Then: Merges data correctly

@@ -23,8 +23,7 @@ class TestUniversalVectorsSignAction:
     """
 
     @pytest.mark.skip(reason="Waiting for sign_action implementation")
-    @pytest.mark.asyncio
-    async def test_signaction_json_matches_universal_vectors(
+    def test_signaction_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for signAction
@@ -36,14 +35,13 @@ class TestUniversalVectorsSignAction:
         wallet = Wallet(chain="main")
 
         # When
-        result = await wallet.sign_action(args_data["json"], originator=None)
+        result = wallet.sign_action(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_signaction_wire_matches_universal_vectors(
+    def test_signaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""

@@ -25,8 +25,7 @@ class TestExchangeRates:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for exchangeRates implementation")
-    @pytest.mark.asyncio
-    async def test_update_exchange_rates_for_multiple_currencies(self) -> None:
+    def test_update_exchange_rates_for_multiple_currencies(self) -> None:
         """Given: Default wallet services options for mainnet
            When: Call updateExchangeratesapi with ['EUR', 'GBP', 'USD']
            Then: Returns defined result
@@ -46,7 +45,7 @@ class TestExchangeRates:
         # options.exchangeratesapi_key = 'YOUR_API_KEY'
 
         # When
-        r = await update_exchangeratesapi(["EUR", "GBP", "USD"], options)
+        r = update_exchangeratesapi(["EUR", "GBP", "USD"], options)
 
         # Then
         assert r is not None

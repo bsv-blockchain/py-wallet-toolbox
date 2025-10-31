@@ -7,15 +7,14 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import ProvenTx
+from bsv_wallet_toolbox.storage.models import ProvenTx
 
 
 class TestProvenTxEntity:
     """Test suite for ProvenTx entity."""
 
     
-    @pytest.mark.asyncio
-    async def test_fromtxid_valid_txid_with_rawtx_and_merkle_proof_real_database(self) -> None:
+    def test_fromtxid_valid_txid_with_rawtx_and_merkle_proof_real_database(self) -> None:
         """Given: Valid txid with rawTx and Merkle proof in database
            When: Call from_txid with services
            Then: Returns ProvenTx with valid data
@@ -55,7 +54,7 @@ class TestProvenTxEntity:
         )()
 
         # When
-        result = await ProvenTx.from_txid(txid, mock_services)
+        result = ProvenTx.from_txid(txid, mock_services)
 
         # Then
         assert result["proven"] is not None
@@ -66,8 +65,7 @@ class TestProvenTxEntity:
         assert result["rawTx"] == raw_tx
 
     
-    @pytest.mark.asyncio
-    async def test_fromtxid_txid_with_no_rawtx_available(self) -> None:
+    def test_fromtxid_txid_with_no_rawtx_available(self) -> None:
         """Given: Txid with no rawTx available
            When: Call from_txid
            Then: Returns result with undefined proven and rawTx
@@ -86,15 +84,14 @@ class TestProvenTxEntity:
         mock_services = type("MockServices", (), {"get_raw_tx": mock_get_raw_tx})()
 
         # When
-        result = await ProvenTx.from_txid(txid, mock_services)
+        result = ProvenTx.from_txid(txid, mock_services)
 
         # Then
         assert result["proven"] is None
         assert result["rawTx"] is None
 
     
-    @pytest.mark.asyncio
-    async def test_fromtxid_txid_with_no_merkle_proof_available(self) -> None:
+    def test_fromtxid_txid_with_no_merkle_proof_available(self) -> None:
         """Given: Txid with rawTx but no Merkle proof
            When: Call from_txid
            Then: Returns result with rawTx but undefined proven
@@ -119,7 +116,7 @@ class TestProvenTxEntity:
         )()
 
         # When
-        result = await ProvenTx.from_txid(txid, mock_services)
+        result = ProvenTx.from_txid(txid, mock_services)
 
         # Then
         assert result["proven"] is None
@@ -188,8 +185,7 @@ class TestProvenTxEntity:
         assert proven_tx.proven_tx_id == 3
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_proventx_entities(self) -> None:
+    def test_equals_identifies_matching_proventx_entities(self) -> None:
         """Given: Two ProvenTx entities with matching data
            When: Call equals method with syncMap
            Then: Returns True
@@ -355,8 +351,7 @@ class TestProvenTxEntity:
         assert tx1.equals(tx2_api) is False
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_always_returns_false(self) -> None:
+    def test_mergeexisting_always_returns_false(self) -> None:
         """Given: ProvenTx entity
            When: Call merge_existing
            Then: Always returns False
@@ -387,7 +382,7 @@ class TestProvenTxEntity:
         mock_trx = {}
 
         # When
-        result = await proven_tx.merge_existing(mock_storage, datetime.now(), proven_tx.to_api(), sync_map, mock_trx)
+        result = proven_tx.merge_existing(mock_storage, datetime.now(), proven_tx.to_api(), sync_map, mock_trx)
 
         # Then
         assert result is False

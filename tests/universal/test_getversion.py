@@ -27,8 +27,7 @@ class TestUniversalVectorsGetVersion:
     """
 
     @pytest.mark.skip(reason="Version planned for 1.0.0; current Wallet.VERSION is 0.6.0")
-    @pytest.mark.asyncio
-    async def test_getversion_json_matches_universal_vectors(
+    def test_getversion_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for getVersion
@@ -44,14 +43,13 @@ class TestUniversalVectorsGetVersion:
         wallet = Wallet(chain="main")  # Will use Wallet.VERSION (currently "0.6.0")
 
         # When
-        result = await wallet.get_version(args_data["json"], originator=None)
+        result = wallet.get_version(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_getversion_wire_matches_universal_vectors(
+    def test_getversion_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this.

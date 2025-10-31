@@ -31,8 +31,7 @@ class TestHashOutputScript:
 
 
 class TestNLockTimeIsFinal:
-    @pytest.mark.asyncio
-    async def test_final_when_all_sequences_are_maxint(self) -> None:
+    def test_final_when_all_sequences_are_maxint(self) -> None:
         # Given: a transaction with all input sequences = 0xFFFFFFFF
         tx = Transaction()
         tx.inputs.append(
@@ -45,13 +44,12 @@ class TestNLockTimeIsFinal:
         services = Services("main")
 
         # When
-        result = await services.n_lock_time_is_final(tx)
+        result = services.n_lock_time_is_final(tx)
 
         # Then
         assert result is True
 
-    @pytest.mark.asyncio
-    async def test_height_based_locktime_strict_less_than(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_height_based_locktime_strict_less_than(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Given: height branch (nLockTime < 500_000_000), strict < comparison
         services = Services("main")
 
@@ -61,17 +59,16 @@ class TestNLockTimeIsFinal:
         monkeypatch.setattr(services, "get_height", fake_get_height)
 
         # When / Then
-        assert await services.n_lock_time_is_final(799_999) is True
-        assert await services.n_lock_time_is_final(800_000) is False
+        assert services.n_lock_time_is_final(799_999) is True
+        assert services.n_lock_time_is_final(800_000) is False
 
-    @pytest.mark.asyncio
-    async def test_timestamp_based_locktime_strict_less_than(self) -> None:
+    def test_timestamp_based_locktime_strict_less_than(self) -> None:
         # Given: timestamp branch (nLockTime >= 500_000_000), strict < comparison
         services = Services("main")
         now = int(time())
 
         # When / Then
-        assert await services.n_lock_time_is_final(now - 10) is True
-        assert await services.n_lock_time_is_final(now + 3600) is False
+        assert services.n_lock_time_is_final(now - 10) is True
+        assert services.n_lock_time_is_final(now + 3600) is False
 
 

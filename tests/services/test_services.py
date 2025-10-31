@@ -31,8 +31,7 @@ class TestServices:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_getheaderbyhash(self) -> None:
+    def test_getheaderbyhash(self) -> None:
         """Given: WhatsOnChainServices for mainnet
            When: Get header by known hash
            Then: Returns header with correct height 781348
@@ -46,15 +45,14 @@ class TestServices:
         woc = WhatsOnChainServices(options)
 
         # When
-        header = await woc.get_header_by_hash("000000000000000001b3e99847d57ff3e0bfc4222cea5c29f10bf24387a250a2")
+        header = woc.get_header_by_hash("000000000000000001b3e99847d57ff3e0bfc4222cea5c29f10bf24387a250a2")
 
         # Then
         assert header is not None
         assert header.height == 781348
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_getchaintipheight(self) -> None:
+    def test_getchaintipheight(self) -> None:
         """Given: WhatsOnChainServices for mainnet
            When: Get chain tip height
            Then: Returns height > 600000
@@ -68,14 +66,13 @@ class TestServices:
         woc = WhatsOnChainServices(options)
 
         # When
-        height = await woc.get_chain_tip_height()
+        height = woc.get_chain_tip_height()
 
         # Then
         assert height > 600000
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_listen_for_old_block_headers(self) -> None:
+    def test_listen_for_old_block_headers(self) -> None:
         """Given: WhatsOnChainServices and height range
            When: Listen for old block headers via WocHeadersBulkListener
            Then: Receives headers for the requested height range
@@ -91,7 +88,7 @@ class TestServices:
         options = WhatsOnChainServices.create_whats_on_chain_services_options(chain)
         woc = WhatsOnChainServices(options)
 
-        height = await woc.get_chain_tip_height()
+        height = woc.get_chain_tip_height()
         assert height > 600000
 
         headers_old = []
@@ -104,7 +101,7 @@ class TestServices:
 
         # When
 
-        ok_old = await WocHeadersBulkListener(
+        ok_old = WocHeadersBulkListener(
             height - 4,
             height,
             lambda h: headers_old.append(h),
@@ -119,8 +116,7 @@ class TestServices:
         assert len(headers_old) >= 4
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_listen_for_new_block_headers(self) -> None:
+    def test_listen_for_new_block_headers(self) -> None:
         """Given: WhatsOnChainServices
            When: Listen for new block headers via WocHeadersLiveListener
            Then: Receives new headers as they arrive
@@ -136,7 +132,7 @@ class TestServices:
         options = WhatsOnChainServices.create_whats_on_chain_services_options(chain)
         woc = WhatsOnChainServices(options)
 
-        height = await woc.get_chain_tip_height()
+        height = woc.get_chain_tip_height()
         assert height > 600000
 
         headers_new = []
@@ -154,7 +150,7 @@ class TestServices:
 
         # When
 
-        ok_new = await WocHeadersLiveListener(enqueue_handler, error_handler, stop_new_listeners_token, chain, print)
+        ok_new = WocHeadersLiveListener(enqueue_handler, error_handler, stop_new_listeners_token, chain, print)
 
         # Then
         if errors_new:
@@ -165,8 +161,7 @@ class TestServices:
         assert len(headers_new) >= 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_get_latest_header_bytes(self) -> None:
+    def test_get_latest_header_bytes(self) -> None:
         """Given: ChaintracksFetch instance
            When: Download latest header bytes from WhatsOnChain
            Then: Successfully downloads header bytes and can deserialize latest header
@@ -178,10 +173,10 @@ class TestServices:
         fetch = ChaintracksFetch()
 
         # When
-        bytes_data = await fetch.download("https://api.whatsonchain.com/v1/bsv/main/block/headers/latest")
+        bytes_data = fetch.download("https://api.whatsonchain.com/v1/bsv/main/block/headers/latest")
         print(f"headers: {len(bytes_data) / 80}")
 
-        latest = await fetch.download("https://api.whatsonchain.com/v1/bsv/main/block/headers/latest?count=1")
+        latest = fetch.download("https://api.whatsonchain.com/v1/bsv/main/block/headers/latest?count=1")
         bh = deserialize_block_header(latest, 0, 0)
         print(f"latest hash: {bh.hash}")
 
@@ -190,8 +185,7 @@ class TestServices:
         assert bh.hash is not None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_get_headers(self) -> None:
+    def test_get_headers(self) -> None:
         """Given: ChaintracksFetch instance
            When: Fetch headers JSON from WhatsOnChain
            Then: Returns array of headers with height, hash, confirmations, nTx
@@ -203,7 +197,7 @@ class TestServices:
         fetch = ChaintracksFetch()
 
         # When
-        headers = await fetch.fetch_json("https://api.whatsonchain.com/v1/bsv/main/block/headers")
+        headers = fetch.fetch_json("https://api.whatsonchain.com/v1/bsv/main/block/headers")
 
         log = ""
         for h in headers:
@@ -216,8 +210,7 @@ class TestServices:
         assert "hash" in headers[0]
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChainServices implementation")
-    @pytest.mark.asyncio
-    async def test_get_header_byte_file_links(self) -> None:
+    def test_get_header_byte_file_links(self) -> None:
         """Given: WhatsOnChainServices instance
            When: Get header byte file links for height range 907123-911000
            Then: Returns 3 files with correct height ranges
@@ -230,7 +223,7 @@ class TestServices:
         woc = WhatsOnChainServices(WhatsOnChainServices.create_whats_on_chain_services_options("main"))
 
         # When
-        files = await woc.get_header_byte_file_links(HeightRange(907123, 911000))
+        files = woc.get_header_byte_file_links(HeightRange(907123, 911000))
 
         # Then
         assert len(files) == 3

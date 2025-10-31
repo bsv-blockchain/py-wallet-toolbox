@@ -36,8 +36,7 @@ class TestWalletPermissionsManagerEncryptionHelpers:
     """Test suite for metadata encryption helper methods."""
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_call_underlying_encrypt_with_correct_protocol_and_key_when_encryptwalletmetadata_true(
+    def test_should_call_underlying_encrypt_with_correct_protocol_and_key_when_encryptwalletmetadata_true(
         self,
     ) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=True
@@ -51,7 +50,7 @@ class TestWalletPermissionsManagerEncryptionHelpers:
         manager = WalletPermissionsManager(underlying, "admin.domain.com", encrypt_wallet_metadata=True)
         plaintext = "Hello, world!"
 
-        await manager._maybe_encrypt_metadata(plaintext)
+        manager._maybe_encrypt_metadata(plaintext)
 
         assert underlying.encrypt.call_count == 1
         call_args = underlying.encrypt.call_args[0][0]
@@ -62,8 +61,7 @@ class TestWalletPermissionsManagerEncryptionHelpers:
         assert originator == "admin.domain.com"
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_not_call_underlying_encrypt_if_encryptwalletmetadata_false(self) -> None:
+    def test_should_not_call_underlying_encrypt_if_encryptwalletmetadata_false(self) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=False
            When: Call maybeEncryptMetadata() with plaintext
            Then: Returns plaintext as-is without calling underlying.encrypt()
@@ -75,14 +73,13 @@ class TestWalletPermissionsManagerEncryptionHelpers:
         manager = WalletPermissionsManager(underlying, "admin.domain.com", encrypt_wallet_metadata=False)
         plaintext = "No encryption needed!"
 
-        result = await manager._maybe_encrypt_metadata(plaintext)
+        result = manager._maybe_encrypt_metadata(plaintext)
 
         assert result == plaintext
         assert underlying.encrypt.call_count == 0
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_call_underlying_decrypt_with_correct_protocol_and_key_returning_plaintext_on_success(
+    def test_should_call_underlying_decrypt_with_correct_protocol_and_key_returning_plaintext_on_success(
         self,
     ) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=True and encrypted ciphertext
@@ -98,7 +95,7 @@ class TestWalletPermissionsManagerEncryptionHelpers:
         expected_plaintext = "Hi"
         underlying.decrypt = AsyncMock(return_value={"plaintext": [72, 105]})
 
-        result = await manager._maybe_decrypt_metadata(ciphertext)
+        result = manager._maybe_decrypt_metadata(ciphertext)
 
         assert underlying.decrypt.call_count == 1
         call_args = underlying.decrypt.call_args[0][0]
@@ -110,8 +107,7 @@ class TestWalletPermissionsManagerEncryptionHelpers:
         assert result == expected_plaintext
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_fallback_to_original_string_if_underlying_decrypt_fails(self) -> None:
+    def test_should_fallback_to_original_string_if_underlying_decrypt_fails(self) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=True and invalid ciphertext
            When: Call maybeDecryptMetadata() and underlying.decrypt() fails
            Then: Returns original ciphertext as fallback
@@ -124,7 +120,7 @@ class TestWalletPermissionsManagerEncryptionHelpers:
         ciphertext = "this-was-not-valid-for-decryption"
         underlying.decrypt = AsyncMock(side_effect=Exception("Decryption error"))
 
-        result = await manager._maybe_decrypt_metadata(ciphertext)
+        result = manager._maybe_decrypt_metadata(ciphertext)
 
         assert result == ciphertext
 
@@ -133,8 +129,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
     """Integration tests for createAction + listActions round-trip encryption."""
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_encrypt_metadata_fields_in_createaction_when_encryptwalletmetadata_true_then_decrypt_them_in_listactions(
+    def test_should_encrypt_metadata_fields_in_createaction_when_encryptwalletmetadata_true_then_decrypt_them_in_listactions(
         self,
     ) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=True
@@ -156,7 +151,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
         output_desc = "Some output desc"
         custom_instr = "Some custom instructions"
 
-        await manager.create_action(
+        manager.create_action(
             {
                 "description": action_description,
                 "inputs": [{"outpoint": "0231.0", "unlockingScriptLength": 73, "inputDescription": input_desc}],
@@ -209,7 +204,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
         ]
         underlying.decrypt = AsyncMock(side_effect=decrypt_responses)
 
-        result = await manager.list_actions({}, "nonadmin.com")
+        result = manager.list_actions({}, "nonadmin.com")
 
         assert len(result["actions"]) == 1
         action = result["actions"][0]
@@ -219,8 +214,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
         assert action["outputs"][0]["customInstructions"] == custom_instr
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_not_encrypt_metadata_if_encryptwalletmetadata_false_storing_and_retrieving_plaintext(
+    def test_should_not_encrypt_metadata_if_encryptwalletmetadata_false_storing_and_retrieving_plaintext(
         self,
     ) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=False
@@ -242,7 +236,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
         output_desc = "Plaintext output desc"
         custom_instr = "Plaintext instructions"
 
-        await manager.create_action(
+        manager.create_action(
             {
                 "description": action_description,
                 "inputs": [{"outpoint": "9876.0", "unlockingScriptLength": 73, "inputDescription": input_desc}],
@@ -282,7 +276,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
 
         underlying.decrypt = AsyncMock(side_effect=lambda x: x)
 
-        list_result = await manager.list_actions({}, "nonadmin.com")
+        list_result = manager.list_actions({}, "nonadmin.com")
 
         assert underlying.decrypt.call_count == 3
         first = list_result["actions"][0]
@@ -296,8 +290,7 @@ class TestWalletPermissionsManagerListOutputsDecryption:
     """Integration test for listOutputs decryption."""
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_decrypt_custominstructions_in_listoutputs_if_encryptwalletmetadata_true(self) -> None:
+    def test_should_decrypt_custominstructions_in_listoutputs_if_encryptwalletmetadata_true(self) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=True and output with encrypted customInstructions
            When: Call listOutputs()
            Then: customInstructions are decrypted correctly
@@ -330,7 +323,7 @@ class TestWalletPermissionsManagerListOutputsDecryption:
         original_instr = "Please do not reveal this data."
         underlying.decrypt = AsyncMock(return_value={"plaintext": [ord(ch) for ch in original_instr]})
 
-        outputs_result = await manager.list_outputs({"basket": "some-basket"}, "some-origin.com")
+        outputs_result = manager.list_outputs({"basket": "some-basket"}, "some-origin.com")
 
         assert len(outputs_result["outputs"]) == 1
         assert outputs_result["outputs"][0]["customInstructions"] == original_instr
@@ -343,8 +336,7 @@ class TestWalletPermissionsManagerListOutputsDecryption:
         assert originator == "admin.domain.com"
 
     @pytest.mark.skip(reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_fallback_to_the_original_ciphertext_if_decrypt_fails_in_listoutputs(self) -> None:
+    def test_should_fallback_to_the_original_ciphertext_if_decrypt_fails_in_listoutputs(self) -> None:
         """Given: WalletPermissionsManager with encryptWalletMetadata=True and output with invalid ciphertext
            When: Call listOutputs() and underlying.decrypt() fails
            Then: Returns original ciphertext as fallback
@@ -376,7 +368,7 @@ class TestWalletPermissionsManagerListOutputsDecryption:
 
         underlying.decrypt = AsyncMock(side_effect=Exception("Failed to decrypt"))
 
-        outputs_result = await manager.list_outputs({"basket": "some-basket"}, "some-origin.com")
+        outputs_result = manager.list_outputs({"basket": "some-basket"}, "some-origin.com")
 
         assert len(outputs_result["outputs"]) == 1
         assert outputs_result["outputs"][0]["customInstructions"] == "bad-ciphertext-of-some-kind"

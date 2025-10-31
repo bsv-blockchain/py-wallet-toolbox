@@ -9,7 +9,6 @@ import pytest
 from bsv_wallet_toolbox.services import Services
 
 
-@pytest.mark.asyncio
 async def test_get_transaction_status_minimal() -> None:
     """Ensure minimal TS-like shape from get_transaction_status.
 
@@ -20,14 +19,14 @@ async def test_get_transaction_status_minimal() -> None:
     services = Services(Services.create_default_options("main"))
 
     # Normal case
-    res = await services.get_transaction_status("aa" * 32)
+    res = services.get_transaction_status("aa" * 32)
     assert isinstance(res, dict)
     assert "status" in res
     if res["status"] == "confirmed":
         assert isinstance(res.get("confirmations"), int)
 
     # Edge case: not_found sentinel
-    res_nf = await services.get_transaction_status("1" * 64)
+    res_nf = services.get_transaction_status("1" * 64)
     assert isinstance(res_nf, dict)
     assert res_nf.get("status") in {"not_found", "unknown"}
 

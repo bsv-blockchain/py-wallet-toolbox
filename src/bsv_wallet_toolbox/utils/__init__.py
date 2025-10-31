@@ -40,11 +40,95 @@ class TestUtils:
     def get_env(chain: str) -> dict[str, str]:
         return Setup.get_env(chain)
 
+
+def arrays_equal(arr1: list | None, arr2: list | None) -> bool:
+    """Compare two arrays for equality."""
+    if arr1 is None or arr2 is None:
+        return arr1 == arr2
+    return arr1 == arr2
+
+
+def optional_arrays_equal(arr1: list | None, arr2: list | None) -> bool:
+    """Compare two optional arrays for equality."""
+    return arrays_equal(arr1, arr2)
+
+
+def max_date(d1: object | None, d2: object | None) -> object | None:
+    """Return the maximum of two dates."""
+    if d1 is None:
+        return d2
+    if d2 is None:
+        return d1
+    return max(d1, d2)
+
+
+def to_wallet_network(chain: str) -> str:
+    """Convert chain to wallet network."""
+    chain_map = {
+        "mainnet": "mainnet",
+        "testnet": "testnet",
+        "regtest": "regtest",
+    }
+    return chain_map.get(chain, chain)
+
+
+def verify_truthy(value: object, description: str | None = None) -> None:
+    """Verify that a value is truthy, raising an error if not."""
+    if not value:
+        msg = description or f"Value {value} is not truthy"
+        raise AssertionError(msg)
+
+
+def verify_hex_string(value: str, description: str | None = None) -> None:
+    """Verify that a value is a valid hex string."""
+    if not isinstance(value, str):
+        msg = description or f"Value {value} is not a string"
+        raise AssertionError(msg)
+    try:
+        int(value, 16)
+    except ValueError as e:
+        msg = description or f"Value {value} is not a valid hex string"
+        raise AssertionError(msg) from e
+
+
+def verify_id(value: object, description: str | None = None) -> None:
+    """Verify that a value is a valid ID."""
+    verify_truthy(value, description or f"Value {value} is not a valid ID")
+
+
+def verify_integer(value: object, description: str | None = None) -> None:
+    """Verify that a value is an integer."""
+    if not isinstance(value, int) or isinstance(value, bool):
+        msg = description or f"Value {value} is not an integer"
+        raise AssertionError(msg)
+
+
+def verify_number(value: object, description: str | None = None) -> None:
+    """Verify that a value is a number."""
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        msg = description or f"Value {value} is not a number"
+        raise AssertionError(msg)
+
+
+def verify_one(value: object, description: str | None = None) -> None:
+    """Verify that a value is truthy (similar to verify_truthy)."""
+    verify_truthy(value, description)
+
+
+def verify_one_or_none(value: object, description: str | None = None) -> None:
+    """Verify that a value is truthy or None."""
+    if value is not None:
+        verify_truthy(value, description)
+
+
 __all__ = [
     "MAX_SATOSHIS",
     "Setup",
     "TestUtils",
+    "arrays_equal",
     "generate_change_sdk",
+    "max_date",
+    "optional_arrays_equal",
     "satoshi_add",
     "satoshi_equal",
     "satoshi_from",
@@ -52,6 +136,14 @@ __all__ = [
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",
+    "to_wallet_network",
     "validate_basket_config",
     "validate_originator",
+    "verify_hex_string",
+    "verify_id",
+    "verify_integer",
+    "verify_number",
+    "verify_one",
+    "verify_one_or_none",
+    "verify_truthy",
 ]

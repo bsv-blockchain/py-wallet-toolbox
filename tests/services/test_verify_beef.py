@@ -31,8 +31,7 @@ class TestVerifyBeef:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_verify_beef_from_hex(self) -> None:
+    def test_verify_beef_from_hex(self) -> None:
         """Given: BEEF hex string and mainnet services
            When: Parse BEEF and verify with chaintracker
            Then: BEEF verifies successfully
@@ -42,17 +41,16 @@ class TestVerifyBeef:
         """
         # Given
         beef = Beef.from_string(BEEF_HEX)
-        chaintracker = await Services("main").get_chain_tracker()
+        chaintracker = Services("main").get_chain_tracker()
 
         # When
-        ok = await beef.verify(chaintracker, True)
+        ok = beef.verify(chaintracker, True)
 
         # Then
         assert ok is True
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_verify_beef_from_storage(self) -> None:
+    def test_verify_beef_from_storage(self) -> None:
         """Given: Wallet storage with mainnet setup
            When: Get BEEF for txid from services and storage, then verify both
            Then: Both BEEFs verify successfully
@@ -65,7 +63,7 @@ class TestVerifyBeef:
         if TestUtils.no_env("main"):
             return
 
-        setup = await TestUtils.create_main_review_setup()
+        setup = TestUtils.create_main_review_setup()
         setup["env"]
         storage = setup["storage"]
         services = setup["services"]
@@ -73,13 +71,13 @@ class TestVerifyBeef:
         get_beef_for_txid = "4d9a1eff26bac99c7524cb7b2e808b77935d3d890562db2fefc6cb8cb92a6b16"
 
         # When/Then - Get BEEF from services
-        beef = await services.get_beef_for_txid(get_beef_for_txid)
-        chaintracker = await services.get_chain_tracker()
-        ok = await beef.verify(chaintracker, True)
+        beef = services.get_beef_for_txid(get_beef_for_txid)
+        chaintracker = services.get_chain_tracker()
+        ok = beef.verify(chaintracker, True)
         assert ok is True
 
         # When/Then - Get BEEF from storage
-        beef = verify_truthy(await storage.get_valid_beef_for_txid(get_beef_for_txid, None, None, None, None, 1))
-        chaintracker = await services.get_chain_tracker()
-        ok = await beef.verify(chaintracker, True)
+        beef = verify_truthy(storage.get_valid_beef_for_txid(get_beef_for_txid, None, None, None, None, 1))
+        chaintracker = services.get_chain_tracker()
+        ok = beef.verify(chaintracker, True)
         assert ok is True

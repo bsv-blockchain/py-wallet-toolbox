@@ -9,12 +9,11 @@ import pytest
 from bsv_wallet_toolbox.services import Services
 
 
-@pytest.mark.asyncio
 async def test_get_utxo_status_minimal_normal() -> None:
     """Normal case should return a dict with details: list of entries."""
     services = Services(Services.create_default_options("main"))
 
-    res = await services.get_utxo_status("aa" * 32)
+    res = services.get_utxo_status("aa" * 32)
     assert isinstance(res, dict)
     assert "details" in res
     assert isinstance(res["details"], list)
@@ -26,12 +25,11 @@ async def test_get_utxo_status_minimal_normal() -> None:
         assert isinstance(entry["spent"], bool)
 
 
-@pytest.mark.asyncio
 async def test_get_utxo_status_minimal_not_found() -> None:
     """Sentinel hash should yield an empty details list (not_found-like)."""
     services = Services(Services.create_default_options("main"))
 
-    res = await services.get_utxo_status("1" * 64)
+    res = services.get_utxo_status("1" * 64)
     assert isinstance(res, dict)
     assert isinstance(res.get("details"), list)
     assert res["details"] == []

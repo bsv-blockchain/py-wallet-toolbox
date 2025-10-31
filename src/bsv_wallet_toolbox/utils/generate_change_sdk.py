@@ -24,7 +24,7 @@ def _varint_len(n: int) -> int:
     return 9
 
 
-async def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str, Any]]) -> dict[str, Any]:
+def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str, Any]]) -> dict[str, Any]:
     """Generate change inputs/outputs for transaction construction (SDK-backed).
 
     Port of ts-wallet-toolbox generateChangeSdk with scoped simplifications:
@@ -58,7 +58,7 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
         c["spendable"] = False
         return {"satoshis": c["satoshis"], "outputId": c["outputId"], "spendable": False}
 
-    async def allocate_change_input(target_satoshis: int, exact_satoshis: int | None = None) -> dict[str, Any] | None:
+    def allocate_change_input(target_satoshis: int, exact_satoshis: int | None = None) -> dict[str, Any] | None:
         if exact_satoshis is not None:
             exact = next((c for c in change_store if c["spendable"] and c["satoshis"] == exact_satoshis), None)
             if exact:
@@ -72,7 +72,7 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
                 return allocate(c)
         return None
 
-    async def release_change_input(output_id: int) -> None:
+    def release_change_input(output_id: int) -> None:
         c = next((x for x in change_store if x["outputId"] == output_id), None)
         if c and not c["spendable"]:
             c["spendable"] = True
@@ -126,10 +126,10 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
             return False
         return net_change_count() - 1 < target_net
 
-    async def release_allocated_change_inputs() -> None:
+    def release_allocated_change_inputs() -> None:
         while result["allocatedChangeInputs"]:
             i = result["allocatedChangeInputs"].pop()
-            await release_change_input(int(i["outputId"]))
+            release_change_input(int(i["outputId"]))
         fee_excess()
 
     fee_excess()
@@ -145,10 +145,10 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
             }
         )
 
-    async def fund_transaction() -> None:
+    def fund_transaction() -> None:
         removing_outputs = False
 
-        async def attempt_to_fund_transaction() -> bool:
+        def attempt_to_fund_transaction() -> bool:
             if fee_excess() > 0:
                 return True
             exact_satoshis: int | None = None
@@ -156,7 +156,7 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
                 exact_satoshis = -fee_excess(1, 0)
             ao = 1 if add_output_to_balance_new_input() else 0
             target_satoshis = -fee_excess(1, ao) + (2 * change_initial if ao == 1 else 0)
-            allocated = await allocate_change_input(target_satoshis, exact_satoshis)
+            allocated = allocate_change_input(target_satoshis, exact_satoshis)
             if not allocated:
                 return False
             result["allocatedChangeInputs"].append(allocated)
@@ -174,9 +174,9 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
             return True
 
         while True:
-            await release_allocated_change_inputs()
+            release_allocated_change_inputs()
             while fee_excess() < 0:
-                ok = await attempt_to_fund_transaction()
+                ok = attempt_to_fund_transaction()
                 if not ok:
                     break
             if fee_excess() >= 0 or len(result["changeOutputs"]) == 0:
@@ -202,7 +202,7 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
                 result["changeOutputs"].pop()
                 change_inputs_copy.pop(idx)
 
-    await fund_transaction()
+    fund_transaction()
 
     # Handle maxPossibleSatoshis output reduction if present
     has_max_possible_index = next(
@@ -215,11 +215,11 @@ async def generate_change_sdk(params: dict[str, Any], available_change: list[dic
         ) + fee_excess()
 
     if fee_excess() < 0:
-        await release_allocated_change_inputs()
+        release_allocated_change_inputs()
         raise InsufficientFundsError(spending() + fee_target(), -fee_excess_now)
 
     if len(result["changeOutputs"]) == 0 and fee_excess_now > 0:
-        await release_allocated_change_inputs()
+        release_allocated_change_inputs()
         raise InsufficientFundsError(spending() + fee_target(), change_first)
 
     # Prepare TS-like random sequence

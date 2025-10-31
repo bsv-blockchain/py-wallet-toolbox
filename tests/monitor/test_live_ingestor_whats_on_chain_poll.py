@@ -27,8 +27,7 @@ class TestLiveIngestorWhatsOnChainPoll:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LiveIngestorWhatsOnChainPoll implementation")
-    @pytest.mark.asyncio
-    async def test_listen_for_first_new_header(self) -> None:
+    def test_listen_for_first_new_header(self) -> None:
         """Given: LiveIngestorWhatsOnChainPoll with mainnet options
            When: Start listening for new headers
            Then: Receives at least one new header and can log it
@@ -56,9 +55,9 @@ class TestLiveIngestorWhatsOnChainPoll:
                     print(f"LiveIngestorWhatsOnChain received {count} headers:\n{log}")
                     log = ""
                     break
-                await asyncio.sleep(0.1)
+                asyncio.sleep(0.1)
 
         # Then
         ingestor.stop_listening()
-        await p
+        p
         assert count > 0

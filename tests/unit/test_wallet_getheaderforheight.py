@@ -25,8 +25,7 @@ BLOCK_HEADER_HEX_LENGTH = 160  # 80 bytes * 2 hex chars per byte
 class TestGetHeaderForHeightBasic:
     """Basic functionality tests for getHeaderForHeight method."""
 
-    @pytest.mark.asyncio
-    async def test_returns_valid_header_string(self) -> None:
+    def test_returns_valid_header_string(self) -> None:
         """Given: Wallet with mock services
            When: Call getHeaderForHeight with valid height
            Then: Returns header as non-empty hex string
@@ -40,7 +39,7 @@ class TestGetHeaderForHeightBasic:
         wallet = Wallet(chain="test", services=services)
 
         # When
-        result = await wallet.get_header_for_height({"height": 1})
+        result = wallet.get_header_for_height({"height": 1})
 
         # Then
         assert "header" in result
@@ -49,8 +48,7 @@ class TestGetHeaderForHeightBasic:
         # Block header is 80 bytes = 160 hex characters
         assert len(result["header"]) == BLOCK_HEADER_HEX_LENGTH
 
-    @pytest.mark.asyncio
-    async def test_requires_services_configured(self) -> None:
+    def test_requires_services_configured(self) -> None:
         """Given: Wallet without services
         When: Call getHeaderForHeight
         Then: Raises RuntimeError
@@ -63,14 +61,13 @@ class TestGetHeaderForHeightBasic:
 
         # When / Then
         with pytest.raises(RuntimeError, match="Services must be configured"):
-            await wallet.get_header_for_height({"height": 1})
+            wallet.get_header_for_height({"height": 1})
 
 
 class TestGetHeaderForHeightValidation:
     """Parameter validation tests for getHeaderForHeight method."""
 
-    @pytest.mark.asyncio
-    async def test_raises_error_for_negative_height(self) -> None:
+    def test_raises_error_for_negative_height(self) -> None:
         """Given: Wallet with services and negative height
            When: Call getHeaderForHeight with height: -1
            Then: Raises InvalidParameterError
@@ -84,10 +81,9 @@ class TestGetHeaderForHeightValidation:
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
-            await wallet.get_header_for_height({"height": -1})
+            wallet.get_header_for_height({"height": -1})
 
-    @pytest.mark.asyncio
-    async def test_raises_error_for_missing_height(self) -> None:
+    def test_raises_error_for_missing_height(self) -> None:
         """Given: Wallet with services and missing height parameter
            When: Call getHeaderForHeight without height
            Then: Raises InvalidParameterError
@@ -101,10 +97,9 @@ class TestGetHeaderForHeightValidation:
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
-            await wallet.get_header_for_height({})
+            wallet.get_header_for_height({})
 
-    @pytest.mark.asyncio
-    async def test_raises_error_for_invalid_height_type(self) -> None:
+    def test_raises_error_for_invalid_height_type(self) -> None:
         """Given: Wallet with services and non-integer height
            When: Call getHeaderForHeight with invalid height type
            Then: Raises InvalidParameterError
@@ -119,10 +114,9 @@ class TestGetHeaderForHeightValidation:
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
-            await wallet.get_header_for_height({"height": invalid_height})
+            wallet.get_header_for_height({"height": invalid_height})
 
-    @pytest.mark.asyncio
-    async def test_accepts_zero_height(self) -> None:
+    def test_accepts_zero_height(self) -> None:
         """Given: Wallet with services and height 0 (genesis block)
            When: Call getHeaderForHeight with height: 0
            Then: Returns valid header (genesis block)
@@ -136,7 +130,7 @@ class TestGetHeaderForHeightValidation:
         wallet = Wallet(chain="test", services=services)
 
         # When
-        result = await wallet.get_header_for_height({"height": 0})
+        result = wallet.get_header_for_height({"height": 0})
 
         # Then
         assert "header" in result
@@ -146,8 +140,7 @@ class TestGetHeaderForHeightValidation:
 class TestGetHeaderForHeightIntegration:
     """Integration tests for getHeaderForHeight method."""
 
-    @pytest.mark.asyncio
-    async def test_returns_correct_header_format(self) -> None:
+    def test_returns_correct_header_format(self) -> None:
         """Given: Wallet with mock services returning known header
            When: Call getHeaderForHeight
            Then: Returns header matching expected format
@@ -161,7 +154,7 @@ class TestGetHeaderForHeightIntegration:
         wallet = Wallet(chain="test", services=services)
 
         # When
-        result = await wallet.get_header_for_height({"height": 9999})
+        result = wallet.get_header_for_height({"height": 9999})
 
         # Then
         assert result["header"] == GENESIS_HEADER_HEX

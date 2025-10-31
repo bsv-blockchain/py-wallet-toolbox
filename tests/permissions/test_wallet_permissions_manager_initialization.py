@@ -133,8 +133,7 @@ class TestWalletPermissionsManagerInitialization:
             assert internal_config.get(key) == value
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_consider_calls_from_the_adminoriginator_as_admin_bypassing_checks(self) -> None:
+    def test_should_consider_calls_from_the_adminoriginator_as_admin_bypassing_checks(self) -> None:
         """Given: Manager with admin originator set
            When: Call method with admin originator
            Then: Bypasses all permission checks
@@ -150,7 +149,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # When - call with admin originator
-        result = await manager.create_action(
+        result = manager.create_action(
             {
                 "description": "Insertion to user basket",
                 "outputs": [
@@ -174,8 +173,7 @@ class TestWalletPermissionsManagerInitialization:
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(
+    def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(
         self,
     ) -> None:
         """Given: Manager with seekProtocolPermissionsForSigning=False
@@ -195,7 +193,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # When - non-admin origin attempts createSignature
-        await manager.create_signature(
+        manager.create_signature(
             {"protocolID": [1, "some-protocol"], "privileged": False, "data": [0x01, 0x02], "keyID": "1"},
             "app.nonadmin.com",
         )
@@ -208,8 +206,7 @@ class TestWalletPermissionsManagerInitialization:
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(
+    def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(
         self,
     ) -> None:
         """Given: Manager with seekProtocolPermissionsForSigning=True
@@ -237,7 +234,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # Wait a short tick to let the async code run
-        await asyncio.sleep(0.01)
+        asyncio.sleep(0.01)
 
         # Then - request queue has an entry
         active_requests = getattr(manager, "_active_requests", {})
@@ -245,15 +242,14 @@ class TestWalletPermissionsManagerInitialization:
 
         # Forcibly deny the request so the test can conclude
         first_request_key = next(iter(active_requests.keys()))
-        await manager.deny_permission(first_request_key)
+        manager.deny_permission(first_request_key)
 
         # The promise eventually rejects
         with pytest.raises(ValueError, match="Permission denied"):
-            await create_sig_promise
+            create_sig_promise
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_skip_basket_insertion_permission_checks_if_seekbasketinsertionpermissions_false(self) -> None:
+    def test_should_skip_basket_insertion_permission_checks_if_seekbasketinsertionpermissions_false(self) -> None:
         """Given: Manager with seekBasketInsertionPermissions=False
            When: Non-admin creates action with basket
            Then: No basket insertion permission check
@@ -281,7 +277,7 @@ class TestWalletPermissionsManagerInitialization:
         manager.bind_callback("onSpendingAuthorizationRequested", auto_grant_spending)
 
         # When - non-admin origin tries to createAction specifying a basket
-        await manager.create_action(
+        manager.create_action(
             {
                 "description": "Insert to user basket",
                 "outputs": [
@@ -301,8 +297,7 @@ class TestWalletPermissionsManagerInitialization:
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(
+    def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(
         self,
     ) -> None:
         """Given: Manager with seekCertificateDisclosurePermissions=False
@@ -322,7 +317,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # When
-        await manager.disclose_certificate(
+        manager.disclose_certificate(
             {"certifier": "some-certifier", "type": "some-type", "serialNumber": "123"}, "nonadmin.com"
         )
 
@@ -332,8 +327,7 @@ class TestWalletPermissionsManagerInitialization:
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_skip_metadata_encryption_if_encryptwalletmetadata_false(self) -> None:
+    def test_should_skip_metadata_encryption_if_encryptwalletmetadata_false(self) -> None:
         """Given: Manager with encryptWalletMetadata=False
            When: Create action with metadata
            Then: Metadata not encrypted
@@ -351,7 +345,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # When - admin creates action with metadata
-        result = await manager.create_action(
+        result = manager.create_action(
             {"description": "Test action", "metadata": {"key": "plaintext-value"}, "outputs": []}, "admin.domain.com"
         )
 

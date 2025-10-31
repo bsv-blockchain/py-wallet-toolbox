@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 from bsv.transaction import Transaction as BsvTransaction
-from bsv_wallet_toolbox.storage.entities import Transaction
+from bsv_wallet_toolbox.storage.models import Transaction
 
 
 class TestTransactionEntity:
@@ -194,8 +194,7 @@ class TestTransactionEntity:
         assert isinstance(inputs, list)
 
     
-    @pytest.mark.asyncio
-    async def test_getinputs_combines_spentby_and_rawtx_inputs(self) -> None:
+    def test_getinputs_combines_spentby_and_rawtx_inputs(self) -> None:
         """Given: Transaction with outputs linked by spentBy
            When: Call get_inputs with storage
            Then: Returns combined inputs from spentBy and rawTx
@@ -218,7 +217,7 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
 
         # When
-        inputs = await tx.get_inputs(mock_storage)
+        inputs = tx.get_inputs(mock_storage)
 
         # Then
         assert len(inputs) == 2
@@ -226,8 +225,7 @@ class TestTransactionEntity:
         assert any(inp["vout"] == 1 and inp["satoshis"] == 200 for inp in inputs)
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_updates_when_ei_updated_at_is_newer(self) -> None:
+    def test_mergeexisting_updates_when_ei_updated_at_is_newer(self) -> None:
         """Given: Existing Transaction with old updated_at
            When: Call merge_existing with newer updated_at
            Then: Transaction is updated and returns True
@@ -275,11 +273,11 @@ class TestTransactionEntity:
         )()
 
         # When
-        result = await tx.merge_existing(mock_storage, datetime.now(), ei, sync_map)
+        result = tx.merge_existing(mock_storage, datetime.now(), ei, sync_map)
 
         # Then
         assert result is True
-        found_txs = await mock_storage.find_transactions({"partial": {"transactionId": 123}})
+        found_txs = mock_storage.find_transactions({"partial": {"transactionId": 123}})
         assert found_txs[0]["txid"] == "newTxId"
 
     
@@ -302,8 +300,7 @@ class TestTransactionEntity:
         assert bsv_tx is None
 
     
-    @pytest.mark.asyncio
-    async def test_getinputs_handles_storage_lookups_and_input_merging(self) -> None:
+    def test_getinputs_handles_storage_lookups_and_input_merging(self) -> None:
         """Given: Transaction with complex input sources
            When: Call get_inputs
            Then: Correctly merges inputs from storage lookups and rawTx
@@ -322,15 +319,14 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
 
         # When
-        inputs = await tx.get_inputs(mock_storage)
+        inputs = tx.get_inputs(mock_storage)
 
         # Then
         assert isinstance(inputs, list)
         # Verify proper merging logic
 
     
-    @pytest.mark.asyncio
-    async def test_getproventx_retrieves_proven_transaction(self) -> None:
+    def test_getproventx_retrieves_proven_transaction(self) -> None:
         """Given: Transaction with valid provenTxId
            When: Call get_proven_tx
            Then: Returns the ProvenTx from storage
@@ -353,15 +349,14 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {"find_proven_tx": mock_find_proven_tx})()
 
         # When
-        retrieved_proven_tx = await tx.get_proven_tx(mock_storage)
+        retrieved_proven_tx = tx.get_proven_tx(mock_storage)
 
         # Then
         assert retrieved_proven_tx is not None
         assert retrieved_proven_tx["provenTxId"] == 123
 
     
-    @pytest.mark.asyncio
-    async def test_getproventx_returns_undefined_when_proventxid_is_not_set(self) -> None:
+    def test_getproventx_returns_undefined_when_proventxid_is_not_set(self) -> None:
         """Given: Transaction without provenTxId
            When: Call get_proven_tx
            Then: Returns None
@@ -377,14 +372,13 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        retrieved_proven_tx = await tx.get_proven_tx(mock_storage)
+        retrieved_proven_tx = tx.get_proven_tx(mock_storage)
 
         # Then
         assert retrieved_proven_tx is None
 
     
-    @pytest.mark.asyncio
-    async def test_getproventx_returns_undefined_when_no_matching_proventx_is_found(self) -> None:
+    def test_getproventx_returns_undefined_when_no_matching_proventx_is_found(self) -> None:
         """Given: Transaction with provenTxId that doesn't exist
            When: Call get_proven_tx
            Then: Returns None
@@ -403,14 +397,13 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {"find_proven_tx": mock_find_proven_tx})()
 
         # When
-        retrieved_proven_tx = await tx.get_proven_tx(mock_storage)
+        retrieved_proven_tx = tx.get_proven_tx(mock_storage)
 
         # Then
         assert retrieved_proven_tx is None
 
     
-    @pytest.mark.asyncio
-    async def test_getinputs_merges_known_inputs_correctly(self) -> None:
+    def test_getinputs_merges_known_inputs_correctly(self) -> None:
         """Given: Transaction with multiple input sources
            When: Call get_inputs
            Then: Correctly merges known inputs
@@ -432,7 +425,7 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
 
         # When
-        inputs = await tx.get_inputs(mock_storage)
+        inputs = tx.get_inputs(mock_storage)
 
         # Then
         assert len(inputs) >= 2
@@ -524,8 +517,7 @@ class TestTransactionEntity:
         assert tx.entity_table == "transactions"
 
     
-    @pytest.mark.asyncio
-    async def test_equals_returns_false_for_mismatched_other_properties(self) -> None:
+    def test_equals_returns_false_for_mismatched_other_properties(self) -> None:
         """Given: Two transactions with different properties
            When: Call equals method
            Then: Returns False for mismatched properties
@@ -550,8 +542,7 @@ class TestTransactionEntity:
         assert tx1.equals(tx2_api, sync_map) is False
 
     
-    @pytest.mark.asyncio
-    async def test_getinputs_handles_known_and_unknown_inputs(self) -> None:
+    def test_getinputs_handles_known_and_unknown_inputs(self) -> None:
         """Given: Transaction with both known and unknown inputs
            When: Call get_inputs
            Then: Properly handles both types of inputs
@@ -570,7 +561,7 @@ class TestTransactionEntity:
         mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
 
         # When
-        inputs = await tx.get_inputs(mock_storage)
+        inputs = tx.get_inputs(mock_storage)
 
         # Then
         assert isinstance(inputs, list)

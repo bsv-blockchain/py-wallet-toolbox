@@ -19,8 +19,7 @@ class TestWalletGetHeader:
     """
 
     @pytest.mark.skip(reason="Waiting for get_header implementation")
-    @pytest.mark.asyncio
-    async def test_get_header_invalid_params_negative_height(self, wallet: Wallet) -> None:
+    def test_get_header_invalid_params_negative_height(self, wallet: Wallet) -> None:
         """Given: GetHeaderArgs with negative height
            When: Call get_header
            Then: Raises InvalidParameterError
@@ -32,11 +31,10 @@ class TestWalletGetHeader:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.get_header(invalid_args)
+            wallet.get_header(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for get_header implementation with services")
-    @pytest.mark.asyncio
-    async def test_get_header_valid_height(self, wallet: Wallet) -> None:
+    def test_get_header_valid_height(self, wallet: Wallet) -> None:
         """Given: GetHeaderArgs with valid height
            When: Call get_header
            Then: Returns block header for that height
@@ -49,7 +47,7 @@ class TestWalletGetHeader:
         args = {"height": 850000}  # Known block height
 
         # When
-        result = await wallet.get_header(args)
+        result = wallet.get_header(args)
 
         # Then
         assert "header" in result
@@ -61,8 +59,7 @@ class TestWalletGetVersion:
     """Test suite for Wallet.get_version method (comprehensive tests)."""
 
     @pytest.mark.skip(reason="Waiting for get_version originator validation")
-    @pytest.mark.asyncio
-    async def test_get_version_with_valid_originator(self, wallet: Wallet) -> None:
+    def test_get_version_with_valid_originator(self, wallet: Wallet) -> None:
         """Given: Valid originator domain
            When: Call get_version with originator
            Then: Returns version without error
@@ -74,13 +71,12 @@ class TestWalletGetVersion:
 
         # When / Then
         for originator in valid_originators:
-            result = await wallet.get_version({}, originator=originator)
+            result = wallet.get_version({}, originator=originator)
             assert "version" in result
             assert isinstance(result["version"], str)
 
     @pytest.mark.skip(reason="Waiting for get_version originator validation")
-    @pytest.mark.asyncio
-    async def test_get_version_with_invalid_originator_too_long(self, wallet: Wallet) -> None:
+    def test_get_version_with_invalid_originator_too_long(self, wallet: Wallet) -> None:
         """Given: Originator exceeding 250 characters
            When: Call get_version
            Then: Raises InvalidParameterError
@@ -92,11 +88,10 @@ class TestWalletGetVersion:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.get_version({}, originator=too_long_originator)
+            wallet.get_version({}, originator=too_long_originator)
 
     @pytest.mark.skip(reason="Waiting for get_version originator validation")
-    @pytest.mark.asyncio
-    async def test_get_version_with_invalid_originator_type(self, wallet: Wallet) -> None:
+    def test_get_version_with_invalid_originator_type(self, wallet: Wallet) -> None:
         """Given: Originator with invalid type (not string)
            When: Call get_version
            Then: Raises InvalidParameterError
@@ -108,7 +103,7 @@ class TestWalletGetVersion:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.get_version({}, originator=invalid_originator)
+            wallet.get_version({}, originator=invalid_originator)
 
 
 class TestWalletConstructor:

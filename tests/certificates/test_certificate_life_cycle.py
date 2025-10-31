@@ -51,8 +51,7 @@ class TestCertificateLifeCycle:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Certificate implementation")
-    @pytest.mark.asyncio
-    async def test_complete_flow_mastercertificate_and_verifiablecertificate(self) -> None:
+    def test_complete_flow_mastercertificate_and_verifiablecertificate(self) -> None:
         """Given: Certifier, subject, and verifier wallets with sample certificate
            When: Certifier encrypts fields, signs certificate, subject decrypts, creates keyring for verifier
            Then: Signed certificate verifies, subject decrypts all fields, verifier decrypts only 'name' and 'email'
@@ -84,7 +83,7 @@ class TestCertificateLifeCycle:
         certifier_wallet = ProtoWallet(certifier)
 
         # encrypt the fields as the certifier for the subject
-        r1 = await MasterCertificate.create_certificate_fields(
+        r1 = MasterCertificate.create_certificate_fields(
             certifier_wallet, subject.to_public_key().to_string(), cert.fields
         )
 
@@ -97,16 +96,16 @@ class TestCertificateLifeCycle:
             wcert["revocationOutpoint"],
             r1["certificateFields"],
         )
-        await signed_cert.sign(certifier_wallet)
+        signed_cert.sign(certifier_wallet)
 
         # The subject imports their copy of the new certificate:
         subject_wallet = ProtoWallet(subject)
 
         # The subject's imported certificate should verify
-        assert await signed_cert.verify() is True
+        assert signed_cert.verify() is True
 
         # Confirm subject can decrypt the certifier's copy of the cert:
-        await MasterCertificate.decrypt_fields(
+        MasterCertificate.decrypt_fields(
             subject_wallet, r1["masterKeyring"], signed_cert.fields, signed_cert.certifier
         )
 
@@ -116,7 +115,7 @@ class TestCertificateLifeCycle:
         verifier = PrivateKey.from_random()
 
         # subject makes a keyring for the verifier
-        r3 = await MasterCertificate.create_keyring_for_verifier(
+        r3 = MasterCertificate.create_keyring_for_verifier(
             subject_wallet,
             certifier.to_public_key().to_string(),
             verifier.to_public_key().to_string(),
@@ -141,7 +140,7 @@ class TestCertificateLifeCycle:
         )
 
         # When
-        r4 = await veri_cert.decrypt_fields(verifier_wallet)
+        r4 = veri_cert.decrypt_fields(verifier_wallet)
 
         # Then - verifier can decrypt 'name' and 'email' but not 'organization'
         assert r4["name"] == "Alice"

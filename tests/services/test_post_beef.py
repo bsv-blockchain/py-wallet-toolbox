@@ -22,7 +22,6 @@ import pytest
 from bsv_wallet_toolbox.services import Services
 
 
-@pytest.mark.asyncio
 async def test_post_beef_arc_minimal_enabled() -> None:
     """Ensure ARC path returns TS-like shape for single BEEF (mocked).
 
@@ -34,13 +33,12 @@ async def test_post_beef_arc_minimal_enabled() -> None:
     options["arcApiKey"] = "test"
     services = Services(options)
 
-    res = await services.post_beef("00")
+    res = services.post_beef("00")
     assert isinstance(res, dict)
     assert set(res.keys()) == {"accepted", "txid", "message"}
     assert res["accepted"] in (True, False)
 
 
-@pytest.mark.asyncio
 async def test_post_beef_array_arc_minimal_enabled() -> None:
     """Ensure ARC path returns TS-like shape for multiple BEEFs (mocked).
 
@@ -52,7 +50,7 @@ async def test_post_beef_array_arc_minimal_enabled() -> None:
     options["arcApiKey"] = "test"
     services = Services(options)
 
-    res_list = await services.post_beef_array(["00", "01"])
+    res_list = services.post_beef_array(["00", "01"])
     assert isinstance(res_list, list)
     assert len(res_list) == 2
     for res in res_list:
@@ -96,8 +94,7 @@ class TestPostBeef:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_postbeef_mainnet(self) -> None:
+    def test_postbeef_mainnet(self) -> None:
         """Given: Services with mainnet configuration
            When: Post BEEF with valid transactions and then with double spend
            Then: First post succeeds, second detects double spend
@@ -112,11 +109,10 @@ class TestPostBeef:
         services = self._create_services("main")
 
         # When/Then
-        await self._post_beef_test(services)
+        self._post_beef_test(services)
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_postbeef_testnet(self) -> None:
+    def test_postbeef_testnet(self) -> None:
         """Given: Services with testnet configuration
            When: Post BEEF with valid transactions and then with double spend
            Then: First post succeeds, second detects double spend
@@ -131,7 +127,7 @@ class TestPostBeef:
         services = self._create_services("test")
 
         # When/Then
-        await self._post_beef_test(services)
+        self._post_beef_test(services)
 
     def _create_services(self, chain: str) -> "Services":
         """Create Services instance with API keys from environment.
@@ -172,11 +168,11 @@ BITAILS {options.bitails_api_key[:20] if options.bitails_api_key else 'N/A'}
         if Setup.no_env(chain):
             return
 
-        c = await TestUtils.create_no_send_tx_pair(chain)
+        c = TestUtils.create_no_send_tx_pair(chain)
         txids = [c.txid_do, c.txid_undo]
 
         # When - Post valid BEEF
-        rs = await services.post_beef(c.beef, txids)
+        rs = services.post_beef(c.beef, txids)
 
         # Then - Verify success
         for r in rs:
@@ -195,7 +191,7 @@ BITAILS {options.bitails_api_key[:20] if options.bitails_api_key else 'N/A'}
         beef2.txs[-1] = BeefTx.from_tx(c.double_spend_tx)
         txids2 = [c.txid_do, c.double_spend_tx.id("hex")]
 
-        r2s = await services.post_beef(beef2, txids2)
+        r2s = services.post_beef(beef2, txids2)
 
         # Then - Verify double spend detection
         for r2 in r2s:

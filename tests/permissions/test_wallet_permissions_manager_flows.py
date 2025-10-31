@@ -30,8 +30,7 @@ class TestWalletPermissionsManagerFlows:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_coalesce_parallel_requests_for_the_same_resource_into_a_single_user_prompt(self) -> None:
+    def test_should_coalesce_parallel_requests_for_the_same_resource_into_a_single_user_prompt(self) -> None:
         """Given: Manager with no tokens found
            When: Make two parallel calls for same resource
            Then: Only one user prompt triggered, both calls resolve/reject together
@@ -83,7 +82,7 @@ class TestWalletPermissionsManagerFlows:
         )
 
         # Wait a short moment for the async request flow to trigger
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
 
         # Then - only one "onProtocolPermissionRequested" event for both calls
         assert request_callback.call_count == 1
@@ -94,21 +93,20 @@ class TestWalletPermissionsManagerFlows:
         assert isinstance(request_id, str)  # manager-generated
 
         # Deny the request
-        await manager.deny_permission(request_id)
+        manager.deny_permission(request_id)
 
         # Both calls should reject
         with pytest.raises(ValueError, match="Permission denied"):
-            await call_a
+            call_a
         with pytest.raises(ValueError, match="Permission denied"):
-            await call_b
+            call_b
 
         # Confirm activeRequests map is empty after denial
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_generate_two_distinct_user_prompts_for_two_different_permission_requests(self) -> None:
+    def test_should_generate_two_distinct_user_prompts_for_two_different_permission_requests(self) -> None:
         """Given: Manager with no tokens found
            When: Make one protocol request and one basket request
            Then: Two distinct user prompts triggered
@@ -161,7 +159,7 @@ class TestWalletPermissionsManagerFlows:
         )
 
         # Wait a moment for them to trigger
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
 
         # Then - we expect one protocol request AND one basket request
         assert protocol_request_cb.call_count == 1
@@ -169,25 +167,24 @@ class TestWalletPermissionsManagerFlows:
 
         # Deny protocol request
         p_req_id = protocol_request_cb.call_args[0][0]["requestID"]
-        await manager.deny_permission(p_req_id)
+        manager.deny_permission(p_req_id)
 
         # Deny basket request
         b_req_id = basket_request_cb.call_args[0][0]["requestID"]
-        await manager.deny_permission(b_req_id)
+        manager.deny_permission(b_req_id)
 
         # Both calls should have rejected
         with pytest.raises(ValueError, match="Permission denied"):
-            await p_call
+            p_call
         with pytest.raises(ValueError, match="Permission denied"):
-            await b_call
+            b_call
 
         # activeRequests is empty
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_resolve_all_parallel_requests_when_permission_is_granted_referencing_the_same_requestid(
+    def test_should_resolve_all_parallel_requests_when_permission_is_granted_referencing_the_same_requestid(
         self,
     ) -> None:
         """Given: Manager with no tokens, parallel requests for same resource
@@ -240,26 +237,25 @@ class TestWalletPermissionsManagerFlows:
         )
 
         # Wait for request to trigger
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
 
         # Then - only one callback
         assert request_cb.call_count == 1
 
         # Grant permission with ephemeral=True
         request_id = request_cb.call_args[0][0]["requestID"]
-        await manager.grant_permission({"requestID": request_id, "ephemeral": True})
+        manager.grant_permission({"requestID": request_id, "ephemeral": True})
 
         # Both promises should resolve
-        await promise_a  # Should not raise
-        await promise_b  # Should not raise
+        promise_a  # Should not raise
+        promise_b  # Should not raise
 
         # activeRequests should be empty
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_reject_only_the_matching_request_queue_on_deny_if_requestid_is_specified(self) -> None:
+    def test_should_reject_only_the_matching_request_queue_on_deny_if_requestid_is_specified(self) -> None:
         """Given: Manager with two different pending requests
            When: Deny one requestID
            Then: Only that request is rejected, other remains pending
@@ -286,7 +282,7 @@ class TestWalletPermissionsManagerFlows:
                 }
             )
         )
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
         p1_req_id = proto_cb.call_args[0][0]["requestID"]
 
         # Resource 2
@@ -301,28 +297,27 @@ class TestWalletPermissionsManagerFlows:
                 }
             )
         )
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
         assert proto_cb.call_count == 2
         p2_req_id = proto_cb.call_args_list[1][0][0]["requestID"]
 
         # Then - deny the second request only
-        await manager.deny_permission(p2_req_id)
+        manager.deny_permission(p2_req_id)
         with pytest.raises(ValueError, match="Permission denied"):
-            await p2_promise
+            p2_promise
 
         # But the first request is still waiting
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 1
 
         # Now let's deny the first request too
-        await manager.deny_permission(p1_req_id)
+        manager.deny_permission(p1_req_id)
         with pytest.raises(ValueError, match="Permission denied"):
-            await p1_promise
+            p1_promise
         assert len(active_requests) == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_not_create_a_token_if_ephemeral_true_so_subsequent_calls_re_trigger_the_request(self) -> None:
+    def test_should_not_create_a_token_if_ephemeral_true_so_subsequent_calls_re_trigger_the_request(self) -> None:
         """Given: Manager grants ephemeral=True permission
            When: Call same method again
            Then: Request is re-triggered (no persistent token)
@@ -352,11 +347,11 @@ class TestWalletPermissionsManagerFlows:
                 }
             )
         )
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
         assert request_cb.call_count == 1
         req_id1 = request_cb.call_args[0][0]["requestID"]
-        await manager.grant_permission({"requestID": req_id1, "ephemeral": True})
-        await p_call1
+        manager.grant_permission({"requestID": req_id1, "ephemeral": True})
+        p_call1
 
         # Then - call 2 should re-trigger
         p_call2 = asyncio.create_task(
@@ -371,15 +366,14 @@ class TestWalletPermissionsManagerFlows:
                 }
             )
         )
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
         assert request_cb.call_count == 2
         req_id2 = request_cb.call_args_list[1][0][0]["requestID"]
-        await manager.grant_permission({"requestID": req_id2, "ephemeral": True})
-        await p_call2
+        manager.grant_permission({"requestID": req_id2, "ephemeral": True})
+        p_call2
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_create_a_token_if_ephemeral_false_so_subsequent_calls_do_not_re_trigger_if_unexpired(
+    def test_should_create_a_token_if_ephemeral_false_so_subsequent_calls_do_not_re_trigger_if_unexpired(
         self,
     ) -> None:
         """Given: Manager grants ephemeral=False permission
@@ -418,14 +412,14 @@ class TestWalletPermissionsManagerFlows:
                 }
             )
         )
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
         assert request_cb.call_count == 1
         req_id = request_cb.call_args[0][0]["requestID"]
-        await manager.grant_permission({"requestID": req_id, "ephemeral": False})
-        await p_call1
+        manager.grant_permission({"requestID": req_id, "ephemeral": False})
+        p_call1
 
         # Then - call 2 should NOT re-trigger (token cached)
-        await manager.ensure_protocol_permission(
+        manager.ensure_protocol_permission(
             {
                 "originator": "appdomain.com",
                 "privileged": False,
@@ -437,8 +431,7 @@ class TestWalletPermissionsManagerFlows:
         assert request_cb.call_count == 1  # Still 1, not 2
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_handle_renewal_if_the_found_token_is_expired_passing_previoustoken_in_the_request(
+    def test_should_handle_renewal_if_the_found_token_is_expired_passing_previoustoken_in_the_request(
         self,
     ) -> None:
         """Given: Manager finds expired token
@@ -477,7 +470,7 @@ class TestWalletPermissionsManagerFlows:
                 }
             )
         )
-        await asyncio.sleep(0.005)
+        asyncio.sleep(0.005)
 
         # Then - callback should have renewal=True and previousToken
         assert request_cb.call_count == 1
@@ -486,5 +479,5 @@ class TestWalletPermissionsManagerFlows:
         assert callback_arg["previousToken"] == expired_token
 
         req_id = callback_arg["requestID"]
-        await manager.grant_permission({"requestID": req_id, "ephemeral": True})
-        await p_call
+        manager.grant_permission({"requestID": req_id, "ephemeral": True})
+        p_call

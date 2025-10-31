@@ -128,7 +128,7 @@ class Services(WalletServices):
         self.arc_api_key = self.options.get("arcApiKey")
         self.arc_headers = self.options.get("arcHeaders")
 
-    async def get_chain_tracker(self) -> ChainTracker:
+    def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
 
         Returns the WhatsOnChain ChainTracker implementation.
@@ -138,7 +138,7 @@ class Services(WalletServices):
         """
         return self.whatsonchain
 
-    async def get_height(self) -> int:
+    def get_height(self) -> int:
         """Get current blockchain height from WhatsOnChain.
 
         Equivalent to TypeScript's Services.getHeight()
@@ -150,9 +150,9 @@ class Services(WalletServices):
         Raises:
             RuntimeError: If unable to retrieve height
         """
-        return await self.whatsonchain.current_height()
+        return self.whatsonchain.current_height()
 
-    async def get_present_height(self) -> int:
+    def get_present_height(self) -> int:
         """Get latest chain height (provider's present height).
 
         TS parity:
@@ -164,9 +164,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
         """
-        return await self.whatsonchain.get_present_height()
+        return self.whatsonchain.get_present_height()
 
-    async def get_header_for_height(self, height: int) -> bytes:
+    def get_header_for_height(self, height: int) -> bytes:
         """Get block header at specified height from WhatsOnChain.
 
         Equivalent to TypeScript's Services.getHeaderForHeight()
@@ -182,9 +182,9 @@ class Services(WalletServices):
             ValueError: If height is negative
             RuntimeError: If unable to retrieve header
         """
-        return await self.whatsonchain.get_header_bytes_for_height(height)
+        return self.whatsonchain.get_header_bytes_for_height(height)
 
-    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get a structured block header at a given height.
 
         Args:
@@ -196,7 +196,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
         """
-        h = await self.whatsonchain.find_header_for_height(height)
+        h = self.whatsonchain.find_header_for_height(height)
         if h is None:
             return None
         return {
@@ -210,23 +210,23 @@ class Services(WalletServices):
             "hash": h.hash,
         }
 
-    async def get_chain(self) -> str:
+    def get_chain(self) -> str:
         """Return configured chain identifier ('main' | 'test').
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
         """
-        return await self.whatsonchain.get_chain()
+        return self.whatsonchain.get_chain()
 
-    async def get_info(self) -> dict[str, Any]:
+    def get_info(self) -> dict[str, Any]:
         """Get provider configuration/state summary (if available).
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getInfo
         """
-        return await self.whatsonchain.get_info()  # may raise NotImplementedError
+        return self.whatsonchain.get_info()  # may raise NotImplementedError
 
-    async def get_headers(self, height: int, count: int) -> str:
+    def get_headers(self, height: int, count: int) -> str:
         """Get serialized headers starting at height (provider-dependent).
 
         Returns:
@@ -235,39 +235,39 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getHeaders
         """
-        return await self.whatsonchain.get_headers(height, count)
+        return self.whatsonchain.get_headers(height, count)
 
-    async def add_header(self, header: Any) -> None:
+    def add_header(self, header: Any) -> None:
         """Submit a possibly new header (if provider supports it)."""
-        return await self.whatsonchain.add_header(header)
+        return self.whatsonchain.add_header(header)
 
-    async def start_listening(self) -> None:
+    def start_listening(self) -> None:
         """Start listening for new headers (if provider supports it)."""
-        return await self.whatsonchain.start_listening()
+        return self.whatsonchain.start_listening()
 
-    async def listening(self) -> None:
+    def listening(self) -> None:
         """Wait for listening state (if provider supports it)."""
-        return await self.whatsonchain.listening()
+        return self.whatsonchain.listening()
 
-    async def is_listening(self) -> bool:
+    def is_listening(self) -> bool:
         """Whether provider is actively listening (event stream)."""
-        return await self.whatsonchain.is_listening()
+        return self.whatsonchain.is_listening()
 
-    async def is_synchronized(self) -> bool:
+    def is_synchronized(self) -> bool:
         """Whether provider is synchronized (no local lag)."""
-        return await self.whatsonchain.is_synchronized()
+        return self.whatsonchain.is_synchronized()
 
-    async def subscribe_headers(self, listener: Any) -> str:
+    def subscribe_headers(self, listener: Any) -> str:
         """Subscribe to header events (if supported)."""
-        return await self.whatsonchain.subscribe_headers(listener)
+        return self.whatsonchain.subscribe_headers(listener)
 
-    async def subscribe_reorgs(self, listener: Any) -> str:
+    def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg events (if supported)."""
-        return await self.whatsonchain.subscribe_reorgs(listener)
+        return self.whatsonchain.subscribe_reorgs(listener)
 
-    async def unsubscribe(self, subscription_id: str) -> bool:
+    def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a subscription (if supported)."""
-        return await self.whatsonchain.unsubscribe(subscription_id)
+        return self.whatsonchain.unsubscribe(subscription_id)
 
     #
     # WalletServices local-calculation methods (no external API calls)
@@ -288,7 +288,7 @@ class Services(WalletServices):
         return utils_hash_output_script(script_hex)
 
 
-    async def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
+    def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
         """Determine if an nLockTime value (or transaction) is final.
 
         Logic matches TypeScript Services.nLockTimeIsFinal:
@@ -336,7 +336,7 @@ class Services(WalletServices):
             now_sec = int(time())
             return n_lock_time < now_sec
 
-        height = await self.get_height()
+        height = self.get_height()
         return n_lock_time < int(height)
 
 
@@ -344,7 +344,7 @@ class Services(WalletServices):
     # WalletServices external service methods
     #
 
-    async def get_raw_tx(self, txid: str) -> str | None:
+    def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid via WhatsOnChain.
 
         Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts (getRawTx)
@@ -355,9 +355,9 @@ class Services(WalletServices):
         Returns:
             Raw transaction hex string if found, otherwise None
         """
-        return await self.whatsonchain.get_raw_tx(txid)
+        return self.whatsonchain.get_raw_tx(txid)
 
-    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
+    def is_valid_root_for_height(self, root: str, height: int) -> bool:
         """Verify if a Merkle root is valid for a given block height.
 
         Delegates to provider's ChainTracker implementation (WhatsOnChainTracker).
@@ -371,9 +371,9 @@ class Services(WalletServices):
         Returns:
             True if the Merkle root matches the header's merkleRoot at the height
         """
-        return await self.whatsonchain.is_valid_root_for_height(root, height)
+        return self.whatsonchain.is_valid_root_for_height(root, height)
 
-    async def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
+    def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
         """Get the Merkle path for a transaction (TS-compatible response shape).
 
         Delegates to the provider implementation (WhatsOnChain).
@@ -391,9 +391,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getMerklePathForTransaction
         """
-        return await self.whatsonchain.get_merkle_path(txid, self)
+        return self.whatsonchain.get_merkle_path(txid, self)
 
-    async def find_chain_tip_header(self) -> dict[str, Any]:
+    def find_chain_tip_header(self) -> dict[str, Any]:
         """Return the active chain tip header (structured dict).
 
         TS parity:
@@ -409,7 +409,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findChainTipHeader)
         """
-        h = await self.whatsonchain.find_chain_tip_header()
+        h = self.whatsonchain.find_chain_tip_header()
         return {
             "version": h.version,
             "previousHash": h.previousHash,
@@ -421,11 +421,11 @@ class Services(WalletServices):
             "hash": h.hash,
         }
 
-    async def find_chain_tip_hash(self) -> str:
+    def find_chain_tip_hash(self) -> str:
         """Return the active chain tip hash (hex string)."""
-        return await self.whatsonchain.find_chain_tip_hash()
+        return self.whatsonchain.find_chain_tip_hash()
 
-    async def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
+    def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
         """Get a structured block header by its block hash.
 
         Args:
@@ -437,7 +437,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findHeaderForBlockHash)
         """
-        h = await self.whatsonchain.find_header_for_block_hash(block_hash)
+        h = self.whatsonchain.find_header_for_block_hash(block_hash)
         if h is None:
             return None
         return {
@@ -451,7 +451,7 @@ class Services(WalletServices):
             "hash": h.hash,
         }
 
-    async def update_bsv_exchange_rate(self) -> dict[str, Any]:
+    def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Get the current BSV/USD exchange rate via provider.
 
         Returns:
@@ -463,9 +463,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#updateBsvExchangeRate
         """
-        return await self.whatsonchain.update_bsv_exchange_rate()
+        return self.whatsonchain.update_bsv_exchange_rate()
 
-    async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
+    def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
         """Get a fiat exchange rate for "currency" relative to "base".
 
         The provider returns a base and a rates map. If the provider base matches the requested base,
@@ -485,9 +485,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getFiatExchangeRate
         """
-        return await self.whatsonchain.get_fiat_exchange_rate(currency, base)
+        return self.whatsonchain.get_fiat_exchange_rate(currency, base)
 
-    async def get_utxo_status(
+    def get_utxo_status(
         self,
         output: str,
         output_format: str | None = None,
@@ -516,9 +516,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
         """
-        return await self.whatsonchain.get_utxo_status(output, output_format, outpoint, use_next)
+        return self.whatsonchain.get_utxo_status(output, output_format, outpoint, use_next)
 
-    async def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:
+    def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get script history via provider (TS-compatible response shape).
 
         Returns two arrays, matching TS semantics:
@@ -538,9 +538,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
         """
-        return await self.whatsonchain.get_script_history(script_hash, use_next)
+        return self.whatsonchain.get_script_history(script_hash, use_next)
 
-    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status via provider (TS-compatible response shape).
 
         Args:
@@ -550,17 +550,17 @@ class Services(WalletServices):
         Returns:
             dict: Provider-specific status object (TS-compatible shape expected by tests)
         """
-        return await self.whatsonchain.get_transaction_status(txid, use_next)
+        return self.whatsonchain.get_transaction_status(txid, use_next)
 
-    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+    def get_tx_propagation(self, txid: str) -> dict[str, Any]:
         """Get transaction propagation info via provider.
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTxPropagation
         """
-        return await self.whatsonchain.get_tx_propagation(txid)
+        return self.whatsonchain.get_tx_propagation(txid)
 
-    async def post_beef(self, beef: str) -> dict[str, Any]:
+    def post_beef(self, beef: str) -> dict[str, Any]:
         """Broadcast a BEEF via ARC (TS-compatible behavior and shape).
 
         Behavior:
@@ -598,7 +598,7 @@ class Services(WalletServices):
                 tx = Transaction.from_hex(beef)
                 if tx is None:
                     raise ValueError("Invalid BEEF/tx hex")
-                res = await arc.broadcast(tx)
+                res = arc.broadcast(tx)
                 if getattr(res, "status", "") == "success":
                     return {
                         "accepted": True,
@@ -614,7 +614,7 @@ class Services(WalletServices):
                 return {"accepted": False, "txid": None, "message": str(e)}
         return {"accepted": True, "txid": None, "message": "mocked"}
 
-    async def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
+    def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).
 
         Behavior:
@@ -634,11 +634,11 @@ class Services(WalletServices):
         if self.arc_url:
             results: list[dict[str, Any]] = []
             for beef in beefs:
-                results.append(await self.post_beef(beef))
+                results.append(self.post_beef(beef))
             return results
         return [{"accepted": True, "txid": None, "message": "mocked"} for _ in beefs]
 
-    async def is_utxo(self, output: Any) -> bool:
+    def is_utxo(self, output: Any) -> bool:
         """Return True if the given output appears unspent per provider.
 
         Summary:
@@ -665,7 +665,7 @@ class Services(WalletServices):
             return False
         script_hash_le = self.hash_output_script(script_hex)
         outpoint = f"{txid}.{vout}" if txid and vout is not None else None
-        r = await self.get_utxo_status(script_hash_le, "hashLE", outpoint)
+        r = self.get_utxo_status(script_hash_le, "hashLE", outpoint)
         # Prefer explicit isUtxo when provided by provider; otherwise derive from details
         if isinstance(r, dict) and r.get("isUtxo") is True:
             return True

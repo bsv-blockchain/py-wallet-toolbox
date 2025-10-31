@@ -23,8 +23,7 @@ class TestUniversalVectorsGetPublicKey:
     """
 
     @pytest.mark.skip(reason="py-sdk KeyDeriver uses different algorithm than TypeScript deriveChild")
-    @pytest.mark.asyncio
-    async def test_getpublickey_json_matches_universal_vectors(
+    def test_getpublickey_json_matches_universal_vectors(
         self,
         load_test_vectors: Callable[[str], tuple[dict, dict]],
         wallet_with_key_deriver: Wallet,
@@ -62,7 +61,7 @@ class TestUniversalVectorsGetPublicKey:
         wallet = wallet_with_key_deriver
 
         # When
-        result = await wallet.get_public_key(args_data["json"], originator=None)
+        result = wallet.get_public_key(args_data["json"], originator=None)
 
         # Then
         # This will fail until py-sdk implements TypeScript-compatible deriveChild
@@ -71,8 +70,7 @@ class TestUniversalVectorsGetPublicKey:
         assert result["publicKey"] == "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097"
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_getpublickey_wire_matches_universal_vectors(
+    def test_getpublickey_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this.

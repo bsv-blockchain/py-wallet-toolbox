@@ -23,8 +23,7 @@ class TestChaintracksServiceClient:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksServiceClient implementation")
-    @pytest.mark.asyncio
-    async def test_mainnet_findheaderforheight(self) -> None:
+    def test_mainnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for mainnet
            When: Find header for height 877595 and invalid height 999999999
            Then: Returns correct header hash for valid height, undefined for invalid
@@ -36,21 +35,20 @@ class TestChaintracksServiceClient:
         client = self._make_client("main")
 
         # When
-        r = await client.find_header_for_height(877595)
+        r = client.find_header_for_height(877595)
 
         # Then
         assert r is not None
         assert r.hash == "00000000000000000b010edee7422c59ec9131742e35f3e0d5837d710b961406"
 
         # When - Invalid height
-        r_invalid = await client.find_header_for_height(999999999)
+        r_invalid = client.find_header_for_height(999999999)
 
         # Then
         assert r_invalid is None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksServiceClient implementation")
-    @pytest.mark.asyncio
-    async def test_testnet_findheaderforheight(self) -> None:
+    def test_testnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for testnet
            When: Find header for height 1651723 and invalid height 999999999
            Then: Returns correct header hash for valid height, undefined for invalid
@@ -65,14 +63,14 @@ class TestChaintracksServiceClient:
         client = self._make_client("test")
 
         # When
-        r = await client.find_header_for_height(1651723)
+        r = client.find_header_for_height(1651723)
 
         # Then
         assert r is not None
         assert r.hash == "0000000049686fe721f70614c89df146e410240f838b8f3ef8e6471c6dfdd153"
 
         # When - Invalid height
-        r_invalid = await client.find_header_for_height(999999999)
+        r_invalid = client.find_header_for_height(999999999)
 
         # Then
         assert r_invalid is None

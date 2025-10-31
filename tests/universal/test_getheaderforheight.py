@@ -17,8 +17,7 @@ BLOCK_HEADER_HEX_LENGTH = 160
 class TestUniversalVectorsGetHeaderForHeight:
     """Test getHeaderForHeight using Universal Test Vectors."""
 
-    @pytest.mark.asyncio
-    async def test_getheaderforheight_json_matches_universal_vectors(
+    def test_getheaderforheight_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for getHeaderForHeight
@@ -33,7 +32,7 @@ class TestUniversalVectorsGetHeaderForHeight:
         wallet = Wallet(chain="main", services=services)
 
         # When
-        result = await wallet.get_header_for_height(args_data["json"], originator=None)
+        result = wallet.get_header_for_height(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
@@ -42,7 +41,7 @@ class TestUniversalVectorsGetHeaderForHeight:
         assert len(result["header"]) == BLOCK_HEADER_HEX_LENGTH
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    async def test_getheaderforheight_wire_matches_universal_vectors(
+    def test_getheaderforheight_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI wire format test (skipped for now)."""

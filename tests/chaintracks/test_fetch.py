@@ -29,8 +29,7 @@ class TestChaintracksFetch:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksFetch implementation")
-    @pytest.mark.asyncio
-    async def test_fetchjson(self) -> None:
+    def test_fetchjson(self) -> None:
         """Given: ChaintracksFetch instance and CDN URL
            When: Fetch JSON resource
            Then: Returns defined BulkHeaderFilesInfo with > 4 files
@@ -44,15 +43,14 @@ class TestChaintracksFetch:
         json_resource = f"{cdn_url}/testNetBlockHeaders.json"
 
         # When
-        info = await fetch.fetch_json(json_resource)
+        info = fetch.fetch_json(json_resource)
 
         # Then
         assert info is not None
         assert len(info["files"]) > 4
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksFetch implementation")
-    @pytest.mark.asyncio
-    async def test_download(self) -> None:
+    def test_download(self) -> None:
         """Given: ChaintracksFetch instance and CDN URL
            When: Download testNet_0.headers file
            Then: Returns 8000000 bytes with valid hash
@@ -66,7 +64,7 @@ class TestChaintracksFetch:
         url = f"{cdn_url}/testNet_0.headers"
 
         # When
-        data = await fetch.download(url)
+        data = fetch.download(url)
 
         # Then
         assert len(data) == 8000000
@@ -74,8 +72,7 @@ class TestChaintracksFetch:
         assert valid_bulk_header_files_by_file_hash()[file_hash] is not None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksFetch implementation")
-    @pytest.mark.asyncio
-    async def test_download_716(self) -> None:
+    def test_download_716(self) -> None:
         """Given: ChaintracksFetch instance and CDN URL
            When: Download testNet_4.headers file
            Then: Returns 8000000 bytes (80 * 100000) with valid hash
@@ -89,7 +86,7 @@ class TestChaintracksFetch:
         url = f"{cdn_url}/testNet_4.headers"
 
         # When
-        data = await fetch.download(url)
+        data = fetch.download(url)
 
         # Then
         assert len(data) == 80 * 100000
@@ -97,8 +94,7 @@ class TestChaintracksFetch:
         assert valid_bulk_header_files_by_file_hash()[file_hash] is not None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksFetch implementation")
-    @pytest.mark.asyncio
-    async def test_download_717(self) -> None:
+    def test_download_717(self) -> None:
         """Given: ChaintracksFetch instance and CDN URL
            When: Download testNet_15.headers file
            Then: Returns data with valid hash
@@ -112,7 +108,7 @@ class TestChaintracksFetch:
         url = f"{cdn_url}/testNet_15.headers"
 
         # When
-        data = await fetch.download(url)
+        data = fetch.download(url)
 
         # Then
         file_hash = as_string(sha256(as_array(data)), "base64")

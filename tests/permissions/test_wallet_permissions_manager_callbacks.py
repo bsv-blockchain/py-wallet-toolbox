@@ -31,8 +31,7 @@ class TestWalletPermissionsManagerCallbacks:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_bindcallback_should_register_multiple_callbacks_for_the_same_event_which_are_called_in_sequence(
+    def test_bindcallback_should_register_multiple_callbacks_for_the_same_event_which_are_called_in_sequence(
         self,
     ) -> None:
         """Given: Permission manager with multiple callbacks for same event
@@ -67,14 +66,13 @@ class TestWalletPermissionsManagerCallbacks:
         assert isinstance(id3, int)
 
         # Trigger event internally (simulate permission request)
-        await manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
+        manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
 
         # Then
         assert call_order == ["callback1", "callback2", "callback3"]
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_unbindcallback_by_numeric_id_should_prevent_the_callback_from_being_called_again(self) -> None:
+    def test_unbindcallback_by_numeric_id_should_prevent_the_callback_from_being_called_again(self) -> None:
         """Given: Permission manager with registered callback
            When: Unbind by numeric ID
            Then: Callback is no longer called
@@ -98,14 +96,13 @@ class TestWalletPermissionsManagerCallbacks:
         manager.unbind_callback(callback_id)
 
         # Trigger event
-        await manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
+        manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
 
         # Then
         assert call_count == 0  # Callback was not called
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_unbindcallback_by_function_reference_should_remove_the_callback(self) -> None:
+    def test_unbindcallback_by_function_reference_should_remove_the_callback(self) -> None:
         """Given: Permission manager with registered callback
            When: Unbind by function reference
            Then: Callback is removed
@@ -129,14 +126,13 @@ class TestWalletPermissionsManagerCallbacks:
         manager.unbind_callback(callback)
 
         # Trigger event
-        await manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
+        manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
 
         # Then
         assert call_count == 0
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_a_failing_callback_throwing_an_error_does_not_block_subsequent_callbacks(self) -> None:
+    def test_a_failing_callback_throwing_an_error_does_not_block_subsequent_callbacks(self) -> None:
         """Given: Multiple callbacks, one throws error
            When: Trigger event
            Then: Error does not block subsequent callbacks
@@ -165,7 +161,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", callback3)
 
         # When - trigger event (should not throw)
-        await manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
+        manager._trigger_callbacks("onProtocolPermissionRequested", {"test": "data"})
 
         # Then - all callbacks were called despite error
         assert "callback1" in call_order
@@ -173,8 +169,7 @@ class TestWalletPermissionsManagerCallbacks:
         assert "callback3" in call_order
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_trigger_onprotocolpermissionrequested_with_correct_params_when_a_non_admin_domain_requests_a_protocol_operation(
+    def test_should_trigger_onprotocolpermissionrequested_with_correct_params_when_a_non_admin_domain_requests_a_protocol_operation(
         self,
     ) -> None:
         """Given: Permission manager with callback
@@ -205,7 +200,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - non-admin domain requests protocol operation
-        await manager.get_public_key(
+        manager.get_public_key(
             {"identityKey": True, "protocolID": [1, "test-protocol"], "keyID": "1"}, originator="example.com"
         )
 
@@ -216,8 +211,7 @@ class TestWalletPermissionsManagerCallbacks:
         assert "requestID" in captured_params
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_resolve_the_original_caller_promise_when_requests_are_granted(self) -> None:
+    def test_should_resolve_the_original_caller_promise_when_requests_are_granted(self) -> None:
         """Given: Permission manager with pending request
            When: Permission is granted
            Then: Original caller's promise resolves
@@ -242,7 +236,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - request permission
-        result = await manager.get_public_key(
+        result = manager.get_public_key(
             {"identityKey": True, "protocolID": [1, "test"], "keyID": "1"}, originator="example.com"
         )
 
@@ -251,8 +245,7 @@ class TestWalletPermissionsManagerCallbacks:
         mock_underlying_wallet.get_public_key.assert_called_once()
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_reject_the_original_caller_promise_when_permission_is_denied(self) -> None:
+    def test_should_reject_the_original_caller_promise_when_permission_is_denied(self) -> None:
         """Given: Permission manager with pending request
            When: Permission is denied
            Then: Original caller's promise is rejected
@@ -278,13 +271,12 @@ class TestWalletPermissionsManagerCallbacks:
 
         # When/Then - request should be denied
         with pytest.raises(ValueError, match="Permission denied"):
-            await manager.get_public_key(
+            manager.get_public_key(
                 {"identityKey": True, "protocolID": [1, "test"], "keyID": "1"}, originator="example.com"
             )
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_multiple_pending_requests_for_the_same_resource_should_trigger_only_one_onxxxrequested_callback(
+    def test_multiple_pending_requests_for_the_same_resource_should_trigger_only_one_onxxxrequested_callback(
         self,
     ) -> None:
         """Given: Multiple parallel requests for same resource
@@ -315,7 +307,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - make multiple parallel requests for same protocol
-        results = await asyncio.gather(
+        results = asyncio.gather(
             manager.get_public_key(
                 {"identityKey": True, "protocolID": [1, "test"], "keyID": "1"}, originator="example.com"
             ),
@@ -333,8 +325,7 @@ class TestWalletPermissionsManagerCallbacks:
         assert all(r == {"publicKey": "test-key"} for r in results)
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_multiple_pending_requests_for_different_resources_should_trigger_separate_onxxxrequested_callbacks(
+    def test_multiple_pending_requests_for_different_resources_should_trigger_separate_onxxxrequested_callbacks(
         self,
     ) -> None:
         """Given: Multiple parallel requests for different resources
@@ -365,7 +356,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - make parallel requests for different protocols
-        results = await asyncio.gather(
+        results = asyncio.gather(
             manager.get_public_key(
                 {"identityKey": True, "protocolID": [1, "protocol-A"], "keyID": "1"}, originator="example.com"
             ),

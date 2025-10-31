@@ -29,8 +29,7 @@ class TestGetRawTx:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_get_raw_tx(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_get_raw_tx(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Given: Services with testnet configuration
            When: Get raw transaction for a known txid
            Then: Returns raw transaction data
@@ -56,7 +55,7 @@ class TestGetRawTx:
         monkeypatch.setattr(services.whatsonchain.http_client, "fetch", fake_fetch)
 
         # When
-        result = await services.get_raw_tx("c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76")
+        result = services.get_raw_tx("c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76")
 
         # Then
         assert result is not None

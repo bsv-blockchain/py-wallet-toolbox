@@ -6,15 +6,14 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/CommissionTests.te
 from datetime import datetime
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import Commission
+from bsv_wallet_toolbox.storage.models import Commission
 
 
 class TestCommissionEntity:
     """Test suite for Commission entity."""
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_commission_entities(self) -> None:
+    def test_equals_identifies_matching_commission_entities(self) -> None:
         """Given: Two Commission entities with identical data
            When: Call equals method with and without syncMap
            Then: Returns True in both cases
@@ -47,8 +46,7 @@ class TestCommissionEntity:
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_commission_entities(self) -> None:
+    def test_equals_identifies_non_matching_commission_entities(self) -> None:
         """Given: Two Commission entities with different data
            When: Call equals method for each mismatched property
            Then: Returns False for all mismatches
@@ -91,8 +89,7 @@ class TestCommissionEntity:
             assert entity1.equals(mismatched_entity.to_api(), sync_map) is False
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
+    def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
     ) -> None:
         """Given: Commission entity with older updated_at
@@ -127,15 +124,14 @@ class TestCommissionEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
 
         # Then
         assert was_merged is True
         assert entity.is_redeemed is True
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
+    def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: Commission entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
            Then: Entity is not updated, returns False
@@ -168,15 +164,14 @@ class TestCommissionEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, older_or_equal_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, older_or_equal_data, sync_map, None)
 
         # Then
         assert was_merged is False
         assert entity.is_redeemed is False
 
     
-    @pytest.mark.asyncio
-    async def test_commission_entity_getters_and_setters(self) -> None:
+    def test_commission_entity_getters_and_setters(self) -> None:
         """Given: Commission entity with initial data
            When: Get and set all properties
            Then: Getters and setters work correctly

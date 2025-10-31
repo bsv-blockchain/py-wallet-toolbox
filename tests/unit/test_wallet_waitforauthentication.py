@@ -18,8 +18,7 @@ class TestWaitForAuthentication:
     Note: Python-specific test (no TypeScript equivalent for base Wallet class).
     """
 
-    @pytest.mark.asyncio
-    async def test_eventually_resolves(self) -> None:
+    def test_eventually_resolves(self) -> None:
         """Given: Wallet instance
            When: Call waitForAuthentication
            Then: Returns authenticated=true
@@ -31,7 +30,7 @@ class TestWaitForAuthentication:
         wallet = Wallet(chain="test")
 
         # When
-        result = await wallet.wait_for_authentication({}, originator="normal.com")
+        result = wallet.wait_for_authentication({}, originator="normal.com")
 
         # Then
         assert result == {"authenticated": True}

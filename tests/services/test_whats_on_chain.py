@@ -28,8 +28,7 @@ class TestWhatsOnChain:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_placeholder(self) -> None:
+    def test_placeholder(self) -> None:
         """Given: WhatsOnChain service
            When: Placeholder test
            Then: Pass (empty test)
@@ -42,8 +41,7 @@ class TestWhatsOnChain:
         """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_getrawtx_testnet(self) -> None:
+    def test_getrawtx_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet and a known txid
            When: Call getRawTx with valid and invalid txids
            Then: Returns raw transaction hex for valid txid, undefined for invalid txid
@@ -56,21 +54,20 @@ class TestWhatsOnChain:
         woc_test = WhatsOnChain(env_test.chain, {"apiKey": env_test.taal_api_key})
 
         # When - valid txid
-        raw_tx = await woc_test.get_raw_tx("7e5b797b86abd31a654bf296900d6cb14d04ef0811568ff4675494af2d92166b")
+        raw_tx = woc_test.get_raw_tx("7e5b797b86abd31a654bf296900d6cb14d04ef0811568ff4675494af2d92166b")
 
         # Then
         expected_raw_tx = "010000000158EED5DBBB7E2F7D70C79A11B9B61AABEECFA5A7CEC679BEDD00F42C48A4BD45010000006B483045022100AE8BB45498A40E2AC797775C405C108168804CD84E8C09A9D42D280D18EDDB6D022024863BFAAC5FF3C24CA65E2F3677EDA092BC3CC5D2EFABA73264B8FF55CF416B412102094AAF520E14E1C4D68496822800BCC7D3B3B26CA368E004A2CB70B398D82FACFFFFFFFF0203000000000000007421020A624B72B34BC192851C5D8890926BBB70B31BC10FDD4E3BC6534E41B1C81B93AC03010203030405064630440220013B4984F4054C2FBCD2F448AB896CCA5C4E234BF765B0C7FB27EDE572A7F7DA02201A5C8D0D023F94C209046B9A2B96B2882C5E43B72D8115561DF8C07442010EEA6D7592090000000000001976A9146511FCE2F7EF785A2102142FBF381AD1291C918688AC00000000"
         assert raw_tx == expected_raw_tx
 
         # When - invalid txid
-        raw_tx_invalid = await woc_test.get_raw_tx("1" * 64)
+        raw_tx_invalid = woc_test.get_raw_tx("1" * 64)
 
         # Then
         assert raw_tx_invalid is None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_getrawtx_mainnet(self) -> None:
+    def test_getrawtx_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet and a known txid
            When: Call getRawTx with valid and invalid txids
            Then: Returns raw transaction hex for valid txid, undefined for invalid txid
@@ -83,21 +80,20 @@ class TestWhatsOnChain:
         woc_main = WhatsOnChain(env_main.chain, {"apiKey": env_main.taal_api_key})
 
         # When - valid txid
-        raw_tx = await woc_main.get_raw_tx("d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805")
+        raw_tx = woc_main.get_raw_tx("d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805")
 
         # Then
         expected_raw_tx = "0100000001026A66A5F724EB490A55E0E08553286F08AD57E92C4BF34B5C44EA6BC0A49828020000006B483045022100C3D9A5ACA30C1F2E1A54532162E7AFE5AA69150E4C06D760414A16D1EA1BABD602205E0D9191838B0911A1E7328554A2B22EFAA80CF52B15FBA37C3046A0996C7AAD412103FA3CF488CA98D9F2DB91843F36BAF6BE39F6C947976C02394602D09FBC5F4CF4FFFFFFFF0210270000000000001976A91444C04354E88975C4BEF30CFE89D300CC7659F7E588AC96BC0000000000001976A9149A53E5CF5F1876924D98A8B35CA0BC693618682488AC00000000"
         assert raw_tx == expected_raw_tx
 
         # When - invalid txid
-        raw_tx_invalid = await woc_main.get_raw_tx("1" * 64)
+        raw_tx_invalid = woc_main.get_raw_tx("1" * 64)
 
         # Then
         assert raw_tx_invalid is None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_getmerklepath_testnet(self) -> None:
+    def test_getmerklepath_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet, Services instance, and a known txid
            When: Call getMerklePath with valid and invalid txids
            Then: Returns merklePath result for valid txid, empty result for invalid txid
@@ -112,7 +108,7 @@ class TestWhatsOnChain:
 
 
         # When - valid txid
-        r = await woc_test.get_merkle_path("7e5b797b86abd31a654bf296900d6cb14d04ef0811568ff4675494af2d92166b", services)
+        r = woc_test.get_merkle_path("7e5b797b86abd31a654bf296900d6cb14d04ef0811568ff4675494af2d92166b", services)
         s = json.dumps(r, sort_keys=True, separators=(",", ":"))
 
         # Then
@@ -121,7 +117,7 @@ class TestWhatsOnChain:
 
         # When - invalid txid
         # HTTP mocking is applied globally in tests/conftest.py
-        r_invalid = await woc_test.get_merkle_path("1" * 64, services)
+        r_invalid = woc_test.get_merkle_path("1" * 64, services)
         s_invalid = json.dumps(r_invalid, sort_keys=True, separators=(",", ":"))
 
         # Then
@@ -131,8 +127,7 @@ class TestWhatsOnChain:
         assert s_invalid == expected_json_invalid
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_getmerklepath_mainnet(self) -> None:
+    def test_getmerklepath_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet, Services instance, and a known txid
            When: Call getMerklePath with valid and invalid txids
            Then: Returns merklePath result for valid txid, empty result for invalid txid
@@ -148,7 +143,7 @@ class TestWhatsOnChain:
         # HTTP mocking is applied globally in tests/conftest.py
 
         # When - valid txid
-        r = await woc_main.get_merkle_path("d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805", services)
+        r = woc_main.get_merkle_path("d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805", services)
         s = json.dumps(r, sort_keys=True, separators=(",", ":"))
 
         # Then
@@ -157,7 +152,7 @@ class TestWhatsOnChain:
 
         # When - invalid txid
         # HTTP mocking is applied globally in tests/conftest.py
-        r_invalid = await woc_main.get_merkle_path("1" * 64, services)
+        r_invalid = woc_main.get_merkle_path("1" * 64, services)
         s_invalid = json.dumps(r_invalid, sort_keys=True, separators=(",", ":"))
 
         # Then
@@ -167,8 +162,7 @@ class TestWhatsOnChain:
         assert s_invalid == expected_json_invalid
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_updatebsvexchangerate(self) -> None:
+    def test_updatebsvexchangerate(self) -> None:
         """Given: WhatsOnChain service for mainnet
            When: Call updateBsvExchangeRate
            Then: Returns exchange rate with base 'USD', positive rate, and truthy timestamp
@@ -181,7 +175,7 @@ class TestWhatsOnChain:
         woc_main = WhatsOnChain(env_main.chain, {"apiKey": env_main.taal_api_key})
 
         # When
-        r = await woc_main.update_bsv_exchange_rate()
+        r = woc_main.update_bsv_exchange_rate()
 
         # Then
         assert r["base"] == "USD"
@@ -189,8 +183,7 @@ class TestWhatsOnChain:
         assert r["timestamp"] is not None
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_gettxpropagation_testnet(self) -> None:
+    def test_gettxpropagation_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet and a known txid
            When: Call getTxPropagation
            Then: Test skipped (TypeScript returns early due to internal server error 500)
@@ -205,8 +198,7 @@ class TestWhatsOnChain:
         return
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
-    @pytest.mark.asyncio
-    async def test_gettxpropagation_mainnet(self) -> None:
+    def test_gettxpropagation_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet
            When: Call getTxPropagation
            Then: Test is empty (TypeScript has empty test body)

@@ -25,8 +25,7 @@ class TestUniversalVectorsListCertificates:
     """
 
     @pytest.mark.skip(reason="Waiting for list_certificates implementation")
-    @pytest.mark.asyncio
-    async def test_listcertificates_simple_json_matches_universal_vectors(
+    def test_listcertificates_simple_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for listCertificates (simple)
@@ -38,21 +37,19 @@ class TestUniversalVectorsListCertificates:
         wallet = Wallet(chain="main")
 
         # When
-        result = await wallet.list_certificates(args_data["json"], originator=None)
+        result = wallet.list_certificates(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_listcertificates_simple_wire_matches_universal_vectors(
+    def test_listcertificates_simple_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
 
     @pytest.mark.skip(reason="Waiting for list_certificates implementation")
-    @pytest.mark.asyncio
-    async def test_listcertificates_full_json_matches_universal_vectors(
+    def test_listcertificates_full_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for listCertificates (full)
@@ -64,14 +61,13 @@ class TestUniversalVectorsListCertificates:
         wallet = Wallet(chain="main")
 
         # When
-        result = await wallet.list_certificates(args_data["json"], originator=None)
+        result = wallet.list_certificates(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_listcertificates_full_wire_matches_universal_vectors(
+    def test_listcertificates_full_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""

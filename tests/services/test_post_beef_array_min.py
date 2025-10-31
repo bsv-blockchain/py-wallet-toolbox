@@ -8,14 +8,13 @@ import pytest
 from bsv_wallet_toolbox.services import Services
 
 
-@pytest.mark.asyncio
 async def test_post_beef_array_minimal() -> None:
     options = Services.create_default_options("main")
     options["arcUrl"] = "https://arc.mock"
     options["arcApiKey"] = "test"
     services = Services(options)
 
-    res_list = await services.post_beef_array(["00", "11"])
+    res_list = services.post_beef_array(["00", "11"])
     assert isinstance(res_list, list)
     assert len(res_list) == 2
     for res in res_list:

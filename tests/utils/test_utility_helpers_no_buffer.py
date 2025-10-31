@@ -23,8 +23,7 @@ class TestUtilityHelpersNoBuffer:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
-    @pytest.mark.asyncio
-    async def test_convert_from_uint8array(self) -> None:
+    def test_convert_from_uint8array(self) -> None:
         """Given: Uint8Array [1, 2, 3, 4]
            When: Convert using asUint8Array and asString with various encodings
            Then: Returns correct conversions for each encoding
@@ -57,8 +56,7 @@ class TestUtilityHelpersNoBuffer:
         assert r == "AQIDBA=="
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
-    @pytest.mark.asyncio
-    async def test_convert_from_number_array(self) -> None:
+    def test_convert_from_number_array(self) -> None:
         """Given: number[] [1, 2, 3, 4]
            When: Convert using asUint8Array and asString with various encodings
            Then: Returns correct conversions for each encoding
@@ -91,8 +89,7 @@ class TestUtilityHelpersNoBuffer:
         assert r == "AQIDBA=="
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
-    @pytest.mark.asyncio
-    async def test_convert_from_hex_string(self) -> None:
+    def test_convert_from_hex_string(self) -> None:
         """Given: hex string '01020304'
            When: Convert using asUint8Array and asString with various input/output encodings
            Then: Returns correct conversions for each encoding combination
@@ -129,8 +126,7 @@ class TestUtilityHelpersNoBuffer:
         assert r == "AQIDBA=="
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
-    @pytest.mark.asyncio
-    async def test_convert_from_utf8_string(self) -> None:
+    def test_convert_from_utf8_string(self) -> None:
         """Given: utf8 string '\x01\x02\x03\x04'
            When: Convert using asUint8Array and asString with various output encodings
            Then: Returns correct conversions for each encoding

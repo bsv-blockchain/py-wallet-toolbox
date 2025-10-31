@@ -13,8 +13,7 @@ class TestWalletListOutputs:
     """Test suite for Wallet.list_outputs method."""
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_basket(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_basket(self, wallet: Wallet) -> None:
         """Given: ListOutputsArgs with empty basket
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -27,11 +26,10 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.list_outputs(invalid_args)
+            wallet.list_outputs(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_tag(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_tag(self, wallet: Wallet) -> None:
         """Given: ListOutputsArgs with empty tag in tags list
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -44,11 +42,10 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.list_outputs(invalid_args)
+            wallet.list_outputs(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_limit_zero(self, wallet: Wallet) -> None:
+    def test_invalid_params_limit_zero(self, wallet: Wallet) -> None:
         """Given: ListOutputsArgs with limit=0
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -61,11 +58,10 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.list_outputs(invalid_args)
+            wallet.list_outputs(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_limit_exceeds_max(self, wallet: Wallet) -> None:
+    def test_invalid_params_limit_exceeds_max(self, wallet: Wallet) -> None:
         """Given: ListOutputsArgs with limit exceeding 10000
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -78,11 +74,10 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.list_outputs(invalid_args)
+            wallet.list_outputs(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_negative_offset(self, wallet: Wallet) -> None:
+    def test_invalid_params_negative_offset(self, wallet: Wallet) -> None:
         """Given: ListOutputsArgs with negative offset
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -95,11 +90,10 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.list_outputs(invalid_args)
+            wallet.list_outputs(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_originator_too_long(self, wallet: Wallet) -> None:
+    def test_invalid_originator_too_long(self, wallet: Wallet) -> None:
         """Given: Valid args but originator exceeding 250 characters
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -113,11 +107,10 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.list_outputs(valid_args, originator=too_long_originator)
+            wallet.list_outputs(valid_args, originator=too_long_originator)
 
     @pytest.mark.skip(reason="Waiting for list_outputs implementation with test database")
-    @pytest.mark.asyncio
-    async def test_valid_params_with_originator(self, wallet: Wallet) -> None:
+    def test_valid_params_with_originator(self, wallet: Wallet) -> None:
         """Given: Valid ListOutputsArgs and valid originator
            When: Call list_outputs
            Then: Returns output list successfully
@@ -144,6 +137,6 @@ class TestWalletListOutputs:
 
         # When / Then
         for originator in valid_originators:
-            result = await wallet.list_outputs(valid_args, originator=originator)
+            result = wallet.list_outputs(valid_args, originator=originator)
             assert "totalOutputs" in result
             assert result["totalOutputs"] >= 0

@@ -22,7 +22,7 @@ Reference: wallet-toolbox/test/Wallet/local/localWallet.man.test.ts
 import logging
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import EntitySyncState
+from bsv_wallet_toolbox.storage.models import EntitySyncState
 from bsv_wallet_toolbox.test_utils import create_one_sat_test_output, create_setup
 
 logger = logging.getLogger(__name__)

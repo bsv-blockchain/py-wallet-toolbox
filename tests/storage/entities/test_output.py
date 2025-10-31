@@ -7,15 +7,14 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import Output
+from bsv_wallet_toolbox.storage.models import Output
 
 
 class TestOutputEntity:
     """Test suite for Output entity."""
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_entities_with_and_without_syncmap(self) -> None:
+    def test_equals_identifies_matching_entities_with_and_without_syncmap(self) -> None:
         """Given: Two Output entities with same data
            When: Call equals with and without SyncMap
            Then: Returns True in both cases
@@ -61,8 +60,7 @@ class TestOutputEntity:
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_entities(self) -> None:
+    def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two Output entities with different satoshis
            When: Call equals method
            Then: Returns False
@@ -106,8 +104,7 @@ class TestOutputEntity:
         assert entity1.equals(entity2.to_api()) is False
 
     
-    @pytest.mark.asyncio
-    async def test_equals_handles_optional_fields_and_arrays(self) -> None:
+    def test_equals_handles_optional_fields_and_arrays(self) -> None:
         """Given: Two Output entities with different lockingScript arrays
            When: Call equals method
            Then: Returns False for different arrays
@@ -151,8 +148,7 @@ class TestOutputEntity:
         assert entity1.equals(entity2.to_api()) is False
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
+    def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
     ) -> None:
         """Given: Existing Output with old updated_at
@@ -229,7 +225,7 @@ class TestOutputEntity:
         )()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
 
         # Then
         assert was_merged is True
@@ -239,8 +235,7 @@ class TestOutputEntity:
         assert entity.type == "p2sh"
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
+    def test_mergeexisting_does_not_update_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: Existing Output with new updated_at
            When: Call merge_existing with older updated_at
            Then: Output is not updated and returns False
@@ -290,7 +285,7 @@ class TestOutputEntity:
         mock_storage = type("MockStorage", (), {"update_output": mock_update_output})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
 
         # Then
         assert was_merged is False

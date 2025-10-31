@@ -33,7 +33,7 @@ import logging
 import pytest
 from bsv_wallet_toolbox.beef import Beef
 from bsv_wallet_toolbox.key_derivation import PrivateKey
-from bsv_wallet_toolbox.storage.entities import EntityProvenTxReq
+from bsv_wallet_toolbox.storage.models import EntityProvenTxReq
 from bsv_wallet_toolbox.test_utils import (
     confirm_spendable_outputs,
     create_test_wallet_with_storage_client,

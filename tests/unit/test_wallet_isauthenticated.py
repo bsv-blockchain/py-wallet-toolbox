@@ -18,8 +18,7 @@ class TestIsAuthenticated:
     Note: Python-specific test (no TypeScript equivalent for base Wallet class).
     """
 
-    @pytest.mark.asyncio
-    async def test_resolves_with_authenticated_true(self) -> None:
+    def test_resolves_with_authenticated_true(self) -> None:
         """Given: Wallet instance
            When: Call isAuthenticated with normal originator
            Then: Returns authenticated=true
@@ -31,7 +30,7 @@ class TestIsAuthenticated:
         wallet = Wallet(chain="test")
 
         # When
-        result = await wallet.is_authenticated({}, originator="normal.com")
+        result = wallet.is_authenticated({}, originator="normal.com")
 
         # Then
         assert result == {"authenticated": True}

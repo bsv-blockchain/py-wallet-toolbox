@@ -13,8 +13,7 @@ from bsv_wallet_toolbox import Wallet
 class TestWalletGetNetwork:
     """Test suite for Wallet.get_network method."""
 
-    @pytest.mark.asyncio
-    async def test_returns_testnet_for_test_chain(self) -> None:
+    def test_returns_testnet_for_test_chain(self) -> None:
         """Given: Wallet with chain='test'
            When: Call getNetwork
            Then: Returns 'testnet'
@@ -28,13 +27,12 @@ class TestWalletGetNetwork:
         wallet = Wallet(chain="test")
 
         # When
-        result = await wallet.get_network({})
+        result = wallet.get_network({})
 
         # Then
         assert result == {"network": "testnet"}
 
-    @pytest.mark.asyncio
-    async def test_returns_mainnet_for_main_chain(self) -> None:
+    def test_returns_mainnet_for_main_chain(self) -> None:
         """Given: Wallet with chain='main'
            When: Call getNetwork
            Then: Returns 'mainnet'
@@ -48,7 +46,7 @@ class TestWalletGetNetwork:
         wallet = Wallet(chain="main")
 
         # When
-        result = await wallet.get_network({})
+        result = wallet.get_network({})
 
         # Then
         assert result == {"network": "mainnet"}

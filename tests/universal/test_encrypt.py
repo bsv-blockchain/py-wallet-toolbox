@@ -23,8 +23,7 @@ class TestUniversalVectorsEncrypt:
     """
 
     @pytest.mark.skip(reason="Non-deterministic ECIES output; enable after deterministic RNG or TS parity")
-    @pytest.mark.asyncio
-    async def test_encrypt_json_matches_universal_vectors(
+    def test_encrypt_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for encrypt
@@ -36,14 +35,13 @@ class TestUniversalVectorsEncrypt:
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
-        result = await wallet.encrypt(args_data["json"], originator=None)
+        result = wallet.encrypt(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_encrypt_wire_matches_universal_vectors(
+    def test_encrypt_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""

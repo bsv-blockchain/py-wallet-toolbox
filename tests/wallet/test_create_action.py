@@ -17,8 +17,7 @@ class TestWalletCreateAction:
     """
 
     @pytest.mark.skip(reason="Waiting for create_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_description(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_description(self, wallet: Wallet) -> None:
         """Given: CreateActionArgs with empty description
            When: Call create_action
            Then: Raises InvalidParameterError
@@ -31,11 +30,10 @@ class TestWalletCreateAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.create_action(invalid_args)
+            wallet.create_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for create_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_locking_script_not_hex(self, wallet: Wallet) -> None:
+    def test_invalid_params_locking_script_not_hex(self, wallet: Wallet) -> None:
         """Given: CreateActionArgs with non-hexadecimal lockingScript
            When: Call create_action
            Then: Raises InvalidParameterError
@@ -51,11 +49,10 @@ class TestWalletCreateAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.create_action(invalid_args)
+            wallet.create_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for create_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_locking_script_odd_length(self, wallet: Wallet) -> None:
+    def test_invalid_params_locking_script_odd_length(self, wallet: Wallet) -> None:
         """Given: CreateActionArgs with odd-length lockingScript
            When: Call create_action
            Then: Raises InvalidParameterError
@@ -71,11 +68,10 @@ class TestWalletCreateAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.create_action(invalid_args)
+            wallet.create_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for create_action implementation with test database")
-    @pytest.mark.asyncio
-    async def test_repeatable_txid(self, wallet: Wallet) -> None:
+    def test_repeatable_txid(self, wallet: Wallet) -> None:
         """Given: CreateActionArgs with deterministic settings (randomize_outputs=False)
            When: Call create_action with same args
            Then: Produces repeatable transaction ID
@@ -103,14 +99,13 @@ class TestWalletCreateAction:
         expected_txid = "4f428a93c43c2d120204ecdc06f7916be8a5f4542cc8839a0fd79bd1b44582f3"
 
         # When
-        result = await wallet.create_action(create_args)
+        result = wallet.create_action(create_args)
 
         # Then
         assert result["txid"] == expected_txid
 
     @pytest.mark.skip(reason="Waiting for create_action implementation with test database")
-    @pytest.mark.asyncio
-    async def test_signable_transaction(self, wallet: Wallet) -> None:
+    def test_signable_transaction(self, wallet: Wallet) -> None:
         """Given: CreateActionArgs with signAndProcess=False
            When: Call create_action
            Then: Returns signableTransaction for external signing
@@ -133,7 +128,7 @@ class TestWalletCreateAction:
         }
 
         # When
-        result = await wallet.create_action(create_args)
+        result = wallet.create_action(create_args)
 
         # Then
         assert "noSendChange" in result

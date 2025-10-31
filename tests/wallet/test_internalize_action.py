@@ -13,8 +13,7 @@ class TestWalletInternalizeAction:
     """Test suite for Wallet.internalize_action method."""
 
     @pytest.mark.skip(reason="Waiting for internalize_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_tx(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_tx(self, wallet: Wallet) -> None:
         """Given: InternalizeActionArgs with empty tx
            When: Call internalize_action
            Then: Raises InvalidParameterError
@@ -27,11 +26,10 @@ class TestWalletInternalizeAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.internalize_action(invalid_args)
+            wallet.internalize_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for internalize_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_description(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_description(self, wallet: Wallet) -> None:
         """Given: InternalizeActionArgs with empty description
            When: Call internalize_action
            Then: Raises InvalidParameterError
@@ -48,11 +46,10 @@ class TestWalletInternalizeAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.internalize_action(invalid_args)
+            wallet.internalize_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for internalize_action implementation")
-    @pytest.mark.asyncio
-    async def test_invalid_params_empty_outputs(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_outputs(self, wallet: Wallet) -> None:
         """Given: InternalizeActionArgs with valid tx but empty outputs
            When: Call internalize_action
            Then: Raises InvalidParameterError
@@ -69,11 +66,10 @@ class TestWalletInternalizeAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.internalize_action(invalid_args)
+            wallet.internalize_action(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for internalize_action implementation with test database")
-    @pytest.mark.asyncio
-    async def test_internalize_custom_output_basket_insertion(self, wallet: Wallet) -> None:
+    def test_internalize_custom_output_basket_insertion(self, wallet: Wallet) -> None:
         """Given: Valid InternalizeActionArgs with basket insertion protocol
            When: Call internalize_action
            Then: Output is added to specified basket with custom instructions and tags
@@ -104,7 +100,7 @@ class TestWalletInternalizeAction:
         }
 
         # When
-        result = await wallet.internalize_action(internalize_args)
+        result = wallet.internalize_action(internalize_args)
 
         # Then
         assert result["accepted"] is True

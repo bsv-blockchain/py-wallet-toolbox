@@ -15,8 +15,7 @@ class TestWalletBasketOperations:
     """Test suite for Wallet basket management methods."""
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_create_basket(self, wallet: Wallet) -> None:
+    def test_create_basket(self, wallet: Wallet) -> None:
         """Given: Valid basket name
            When: Create a new basket
            Then: Basket is created successfully
@@ -27,15 +26,14 @@ class TestWalletBasketOperations:
         basket_name = "payments"
 
         # When
-        result = await wallet.create_basket({"name": basket_name})
+        result = wallet.create_basket({"name": basket_name})
 
         # Then
         assert "basketId" in result or "name" in result
         assert result.get("name") == basket_name
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_create_basket_invalid_name_empty(self, wallet: Wallet) -> None:
+    def test_create_basket_invalid_name_empty(self, wallet: Wallet) -> None:
         """Given: Empty basket name
            When: Attempt to create basket
            Then: Raises InvalidParameterError
@@ -47,11 +45,10 @@ class TestWalletBasketOperations:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.create_basket(invalid_args)
+            wallet.create_basket(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_create_basket_invalid_name_too_long(self, wallet: Wallet) -> None:
+    def test_create_basket_invalid_name_too_long(self, wallet: Wallet) -> None:
         """Given: Basket name exceeding 300 characters
            When: Attempt to create basket
            Then: Raises InvalidParameterError
@@ -63,11 +60,10 @@ class TestWalletBasketOperations:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            await wallet.create_basket(invalid_args)
+            wallet.create_basket(invalid_args)
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_list_baskets(self, wallet: Wallet) -> None:
+    def test_list_baskets(self, wallet: Wallet) -> None:
         """Given: Wallet with existing baskets
            When: Call list_baskets
            Then: Returns list of all baskets
@@ -75,7 +71,7 @@ class TestWalletBasketOperations:
         Note: Should include at least the 'default' basket.
         """
         # When
-        result = await wallet.list_baskets()
+        result = wallet.list_baskets()
 
         # Then
         assert "baskets" in result
@@ -87,8 +83,7 @@ class TestWalletBasketOperations:
         assert "default" in basket_names
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_get_basket_by_name(self, wallet: Wallet) -> None:
+    def test_get_basket_by_name(self, wallet: Wallet) -> None:
         """Given: Wallet with a specific basket
            When: Get basket by name
            Then: Returns basket information
@@ -99,7 +94,7 @@ class TestWalletBasketOperations:
         basket_name = "default"
 
         # When
-        result = await wallet.get_basket({"name": basket_name})
+        result = wallet.get_basket({"name": basket_name})
 
         # Then
         assert "basket" in result
@@ -107,8 +102,7 @@ class TestWalletBasketOperations:
         assert "outputCount" in result["basket"] or "totalSatoshis" in result["basket"]
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_delete_basket(self, wallet: Wallet) -> None:
+    def test_delete_basket(self, wallet: Wallet) -> None:
         """Given: Wallet with a non-default basket
            When: Delete the basket
            Then: Basket is removed (outputs may be moved to default)
@@ -116,18 +110,17 @@ class TestWalletBasketOperations:
         Note: The 'default' basket cannot be deleted.
         """
         # Given - First create a basket
-        await wallet.create_basket({"name": "temporary"})
+        wallet.create_basket({"name": "temporary"})
 
         # When
-        delete_result = await wallet.delete_basket({"name": "temporary"})
+        delete_result = wallet.delete_basket({"name": "temporary"})
 
         # Then
         assert "deleted" in delete_result
         assert delete_result["deleted"] is True
 
     @pytest.mark.skip(reason="Waiting for basket operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_delete_default_basket_fails(self, wallet: Wallet) -> None:
+    def test_delete_default_basket_fails(self, wallet: Wallet) -> None:
         """Given: Attempt to delete the 'default' basket
            When: Call delete_basket for 'default'
            Then: Raises InvalidParameterError or returns error
@@ -136,7 +129,7 @@ class TestWalletBasketOperations:
         """
         # Given / When / Then
         with pytest.raises((InvalidParameterError, Exception)):
-            await wallet.delete_basket({"name": "default"})
+            wallet.delete_basket({"name": "default"})
 
 
 class TestWalletOutputTagOperations:
@@ -146,8 +139,7 @@ class TestWalletOutputTagOperations:
     """
 
     @pytest.mark.skip(reason="Waiting for tag operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_add_tags_to_output(self, wallet: Wallet) -> None:
+    def test_add_tags_to_output(self, wallet: Wallet) -> None:
         """Given: Existing output and tags
            When: Add tags to the output
            Then: Tags are associated with the output
@@ -158,15 +150,14 @@ class TestWalletOutputTagOperations:
         args = {"output": "txid.0", "tags": ["payment", "urgent"]}  # Output identifier
 
         # When
-        result = await wallet.add_output_tags(args)
+        result = wallet.add_output_tags(args)
 
         # Then
         assert "added" in result
         assert result["added"] is True
 
     @pytest.mark.skip(reason="Waiting for tag operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_remove_tags_from_output(self, wallet: Wallet) -> None:
+    def test_remove_tags_from_output(self, wallet: Wallet) -> None:
         """Given: Output with existing tags
            When: Remove specific tags
            Then: Tags are removed from the output
@@ -177,15 +168,14 @@ class TestWalletOutputTagOperations:
         args = {"output": "txid.0", "tags": ["urgent"]}  # Remove this tag
 
         # When
-        result = await wallet.remove_output_tags(args)
+        result = wallet.remove_output_tags(args)
 
         # Then
         assert "removed" in result
         assert result["removed"] is True
 
     @pytest.mark.skip(reason="Waiting for tag operations implementation with test database")
-    @pytest.mark.asyncio
-    async def test_list_output_tags(self, wallet: Wallet) -> None:
+    def test_list_output_tags(self, wallet: Wallet) -> None:
         """Given: Output with tags
            When: List tags for the output
            Then: Returns all associated tags
@@ -196,7 +186,7 @@ class TestWalletOutputTagOperations:
         args = {"output": "txid.0"}
 
         # When
-        result = await wallet.list_output_tags(args)
+        result = wallet.list_output_tags(args)
 
         # Then
         assert "tags" in result

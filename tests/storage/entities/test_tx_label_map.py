@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import TxLabelMap
+from bsv_wallet_toolbox.storage.models import TxLabelMap
 
 
 class TestTxLabelMapEntity:
@@ -153,8 +153,7 @@ class TestTxLabelMapEntity:
         assert result is True
 
     
-    @pytest.mark.asyncio
-    async def test_mergefind_finds_or_creates_entity(self) -> None:
+    def test_mergefind_finds_or_creates_entity(self) -> None:
         """Given: Storage with existing TxLabelMap and syncMap
            When: Call merge_find
            Then: Finds existing entity and returns it
@@ -174,7 +173,7 @@ class TestTxLabelMapEntity:
         ei = {"transactionId": 123, "txLabelId": 456}
 
         # When
-        result = await TxLabelMap.merge_find(mock_storage, 1, ei, sync_map)
+        result = TxLabelMap.merge_find(mock_storage, 1, ei, sync_map)
 
         # Then
         assert result["found"] is True
@@ -182,8 +181,7 @@ class TestTxLabelMapEntity:
         assert result["eo"].tx_label_id == 888
 
     
-    @pytest.mark.asyncio
-    async def test_mergenew_inserts_entity(self) -> None:
+    def test_mergenew_inserts_entity(self) -> None:
         """Given: TxLabelMap entity and storage with syncMap
            When: Call merge_new
            Then: Inserts entity with mapped IDs
@@ -214,7 +212,7 @@ class TestTxLabelMapEntity:
         )
 
         # When
-        await tx_label_map.merge_new(mock_storage, 1, sync_map)
+        tx_label_map.merge_new(mock_storage, 1, sync_map)
 
         # Then
         assert inserted_data is not None
@@ -222,8 +220,7 @@ class TestTxLabelMapEntity:
         assert inserted_data["txLabelId"] == 888
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_updates_entity(self) -> None:
+    def test_mergeexisting_updates_entity(self) -> None:
         """Given: TxLabelMap entity with older data
            When: Call merge_existing with newer data
            Then: Updates entity and database
@@ -262,7 +259,7 @@ class TestTxLabelMapEntity:
         sync_map = {"transaction": {"idMap": {123: 999}}, "txLabel": {"idMap": {456: 888}}}
 
         # When
-        result = await tx_label_map.merge_existing(mock_storage, datetime.now(), ei, sync_map)
+        result = tx_label_map.merge_existing(mock_storage, datetime.now(), ei, sync_map)
 
         # Then
         assert result is True
@@ -302,8 +299,7 @@ class TestTxLabelMapEntity:
         assert tx_label_map.entity_table == "tx_labels_map"
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_entities_entities(self) -> None:
+    def test_equals_identifies_matching_entities_entities(self) -> None:
         """Given: Two TxLabelMap entities with matching data and syncMap
            When: Call equals method
            Then: Returns True
@@ -339,8 +335,7 @@ class TestTxLabelMapEntity:
         assert tx_label_map1.equals(tx_label_map2.to_api(), sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_entities_entities(self) -> None:
+    def test_equals_identifies_non_matching_entities_entities(self) -> None:
         """Given: Two TxLabelMap entities with different data
            When: Call equals method with syncMap
            Then: Returns False

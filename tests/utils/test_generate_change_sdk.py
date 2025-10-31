@@ -18,8 +18,7 @@ class TestGenerateChangeSdk:
     Reference: wallet-toolbox/src/storage/methods/__test/GenerateChange/generateChangeSdk.test.ts
     """
 
-    @pytest.mark.asyncio
-    async def test_two_outputs(self) -> None:
+    def test_two_outputs(self) -> None:
         """Given: Transaction with two fixed outputs (1234 sat + 2 sat) and available change inputs
            When: Call generateChangeSdk with default fee model
            Then: Allocates 6323 sat input, creates 1608 sat change output, fee 3479 sat
@@ -55,7 +54,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
@@ -64,8 +63,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 3479
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.asyncio
-    async def test_two_outputs_exact_input(self) -> None:
+    def test_two_outputs_exact_input(self) -> None:
         """Given: Transaction with two outputs and exact input amount (4715 sat)
            When: Call generateChangeSdk
            Then: Uses exact input, no change output created
@@ -101,7 +99,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 4715, "outputId": 15027, "spendable": False}]
@@ -110,8 +108,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 3479
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.asyncio
-    async def test_two_outputs_666666_200(self) -> None:
+    def test_two_outputs_666666_200(self) -> None:
         """Given: Transaction with 666666 sat + 200 sat outputs
            When: Call generateChangeSdk with modified available change
            Then: Allocates 1575097 sat input, creates 908230 sat change
@@ -147,7 +144,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 1575097, "outputId": 15101, "spendable": False}]
@@ -156,8 +153,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 1
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.asyncio
-    async def test_two_outputs_666666_200_two_change_inputs(self) -> None:
+    def test_two_outputs_666666_200_two_change_inputs(self) -> None:
         """Given: Transaction requiring two change inputs to reach target amount
            When: Call generateChangeSdk with limited available inputs
            Then: Allocates two inputs (535280 + 160865 sat), creates 29277 sat change
@@ -192,7 +188,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [
@@ -204,8 +200,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 2
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.asyncio
-    async def test_two_outputs_four_change_outputs(self) -> None:
+    def test_two_outputs_four_change_outputs(self) -> None:
         """Given: Transaction with targetNetCount=4 for privacy
            When: Call generateChangeSdk
            Then: Creates four change outputs plus one extra for net count
@@ -242,7 +237,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
@@ -257,8 +252,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 1739466
         assert result["fee"] == 3479
 
-    @pytest.mark.asyncio
-    async def test_werr_insufficient_funds(self) -> None:
+    def test_werr_insufficient_funds(self) -> None:
         """Given: Transaction with insufficient available funds (limited inputs)
            When: Call generateChangeSdk
            Then: Raises InsufficientFundsError
@@ -289,10 +283,9 @@ class TestGenerateChangeSdk:
 
         # When/Then
         with pytest.raises(InsufficientFundsError):
-            await generate_change_sdk(params, available_change)
+            generate_change_sdk(params, available_change)
 
-    @pytest.mark.asyncio
-    async def test_werr_insufficient_funds_no_inputs(self) -> None:
+    def test_werr_insufficient_funds_no_inputs(self) -> None:
         """Given: Transaction with no available inputs
            When: Call generateChangeSdk
            Then: Raises InsufficientFundsError
@@ -318,10 +311,9 @@ class TestGenerateChangeSdk:
 
         # When/Then
         with pytest.raises(InsufficientFundsError):
-            await generate_change_sdk(params, available_change)
+            generate_change_sdk(params, available_change)
 
-    @pytest.mark.asyncio
-    async def test_allocate_all(self) -> None:
+    def test_allocate_all(self) -> None:
         """Given: Transaction requiring all available inputs
            When: Call generateChangeSdk with limited inputs
            Then: Allocates all 2 inputs (1004 + 1000 sat), creates 689 sat change
@@ -347,7 +339,7 @@ class TestGenerateChangeSdk:
         available_change = [{"satoshis": 1004, "outputId": 15011}, {"satoshis": 1000, "outputId": 15017}]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [
@@ -359,8 +351,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 79
         assert result["satsPerKb"] == 2
 
-    @pytest.mark.asyncio
-    async def test_feemodel_5_sat_per_kb(self) -> None:
+    def test_feemodel_5_sat_per_kb(self) -> None:
         """Given: Transaction with custom fee model (5 sat/kb instead of 2)
            When: Call generateChangeSdk
            Then: Calculates higher fee (198 sat) based on 5 sat/kb rate
@@ -385,7 +376,7 @@ class TestGenerateChangeSdk:
         available_change = [{"satoshis": 1004, "outputId": 15011}, {"satoshis": 1000, "outputId": 15017}]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [
@@ -397,8 +388,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 198  # Higher fee
         assert result["satsPerKb"] == 5
 
-    @pytest.mark.asyncio
-    async def test_feemodel_1_sat_per_kb(self) -> None:
+    def test_feemodel_1_sat_per_kb(self) -> None:
         """Given: Transaction with custom fee model (1 sat/kb instead of 2)
            When: Call generateChangeSdk
            Then: Calculates lower fee (40 sat) based on 1 sat/kb rate
@@ -423,7 +413,7 @@ class TestGenerateChangeSdk:
         available_change = [{"satoshis": 1004, "outputId": 15011}, {"satoshis": 1000, "outputId": 15017}]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [
@@ -435,8 +425,7 @@ class TestGenerateChangeSdk:
         assert result["fee"] == 40  # Lower fee
         assert result["satsPerKb"] == 1
 
-    @pytest.mark.asyncio
-    async def test_one_fixed_input(self) -> None:
+    def test_one_fixed_input(self) -> None:
         """Given: Transaction with one fixed input (1234 sat, 42 bytes) plus change inputs
            When: Call generateChangeSdk
            Then: Includes fixed input in transaction, allocates change input, creates 5 change outputs
@@ -473,7 +462,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
@@ -488,8 +477,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 1739549
         assert result["fee"] == 3480
 
-    @pytest.mark.asyncio
-    async def test_one_larger_fixed_input(self) -> None:
+    def test_one_larger_fixed_input(self) -> None:
         """Given: Transaction with one larger fixed input (1234 sat, 242 bytes unlocking script)
            When: Call generateChangeSdk
            Then: Accounts for larger input size in transaction size and fee calculation
@@ -526,7 +514,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
@@ -534,8 +522,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 1739749  # Larger due to bigger input
         assert result["fee"] == 3480
 
-    @pytest.mark.asyncio
-    async def test_one_fixed_input_1001_73(self) -> None:
+    def test_one_fixed_input_1001_73(self) -> None:
         """Given: Transaction with small fixed input (1001 sat, 73 bytes) and no fixed outputs
            When: Call generateChangeSdk
            Then: Creates 1000 sat change output without additional inputs
@@ -568,7 +555,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == []  # No additional inputs needed
@@ -576,8 +563,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 158
         assert result["fee"] == 1
 
-    @pytest.mark.asyncio
-    async def test_no_fixed_outputs_one_fixed_input(self) -> None:
+    def test_no_fixed_outputs_one_fixed_input(self) -> None:
         """Given: Transaction with fixed input but no fixed outputs, targetNetCount=4
            When: Call generateChangeSdk
            Then: Allocates change input and creates 5 change outputs
@@ -611,7 +597,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
@@ -626,8 +612,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 411
         assert result["fee"] == 1
 
-    @pytest.mark.asyncio
-    async def test_no_fixed_outputs_no_fixed_input(self) -> None:
+    def test_no_fixed_outputs_no_fixed_input(self) -> None:
         """Given: Transaction with no fixed inputs or outputs, targetNetCount=4
            When: Call generateChangeSdk
            Then: Allocates change input and creates 5 change outputs for net count
@@ -661,7 +646,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
@@ -676,8 +661,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 328
         assert result["fee"] == 1
 
-    @pytest.mark.asyncio
-    async def test_params_text4_d4(self) -> None:
+    def test_params_text4_d4(self) -> None:
         """Given: Complex test case with 309000 + 2 sat outputs and specific available inputs
            When: Call generateChangeSdk
            Then: Selects optimal input (474866 sat), creates 165863 sat change
@@ -713,7 +697,7 @@ class TestGenerateChangeSdk:
         ]
 
         # When
-        result = await generate_change_sdk(params, available_change)
+        result = generate_change_sdk(params, available_change)
 
         # Then
         assert result["allocatedChangeInputs"] == [{"satoshis": 474866, "outputId": 15332, "spendable": False}]
@@ -721,8 +705,7 @@ class TestGenerateChangeSdk:
         assert result["size"] == 433
         assert result["fee"] == 1
 
-    @pytest.mark.asyncio
-    async def test_params_text_d5_through_d14(self) -> None:
+    def test_params_text_d5_through_d14(self) -> None:
         """Given: Complex test cases with various parameters (d5-d14)
            When: Call generateChangeSdk for each case
            Then: Each case returns expected allocation and change
@@ -761,7 +744,7 @@ class TestGenerateChangeSdk:
 
         # When/Then
         for test_case in test_cases:
-            result = await generate_change_sdk(test_case["params"], test_case["availableChange"])
+            result = generate_change_sdk(test_case["params"], test_case["availableChange"])
 
             assert result["allocatedChangeInputs"] == test_case["expected"]["allocatedChangeInputs"]
             assert result["changeOutputs"] == test_case["expected"]["changeOutputs"]

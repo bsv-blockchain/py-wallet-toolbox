@@ -105,7 +105,7 @@ class Wallet:
 
     Example:
         >>> wallet = Wallet(chain="main")
-        >>> result = await wallet.get_version({})
+        >>> result = wallet.get_version({})
         >>> print(result["version"])
         0.6.0
     """
@@ -180,7 +180,7 @@ class Wallet:
         """
         return "mainnet" if chain == "main" else "testnet"
 
-    async def list_outputs(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def list_outputs(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List outputs via Storage provider (minimal TS-like shape).
 
         Summary:
@@ -206,7 +206,7 @@ class Wallet:
         auth = args.get("auth") or {}
         return self.storage_provider.list_outputs(auth, args)
 
-    async def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List certificates via Storage provider (minimal TS-like shape).
 
         Summary:
@@ -231,7 +231,7 @@ class Wallet:
         auth = args.get("auth") or {}
         return self.storage_provider.list_certificates(auth, args)
 
-    async def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List actions via Storage provider (minimal TS-like shape).
 
         Summary:
@@ -256,7 +256,7 @@ class Wallet:
         auth = args.get("auth") or {}
         return self.storage_provider.list_actions(auth, args)
 
-    async def get_network(
+    def get_network(
         self,
         _args: dict[str, Any],  # Empty dict (unused but required by interface)
         originator: str | None = None,
@@ -282,13 +282,13 @@ class Wallet:
 
         Example:
             >>> wallet = Wallet(chain="main")
-            >>> result = await wallet.get_network({})
+            >>> result = wallet.get_network({})
             >>> assert result == {"network": "mainnet"}
         """
         self._validate_originator(originator)
         return {"network": self._to_wallet_network(self.chain)}
 
-    async def get_version(
+    def get_version(
         self,
         _args: dict[str, Any],  # Empty dict (unused but required by interface)
         originator: str | None = None,
@@ -313,13 +313,13 @@ class Wallet:
 
         Example:
             >>> wallet = Wallet()
-            >>> result = await wallet.get_version({})
+            >>> result = wallet.get_version({})
             >>> assert result == {"version": Wallet.VERSION}
         """
         self._validate_originator(originator)
         return {"version": self.VERSION}
 
-    async def is_authenticated(
+    def is_authenticated(
         self,
         _args: dict[str, Any],
         originator: str | None = None,  # Empty dict for isAuthenticated (unused but required by interface)
@@ -345,13 +345,13 @@ class Wallet:
 
         Example:
             >>> wallet = Wallet()
-            >>> result = await wallet.is_authenticated({})
+            >>> result = wallet.is_authenticated({})
             >>> assert result == {"authenticated": True}
         """
         self._validate_originator(originator)
         return {"authenticated": True}
 
-    async def wait_for_authentication(
+    def wait_for_authentication(
         self,
         _args: dict[str, Any],
         originator: str | None = None,  # Empty dict for waitForAuthentication (unused but required by interface)
@@ -382,13 +382,13 @@ class Wallet:
 
         Example:
             >>> wallet = Wallet()
-            >>> result = await wallet.wait_for_authentication({})
+            >>> result = wallet.wait_for_authentication({})
             >>> assert result == {"authenticated": True}
         """
         self._validate_originator(originator)
         return {"authenticated": True}
 
-    async def get_height(
+    def get_height(
         self,
         _args: dict[str, Any],  # Empty dict (unused but required by interface)
         originator: str | None = None,
@@ -417,7 +417,7 @@ class Wallet:
             >>> from bsv_wallet_toolbox.services import MockWalletServices
             >>> services = MockWalletServices(height=850000)
             >>> wallet = Wallet(services=services)
-            >>> result = await wallet.get_height({})
+            >>> result = wallet.get_height({})
             >>> print(result["height"])
             850000
 
@@ -429,10 +429,10 @@ class Wallet:
         if self.services is None:
             raise RuntimeError("Services must be configured to use getHeight")
 
-        height = await self.services.get_height()
+        height = self.services.get_height()
         return {"height": height}
 
-    async def get_header_for_height(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
+    def get_header_for_height(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
         """Get block header at specified height.
 
         BRC-100 WalletInterface method implementation.
@@ -458,7 +458,7 @@ class Wallet:
             >>> from bsv_wallet_toolbox.services import MockWalletServices
             >>> services = MockWalletServices(height=850000)
             >>> wallet = Wallet(services=services)
-            >>> result = await wallet.get_header_for_height({"height": 850000})
+            >>> result = wallet.get_header_for_height({"height": 850000})
             >>> print(result["header"][:16])  # First 16 chars of hex
             0100000000000000
 
@@ -484,7 +484,7 @@ class Wallet:
             raise InvalidParameterError("height", f"a non-negative integer (got {height})")
 
         # Get header from services (returns bytes)
-        header_bytes = await self.services.get_header_for_height(height)
+        header_bytes = self.services.get_header_for_height(height)
 
         # Convert bytes to hex string (matching TypeScript behavior)
         return {"header": header_bytes.hex()}
@@ -492,7 +492,7 @@ class Wallet:
     # ---------------------------------------------------------------------
     # Convenience methods (non-ABI) delegating to Services for chain helpers
     # ---------------------------------------------------------------------
-    async def get_present_height(self) -> int:
+    def get_present_height(self) -> int:
         """Get latest chain height via configured services.
 
         Summary:
@@ -510,9 +510,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_present_height")
-        return await self.services.get_present_height()
+        return self.services.get_present_height()
 
-    async def get_chain(self) -> str:
+    def get_chain(self) -> str:
         """Return configured chain identifier ('main' | 'test').
 
         Summary:
@@ -529,9 +529,9 @@ class Wallet:
         if self.services is None:
             # Fallback to local chain if services not set
             return self.chain
-        return await self.services.get_chain()
+        return self.services.get_chain()
 
-    async def find_chain_tip_header(self) -> dict[str, Any]:
+    def find_chain_tip_header(self) -> dict[str, Any]:
         """Return structured header for the active chain tip.
 
         Summary:
@@ -550,9 +550,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use find_chain_tip_header")
-        return await self.services.find_chain_tip_header()
+        return self.services.find_chain_tip_header()
 
-    async def find_chain_tip_hash(self) -> str:
+    def find_chain_tip_hash(self) -> str:
         """Return active chain tip hash (hex).
 
         Returns:
@@ -567,9 +567,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use find_chain_tip_hash")
-        return await self.services.find_chain_tip_hash()
+        return self.services.find_chain_tip_hash()
 
-    async def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
+    def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
         """Return structured header for the given block hash, or None.
 
         Args:
@@ -587,9 +587,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use find_header_for_block_hash")
-        return await self.services.find_header_for_block_hash(block_hash)
+        return self.services.find_header_for_block_hash(block_hash)
 
-    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Return structured header for the given height, or None.
 
         Args:
@@ -607,9 +607,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use find_header_for_height")
-        return await self.services.find_header_for_height(height)
+        return self.services.find_header_for_height(height)
 
-    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+    def get_tx_propagation(self, txid: str) -> dict[str, Any]:
         """Return provider-specific transaction propagation info.
 
         Args:
@@ -627,12 +627,12 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_tx_propagation")
-        return await self.services.get_tx_propagation(txid)
+        return self.services.get_tx_propagation(txid)
 
     # ---------------------------------------------------------------------
     # Services convenience wrappers (TS parity shapes where applicable)
     # ---------------------------------------------------------------------
-    async def get_utxo_status(
+    def get_utxo_status(
         self,
         output: str,
         output_format: str | None = None,
@@ -664,9 +664,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_utxo_status")
-        return await self.services.get_utxo_status(output, output_format, outpoint)
+        return self.services.get_utxo_status(output, output_format, outpoint)
 
-    async def get_script_history(self, script_hash: str) -> dict[str, Any]:
+    def get_script_history(self, script_hash: str) -> dict[str, Any]:
         """Get script history for a script hash.
 
         Summary:
@@ -687,9 +687,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_script_history")
-        return await self.services.get_script_history(script_hash)
+        return self.services.get_script_history(script_hash)
 
-    async def get_transaction_status(self, txid: str) -> dict[str, Any]:
+    def get_transaction_status(self, txid: str) -> dict[str, Any]:
         """Get transaction status for a given txid.
 
         Summary:
@@ -710,9 +710,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_transaction_status")
-        return await self.services.get_transaction_status(txid)
+        return self.services.get_transaction_status(txid)
 
-    async def get_raw_tx(self, txid: str) -> dict[str, Any]:
+    def get_raw_tx(self, txid: str) -> dict[str, Any]:
         """Get raw transaction hex.
 
         Summary:
@@ -733,10 +733,10 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_raw_tx")
-        hex_or_none = await self.services.get_raw_tx(txid)
+        hex_or_none = self.services.get_raw_tx(txid)
         return {"data": hex_or_none}
 
-    async def update_bsv_exchange_rate(self) -> dict[str, Any]:
+    def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Fetch the current BSV/USD exchange rate.
 
         Returns:
@@ -750,9 +750,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use update_bsv_exchange_rate")
-        return await self.services.update_bsv_exchange_rate()
+        return self.services.update_bsv_exchange_rate()
 
-    async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
+    def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
         """Get fiat exchange rate for currency relative to base.
 
         Args:
@@ -770,9 +770,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_fiat_exchange_rate")
-        return await self.services.get_fiat_exchange_rate(currency, base)
+        return self.services.get_fiat_exchange_rate(currency, base)
 
-    async def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
+    def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
         """Get Merkle path for a transaction.
 
         Summary:
@@ -793,9 +793,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use get_merkle_path_for_transaction")
-        return await self.services.get_merkle_path_for_transaction(txid)
+        return self.services.get_merkle_path_for_transaction(txid)
 
-    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
+    def is_valid_root_for_height(self, root: str, height: int) -> bool:
         """Verify if a Merkle root is valid for a given block height.
 
         Args:
@@ -813,9 +813,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use is_valid_root_for_height")
-        return await self.services.is_valid_root_for_height(root, height)
+        return self.services.is_valid_root_for_height(root, height)
 
-    async def post_beef(self, beef: str) -> dict[str, Any]:
+    def post_beef(self, beef: str) -> dict[str, Any]:
         """Broadcast a BEEF via configured services (ARC).
 
         Returns a TS-like broadcast result:
@@ -829,9 +829,9 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use post_beef")
-        return await self.services.post_beef(beef)
+        return self.services.post_beef(beef)
 
-    async def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
+    def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via configured services (ARC batch).
 
         Returns an array of TS-like broadcast results.
@@ -844,12 +844,12 @@ class Wallet:
         """
         if self.services is None:
             raise RuntimeError("Services must be configured to use post_beef_array")
-        return await self.services.post_beef_array(beefs)
+        return self.services.post_beef_array(beefs)
 
     # ---------------------------------------------------------------------
     # Certificates / Proof-related (stubs; Storage/Services dependent)
     # ---------------------------------------------------------------------
-    async def acquire_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def acquire_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Acquire a certificate (stub).
 
         Summary:
@@ -879,7 +879,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("acquire_certificate is not implemented yet (Storage/Services required)")
 
-    async def prove_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def prove_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Prove a certificate (stub).
 
         Summary:
@@ -908,7 +908,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("prove_certificate is not implemented yet (Storage/Services required)")
 
-    async def reveal_counterparty_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def reveal_counterparty_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Reveal counterparty key linkage (stub).
 
         Summary:
@@ -934,7 +934,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("reveal_counterparty_key_linkage is not implemented yet (Storage/Services required)")
 
-    async def reveal_specific_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def reveal_specific_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Reveal specific key linkage (stub).
 
         Summary:
@@ -960,7 +960,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("reveal_specific_key_linkage is not implemented yet (Storage/Services required)")
 
-    async def get_public_key(
+    def get_public_key(
         self,
         args: dict[str, Any],
         originator: str | None = None,
@@ -992,12 +992,12 @@ class Wallet:
 
         Example:
             >>> # Get identity key
-            >>> result = await wallet.get_public_key({"identityKey": True})
+            >>> result = wallet.get_public_key({"identityKey": True})
             >>> print(result["publicKey"][:10])
             02a1b2c3d4
             
             >>> # Derive a protocol-specific key
-            >>> result = await wallet.get_public_key({
+            >>> result = wallet.get_public_key({
             ...     "protocolID": [0, "my protocol"],
             ...     "keyID": "key1"
             ... })
@@ -1064,7 +1064,7 @@ class Wallet:
 
         return {"publicKey": derived_pub.hex()}
 
-    async def create_signature(
+    def create_signature(
         self,
         args: dict[str, Any],
         originator: str | None = None,
@@ -1138,7 +1138,7 @@ class Wallet:
         signature: bytes = priv.sign(to_sign, hasher=lambda m: m)
         return {"signature": _to_byte_list(signature)}
 
-    async def verify_signature(
+    def verify_signature(
         self,
         args: dict[str, Any],
         originator: str | None = None,
@@ -1214,7 +1214,7 @@ class Wallet:
         valid = pub.verify(signature_bytes, digest, hasher=lambda m: m)
         return {"valid": bool(valid)}
 
-    async def encrypt(
+    def encrypt(
         self,
         args: dict[str, Any],
         originator: str | None = None,
@@ -1270,7 +1270,7 @@ class Wallet:
         ciphertext: bytes = pub.encrypt(plaintext)
         return {"ciphertext": _to_byte_list(ciphertext)}
 
-    async def decrypt(
+    def decrypt(
         self,
         args: dict[str, Any],
         originator: str | None = None,
@@ -1320,7 +1320,7 @@ class Wallet:
         plaintext: bytes = priv.decrypt(ciphertext)
         return {"plaintext": _to_byte_list(plaintext)}
 
-    async def create_hmac(
+    def create_hmac(
         self,
         args: dict[str, Any],
         originator: str | None = None,
@@ -1372,7 +1372,7 @@ class Wallet:
         tag = _hmac.new(sym_key, data, _hashlib.sha256).digest()
         return {"hmac": _to_byte_list(tag)}
 
-    async def verify_hmac(
+    def verify_hmac(
         self,
         args: dict[str, Any],
         originator: str | None = None,

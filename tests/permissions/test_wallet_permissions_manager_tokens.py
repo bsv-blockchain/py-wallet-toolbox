@@ -34,8 +34,7 @@ class TestWalletPermissionsManagerTokens:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_build_correct_fields_for_a_protocol_token_dpacp(self) -> None:
+    def test_should_build_correct_fields_for_a_protocol_token_dpacp(self) -> None:
         """Given: Manager with protocol permission request
            When: Build pushdrop fields for DPACP token
            Then: Creates 6 encrypted fields (domain, expiry, privileged, secLevel, protoName, counterparty)
@@ -61,15 +60,14 @@ class TestWalletPermissionsManagerTokens:
         expiry = 1234567890
 
         # When
-        fields = await manager._build_pushdrop_fields(request, expiry)
+        fields = manager._build_pushdrop_fields(request, expiry)
 
         # Then - 6 encryption calls (domain, expiry, privileged, secLevel, protoName, cpty)
         assert mock_underlying_wallet.encrypt.call_count == 6
         assert len(fields) == 6
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_build_correct_fields_for_a_basket_token_dbap(self) -> None:
+    def test_should_build_correct_fields_for_a_basket_token_dbap(self) -> None:
         """Given: Manager with basket permission request
            When: Build pushdrop fields for DBAP token
            Then: Creates 3 encrypted fields (domain, expiry, basket)
@@ -88,15 +86,14 @@ class TestWalletPermissionsManagerTokens:
         expiry = 999999999
 
         # When
-        fields = await manager._build_pushdrop_fields(request, expiry)
+        fields = manager._build_pushdrop_fields(request, expiry)
 
         # Then - 3 encryption calls: domain, expiry, basket
         assert mock_underlying_wallet.encrypt.call_count == 3
         assert len(fields) == 3
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_build_correct_fields_for_a_certificate_token_dcap(self) -> None:
+    def test_should_build_correct_fields_for_a_certificate_token_dcap(self) -> None:
         """Given: Manager with certificate permission request
            When: Build pushdrop fields for DCAP token
            Then: Creates 6 encrypted fields (domain, expiry, privileged, certType, fieldsJson, verifier)
@@ -121,15 +118,14 @@ class TestWalletPermissionsManagerTokens:
         expiry = 2222222222
 
         # When
-        fields = await manager._build_pushdrop_fields(request, expiry)
+        fields = manager._build_pushdrop_fields(request, expiry)
 
         # Then - 6 encryption calls: domain, expiry, privileged, certType, fieldsJson, verifier
         assert mock_underlying_wallet.encrypt.call_count == 6
         assert len(fields) == 6
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_build_correct_fields_for_a_spending_token_dsap(self) -> None:
+    def test_should_build_correct_fields_for_a_spending_token_dsap(self) -> None:
         """Given: Manager with spending permission request
            When: Build pushdrop fields for DSAP token
            Then: Creates 2 encrypted fields (domain, authorizedAmount)
@@ -153,15 +149,14 @@ class TestWalletPermissionsManagerTokens:
         expiry = 0  # DSAP typically not time-limited
 
         # When
-        fields = await manager._build_pushdrop_fields(request, expiry, amount=10000)
+        fields = manager._build_pushdrop_fields(request, expiry, amount=10000)
 
         # Then - 2 encryption calls: domain, authorizedAmount
         assert mock_underlying_wallet.encrypt.call_count == 2
         assert len(fields) == 2
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_create_a_new_protocol_token_with_the_correct_basket_script_and_tags(self) -> None:
+    def test_should_create_a_new_protocol_token_with_the_correct_basket_script_and_tags(self) -> None:
         """Given: Manager with protocol permission request
            When: Create protocol token on chain
            Then: Calls createAction with correct basket, lockingScript, and tags
@@ -187,7 +182,7 @@ class TestWalletPermissionsManagerTokens:
         }
 
         # When
-        await manager._create_permission_token(request, ephemeral=False, previous_token=None)
+        manager._create_permission_token(request, ephemeral=False, previous_token=None)
 
         # Then - createAction called with correct parameters
         assert mock_underlying_wallet.create_action.call_count == 1
@@ -197,8 +192,7 @@ class TestWalletPermissionsManagerTokens:
         assert call_args["outputs"][0]["tags"] == ["DPACP"]
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_create_a_new_basket_token_dbap(self) -> None:
+    def test_should_create_a_new_basket_token_dbap(self) -> None:
         """Given: Manager with basket permission request
            When: Create basket token on chain
            Then: Calls createAction with DBAP basket and tags
@@ -217,7 +211,7 @@ class TestWalletPermissionsManagerTokens:
         request = {"type": "basket", "originator": "app.com", "basket": "myBasket", "reason": "test"}
 
         # When
-        await manager._create_permission_token(request, ephemeral=False, previous_token=None)
+        manager._create_permission_token(request, ephemeral=False, previous_token=None)
 
         # Then
         assert mock_underlying_wallet.create_action.call_count == 1
@@ -226,8 +220,7 @@ class TestWalletPermissionsManagerTokens:
         assert call_args["outputs"][0]["tags"] == ["DBAP"]
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_create_a_new_certificate_token_dcap(self) -> None:
+    def test_should_create_a_new_certificate_token_dcap(self) -> None:
         """Given: Manager with certificate permission request
            When: Create certificate token on chain
            Then: Calls createAction with DCAP basket and tags
@@ -252,7 +245,7 @@ class TestWalletPermissionsManagerTokens:
         }
 
         # When
-        await manager._create_permission_token(request, ephemeral=False, previous_token=None)
+        manager._create_permission_token(request, ephemeral=False, previous_token=None)
 
         # Then
         assert mock_underlying_wallet.create_action.call_count == 1
@@ -261,8 +254,7 @@ class TestWalletPermissionsManagerTokens:
         assert call_args["outputs"][0]["tags"] == ["DCAP"]
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_create_a_new_spending_authorization_token_dsap(self) -> None:
+    def test_should_create_a_new_spending_authorization_token_dsap(self) -> None:
         """Given: Manager with spending permission request
            When: Create spending token on chain
            Then: Calls createAction with DSAP basket and tags
@@ -281,7 +273,7 @@ class TestWalletPermissionsManagerTokens:
         request = {"type": "spending", "originator": "app.com", "spending": {"satoshis": 10000}, "reason": "test"}
 
         # When
-        await manager._create_permission_token(request, ephemeral=False, previous_token=None)
+        manager._create_permission_token(request, ephemeral=False, previous_token=None)
 
         # Then
         assert mock_underlying_wallet.create_action.call_count == 1
@@ -290,8 +282,7 @@ class TestWalletPermissionsManagerTokens:
         assert call_args["outputs"][0]["tags"] == ["DSAP"]
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_spend_the_old_token_input_and_create_a_new_protocol_token_output_with_updated_expiry(
+    def test_should_spend_the_old_token_input_and_create_a_new_protocol_token_output_with_updated_expiry(
         self,
     ) -> None:
         """Given: Manager with previous token and renewal request
@@ -320,7 +311,7 @@ class TestWalletPermissionsManagerTokens:
         previous_token = {"txid": "oldtxid", "outputIndex": 0}
 
         # When
-        await manager._create_permission_token(request, ephemeral=False, previous_token=previous_token)
+        manager._create_permission_token(request, ephemeral=False, previous_token=previous_token)
 
         # Then - createAction called with inputs (spending old token)
         assert mock_underlying_wallet.create_action.call_count == 1
@@ -329,8 +320,7 @@ class TestWalletPermissionsManagerTokens:
         assert call_args["inputs"][0]["outpoint"] == "oldtxid.0"
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_allow_updating_the_authorizedamount_in_dsap_renewal(self) -> None:
+    def test_should_allow_updating_the_authorizedamount_in_dsap_renewal(self) -> None:
         """Given: Manager with previous DSAP token and renewal with new amount
            When: Renew spending token with updated amount
            Then: Creates new token with updated authorizedAmount field
@@ -355,14 +345,13 @@ class TestWalletPermissionsManagerTokens:
         previous_token = {"txid": "olddsaptxid", "outputIndex": 0, "authorizedAmount": 10000}  # Old amount
 
         # When
-        await manager._create_permission_token(request, ephemeral=False, previous_token=previous_token)
+        manager._create_permission_token(request, ephemeral=False, previous_token=previous_token)
 
         # Then - createAction called, amount should reflect new value
         assert mock_underlying_wallet.create_action.call_count == 1
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_create_a_transaction_that_consumes_spends_the_old_token_with_no_new_outputs(self) -> None:
+    def test_should_create_a_transaction_that_consumes_spends_the_old_token_with_no_new_outputs(self) -> None:
         """Given: Manager with previous token
            When: Revoke permission token
            Then: Creates transaction that spends old token with no new permission outputs
@@ -380,7 +369,7 @@ class TestWalletPermissionsManagerTokens:
         token_to_revoke = {"txid": "tokentorevoke", "outputIndex": 0}
 
         # When
-        await manager._revoke_permission_token(token_to_revoke)
+        manager._revoke_permission_token(token_to_revoke)
 
         # Then - createAction called with input (spending token) but no permission output
         assert mock_underlying_wallet.create_action.call_count == 1
@@ -393,8 +382,7 @@ class TestWalletPermissionsManagerTokens:
         )
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
-    @pytest.mark.asyncio
-    async def test_should_remove_the_old_token_from_listing_after_revocation(self) -> None:
+    def test_should_remove_the_old_token_from_listing_after_revocation(self) -> None:
         """Given: Manager with token in storage
            When: Revoke token and list tokens
            Then: Revoked token no longer appears in listOutputs
@@ -413,8 +401,8 @@ class TestWalletPermissionsManagerTokens:
         token_to_revoke = {"txid": "tokentorevoke", "outputIndex": 0}
 
         # When
-        await manager._revoke_permission_token(token_to_revoke)
-        result = await manager._list_permission_tokens("protocol")
+        manager._revoke_permission_token(token_to_revoke)
+        result = manager._list_permission_tokens("protocol")
 
         # Then - list returns empty (token removed)
         assert len(result) == 0

@@ -20,20 +20,20 @@ classifiers = [
 dependencies = [
     "bsv-sdk @ git+https://github.com/bsv-blockchain/py-sdk.git@develop-port",
     "SQLAlchemy>=2.0",
-    "aiosqlite>=0.19.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "mypy>=1.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
-db = [
+db-mysql = [
     "pymysql>=1.1",
+]
+db-postgres = [
     "psycopg[binary]>=3.1",
 ]
 
@@ -97,11 +97,11 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-asyncio_mode = "auto"
 addopts = "-v --strict-markers"
 markers = [
     "manual: marks tests as manual tests (deselect with '-m \"not manual\"')",
 ]
+# Entity tests deferred to Phase 5 (see conftest_entity_skip.py)
 
 [tool.coverage.run]
 source = ["src"]

@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import TxLabel
+from bsv_wallet_toolbox.storage.models import TxLabel
 
 
 class TestTxLabelEntity:
@@ -102,8 +102,7 @@ class TestTxLabelEntity:
         assert tx_label.updated_at == now
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_update_txlabel_when_ei_updated_at_is_older(self) -> None:
+    def test_mergeexisting_does_not_update_txlabel_when_ei_updated_at_is_older(self) -> None:
         """Given: TxLabel entity with newer updated_at in database
            When: Call merge_existing with older updated_at
            Then: Entity is not updated, returns False
@@ -137,7 +136,7 @@ class TestTxLabelEntity:
         sync_map: dict[str, Any] = {}
 
         # When
-        result = await tx_label.merge_existing(mock_storage, None, older_ei, sync_map)
+        result = tx_label.merge_existing(mock_storage, None, older_ei, sync_map)
 
         # Then
         assert result is False
@@ -146,8 +145,7 @@ class TestTxLabelEntity:
         assert tx_label.updated_at == datetime(2023, 2, 1)
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_entities(self) -> None:
+    def test_equals_identifies_matching_entities(self) -> None:
         """Given: Two TxLabel entities with matching properties using syncMap
            When: Call equals method with syncMap
            Then: Returns True
@@ -185,8 +183,7 @@ class TestTxLabelEntity:
         assert tx_label1.equals(tx_label2.to_api(), sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_entities(self) -> None:
+    def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two TxLabel entities with different properties
            When: Call equals method with syncMap
            Then: Returns False

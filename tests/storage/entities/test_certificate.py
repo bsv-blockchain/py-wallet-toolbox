@@ -6,15 +6,14 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/CertificateTests.t
 from datetime import datetime
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import Certificate
+from bsv_wallet_toolbox.storage.models import Certificate
 
 
 class TestCertificateEntity:
     """Test suite for Certificate entity."""
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_certificate_entities(self) -> None:
+    def test_equals_identifies_matching_certificate_entities(self) -> None:
         """Given: Two Certificate entities with identical data
            When: Call equals method
            Then: Returns True
@@ -47,8 +46,7 @@ class TestCertificateEntity:
         assert entity1.equals(entity2.to_api()) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_certificate_entities(self) -> None:
+    def test_equals_identifies_non_matching_certificate_entities(self) -> None:
         """Given: Two Certificate entities with different data
            When: Call equals method
            Then: Returns False for each mismatched field
@@ -92,8 +90,7 @@ class TestCertificateEntity:
             assert entity1.equals(mismatched_entity.to_api()) is False
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
+    def test_mergeexisting_updates_entity_and_database_when_ei_updated_at_greater_than_this_updated_at(
         self,
     ) -> None:
         """Given: Certificate entity with older updated_at
@@ -140,7 +137,7 @@ class TestCertificateEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
 
         # Then
         assert was_merged is True
@@ -153,8 +150,7 @@ class TestCertificateEntity:
         assert entity.is_deleted == 1
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_update_entity_when_ei_updated_at_less_than_or_equal_this_updated_at(
+    def test_mergeexisting_does_not_update_entity_when_ei_updated_at_less_than_or_equal_this_updated_at(
         self,
     ) -> None:
         """Given: Certificate entity with same or newer updated_at
@@ -196,7 +192,7 @@ class TestCertificateEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, same_updated_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, same_updated_data, sync_map, None)
 
         # Then
         assert was_merged is False
@@ -204,8 +200,7 @@ class TestCertificateEntity:
         assert entity.subject == "02c123eabcdeff1234567890abcdef1234567890abcdef1234567890abcdef5678"
 
     
-    @pytest.mark.asyncio
-    async def test_certificate_class_getters_and_setters(self) -> None:
+    def test_certificate_class_getters_and_setters(self) -> None:
         """Given: Certificate entity with initial data
            When: Get and set all properties
            Then: Getters and setters work correctly

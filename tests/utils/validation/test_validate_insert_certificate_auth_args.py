@@ -156,6 +156,7 @@ class TestValidateInsertCertificateAuthArgs:
             "certifier": "02" + "0" * 64,
             "subject": "test_subject",
             "revocationOutpoint": "txidwithoutindex",  # Missing dot and index
+            "signature": "3045022100" + "0" * 60,  # Add missing signature
         }
 
         # When / Then

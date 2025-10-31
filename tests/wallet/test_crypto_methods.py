@@ -16,8 +16,7 @@ class TestWalletGetPublicKey:
     """Test suite for Wallet.get_public_key method."""
 
     @pytest.mark.skip(reason="Waiting for get_public_key implementation")
-    @pytest.mark.asyncio
-    async def test_get_public_key_identity_key(self, wallet: Wallet) -> None:
+    def test_get_public_key_identity_key(self, wallet: Wallet) -> None:
         """Given: GetPublicKeyArgs with identity key request
            When: Call get_public_key
            Then: Returns wallet's identity public key
@@ -28,7 +27,7 @@ class TestWalletGetPublicKey:
         args = {"identityKey": True}
 
         # When
-        result = await wallet.get_public_key(args)
+        result = wallet.get_public_key(args)
 
         # Then
         assert "publicKey" in result
@@ -36,8 +35,7 @@ class TestWalletGetPublicKey:
         assert len(result["publicKey"]) == 66  # Compressed public key hex
 
     @pytest.mark.skip(reason="Waiting for get_public_key implementation")
-    @pytest.mark.asyncio
-    async def test_get_public_key_with_protocol_id(self, wallet: Wallet) -> None:
+    def test_get_public_key_with_protocol_id(self, wallet: Wallet) -> None:
         """Given: GetPublicKeyArgs with protocolID and keyID
            When: Call get_public_key
            Then: Returns derived public key for that protocol/key
@@ -48,7 +46,7 @@ class TestWalletGetPublicKey:
         args = {"protocolID": [0, "test protocol"], "keyID": "test_key_1"}
 
         # When
-        result = await wallet.get_public_key(args)
+        result = wallet.get_public_key(args)
 
         # Then
         assert "publicKey" in result
@@ -59,8 +57,7 @@ class TestWalletEncrypt:
     """Test suite for Wallet.encrypt method."""
 
     @pytest.mark.skip(reason="Waiting for encrypt implementation")
-    @pytest.mark.asyncio
-    async def test_encrypt_with_counterparty(self, wallet: Wallet) -> None:
+    def test_encrypt_with_counterparty(self, wallet: Wallet) -> None:
         """Given: WalletEncryptArgs with plaintext and counterparty public key
            When: Call encrypt
            Then: Returns encrypted ciphertext
@@ -76,7 +73,7 @@ class TestWalletEncrypt:
         }
 
         # When
-        result = await wallet.encrypt(args)
+        result = wallet.encrypt(args)
 
         # Then
         assert "ciphertext" in result
@@ -88,8 +85,7 @@ class TestWalletDecrypt:
     """Test suite for Wallet.decrypt method."""
 
     @pytest.mark.skip(reason="Waiting for decrypt implementation")
-    @pytest.mark.asyncio
-    async def test_decrypt_with_counterparty(self, wallet: Wallet) -> None:
+    def test_decrypt_with_counterparty(self, wallet: Wallet) -> None:
         """Given: WalletDecryptArgs with ciphertext and counterparty public key
            When: Call decrypt
            Then: Returns decrypted plaintext
@@ -104,7 +100,7 @@ class TestWalletDecrypt:
             "keyID": "encryption_key_1",
             "counterparty": "02" + "00" * 32,
         }
-        encrypt_result = await wallet.encrypt(encrypt_args)
+        encrypt_result = wallet.encrypt(encrypt_args)
 
         decrypt_args = {
             "ciphertext": encrypt_result["ciphertext"],
@@ -114,7 +110,7 @@ class TestWalletDecrypt:
         }
 
         # When
-        result = await wallet.decrypt(decrypt_args)
+        result = wallet.decrypt(decrypt_args)
 
         # Then
         assert "plaintext" in result
@@ -125,8 +121,7 @@ class TestWalletRevealCounterpartyKeyLinkage:
     """Test suite for Wallet.reveal_counterparty_key_linkage method."""
 
     @pytest.mark.skip(reason="Waiting for reveal_counterparty_key_linkage implementation")
-    @pytest.mark.asyncio
-    async def test_reveal_counterparty_key_linkage(self, wallet: Wallet) -> None:
+    def test_reveal_counterparty_key_linkage(self, wallet: Wallet) -> None:
         """Given: RevealCounterpartyKeyLinkageArgs with counterparty and protocols
            When: Call reveal_counterparty_key_linkage
            Then: Returns linkage revelation for the counterparty
@@ -140,7 +135,7 @@ class TestWalletRevealCounterpartyKeyLinkage:
         }
 
         # When
-        result = await wallet.reveal_counterparty_key_linkage(args)
+        result = wallet.reveal_counterparty_key_linkage(args)
 
         # Then
         assert "revelation" in result
@@ -151,8 +146,7 @@ class TestWalletRevealSpecificKeyLinkage:
     """Test suite for Wallet.reveal_specific_key_linkage method."""
 
     @pytest.mark.skip(reason="Waiting for reveal_specific_key_linkage implementation")
-    @pytest.mark.asyncio
-    async def test_reveal_specific_key_linkage(self, wallet: Wallet) -> None:
+    def test_reveal_specific_key_linkage(self, wallet: Wallet) -> None:
         """Given: RevealSpecificKeyLinkageArgs with specific protocol and key
            When: Call reveal_specific_key_linkage
            Then: Returns linkage revelation for that specific key
@@ -168,7 +162,7 @@ class TestWalletRevealSpecificKeyLinkage:
         }
 
         # When
-        result = await wallet.reveal_specific_key_linkage(args)
+        result = wallet.reveal_specific_key_linkage(args)
 
         # Then
         assert "revelation" in result

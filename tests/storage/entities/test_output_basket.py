@@ -6,15 +6,14 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputBasketTests.
 from datetime import datetime
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import OutputBasket
+from bsv_wallet_toolbox.storage.models import OutputBasket
 
 
 class TestOutputBasketEntity:
     """Test suite for OutputBasket entity."""
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at(
+    def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at(
         self,
     ) -> None:
         """Given: OutputBasket entity with older updated_at
@@ -52,7 +51,7 @@ class TestOutputBasketEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, updated_data, sync_map, None)
 
         # Then
         assert was_merged is True
@@ -61,8 +60,7 @@ class TestOutputBasketEntity:
         assert entity.is_deleted == 1
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
+    def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: OutputBasket entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
            Then: Entity is not updated
@@ -98,7 +96,7 @@ class TestOutputBasketEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
+        was_merged = entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
 
         # Then
         assert was_merged is False
@@ -107,8 +105,7 @@ class TestOutputBasketEntity:
         assert entity.is_deleted == 0
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_matching_entities_with_and_without_syncmap(self) -> None:
+    def test_equals_identifies_matching_entities_with_and_without_syncmap(self) -> None:
         """Given: Two OutputBasket entities with identical data
            When: Call equals method with and without syncMap
            Then: Returns True in both cases
@@ -139,8 +136,7 @@ class TestOutputBasketEntity:
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_identifies_non_matching_entities(self) -> None:
+    def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two OutputBasket entities with different data
            When: Call equals method with and without syncMap
            Then: Returns False in both cases

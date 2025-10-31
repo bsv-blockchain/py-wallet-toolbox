@@ -228,7 +228,7 @@ def review_history_notes(req_api: dict[str, Any]) -> dict[str, Any] | None:
                reviewHistoryNotes()
     """
     try:
-        from bsv_wallet_toolbox.storage.entities import ProvenTxReq
+        from bsv_wallet_toolbox.storage.models import ProvenTxReq
     except ImportError:
         return None
 

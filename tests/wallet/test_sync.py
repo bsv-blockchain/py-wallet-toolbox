@@ -33,8 +33,7 @@ class TestWalletSyncToWriter:
     """Test suite for Wallet.sync_to_writer method."""
 
     @pytest.mark.skip(reason="Waiting for sync_to_writer implementation with test database")
-    @pytest.mark.asyncio
-    async def test_sync_initial_then_no_changes_then_one_change(
+    def test_sync_initial_then_no_changes_then_one_change(
         self, wallet: Wallet, destination_storage
     ) -> None:
         """Given: Source wallet and empty destination storage
@@ -51,7 +50,7 @@ class TestWalletSyncToWriter:
         """
         # Given - Initial sync
         # When
-        result1 = await wallet.sync_to_writer(destination_storage)
+        result1 = wallet.sync_to_writer(destination_storage)
 
         # Then
         assert result1["inserts"] > 1000  # Initial data
@@ -59,7 +58,7 @@ class TestWalletSyncToWriter:
 
         # Given - No changes sync
         # When
-        result2 = await wallet.sync_to_writer(destination_storage)
+        result2 = wallet.sync_to_writer(destination_storage)
 
         # Then
         assert result2["inserts"] == 0  # No new data
@@ -68,7 +67,7 @@ class TestWalletSyncToWriter:
         # Given - Add one change
         # ... add test output basket ...
         # When
-        result3 = await wallet.sync_to_writer(destination_storage)
+        result3 = wallet.sync_to_writer(destination_storage)
 
         # Then
         assert result3["inserts"] == 1  # One new item
@@ -79,8 +78,7 @@ class TestWalletSetActive:
     """Test suite for Wallet.set_active method."""
 
     @pytest.mark.skip(reason="Waiting for set_active implementation with test database")
-    @pytest.mark.asyncio
-    async def test_set_active_to_backup_and_back_without_backup_first(
+    def test_set_active_to_backup_and_back_without_backup_first(
         self, wallet: Wallet, backup_storage, original_storage
     ) -> None:
         """Given: Original wallet and empty backup storage
@@ -100,27 +98,26 @@ class TestWalletSetActive:
         # Backup storage is empty
 
         # When - Switch to backup (first time)
-        await wallet.set_active(backup_storage)
+        wallet.set_active(backup_storage)
 
         # Then
         # Backup should now have all data from original
 
         # When - Switch back to original
-        await wallet.set_active(original_storage)
+        wallet.set_active(original_storage)
 
         # Then
         # Original should remain unchanged (no new data in backup)
 
         # When - Repeat the process
-        await wallet.set_active(backup_storage)
-        await wallet.set_active(original_storage)
+        wallet.set_active(backup_storage)
+        wallet.set_active(original_storage)
 
         # Then
         # Should complete successfully with no errors
 
     @pytest.mark.skip(reason="Waiting for set_active implementation with test database")
-    @pytest.mark.asyncio
-    async def test_set_active_to_backup_and_back_with_backup_first(
+    def test_set_active_to_backup_and_back_with_backup_first(
         self, wallet: Wallet, backup_storage, original_storage
     ) -> None:
         """Given: Original wallet and backup that was initialized with backup_first=True
@@ -140,20 +137,20 @@ class TestWalletSetActive:
         # Backup storage initialized with backup_first=True
 
         # When - Switch to backup (first time)
-        await wallet.set_active(backup_storage, backup_first=True)
+        wallet.set_active(backup_storage, backup_first=True)
 
         # Then
         # Backup-first semantics applied
 
         # When - Switch back to original
-        await wallet.set_active(original_storage)
+        wallet.set_active(original_storage)
 
         # Then
         # Original updated from backup if needed
 
         # When - Repeat the process
-        await wallet.set_active(backup_storage, backup_first=True)
-        await wallet.set_active(original_storage)
+        wallet.set_active(backup_storage, backup_first=True)
+        wallet.set_active(original_storage)
 
         # Then
         # Should complete successfully with backup-first semantics maintained

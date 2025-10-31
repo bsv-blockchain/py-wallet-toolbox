@@ -23,8 +23,7 @@ class TestUniversalVectorsDiscoverByAttributes:
     """
 
     @pytest.mark.skip(reason="Waiting for discover_by_attributes implementation")
-    @pytest.mark.asyncio
-    async def test_discoverbyattributes_json_matches_universal_vectors(
+    def test_discoverbyattributes_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """Given: Universal Test Vector input for discoverByAttributes
@@ -36,14 +35,13 @@ class TestUniversalVectorsDiscoverByAttributes:
         wallet = Wallet(chain="main")
 
         # When
-        result = await wallet.discover_by_attributes(args_data["json"], originator=None)
+        result = wallet.discover_by_attributes(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_discoverbyattributes_wire_matches_universal_vectors(
+    def test_discoverbyattributes_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""

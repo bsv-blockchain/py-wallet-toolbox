@@ -10,7 +10,6 @@ import pytest
 from bsv_wallet_toolbox.services import Services
 
 
-@pytest.mark.asyncio
 async def test_post_beef_arc_minimal() -> None:
     """Ensure ARC path returns TS-like shape when ARC is configured."""
     options = Services.create_default_options("main")
@@ -20,7 +19,7 @@ async def test_post_beef_arc_minimal() -> None:
     services = Services(options)
 
     # Provide a minimal hex that Transaction.from_hex can reject; expect graceful error-shaped response
-    res = await services.post_beef("00")
+    res = services.post_beef("00")
     assert isinstance(res, dict)
     assert set(res.keys()) == {"accepted", "txid", "message"}
     assert res["accepted"] in (True, False)

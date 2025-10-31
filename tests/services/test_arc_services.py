@@ -23,8 +23,7 @@ class TestArcServices:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_arc_services_placeholder(self) -> None:
+    def test_arc_services_placeholder(self) -> None:
         """Given: ARC services setup
            When: Test placeholder
            Then: Test is skipped in TypeScript, kept for completeness

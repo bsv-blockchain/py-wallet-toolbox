@@ -19,7 +19,7 @@ try:
         TaskReviewStatus,
         TaskSendWaiting,
     )
-    from bsv_wallet_toolbox.storage.entities import EntityProvenTxReq
+    from bsv_wallet_toolbox.storage.models import EntityProvenTxReq
 
     from tests.utils.test_utils_wallet_storage import (
         create_legacy_wallet_sqlite_copy,
@@ -178,8 +178,7 @@ class TestMonitor:
     """Test suite for Monitor tasks."""
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_taskclock(self) -> None:
+    def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value
            Then: nextMinute increases by one minute worth of msecs
@@ -188,7 +187,7 @@ class TestMonitor:
                    test('0 TaskClock')
         """
         # Given
-        ctx = await create_sqlite_test_setup_1_wallet(
+        ctx = create_sqlite_test_setup_1_wallet(
             database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64
         )
 
@@ -203,7 +202,7 @@ class TestMonitor:
 
         # Start tasks and wait >1 minute
         start_tasks_promise = monitor.start_tasks()
-        await asyncio.sleep(Monitor.ONE_MINUTE * 1.1)
+        asyncio.sleep(Monitor.ONE_MINUTE * 1.1)
         msecs_next = task.next_minute
         monitor.stop_tasks()
 
@@ -211,12 +210,11 @@ class TestMonitor:
         elapsed = (msecs_next - msecs_first) / Monitor.ONE_MINUTE
         assert elapsed == 1 or elapsed == 2
 
-        await start_tasks_promise
-        await ctx.storage.destroy()
+        start_tasks_promise
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_tasknewheader(self) -> None:
+    def test_tasknewheader(self) -> None:
         """Given: Monitor with new header task running for 10+ seconds
            When: Check header and checkNow flag
            Then: Latest header is fetched and checkNow flag is set
@@ -225,7 +223,7 @@ class TestMonitor:
                    test('1 TaskNewHeader')
         """
         # Given
-        ctx = await create_sqlite_test_setup_1_wallet(
+        ctx = create_sqlite_test_setup_1_wallet(
             database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64
         )
 
@@ -239,19 +237,18 @@ class TestMonitor:
         assert TaskCheckForProofs.check_now is False
 
         start_tasks_promise = monitor.start_tasks()
-        await asyncio.sleep(Monitor.ONE_SECOND * 10)
+        asyncio.sleep(Monitor.ONE_SECOND * 10)
 
         # Then
         assert task.header is not None
         assert TaskCheckForProofs.check_now is True
 
         monitor.stop_tasks()
-        await start_tasks_promise
-        await ctx.storage.destroy()
+        start_tasks_promise
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_tasksendwaiting_success(self) -> None:
+    def test_tasksendwaiting_success(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and mocked successful postBeef
            When: Execute TaskSendWaiting
            Then: All unsent transactions are broadcast successfully
@@ -260,7 +257,7 @@ class TestMonitor:
                    test('3 TaskSendWaiting success')
         """
         # Given
-        ctx = await create_legacy_wallet_sqlite_copy("monitorTest3")
+        ctx = create_legacy_wallet_sqlite_copy("monitorTest3")
         storage = ctx.active_storage
         monitor = ctx.monitor
 
@@ -285,40 +282,39 @@ class TestMonitor:
 
         # Verify initial state
         for txid in expected_txids:
-            req = (await storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
+            req = (storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
             assert req.status == "unsent"
 
             notify = EntityProvenTxReq(req).notify
             notify_ids = notify.get("transactionIds", [])
             for transaction_id in notify_ids:
-                tx = await storage.find_transaction_by_id(transaction_id)
+                tx = storage.find_transaction_by_id(transaction_id)
                 assert tx is not None
                 assert tx.status in ["nosend", "unprocessed", "sending"]
 
         # When
         task = TaskSendWaiting(monitor, 1, 1)
         monitor._tasks.append(task)
-        await monitor.run_task("SendWaiting")
+        monitor.run_task("SendWaiting")
 
         # Then
         assert txids_posted == expected_txids
 
         for txid in expected_txids:
-            req = (await storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
+            req = (storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
             assert req.status == "unmined"
 
             notify = EntityProvenTxReq(req).notify
             notify_ids = notify.get("transactionIds", [])
             for transaction_id in notify_ids:
-                tx = await storage.find_transaction_by_id(transaction_id)
+                tx = storage.find_transaction_by_id(transaction_id)
                 assert tx is not None
                 assert tx.status == "unproven"
 
-        await ctx.storage.destroy()
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_taskcheckforproofs_success(self) -> None:
+    def test_taskcheckforproofs_success(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning valid proofs
            When: Execute TaskCheckForProofs
            Then: Proofs are retrieved, validated, and ProvenTxs are created with status 'completed'
@@ -327,7 +323,7 @@ class TestMonitor:
                    test('5 TaskCheckForProofs success')
         """
         # Given
-        ctx = await create_legacy_wallet_sqlite_copy("monitorTest5")
+        ctx = create_legacy_wallet_sqlite_copy("monitorTest5")
         storage = ctx.active_storage
         monitor = ctx.monitor
 
@@ -366,33 +362,32 @@ class TestMonitor:
 
         # Verify initial state
         for txid in expected_txids:
-            proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
+            proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
 
         # When
         task = TaskCheckForProofs(monitor, 1)
         monitor._tasks.append(task)
-        await monitor.run_task("CheckForProofs")
+        monitor.run_task("CheckForProofs")
 
         # Then
         for txid in expected_txids:
-            proven = (await storage.find_proven_txs({"partial": {"txid": txid}}))[0]
+            proven = (storage.find_proven_txs({"partial": {"txid": txid}}))[0]
             assert proven.merkle_path is not None
 
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "completed"
             assert req.proven_tx_id == proven.proven_tx_id
 
-        await ctx.storage.destroy()
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_taskcheckforproofs_fail(self) -> None:
+    def test_taskcheckforproofs_fail(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning empty results
            When: Execute TaskCheckForProofs
            Then: No proofs are found, status remains 'unmined', attempts counter increments
@@ -401,7 +396,7 @@ class TestMonitor:
                    test('6 TaskCheckForProofs fail')
         """
         # Given
-        ctx = await create_legacy_wallet_sqlite_copy("monitorTest6")
+        ctx = create_legacy_wallet_sqlite_copy("monitorTest6")
         storage = ctx.active_storage
         monitor = ctx.monitor
 
@@ -425,10 +420,10 @@ class TestMonitor:
         # Record initial attempts
         attempts: list[int] = []
         for txid in expected_txids:
-            proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
+            proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
             attempts.append(req.attempts)
@@ -436,23 +431,22 @@ class TestMonitor:
         # When
         task = TaskCheckForProofs(monitor, 1)
         monitor._tasks.append(task)
-        await monitor.run_task("CheckForProofs")
+        monitor.run_task("CheckForProofs")
 
         # Then
         for i, txid in enumerate(expected_txids):
-            proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
+            proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
             assert req.attempts >= attempts[i]
 
-        await ctx.storage.destroy()
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_taskreviewstatus(self) -> None:
+    def test_taskreviewstatus(self) -> None:
         """Given: Storage with various transaction statuses including invalid ProvenTxReq
            When: Execute TaskReviewStatus
            Then: Transaction statuses are reviewed and corrected
@@ -461,7 +455,7 @@ class TestMonitor:
                    test('7 TaskReviewStatus')
         """
         # Given
-        ctx = await create_legacy_wallet_sqlite_copy("monitorTest7")
+        ctx = create_legacy_wallet_sqlite_copy("monitorTest7")
         storage = ctx.active_storage
         monitor = ctx.monitor
 
@@ -469,23 +463,22 @@ class TestMonitor:
             raise ValueError("test requires setup with monitor")
 
         # Setup: mark one as invalid, unlink provenTxId
-        reqs = await storage.find_proven_tx_reqs({"partial": {"status": "unmined"}})
-        await storage.update_proven_tx_req(reqs[0].proven_tx_req_id, {"status": "invalid"})
-        await storage.update_transaction(23, {"provenTxId": None})
+        reqs = storage.find_proven_tx_reqs({"partial": {"status": "unmined"}})
+        storage.update_proven_tx_req(reqs[0].proven_tx_req_id, {"status": "invalid"})
+        storage.update_transaction(23, {"provenTxId": None})
 
         # When
         task = TaskReviewStatus(monitor, 1, 5000)
         monitor._tasks.append(task)
-        log = await monitor.run_task("ReviewStatus")
+        log = monitor.run_task("ReviewStatus")
 
         # Then
         assert log is not None
 
-        await ctx.storage.destroy()
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_processproventransaction(self) -> None:
+    def test_processproventransaction(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and onTransactionProven callback
            When: Execute TaskCheckForProofs to create ProvenTxs
            Then: onTransactionProven callback is invoked for each proven transaction
@@ -494,7 +487,7 @@ class TestMonitor:
                    test('8 ProcessProvenTransaction')
         """
         # Given
-        ctx = await create_legacy_wallet_sqlite_copy("monitorTest8")
+        ctx = create_legacy_wallet_sqlite_copy("monitorTest8")
         storage = ctx.active_storage
         monitor = ctx.monitor
 
@@ -545,35 +538,34 @@ class TestMonitor:
 
         # Verify initial state
         for txid in expected_txids:
-            proven_txs = await storage.find_proven_txs({"partial": {"txid": txid}})
+            proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
 
         # When
         task = TaskCheckForProofs(monitor, 1)
         monitor._tasks.append(task)
-        await monitor.run_task("CheckForProofs")
+        monitor.run_task("CheckForProofs")
 
         # Then
         for txid in expected_txids:
-            proven = (await storage.find_proven_txs({"partial": {"txid": txid}}))[0]
+            proven = (storage.find_proven_txs({"partial": {"txid": txid}}))[0]
             assert proven.merkle_path is not None
 
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "completed"
             assert req.proven_tx_id == proven.proven_tx_id
 
         assert updates_received == len(expected_txids)
 
-        await ctx.storage.destroy()
+        ctx.storage.destroy()
 
     @pytest.mark.skip(reason="Waiting for Monitor implementation")
-    @pytest.mark.asyncio
-    async def test_processbroadcastedtransactions(self) -> None:
+    def test_processbroadcastedtransactions(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and onTransactionBroadcasted callback
            When: Execute TaskSendWaiting to broadcast transactions
            Then: onTransactionBroadcasted callback is invoked for each broadcast
@@ -582,7 +574,7 @@ class TestMonitor:
                    test('9 ProcessBroadcastedTransactions')
         """
         # Given
-        ctx = await create_legacy_wallet_sqlite_copy("monitorTest8")
+        ctx = create_legacy_wallet_sqlite_copy("monitorTest8")
         storage = ctx.active_storage
         monitor = ctx.monitor
 
@@ -616,22 +608,22 @@ class TestMonitor:
 
         # Verify initial state
         for txid in expected_txids:
-            req = await EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = EntityProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unsent"
 
         # When
         task = TaskSendWaiting(monitor, 1, 1)
         monitor._tasks.append(task)
-        await monitor.run_task("SendWaiting")
+        monitor.run_task("SendWaiting")
 
         # Then
         assert txids_posted == expected_txids
 
         for txid in expected_txids:
-            req = (await storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
+            req = (storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
             assert req.status == "unmined"
 
         assert updates_received == len(expected_txids)
 
-        await ctx.storage.destroy()
+        ctx.storage.destroy()

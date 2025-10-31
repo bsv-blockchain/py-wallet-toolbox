@@ -42,13 +42,13 @@ async def output_pushdrop(setup: Any, to_identity_key: str, satoshis: int) -> di
     key_id = "7"
 
     # Create PushDrop lock script
-    lock = await t.lock([[1, 2, 3], [4, 5, 6]], protocol, key_id, to_identity_key, False, True, "before")
+    lock = t.lock([[1, 2, 3], [4, 5, 6]], protocol, key_id, to_identity_key, False, True, "before")
     locking_script = lock.to_hex()
 
     label = "outputPushDrop"
 
     # Create action with PushDrop output
-    car = await setup.wallet.create_action(
+    car = setup.wallet.create_action(
         {
             "outputs": [
                 {
@@ -111,7 +111,7 @@ async def input_pushdrop(setup: Any, output_pushdrop: dict[str, Any]) -> None:
     label = "inputPushDrop"
 
     # Create action with PushDrop input (two-step process)
-    car = await setup.wallet.create_action(
+    car = setup.wallet.create_action(
         {
             "inputBEEF": input_beef.to_binary(),
             "inputs": [
@@ -127,7 +127,7 @@ async def input_pushdrop(setup: Any, output_pushdrop: dict[str, Any]) -> None:
     beef = Beef.from_binary(st["tx"])
     tx = beef.find_atomic_transaction(beef.txs[-1].txid)
     tx.inputs[0].unlocking_script_template = unlock
-    await tx.sign()
+    tx.sign()
     unlocking_script = tx.inputs[0].unlocking_script.to_hex()
 
     # Complete the action with signAction
@@ -137,7 +137,7 @@ async def input_pushdrop(setup: Any, output_pushdrop: dict[str, Any]) -> None:
         "options": {"acceptDelayedBroadcast": True},
     }
 
-    sar = await setup.wallet.sign_action(sign_args)
+    sar = setup.wallet.sign_action(sign_args)
     if any(r["status"] == "failed" for r in sar.get("sendWithResults", [])):
         raise TransactionBroadcastError("failed to send output creating transaction")
 
@@ -152,20 +152,20 @@ async def transfer_pushdrop() -> None:
     env = Setup.get_env("main")
 
     # Setup sender wallet
-    setup1 = await Setup.create_wallet_client({"env": env})
+    setup1 = Setup.create_wallet_client({"env": env})
 
     # Setup receiver wallet (same as sender in this example)
     setup2 = setup1
 
     # Create PushDrop output for setup2
-    o = await output_pushdrop(setup1, setup2.identity_key, 42)
+    o = output_pushdrop(setup1, setup2.identity_key, 42)
 
     # Consume the output with setup2
-    await input_pushdrop(setup2, o)
+    input_pushdrop(setup2, o)
 
     # Cleanup
-    await setup1.wallet.destroy()
-    await setup2.wallet.destroy()
+    setup1.wallet.destroy()
+    setup2.wallet.destroy()
 
 
 class TestPushdrop:
@@ -176,8 +176,7 @@ class TestPushdrop:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PushDrop implementation")
-    @pytest.mark.asyncio
-    async def test_pushdrop_transfer_example(self) -> None:
+    def test_pushdrop_transfer_example(self) -> None:
         """Given: Two wallets (sender and receiver)
            When: Transfer satoshis using BRC29 PushDrop template
            Then: Successfully creates output and consumes it
@@ -189,4 +188,4 @@ class TestPushdrop:
         if Setup.no_env("main"):
             pytest.skip("No 'main' environment configured")
 
-        await transfer_pushdrop()
+        transfer_pushdrop()

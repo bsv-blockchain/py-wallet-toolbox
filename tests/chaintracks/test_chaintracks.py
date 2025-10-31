@@ -25,8 +25,7 @@ class TestChaintracks:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Chaintracks implementation")
-    @pytest.mark.asyncio
-    async def test_nodb_mainnet(self) -> None:
+    def test_nodb_mainnet(self) -> None:
         """Given: Chaintracks with NoDb options for mainnet
            When: Make available and test basic operations
            Then: Successfully initializes without database
@@ -40,21 +39,20 @@ class TestChaintracks:
         c = Chaintracks(o)
 
         # When
-        await c.make_available()
+        c.make_available()
 
         # Test basic operations
-        info = await c.get_info()
+        info = c.get_info()
         assert info.chain == chain
 
-        present_height = await c.get_present_height()
+        present_height = c.get_present_height()
         assert present_height > 0
 
         # Then
-        await c.destroy()
+        c.destroy()
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Chaintracks implementation")
-    @pytest.mark.asyncio
-    async def test_nodb_testnet(self) -> None:
+    def test_nodb_testnet(self) -> None:
         """Given: Chaintracks with NoDb options for testnet
            When: Make available and test basic operations
            Then: Successfully initializes without database
@@ -68,14 +66,14 @@ class TestChaintracks:
         c = Chaintracks(o)
 
         # When
-        await c.make_available()
+        c.make_available()
 
         # Test basic operations
-        info = await c.get_info()
+        info = c.get_info()
         assert info.chain == chain
 
-        present_height = await c.get_present_height()
+        present_height = c.get_present_height()
         assert present_height > 0
 
         # Then
-        await c.destroy()
+        c.destroy()

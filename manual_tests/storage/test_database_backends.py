@@ -22,7 +22,7 @@ try:
         StorageSQLite,  # noqa: F401
         WalletStorageManager,  # noqa: F401
     )
-    from bsv_wallet_toolbox.storage.entities import EntitySyncState, User
+    from bsv_wallet_toolbox.storage.models import EntitySyncState, User
     from bsv_wallet_toolbox.test_utils import (
         create_local_mysql_storage,
         create_local_sqlite_storage,

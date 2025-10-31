@@ -6,15 +6,14 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputTagMapTests.
 from datetime import datetime
 
 import pytest
-from bsv_wallet_toolbox.storage.entities import OutputTagMap
+from bsv_wallet_toolbox.storage.models import OutputTagMap
 
 
 class TestOutputTagMapEntity:
     """Test suite for OutputTagMap entity."""
 
     
-    @pytest.mark.asyncio
-    async def test_outputtagmap_getters_and_setters(self) -> None:
+    def test_outputtagmap_getters_and_setters(self) -> None:
         """Given: OutputTagMap entity
            When: Set and get all properties
            Then: Getters and setters work correctly, id throws error
@@ -57,8 +56,7 @@ class TestOutputTagMapEntity:
             _ = output_tag_map.id
 
     
-    @pytest.mark.asyncio
-    async def test_equals_returns_true_for_matching_entities(self) -> None:
+    def test_equals_returns_true_for_matching_entities(self) -> None:
         """Given: Two OutputTagMap entities with matching data
            When: Call equals method with syncMap
            Then: Returns True
@@ -85,8 +83,7 @@ class TestOutputTagMapEntity:
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
     
-    @pytest.mark.asyncio
-    async def test_equals_returns_false_for_non_matching_entities(self) -> None:
+    def test_equals_returns_false_for_non_matching_entities(self) -> None:
         """Given: Two OutputTagMap entities with different data
            When: Call equals method with and without syncMap
            Then: Returns False in both cases
@@ -122,8 +119,7 @@ class TestOutputTagMapEntity:
         assert entity1.equals(entity2.to_api()) is False
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at_at(
+    def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at_at(
         self,
     ) -> None:
         """Given: OutputTagMap entity with older updated_at
@@ -152,15 +148,14 @@ class TestOutputTagMapEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, updated_data, sync_map)
+        was_merged = entity.merge_existing(mock_storage, None, updated_data, sync_map)
 
         # Then
         assert was_merged is True
         assert entity.is_deleted == 1
 
     
-    @pytest.mark.asyncio
-    async def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at_at(self) -> None:
+    def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at_at(self) -> None:
         """Given: OutputTagMap entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
            Then: Entity is not updated
@@ -187,7 +182,7 @@ class TestOutputTagMapEntity:
         mock_storage = type("MockStorage", (), {})()
 
         # When
-        was_merged = await entity.merge_existing(mock_storage, None, earlier_data, sync_map)
+        was_merged = entity.merge_existing(mock_storage, None, earlier_data, sync_map)
 
         # Then
         assert was_merged is False

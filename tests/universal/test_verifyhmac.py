@@ -23,8 +23,7 @@ class TestUniversalVectorsVerifyHmac:
     """
 
     @pytest.mark.skip(reason="KeyDeriver parity with TS/Go required; HMAC verify will not match JSON vector yet")
-    @pytest.mark.asyncio
-    async def test_verifyhmac_json_matches_universal_vectors(
+    def test_verifyhmac_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for verifyHmac
@@ -36,14 +35,13 @@ class TestUniversalVectorsVerifyHmac:
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
-        result = await wallet.verify_hmac(args_data["json"], originator=None)
+        result = wallet.verify_hmac(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
     @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    @pytest.mark.asyncio
-    async def test_verifyhmac_wire_matches_universal_vectors(
+    def test_verifyhmac_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""

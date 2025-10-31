@@ -50,8 +50,7 @@ class TestBitrails:
     """
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_verify_merkle_proof_to_merkle_path(self) -> None:
+    def test_verify_merkle_proof_to_merkle_path(self) -> None:
         """Given: TSC merkle proof for a txid
            When: Convert proof to merkle path and compute root
            Then: Computed root matches expected merkle root
@@ -70,8 +69,7 @@ class TestBitrails:
         assert root == PROOF2_MERKLE_ROOT
 
     @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    @pytest.mark.asyncio
-    async def test_bitails_get_merkle_path(self) -> None:
+    def test_bitails_get_merkle_path(self) -> None:
         """Given: Bitails service and services for mainnet
            When: Get merkle path for recent txids
            Then: Merkle path computes correct root (if available, as Bitails prunes historical data)
@@ -93,7 +91,7 @@ class TestBitrails:
 
         # When/Then
         for txid in test_txids:
-            mp_result = await bitails.get_merkle_path(txid, services)
+            mp_result = bitails.get_merkle_path(txid, services)
             if mp_result.merkle_path:
                 root = mp_result.merkle_path.compute_root(txid)
                 # Note: Expected root depends on block, this is just checking the computation works
