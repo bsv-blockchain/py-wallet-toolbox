@@ -30,12 +30,12 @@ class TestProvenTxEntity:
         raw_tx = [0x04, 0x05, 0x06]
 
         # Mock services
-        async def mock_get_raw_tx(requested_txid: str) -> dict[str, Any]:
+        def mock_get_raw_tx(requested_txid: str) -> dict[str, Any]:
             if requested_txid == txid:
                 return {"txid": requested_txid, "rawTx": raw_tx}
             raise Exception("Unexpected txid")
 
-        async def mock_get_merkle_path(requested_txid: str) -> dict[str, Any]:
+        def mock_get_merkle_path(requested_txid: str) -> dict[str, Any]:
             if requested_txid == txid:
                 return {
                     "merklePath": {
@@ -75,7 +75,7 @@ class TestProvenTxEntity:
         txid = "missing-txid"
 
         # Mock services that return nothing
-        async def mock_get_raw_tx(requested_txid: str) -> None:
+        def mock_get_raw_tx(requested_txid: str) -> None:
             return None
 
         mock_services = type("MockServices", (), {"get_raw_tx": mock_get_raw_tx})()
@@ -101,10 +101,10 @@ class TestProvenTxEntity:
         raw_tx = [0x01, 0x02, 0x03]
 
         # Mock services
-        async def mock_get_raw_tx(requested_txid: str) -> dict[str, Any]:
+        def mock_get_raw_tx(requested_txid: str) -> dict[str, Any]:
             return {"txid": requested_txid, "rawTx": raw_tx}
 
-        async def mock_get_merkle_path(requested_txid: str) -> None:
+        def mock_get_merkle_path(requested_txid: str) -> None:
             return None
 
         mock_services = type(

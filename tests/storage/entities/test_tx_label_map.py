@@ -157,7 +157,7 @@ class TestTxLabelMapEntity:
         """
         # Given
 
-        async def mock_find_tx_label_maps(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
+        def mock_find_tx_label_maps(*args: Any, **kwargs: Any) -> list[dict[str, Any]]:
             return [{"transactionId": 999, "txLabelId": 888}]
 
         mock_storage = type("MockStorage", (), {"findTxLabelMaps": mock_find_tx_label_maps})()
@@ -186,11 +186,11 @@ class TestTxLabelMapEntity:
 
         inserted_data = None
 
-        async def mock_insert(data: dict[str, Any], trx: Any = None) -> None:
+        def mock_insert(data: dict[str, Any], trx: Any = None) -> None:
             nonlocal inserted_data
             inserted_data = data
 
-        mock_storage = type("MockStorage", (), {"insertTxLabelMap": mock_insert})()
+        mock_storage = type("MockStorage", (), {"insertTxLabelMap": staticmethod(mock_insert)})()
 
         sync_map = {"transaction": {"idMap": {123: 999}}, "txLabel": {"idMap": {456: 888}}}
 
@@ -224,11 +224,11 @@ class TestTxLabelMapEntity:
 
         updated_data = None
 
-        async def mock_update(transaction_id: int, tx_label_id: int, data: dict[str, Any], trx: Any = None) -> None:
+        def mock_update(transaction_id: int, tx_label_id: int, data: dict[str, Any], trx: Any = None) -> None:
             nonlocal updated_data
             updated_data = data
 
-        mock_storage = type("MockStorage", (), {"updateTxLabelMap": mock_update})()
+        mock_storage = type("MockStorage", (), {"updateTxLabelMap": staticmethod(mock_update)})()
 
         tx_label_map = TxLabelMap(
             {

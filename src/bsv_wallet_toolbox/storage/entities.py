@@ -11,8 +11,11 @@ Reference:
   - toolbox/ts-wallet-toolbox/src/storage/schema/entities/
 """
 
+import json
 from datetime import datetime
 from typing import Any
+
+from bsv.transaction import Transaction as BsvTransaction
 
 
 class User:
@@ -645,13 +648,35 @@ class Transaction:
             now = datetime.now()
             self.transaction_id: int = 0
             self.user_id: int = 0
+            self.txid: str = ""
+            self.status: str = "unprocessed"
+            self.reference: str = ""
             self.satoshis: int = 0
+            self.description: str = ""
+            self.is_outgoing: bool = False
+            self.proven_tx_id: int | None = None
+            self.raw_tx: list[int] | None = None
+            self.input_beef: list[int] | None = None
+            self.version: int = 1
+            self.lock_time: int = 0
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
             self.transaction_id = api_object.get("transactionId", 0)
             self.user_id = api_object.get("userId", 0)
+            self.txid = api_object.get("txid", "")
+            self.status = api_object.get("status", "unprocessed")
+            self.reference = api_object.get("reference", "")
             self.satoshis = api_object.get("satoshis", 0)
+            self.description = api_object.get("description", "")
+            self.is_outgoing = api_object.get("isOutgoing", False)
+            self.proven_tx_id = api_object.get("provenTxId")
+            rt = api_object.get("rawTx")
+            self.raw_tx = rt if isinstance(rt, list) else None
+            ib = api_object.get("inputBEEF")
+            self.input_beef = ib if isinstance(ib, list) else None
+            self.version = api_object.get("version", 1)
+            self.lock_time = api_object.get("lockTime", 0)
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
@@ -675,7 +700,17 @@ class Transaction:
         return {
             "transactionId": self.transaction_id,
             "userId": self.user_id,
+            "txid": self.txid,
+            "status": self.status,
+            "reference": self.reference,
             "satoshis": self.satoshis,
+            "description": self.description,
+            "isOutgoing": self.is_outgoing,
+            "provenTxId": self.proven_tx_id,
+            "rawTx": self.raw_tx,
+            "inputBEEF": self.input_beef,
+            "version": self.version,
+            "lockTime": self.lock_time,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
         }
@@ -688,13 +723,71 @@ class Transaction:
         return self.satoshis == other.get("satoshis")
 
     def merge_existing(
-        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
+        self, storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing transaction."""
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.txid = ei.get("txid", self.txid)
+            self.status = ei.get("status", self.status)
+            self.reference = ei.get("reference", self.reference)
+            self.satoshis = ei.get("satoshis", self.satoshis)
+            self.description = ei.get("description", self.description)
+            self.is_outgoing = ei.get("isOutgoing", self.is_outgoing)
+            rt = ei.get("rawTx")
+            if rt is not None:
+                self.raw_tx = rt if isinstance(rt, list) else None
+            ib = ei.get("inputBEEF")
+            if ib is not None:
+                self.input_beef = ib if isinstance(ib, list) else None
+            self.updated_at = ei.get("updated_at", datetime.now())
+            if storage:
+                storage.update_transaction(self.transaction_id, self.to_api())
+            return True
         return False
 
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new transaction from sync."""
+
+    def get_bsv_tx(self) -> Any:
+        """Get parsed BSV Transaction from raw_tx."""
+        if self.raw_tx is None:
+            return None
+        raw_bytes = bytes(self.raw_tx) if isinstance(self.raw_tx, list) else self.raw_tx
+        return BsvTransaction.from_hex(raw_bytes)
+
+    def get_bsv_tx_ins(self) -> list[Any]:
+        """Get list of transaction inputs from parsed BSV Transaction."""
+        tx = self.get_bsv_tx()
+        if tx is None:
+            return []
+        return tx.inputs if hasattr(tx, "inputs") else []
+
+    def get_inputs(self, storage: Any) -> list[Any]:
+        """Get input UTXOs from storage.
+
+        Combines outputs that spent this transaction (spentBy) with raw transaction inputs.
+        """
+        inputs = []
+
+        # Get outputs that reference this transaction as spentBy
+        if storage and hasattr(storage, "find_outputs"):
+            outputs = storage.find_outputs({"spentBy": self.transaction_id})
+            inputs.extend(outputs)
+
+        # Also include any raw transaction inputs
+        raw_inputs = self.get_bsv_tx_ins()
+        inputs.extend(raw_inputs)
+
+        return inputs
+
+    def get_proven_tx(self, storage: Any) -> Any:
+        """Get ProvenTx for this transaction by provenTxId."""
+        if not self.proven_tx_id:
+            return None
+        if not hasattr(storage, "find_proven_tx"):
+            return None
+        proven_tx_dict = storage.find_proven_tx(self.proven_tx_id)
+        return proven_tx_dict
 
 
 class ProvenTx:
@@ -728,8 +821,8 @@ class ProvenTx:
             self.txid: str = ""
             self.height: int = 0
             self.index: int = 0
-            self.merkle_path: bytes = b""
-            self.raw_tx: bytes = b""
+            self.merkle_path: list[int] = []
+            self.raw_tx: list[int] = []
             self.block_hash: str = ""
             self.merkle_root: str = ""
             self.created_at: datetime = now
@@ -739,10 +832,10 @@ class ProvenTx:
             self.txid = api_object.get("txid", "")
             self.height = api_object.get("height", 0)
             self.index = api_object.get("index", 0)
-            mp = api_object.get("merklePath", b"")
-            self.merkle_path = bytes(mp) if isinstance(mp, list) else (mp or b"")
-            rt = api_object.get("rawTx", b"")
-            self.raw_tx = bytes(rt) if isinstance(rt, list) else (rt or b"")
+            mp = api_object.get("merklePath", [])
+            self.merkle_path = list(mp) if isinstance(mp, (list, bytes)) else []
+            rt = api_object.get("rawTx", [])
+            self.raw_tx = list(rt) if isinstance(rt, (list, bytes)) else []
             self.block_hash = api_object.get("blockHash", "")
             self.merkle_root = api_object.get("merkleRoot", "")
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
@@ -782,9 +875,12 @@ class ProvenTx:
         pass
 
     def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
-        """ProvenTx equality: immutable, check identifying fields."""
+        """ProvenTx equality: immutable, check identifying fields including provenTxId."""
         return (
-            self.txid == other.get("txid") and self.height == other.get("height") and self.index == other.get("index")
+            self.proven_tx_id == other.get("provenTxId")
+            and self.txid == other.get("txid")
+            and self.height == other.get("height")
+            and self.index == other.get("index")
         )
 
     def merge_existing(
@@ -799,6 +895,31 @@ class ProvenTx:
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new proven tx from sync - insert only."""
         self.proven_tx_id = 0
+
+    @classmethod
+    def from_txid(cls, txid: str, services: Any = None) -> "ProvenTx | None":
+        """Create ProvenTx from transaction ID by fetching raw tx and merkle proof."""
+        if not services:
+            return None
+
+        try:
+            raw_tx = services.get_raw_tx(txid)
+            merkle_path = services.get_merkle_path(txid)
+            height = services.get_height_for_txid(txid) if hasattr(services, "get_height_for_txid") else None
+
+            if raw_tx and merkle_path:
+                return cls(
+                    {
+                        "txid": txid,
+                        "rawTx": raw_tx if isinstance(raw_tx, list) else list(raw_tx),
+                        "merklePath": merkle_path if isinstance(merkle_path, list) else list(merkle_path),
+                        "height": height or 0,
+                    }
+                )
+        except Exception:
+            pass
+
+        return None
 
 
 class ProvenTxReq:
@@ -836,6 +957,10 @@ class ProvenTxReq:
             self.reference: str = ""
             self.attempts: int = 0
             self.raw_tx: bytes = b""
+            self.notify: dict[str, Any] = {}
+            self.history: list[dict[str, Any]] = []
+            self.batch: str = ""
+            self.notified: bool = False
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
@@ -848,6 +973,17 @@ class ProvenTxReq:
             self.attempts = api_object.get("attempts", 0)
             rt = api_object.get("rawTx", b"")
             self.raw_tx = bytes(rt) if isinstance(rt, list) else (rt or b"")
+            notify_val = api_object.get("notify", {})
+            if isinstance(notify_val, str):
+                try:
+                    self.notify = json.loads(notify_val)
+                except Exception:
+                    self.notify = {}
+            else:
+                self.notify = notify_val or {}
+            self.history = api_object.get("history", [])
+            self.batch = api_object.get("batch", "")
+            self.notified = api_object.get("notified", False)
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
@@ -877,6 +1013,10 @@ class ProvenTxReq:
             "reference": self.reference,
             "attempts": self.attempts,
             "rawTx": self.raw_tx,
+            "notify": self.notify,
+            "history": self.history,
+            "batch": self.batch,
+            "notified": self.notified,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
         }
@@ -885,8 +1025,12 @@ class ProvenTxReq:
         pass
 
     def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
-        """ProvenTxReq equality: check status and reference."""
-        return self.status == other.get("status") and self.reference == other.get("reference")
+        """ProvenTxReq equality: compare core fields."""
+        return (
+            self.txid == other.get("txid")
+            and self.status == other.get("status")
+            and self.attempts == other.get("attempts", 0)
+        )
 
     def merge_existing(
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
@@ -906,6 +1050,78 @@ class ProvenTxReq:
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new proven tx req from sync - insert only."""
         self.proven_tx_req_id = 0
+
+    @property
+    def api_notify(self) -> str | None:
+        """Get notify field as JSON string."""
+        if not self.notify:
+            return None
+        try:
+            return json.dumps(self.notify)
+        except Exception:
+            return None
+
+    @api_notify.setter
+    def api_notify(self, value: str | None) -> None:
+        """Set notify field from JSON string."""
+        if value is None:
+            self.notify = {}
+        else:
+            try:
+                self.notify = json.loads(value)
+            except Exception:
+                self.notify = {}
+
+    def update_storage(self, storage: Any) -> None:
+        """Update this ProvenTxReq in storage."""
+        if storage and hasattr(storage, "update_proven_tx_req"):
+            storage.update_proven_tx_req(self.proven_tx_req_id, self.to_api())
+
+    def insert_or_merge(self, storage: Any) -> Any:
+        """Insert or merge this ProvenTxReq in storage."""
+        if not storage:
+            return None
+        if hasattr(storage, "insert_or_merge_proven_tx_req"):
+            return storage.insert_or_merge_proven_tx_req(self.to_api())
+        elif hasattr(storage, "insert_proven_tx_req"):
+            return storage.insert_proven_tx_req(self.to_api())
+        return None
+
+    def merge_notify_transaction_ids(self, ei: dict[str, Any] | list[int]) -> bool:
+        """Merge notification transaction IDs."""
+        if isinstance(ei, list):
+            # Direct list of transaction IDs - merge with existing
+            if not self.notify:
+                self.notify = {}
+
+            existing_ids = set(self.notify.get("transactionIds", []))
+            new_ids = set(ei)
+            merged_ids = sorted(existing_ids | new_ids)
+
+            if merged_ids != existing_ids:
+                self.notify["transactionIds"] = merged_ids
+                return True
+            return False
+
+        # Dictionary with transactionIds
+        if isinstance(ei, dict) and "transactionIds" in ei:
+            if not self.notify:
+                self.notify = {}
+            existing_ids = set(self.notify.get("transactionIds", []))
+            new_ids = set(ei["transactionIds"])
+            merged_ids = sorted(existing_ids | new_ids)
+
+            if merged_ids != existing_ids:
+                self.notify["transactionIds"] = merged_ids
+                return True
+
+        return False
+
+    @staticmethod
+    def is_terminal_status(status: str) -> bool:
+        """Check if status is terminal (no further changes possible)."""
+        terminal_statuses = {"completed", "invalid", "failed", "abandoned"}
+        return status.lower() in terminal_statuses
 
 
 class Certificate:

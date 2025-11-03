@@ -207,10 +207,10 @@ class TestOutputEntity:
         # Mock storage
         updated_records: list[dict[str, Any]] = []
 
-        async def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
+        def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
             updated_records.append({"outputId": output_id, **data})
 
-        async def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             if updated_records:
                 return updated_records
             return []
@@ -273,7 +273,7 @@ class TestOutputEntity:
         sync_map = {"transaction": {"idMap": {104: 104}}, "outputBasket": {"idMap": {1: 1}}}
 
         # Mock storage that should not be called
-        async def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
+        def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
             raise AssertionError("This should not be called")
 
         mock_storage = type("MockStorage", (), {"update_output": mock_update_output})()

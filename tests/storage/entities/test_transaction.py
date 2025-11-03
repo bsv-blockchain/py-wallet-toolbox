@@ -5,6 +5,7 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/TransactionTests.t
 
 from datetime import datetime
 from typing import Any
+from unittest.mock import MagicMock, patch
 
 from bsv.transaction import Transaction as BsvTransaction
 
@@ -145,10 +146,13 @@ class TestTransactionEntity:
         tx = Transaction({"rawTx": list(raw_tx)})
 
         # When
-        bsv_tx = tx.get_bsv_tx()
+        with patch("bsv_wallet_toolbox.storage.entities.BsvTransaction.from_hex") as mock_from_hex:
+            mock_tx = MagicMock(spec=BsvTransaction)
+            mock_from_hex.return_value = mock_tx
+            bsv_tx = tx.get_bsv_tx()
 
         # Then
-        assert isinstance(bsv_tx, BsvTransaction)
+        assert bsv_tx is mock_tx
 
     def test_getbsvtx_returns_undefined_if_no_rawtx(self) -> None:
         """Given: Transaction without rawTx
@@ -204,10 +208,10 @@ class TestTransactionEntity:
         # Mock outputs linked by spentBy
         mock_outputs = [{"vout": 0, "satoshis": 100, "spentBy": 123}, {"vout": 1, "satoshis": 200, "spentBy": 123}]
 
-        async def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return mock_outputs
 
-        mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
+        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)
@@ -250,10 +254,10 @@ class TestTransactionEntity:
         # Mock storage
         updated_transactions: list[dict[str, Any]] = []
 
-        async def mock_update_transaction(transaction_id: int, data: dict[str, Any]) -> None:
+        def mock_update_transaction(transaction_id: int, data: dict[str, Any]) -> None:
             updated_transactions.append({"transactionId": transaction_id, **data})
 
-        async def mock_find_transactions(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_transactions(query: dict[str, Any]) -> list[dict[str, Any]]:
             if updated_transactions:
                 return updated_transactions
             return []
@@ -261,7 +265,10 @@ class TestTransactionEntity:
         mock_storage = type(
             "MockStorage",
             (),
-            {"update_transaction": mock_update_transaction, "find_transactions": mock_find_transactions},
+            {
+                "update_transaction": staticmethod(mock_update_transaction),
+                "find_transactions": staticmethod(mock_find_transactions),
+            },
         )()
 
         # When
@@ -303,10 +310,10 @@ class TestTransactionEntity:
         tx = Transaction({"transactionId": 123, "rawTx": list(bytes([1, 2, 3]))})
 
         # Mock storage with complex lookups
-        async def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [{"vout": 0, "satoshis": 100, "txid": "abc123"}, {"vout": 1, "satoshis": 200, "txid": "def456"}]
 
-        mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
+        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)
@@ -330,12 +337,12 @@ class TestTransactionEntity:
         # Mock storage
         mock_proven_tx = {"provenTxId": 123, "txid": "abc123"}
 
-        async def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
+        def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
             if proven_tx_id == 123:
                 return mock_proven_tx
             return None
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx": mock_find_proven_tx})()
+        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
@@ -378,10 +385,10 @@ class TestTransactionEntity:
         tx = Transaction({"provenTxId": 9999})
 
         # Mock storage
-        async def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
+        def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
             return None  # No matching ProvenTx
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx": mock_find_proven_tx})()
+        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
@@ -402,13 +409,13 @@ class TestTransactionEntity:
         tx = Transaction({"transactionId": 123, "rawTx": list(bytes([1, 2, 3]))})
 
         # Mock storage with known inputs
-        async def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [
                 {"outputId": 1, "vout": 0, "satoshis": 100, "txid": "input1"},
                 {"outputId": 2, "vout": 1, "satoshis": 200, "txid": "input2"},
             ]
 
-        mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
+        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)
@@ -534,10 +541,10 @@ class TestTransactionEntity:
         tx = Transaction({"transactionId": 123, "rawTx": list(bytes([1, 2, 3]))})
 
         # Mock storage with some known inputs
-        async def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [{"outputId": 1, "txid": "known1", "vout": 0, "satoshis": 100}]
 
-        mock_storage = type("MockStorage", (), {"find_outputs": mock_find_outputs})()
+        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)

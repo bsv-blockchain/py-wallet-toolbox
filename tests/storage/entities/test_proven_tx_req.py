@@ -118,16 +118,19 @@ class TestProvenTxReqEntity:
         # Mock storage
         stored_records: list[dict[str, Any]] = []
 
-        async def mock_update_proven_tx_req(data: dict[str, Any]) -> None:
+        def mock_update_proven_tx_req(_id: int, data: dict[str, Any]) -> None:
             stored_records.append(data)
 
-        async def mock_find_proven_tx_reqs(query: dict[str, Any]) -> list[dict[str, Any]]:
+        def mock_find_proven_tx_reqs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [r for r in stored_records if r.get("txid") == query["partial"]["txid"]]
 
         mock_storage = type(
             "MockStorage",
             (),
-            {"update_proven_tx_req": mock_update_proven_tx_req, "find_proven_tx_reqs": mock_find_proven_tx_reqs},
+            {
+                "update_proven_tx_req": staticmethod(mock_update_proven_tx_req),
+                "find_proven_tx_reqs": staticmethod(mock_find_proven_tx_reqs),
+            },
         )()
 
         # When
@@ -164,10 +167,10 @@ class TestProvenTxReqEntity:
         )
 
         # Mock storage
-        async def mock_insert_or_merge(data: dict[str, Any]) -> dict[str, Any]:
+        def mock_insert_or_merge(data: dict[str, Any]) -> dict[str, Any]:
             return data
 
-        mock_storage = type("MockStorage", (), {"insert_or_merge_proven_tx_req": mock_insert_or_merge})()
+        mock_storage = type("MockStorage", (), {"insert_or_merge_proven_tx_req": staticmethod(mock_insert_or_merge)})()
 
         # When
         result = proven_tx_req.insert_or_merge(mock_storage)
@@ -246,9 +249,10 @@ class TestProvenTxReqEntity:
         proven_tx_req2_api = {
             "provenTxReqId": 408,
             "txid": "test-not-equals",
-            "rawTx": [4, 5, 6],  # Different rawTx
+            "rawTx": [4, 5, 6],
             "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-2"}}),
             "notify": json.dumps({"transactionIds": [300]}),
+            "attempts": 1,
             "status": "unknown",
         }
 
@@ -373,10 +377,8 @@ class TestProvenTxReqEntity:
         statuses = [("completed", True), ("invalid", True), ("unknown", False), ("sending", False)]
 
         for status, expected_terminal in statuses:
-            proven_tx_req = ProvenTxReq({"status": status})
-
             # When/Then
-            assert proven_tx_req.is_terminal_status() == expected_terminal
+            assert ProvenTxReq.is_terminal_status(status) == expected_terminal
 
     def test_mergeexisting_real_data(self) -> None:
         """Given: Existing ProvenTxReq
