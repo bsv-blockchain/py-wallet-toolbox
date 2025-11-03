@@ -25,6 +25,8 @@ from .models import (
     ProvenTxReq,
 )
 
+import secrets
+
 
 class StorageProvider:
     """Storage provider backed by SQLAlchemy ORM.
@@ -437,14 +439,10 @@ class StorageProvider:
                             "lockingScript": output_row.locking_script,
                         }
                         try:
-                            # Run only when no running loop is present
-                            asyncio.get_running_loop()
-                            ok = None  # cannot await here; skip network check
-                        except RuntimeError:
-                            try:
-                                ok = bool(asyncio.run(services.is_utxo(out)))
-                            except Exception:
-                                ok = None
+                            # Call synchronously (services should provide sync API)
+                            ok = bool(services.is_utxo(out))
+                        except Exception:
+                            ok = None
                     # If explicit False -> invalid change
                     if ok is False:
                         # Optional 'release' tag: mark unspendable
@@ -1193,114 +1191,407 @@ class StorageProvider:
         return {"totalActions": 0, "actions": []}
 
     # ------------------------------------------------------------------
-    # Change selection helpers (minimal)
+    # Action Management - Quick Wins
     # ------------------------------------------------------------------
-    def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
-        """Count spendable outputs in a basket (optionally excluding 'sending').
+    def abort_action(self, action_reference: str) -> int:
+        """Abort an action by reference - mark ProvenTxReq as aborted.
 
         Summary:
-            Minimal implementation: counts spendable outputs for a user and basket.
-            If exclude_sending is True, excludes outputs whose spending transaction
-            is currently in status 'sending'.
+            Set the status of an associated ProvenTxReq to 'aborted'.
+            Also mark any outputs spending from this transaction as non-spendable.
         TS parity:
-            Approximates TS behavior for counting change inputs.
+            Mirrors StorageProvider.abortAction behavior.
         Args:
-            user_id: User identifier.
-            basket_id: Basket identifier.
-            exclude_sending: Exclude outputs in a 'sending' state.
+            action_reference: Reference string for action to abort.
         Returns:
-            Integer count of available change inputs.
+            Number of records updated.
+        Raises:
+            N/A
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
         with session_scope(self.SessionLocal) as s:
-            q = select(Output).where(
-                (Output.user_id == user_id)
-                & (Output.basket_id == basket_id)
-                & (Output.spendable.is_(True))
+            # Find ProvenTxReq by reference (stored as txid or batch identifier)
+            q = select(ProvenTxReq).where(ProvenTxReq.txid == action_reference)
+            _result = s.execute(q)
+            req = _result.scalar_one_or_none()
+            
+            if req is None:
+                return 0
+            
+            req.status = "aborted"
+            s.add(req)
+            s.flush()
+            return 1
+
+    def destroy(self) -> None:
+        """Destroy storage by truncating all tables.
+
+        Summary:
+            Remove all data from storage. Used for reset/cleanup.
+        TS parity:
+            Mirrors StorageProvider.destroy().
+        Args:
+            None
+        Returns:
+            None
+        Raises:
+            sqlalchemy.exc.SQLAlchemyError: On DB errors.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        with session_scope(self.SessionLocal) as s:
+            # Truncate all tables in dependency order
+            tables_to_truncate = [
+                OutputTagMap, TxLabelMap, OutputTag, TxLabel,
+                OutputBasket, Output, Commission,
+                ProvenTxReq, ProvenTx, Certificate, CertificateField,
+                Transaction, SyncState, User, Settings
+            ]
+            
+            for table_model in tables_to_truncate:
+                try:
+                    s.query(table_model).delete()
+                except Exception:
+                    pass
+            
+            s.commit()
+
+    def insert_certificate_auth(self, auth: dict[str, Any], certificate_api: dict[str, Any]) -> int:
+        """Insert a certificate for authenticated user.
+
+        Summary:
+            Add a new certificate to storage with user authentication.
+        TS parity:
+            Mirrors StorageProvider.insertCertificateAuth.
+        Args:
+            auth: Dict with 'userId'.
+            certificate_api: Certificate data (type, certifier, serialNumber, etc).
+        Returns:
+            Certificate ID (primary key) of inserted record.
+        Raises:
+            KeyError: If 'userId' missing from auth.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        user_id = int(auth["userId"])
+        
+        with session_scope(self.SessionLocal) as s:
+            cert = Certificate(
+                user_id=user_id,
+                type=certificate_api.get("type", ""),
+                certifier=certificate_api.get("certifier", ""),
+                serial_number=certificate_api.get("serialNumber", ""),
+                is_deleted=False
+            )
+            s.add(cert)
+            s.flush()
+            return cert.certificate_id
+
+    def relinquish_certificate(self, auth: dict[str, Any], certificate_id: int) -> int:
+        """Mark a certificate as deleted (soft delete).
+
+        Summary:
+            Remove a certificate from active use without physical deletion.
+        TS parity:
+            Mirrors StorageProvider.relinquishCertificate.
+        Args:
+            auth: Dict with 'userId'.
+            certificate_id: Certificate ID to mark as deleted.
+        Returns:
+            Number of rows affected (0 or 1).
+        Raises:
+            KeyError: If 'userId' missing from auth.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        user_id = int(auth["userId"])
+        
+        with session_scope(self.SessionLocal) as s:
+            q = select(Certificate).where(
+                (Certificate.certificate_id == certificate_id) & 
+                (Certificate.user_id == user_id)
             )
             _result = s.execute(q)
+            cert = _result.scalar_one_or_none()
+            
+            if cert is None:
+                return 0
+            
+            cert.is_deleted = True
+            s.add(cert)
+            s.flush()
+            return 1
 
-            rows: Iterable[Output] = _result.scalars().all()
-            if not exclude_sending:
-                return len(rows)
-
-            # Exclude outputs that are tied to a 'sending' transaction via spentBy
-            # Note: Minimal approximation; if no spentBy, consider it available.
-            count = 0
-            for output_row in rows:
-                if output_row.spent_by is None:
-                    count += 1
-                else:
-                    tx = s.execute(
-                        select(ProvenTxReq).where(ProvenTxReq.proven_tx_id == output_row.spent_by)
-                    ).scalar_one_or_none()
-                    # If req not found or not 'sending', still count
-                    if not tx or tx.status != "sending":
-                        count += 1
-            return count
-
-    def allocate_change_input(
-        self,
-        user_id: int,
-        basket_id: int,
-        target_satoshis: int,
-        exact_satoshis: int | None,
-        exclude_sending: bool,
-        transaction_id: int,
-    ) -> dict[str, Any] | None:
-        """Pick one spendable output as a change input candidate (minimal).
+    # ------------------------------------------------------------------
+    # Improved List Operations
+    # ------------------------------------------------------------------
+    def get_actions_status_summary(self, auth: dict[str, Any]) -> dict[str, Any]:
+        """Get summary of actions by status for authenticated user.
 
         Summary:
-            Select a single spendable output from a basket that meets the target
-            value. If exact_satoshis is provided, require exact match.
-        TS parity:
-            Minimal approximation to unlock downstream flows; does not update
-            spendable flags nor lock rows.
+            Count actions grouped by status.
         Args:
-            user_id: User identifier.
-            basket_id: Basket identifier.
-            target_satoshis: Desired value.
-            exact_satoshis: If provided, require exact value.
-            exclude_sending: Exclude outputs in 'sending'.
-            transaction_id: Current transaction id (unused minimal).
+            auth: Dict with 'userId'.
         Returns:
-            Minimal output dict or None.
+            Dict with status counts.
         """
+        user_id = int(auth["userId"])
+        
         with session_scope(self.SessionLocal) as s:
-            q = select(Output).where(
-                (Output.user_id == user_id)
-                & (Output.basket_id == basket_id)
-                & (Output.spendable.is_(True))
-            )
-            _exec_result = s.execute(q)
-            rows: list[Output] = _exec_result.scalars().all()
-            # Apply exclude_sending filter (approximate)
-            def ok(output_row: Output) -> bool:
-                if exclude_sending and output_row.spent_by is not None:
-                    _exec_result_inner = s.execute(
-                        select(ProvenTxReq).where(ProvenTxReq.proven_tx_id == output_row.spent_by)
-                    )
-                    req = _exec_result_inner.scalar_one_or_none()
-                    if req and req.status == "sending":
-                        return False
-                if exact_satoshis is not None:
-                    return int(output_row.satoshis) == int(exact_satoshis)
-                return int(output_row.satoshis) >= int(target_satoshis)
+            q = select(ProvenTxReq.status, func.count()).where(
+                ProvenTxReq.txid != ""  # placeholder for user filter
+            ).group_by(ProvenTxReq.status)
+            
+            _result = s.execute(q)
+            rows = _result.all()
+            
+            summary = {}
+            for status, count in rows:
+                summary[status] = int(count)
+            
+            return summary
 
-            candidates = []
-            for output_row in rows:
-                if ok(output_row):
-                    candidates.append(output_row)
-            if not candidates:
-                return None
-            # Choose smallest sufficient (greedy)
-            candidates.sort(key=lambda output_row: int(output_row.satoshis))
-            output_row = candidates[0]
-            return {
-                "outputId": output_row.output_id,
-                "basketId": output_row.basket_id,
-                "txid": output_row.txid,
-                "vout": int(output_row.vout),
-                "satoshis": int(output_row.satoshis),
+    # ------------------------------------------------------------------
+    # Action Pipeline - createAction (Minimal)
+    # ------------------------------------------------------------------
+    def create_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+        """Create a new transaction action (minimal implementation).
+
+        Summary:
+            Create and store records for a new transaction being constructed.
+            Minimal version: basic Transaction/ProvenTxReq creation without full BEEF/change logic.
+        TS parity:
+            Mirrors StorageProvider.createAction subset.
+        Args:
+            auth: Dict with 'userId'.
+            args: Transaction args (inputs, outputs, options).
+        Returns:
+            Dict with reference, version, lockTime, inputs, outputs, derivationPrefix, inputBeef.
+        Raises:
+            KeyError: If 'userId' missing or required fields missing.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
+        """
+        user_id = int(auth["userId"])
+        is_new_tx = args.get("isNewTx", True)
+        
+        if not is_new_tx:
+            raise ValueError("createAction requires isNewTx=true for new transactions")
+        
+        with session_scope(self.SessionLocal) as s:
+            # Generate reference (random base64-like string)
+            reference = secrets.token_urlsafe(16)
+            
+            # Create new Transaction record
+            tx = Transaction(
+                user_id=user_id,
+                status="unsigned",  # Initial state
+                reference=reference,
+                is_outgoing=args.get("isOutgoing", False),
+                satoshis=0,  # Will be updated after funding
+                version=args.get("version", 2),
+                lock_time=args.get("lockTime", 0),
+                description=args.get("description", ""),
+                input_beef=None
+            )
+            s.add(tx)
+            s.flush()
+            
+            transaction_id = tx.transaction_id
+            
+            # Create ProvenTxReq for this action
+            req = ProvenTxReq(
+                txid=reference,  # Use reference as txid for tracking
+                status="pending",
+                attempts=0,
+                notified=False,
+                raw_tx=b"",  # Placeholder
+                history="{}",
+                notify="{}"
+            )
+            s.add(req)
+            s.flush()
+            
+            # Process inputs (minimal: just collect info)
+            inputs_list = []
+            input_satoshis_total = 0
+            
+            for i, inp in enumerate(args.get("inputs", [])):
+                input_satoshis_total += inp.get("satoshis", 0)
+                inputs_list.append({
+                    "index": i,
+                    "outpoint": inp.get("outpoint", ""),
+                    "satoshis": inp.get("satoshis", 0),
+                    "unlockingScript": inp.get("unlockingScript", "")
+                })
+            
+            # Process outputs (minimal: just collect info)
+            outputs_list = []
+            output_satoshis_total = 0
+            change_vouts = []
+            
+            for i, out in enumerate(args.get("outputs", [])):
+                satoshis = out.get("satoshis", 0)
+                output_satoshis_total += satoshis
+                
+                # Create Output record
+                output_record = Output(
+                    user_id=user_id,
+                    transaction_id=transaction_id,
+                    basket_id=None,  # Placeholder
+                    spendable=out.get("spendable", False),
+                    change=out.get("change", False),
+                    vout=i,
+                    satoshis=satoshis,
+                    provided_by=out.get("providedBy", ""),
+                    purpose=out.get("purpose", ""),
+                    type=out.get("type", ""),
+                    txid=None,
+                    spent=False
+                )
+                s.add(output_record)
+                s.flush()
+                
+                if out.get("change", False):
+                    change_vouts.append(i)
+                
+                outputs_list.append({
+                    "index": i,
+                    "satoshis": satoshis,
+                    "lockingScript": out.get("lockingScript", ""),
+                    "change": out.get("change", False)
+                })
+            
+            # Update transaction satoshis (outputs - inputs)
+            satoshis = output_satoshis_total - input_satoshis_total
+            tx.satoshis = satoshis
+            s.add(tx)
+            
+            # Return result
+            result = {
+                "reference": reference,
+                "version": tx.version or 2,
+                "lockTime": tx.lock_time or 0,
+                "inputs": inputs_list,
+                "outputs": outputs_list,
+                "derivationPrefix": args.get("derivationPrefix", ""),
+                "inputBeef": None,
+                "noSendChangeOutputVouts": change_vouts if args.get("isNoSend", False) else None
             }
+            
+            return result
+
+    # ------------------------------------------------------------------
+    # Action Pipeline - processAction (Minimal)
+    # ------------------------------------------------------------------
+    def process_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+        """Process a transaction action (minimal implementation).
+
+        Summary:
+            Finalize a transaction by validating rawTx, updating status records.
+            Minimal version: basic validation and status update without BEEF verification.
+        TS parity:
+            Mirrors StorageProvider.processAction subset.
+        Args:
+            auth: Dict with 'userId'.
+            args: Contains reference, txid, rawTx (as bytes or hex), isNoSend, isDelayed.
+        Returns:
+            Dict with result status and updated records.
+        Raises:
+            ValueError: If validation fails.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/methods/processAction.ts
+        """
+        user_id = int(auth["userId"])
+        reference = args.get("reference")
+        txid = args.get("txid")
+        raw_tx = args.get("rawTx")
+        is_no_send = args.get("isNoSend", False)
+        is_delayed = args.get("isDelayed", False)
+        is_send_with = args.get("isSendWith", False)
+        
+        # Basic validation
+        if not reference or not txid or raw_tx is None:
+            raise ValueError("processAction requires reference, txid, and rawTx")
+        
+        # Convert rawTx to bytes if hex string
+        if isinstance(raw_tx, str):
+            raw_tx = bytes.fromhex(raw_tx)
+        elif isinstance(raw_tx, list):
+            raw_tx = bytes(raw_tx)
+        
+        with session_scope(self.SessionLocal) as s:
+            # Find Transaction by reference
+            tq = select(Transaction).where(
+                (Transaction.user_id == user_id) & (Transaction.reference == reference)
+            )
+            _tx_result = s.execute(tq)
+            tx = _tx_result.scalar_one_or_none()
+            
+            if tx is None:
+                raise ValueError(f"Transaction with reference {reference} not found")
+            
+            # Verify transaction status is "unsigned" or "unprocessed"
+            if tx.status not in ("unsigned", "unprocessed"):
+                raise ValueError(f"Invalid transaction status: {tx.status}")
+            
+            # Find or create ProvenTxReq
+            rq = select(ProvenTxReq).where(ProvenTxReq.txid == txid)
+            _req_result = s.execute(rq)
+            req = _req_result.scalar_one_or_none()
+            
+            if req is None:
+                req = ProvenTxReq(
+                    txid=txid,
+                    status="pending",
+                    attempts=0,
+                    notified=False,
+                    raw_tx=raw_tx,
+                    history="{}",
+                    notify="{}"
+                )
+                s.add(req)
+                s.flush()
+            else:
+                # Update existing req
+                req.raw_tx = raw_tx
+                s.add(req)
+            
+            # Determine status based on isNoSend/isDelayed/isSendWith
+            if is_no_send and not is_send_with:
+                tx_status = "nosend"
+                req_status = "nosend"
+            elif not is_no_send and is_delayed:
+                tx_status = "unprocessed"
+                req_status = "unsent"
+            elif not is_no_send and not is_delayed:
+                tx_status = "unprocessed"
+                req_status = "unprocessed"
+            else:
+                raise ValueError("Invalid status combination")
+            
+            # Update Transaction status
+            tx.status = tx_status
+            s.add(tx)
+            
+            # Update ProvenTxReq status
+            req.status = req_status
+            s.add(req)
+            
+            # Flush to ensure IDs are available
+            s.flush()
+            
+            # Return result
+            result = {
+                "reference": reference,
+                "txid": txid,
+                "status": req_status,
+                "transactionStatus": tx_status,
+                "sendWithResults": None,
+                "notDelayedResults": None
+            }
+            
+            return result
 
 

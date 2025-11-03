@@ -22,7 +22,7 @@ class TestUniversalVectorsListActions:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for list_actions implementation")
+    @pytest.mark.skip(reason="Storage provider not available in Wallet tests")
     def test_listactions_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

@@ -232,21 +232,58 @@ class Wallet:
         return self.storage_provider.list_certificates(auth, args)
 
     def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """List actions via Storage provider (minimal TS-like shape).
+        """List actions with optional filters.
 
         Summary:
-            Placeholder Wallet API that returns a valid TS-like list result while
-            action workflow is implemented.
-        TS parity:
-            Matches TypeScript Wallet listActions minimal result keys.
+            Return a list of actions for the wallet.
         Args:
-            args: Input dict including 'auth' (with 'userId'); currently unused.
-            originator: Optional originator domain string.
+            args: Optional action filters.
+            originator: Optional caller identity (under 250 bytes).
         Returns:
-            Dict with keys: totalActions, actions.
+            Dict with totalActions and actions list.
         Raises:
-            InvalidParameterError: If originator is invalid.
-            RuntimeError: If storage provider is not configured.
+            NotImplementedError: Placeholder until full implementation.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        return self.storage_provider.list_actions(self._make_auth(), args)
+
+    def abort_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Abort an action.
+
+        Summary:
+            Cancel/abort an in-progress action by reference.
+        Args:
+            args: Action reference (action_reference key).
+            originator: Optional caller identity (under 250 bytes).
+        Returns:
+            Result dict indicating abort status.
+        Raises:
+            N/A
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+        reference = args.get("reference", "")
+        
+        result = self.storage_provider.abort_action(reference)
+        return {"aborted": bool(result)}
+
+    def relinquish_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Mark a certificate as no longer in use.
+
+        Summary:
+            Soft-delete a certificate from active use.
+        Args:
+            args: Certificate ID (certificateId key).
+            originator: Optional caller identity (under 250 bytes).
+        Returns:
+            Result dict indicating relinquish status.
+        Raises:
+            N/A
         Reference:
             toolbox/ts-wallet-toolbox/src/Wallet.ts
         """
@@ -254,7 +291,54 @@ class Wallet:
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth") or {}
-        return self.storage_provider.list_actions(auth, args)
+        cert_id = args.get("certificateId")
+        
+        result = self.storage_provider.relinquish_certificate(auth, cert_id)
+        return {"relinquished": bool(result)}
+
+    def create_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Create a new transaction action.
+
+        Summary:
+            Begin construction of a new transaction with inputs and outputs.
+        Args:
+            args: Transaction construction args (inputs, outputs, options, etc).
+            originator: Optional caller identity (under 250 bytes).
+        Returns:
+            Result dict with reference, version, lockTime, inputs, outputs, derivationPrefix.
+        Raises:
+            ValueError: If validation fails.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+        auth = args.get("auth") or {}
+        
+        return self.storage_provider.create_action(auth, args)
+
+    def process_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Process a transaction action (finalize & sign).
+
+        Summary:
+            Finalize a transaction by committing it to storage with signed rawTx.
+        Args:
+            args: Contains reference, txid, rawTx, isNoSend, isDelayed, isSendWith.
+            originator: Optional caller identity (under 250 bytes).
+        Returns:
+            Result dict with status and results.
+        Raises:
+            ValueError: If validation fails.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/Wallet.ts
+        """
+        self._validate_originator(originator)
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+        auth = args.get("auth") or {}
+        
+        return self.storage_provider.process_action(auth, args)
 
     def get_network(
         self,

@@ -24,7 +24,7 @@ class TestUniversalVectorsCreateAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for create_action implementation")
+    @pytest.mark.skip(reason="Storage provider not available in Wallet tests")
     def test_createaction_1out_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
