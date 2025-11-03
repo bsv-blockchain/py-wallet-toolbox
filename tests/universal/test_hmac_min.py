@@ -1,6 +1,5 @@
 """Minimal TS-like shape tests for create_hmac / verify_hmac."""
 
-import pytest
 
 
 def test_create_hmac_and_verify_roundtrip(wallet_with_key_deriver):

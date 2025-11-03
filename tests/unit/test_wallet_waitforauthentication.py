@@ -7,7 +7,6 @@ Note: TypeScript does not have dedicated unit tests for base Wallet.waitForAuthe
       even though no direct TypeScript equivalent exists for the base Wallet class.
 """
 
-import pytest
 
 from bsv_wallet_toolbox import Wallet
 

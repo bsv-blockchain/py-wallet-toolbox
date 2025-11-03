@@ -4,7 +4,6 @@ This test validates only the return shape and basic types expected from the
 TypeScript implementation, without asserting provider-specific semantics.
 """
 
-import pytest
 
 from bsv_wallet_toolbox.services import Services
 

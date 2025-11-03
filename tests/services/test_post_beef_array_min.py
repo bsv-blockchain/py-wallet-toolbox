@@ -3,7 +3,6 @@
 Validates only TS-like result shape per element, without asserting ARC semantics.
 """
 
-import pytest
 
 from bsv_wallet_toolbox.services import Services
 

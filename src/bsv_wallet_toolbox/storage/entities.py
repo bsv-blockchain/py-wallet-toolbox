@@ -48,7 +48,6 @@ class User:
             None
         """
         if api_object is None:
-            # Default values for new User (before database insertion)
             now = datetime.now()
             self.user_id: int = 0
             self.identity_key: str = ""
@@ -56,18 +55,15 @@ class User:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         elif not api_object:
-            # Empty dict provided - use None for all fields
             self.user_id: int | None = None
             self.identity_key: str | None = None
             self.active_storage: str | None = None
             self.created_at: datetime | None = None
             self.updated_at: datetime | None = None
         else:
-            # API object provided - extract values with camelCase keys
             self.user_id: int | None = api_object.get("userId")
             self.identity_key: str | None = api_object.get("identityKey")
             self.active_storage: str | None = api_object.get("activeStorage")
-            # Support both camelCase and snake_case for timestamps
             self.created_at: datetime | None = api_object.get("createdAt") or api_object.get("created_at")
             self.updated_at: datetime | None = api_object.get("updatedAt") or api_object.get("updated_at")
 
@@ -111,9 +107,8 @@ class User:
         This is called before to_api() to ensure any decoded JSON properties
         are re-encoded. For User, no decoding happens, so this is a no-op.
         """
-        pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """Check equality with another user record.
 
         Two users are equal if they have the same identity_key and active_storage.
@@ -121,7 +116,7 @@ class User:
 
         Args:
             other: User API object to compare with
-            sync_map: Optional sync map (unused for User)
+            _sync_map: Optional sync map (unused for User)
 
         Returns:
             True if users are considered equal
@@ -131,7 +126,7 @@ class User:
         return self.identity_key == other_id_key and self.active_storage == other_active_storage
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge incoming user entity into existing local user.
 
@@ -139,28 +134,28 @@ class User:
         so this is always a no-op.
 
         Args:
-            storage: StorageProvider instance (not used)
-            since: Last sync timestamp (not used)
-            ei: External incoming user entity (not used)
-            sync_map: Sync coordination map (not used)
-            trx: Database transaction token (not used)
+            _storage: StorageProvider instance (not used)
+            _since: Last sync timestamp (not used)
+            _ei: External incoming user entity (not used)
+            _sync_map: Sync coordination map (not used)
+            _trx: Database transaction token (not used)
 
         Returns:
             False (never updates)
         """
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new user entity from sync chunk.
 
         Users are storage-local and must NEVER be created via sync chunk.
         This method always raises an exception to enforce that invariant.
 
         Args:
-            storage: StorageProvider instance (not used)
-            user_id: New user ID (not used)
-            sync_map: Sync coordination map (not used)
-            trx: Database transaction token (not used)
+            _storage: StorageProvider instance (not used)
+            _user_id: New user ID (not used)
+            _sync_map: Sync coordination map (not used)
+            _trx: Database transaction token (not used)
 
         Raises:
             Exception: Always raises with specific message
@@ -243,9 +238,8 @@ class Commission:
 
     def update_api(self) -> None:
         """Sync decoded properties back to api object."""
-        pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """Commission equality: same satoshis, redeemed status, and key offset."""
         return (
             self.satoshis == other.get("satoshis")
@@ -254,14 +248,13 @@ class Commission:
         )
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing commission - check if updated_at changed."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new commission from sync."""
-        pass
 
 
 class Output:
@@ -334,19 +327,18 @@ class Output:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """Output equality: same vout and satoshis."""
         return self.vout == other.get("vout") and self.satoshis == other.get("satoshis")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new output from sync."""
-        pass
 
 
 class OutputBasket:
@@ -419,7 +411,7 @@ class OutputBasket:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """OutputBasket equality: all fields must match."""
         return (
             self.basket_id == other.get("basketId")
@@ -431,14 +423,13 @@ class OutputBasket:
         )
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output basket."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new output basket from sync."""
-        pass
 
 
 class OutputTag:
@@ -499,19 +490,18 @@ class OutputTag:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """OutputTag equality: same tag string."""
         return self.tag == other.get("tag")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output tag."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new output tag from sync."""
-        pass
 
 
 class Transaction:
@@ -572,19 +562,18 @@ class Transaction:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """Transaction equality: same satoshis."""
         return self.satoshis == other.get("satoshis")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing transaction."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new transaction from sync."""
-        pass
 
 
 class ProvenTx:
@@ -629,7 +618,6 @@ class ProvenTx:
             self.txid = api_object.get("txid", "")
             self.height = api_object.get("height", 0)
             self.index = api_object.get("index", 0)
-            # Handle both bytes and list[int] for binary data
             mp = api_object.get("merklePath", b"")
             self.merkle_path = bytes(mp) if isinstance(mp, list) else (mp or b"")
             rt = api_object.get("rawTx", b"")
@@ -672,14 +660,14 @@ class ProvenTx:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """ProvenTx equality: immutable, check identifying fields."""
         return (
             self.txid == other.get("txid") and self.height == other.get("height") and self.index == other.get("index")
         )
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing proven tx - immutable, always False.
 
@@ -687,11 +675,9 @@ class ProvenTx:
         """
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new proven tx from sync - insert only."""
-        # Reset ID to 0 for insertion
         self.proven_tx_id = 0
-        # TODO: Since these records are a shared resource, validation required...
 
 
 class ProvenTxReq:
@@ -777,12 +763,12 @@ class ProvenTxReq:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """ProvenTxReq equality: check status and reference."""
         return self.status == other.get("status") and self.reference == other.get("reference")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing proven tx req - complex status state machine.
 
@@ -791,16 +777,13 @@ class ProvenTxReq:
         - Must pass through 'notifying' before 'completed'
         - Updates attempts and history
         """
-        # For now, basic merge: sync batch, attempts, timestamp
-        # Full implementation requires batch/history/notify tracking
         if ei.get("updated_at", datetime.now()) > self.updated_at:
             self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new proven tx req from sync - insert only."""
-        # Reset ID to 0 for insertion
         self.proven_tx_req_id = 0
 
 
@@ -891,7 +874,7 @@ class Certificate:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """Certificate equality: check identifying fields and deletion state."""
         return (
             self.type == other.get("type")
@@ -901,7 +884,7 @@ class Certificate:
         )
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing certificate - sync deletion and signature status."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
@@ -912,9 +895,8 @@ class Certificate:
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new certificate from sync - insert only."""
-        # Reset ID to 0 for insertion
         self.certificate_id = 0
 
 
@@ -985,12 +967,12 @@ class CertificateField:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """CertificateField equality: check field name and value."""
         return self.field_name == other.get("fieldName") and self.field_value == other.get("fieldValue")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing certificate field - update if remote is newer."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
@@ -1000,9 +982,8 @@ class CertificateField:
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new certificate field from sync - insert only."""
-        # Reset ID to 0 for insertion
         self.certificate_field_id = 0
 
 
@@ -1042,12 +1023,12 @@ class OutputTagMap:
     @property
     def id(self) -> int:
         """Composite key tables don't have a single ID."""
-        raise Exception('entity has no "id" value')
+        raise Exception("entity has no \"id\" value")
 
     @id.setter
-    def id(self, value: int) -> None:
+    def id(self, _value: int) -> None:
         """Composite key tables don't support ID setter."""
-        raise Exception('entity has no "id" value')
+        raise Exception("entity has no \"id\" value")
 
     @property
     def entity_name(self) -> str:
@@ -1069,7 +1050,7 @@ class OutputTagMap:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """OutputTagMap equality: check output/tag IDs and deletion state."""
         return (
             self.output_id == other.get("outputId")
@@ -1078,7 +1059,7 @@ class OutputTagMap:
         )
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output tag map - sync deletion state."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
@@ -1087,9 +1068,8 @@ class OutputTagMap:
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new output tag map from sync."""
-        pass
 
 
 class SyncState:
@@ -1171,12 +1151,12 @@ class SyncState:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """SyncState equality: check status and ref_num."""
         return self.status == other.get("status") and self.ref_num == other.get("refNum")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing sync state - update if remote is newer."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
@@ -1187,9 +1167,8 @@ class SyncState:
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new sync state from sync - insert only."""
-        # Reset ID to 0 for insertion
         self.sync_state_id = 0
 
 
@@ -1256,12 +1235,12 @@ class TxLabel:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """TxLabel equality: check label text and deletion state."""
         return self.label == other.get("label") and self.is_deleted == other.get("isDeleted")
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing tx label - sync deletion state."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
@@ -1270,9 +1249,8 @@ class TxLabel:
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new tx label from sync."""
-        # Reset ID to 0 for insertion
         self.tx_label_id = 0
 
 
@@ -1312,12 +1290,12 @@ class TxLabelMap:
     @property
     def id(self) -> int:
         """Composite key tables don't have a single ID."""
-        raise Exception('entity has no "id" value')
+        raise Exception("entity has no \"id\" value")
 
     @id.setter
-    def id(self, value: int) -> None:
+    def id(self, _value: int) -> None:
         """Composite key tables don't support ID setter."""
-        raise Exception('entity has no "id" value')
+        raise Exception("entity has no \"id\" value")
 
     @property
     def entity_name(self) -> str:
@@ -1339,7 +1317,7 @@ class TxLabelMap:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """TxLabelMap equality: check transaction/label IDs and deletion state."""
         return (
             self.transaction_id == other.get("transactionId")
@@ -1348,7 +1326,7 @@ class TxLabelMap:
         )
 
     def merge_existing(
-        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing tx label map - sync deletion state."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
@@ -1357,24 +1335,23 @@ class TxLabelMap:
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
+    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new tx label map from sync."""
-        pass
 
 
 __all__ = [
-    "User",
+    "Certificate",
+    "CertificateField",
     "Commission",
     "Output",
     "OutputBasket",
     "OutputTag",
-    "Transaction",
+    "OutputTagMap",
     "ProvenTx",
     "ProvenTxReq",
-    "Certificate",
-    "CertificateField",
-    "OutputTagMap",
     "SyncState",
+    "Transaction",
     "TxLabel",
     "TxLabelMap",
+    "User",
 ]

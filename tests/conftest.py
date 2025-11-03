@@ -350,7 +350,7 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             - Add a new URL branch inside fetch() and return a canned object following TS contracts
         """
 
-        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002, PLR0911
+        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002
             """Return a recorded response for supported WhatsOnChain/Chaintracks URLs.
 
             Covered endpoints:

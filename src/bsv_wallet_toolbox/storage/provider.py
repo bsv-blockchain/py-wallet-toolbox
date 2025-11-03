@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
-from bsv.transaction import Transaction
-from bsv.merkle_path import MerklePath
+import secrets
+from collections.abc import Iterable
+from typing import Any, ClassVar
 
-from sqlalchemy import select, func
+from bsv.merkle_path import MerklePath
+from bsv.transaction import Transaction
+from sqlalchemy import func, inspect, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -12,25 +14,25 @@ from sqlalchemy.orm import Session
 from .db import create_session_factory, session_scope
 from .models import (
     Base,
+    Certificate,
+    CertificateField,
+    Commission,
+    MonitorEvent,
     Output,
     OutputBasket,
     OutputTag,
     OutputTagMap,
+    ProvenTx,
+    ProvenTxReq,
     Settings,
+    SyncState,
     TxLabel,
     TxLabelMap,
     User,
-    Certificate,
-    ProvenTx,
-    ProvenTxReq,
-    Commission,
-    CertificateField,
-    Transaction,
-    SyncState,
-    MonitorEvent,
 )
-
-import secrets
+from .models import (
+    Transaction as TransactionModel,
+)
 
 
 class StorageProvider:
@@ -249,10 +251,16 @@ class StorageProvider:
             When `includeTransactions` is true, attaches a minimal BEEF placeholder.
         TS parity:
             - Basket SpecOps:
-              - specOpWalletBalance (or its id): use basket 'default', ignore limit; result has totalOutputs=sum(satoshis) and outputs=[].
-              - specOpInvalidChange (or its id): use basket 'default', includeOutputScripts=true, includeSpent=false; filters to invalid change via network checks (placeholder here).
-              - specOpSetWalletChangeParams (or its id): tags [numberOfDesiredUTXOs, minimumDesiredUTXOValue] update default basket params; returns empty result.
-            - Tag SpecOps: 'all' (ignore basket, include spent), 'change' (change only), 'spent'/'unspent'.
+              - specOpWalletBalance (or its id): use basket 'default', ignore limit;
+                result has totalOutputs=sum(satoshis) and outputs=[].
+              - specOpInvalidChange (or its id): use basket 'default',
+                includeOutputScripts=true, includeSpent=false; filters to invalid
+                change via network checks (placeholder here).
+              - specOpSetWalletChangeParams (or its id): tags [numberOfDesiredUTXOs,
+                minimumDesiredUTXOValue] update default basket params; returns empty
+                result.
+            - Tag SpecOps: 'all' (ignore basket, include spent), 'change' (change
+              only), 'spent'/'unspent'.
             - Include flags: includeLockingScripts/includeCustomInstructions/includeTags/includeLabels.
             - includeTransactions: minimal BEEF (rawTx concat) until full Proven flow is available.
         Args:
@@ -284,9 +292,9 @@ class StorageProvider:
         filter_change_only = False
 
         # Basket SpecOps (TS parity). Support both constant values and friendly names.
-        SPECOP_INVALID_CHANGE = "5a76fd430a311f8bc0553859061710a4475c19fed46e2ff95969aa918e612e57"
-        SPECOP_SET_CHANGE = "a4979d28ced8581e9c1c92f1001cc7cb3aabf8ea32e10888ad898f0a509a3929"
-        SPECOP_WALLET_BAL = "893b7646de0e1c9f741bd6e9169b76a8847ae34adef7bef1e6a285371206d2e8"
+        specop_invalid_change = "5a76fd430a311f8bc0553859061710a4475c19fed46e2ff95969aa918e612e57"
+        specop_set_change = "a4979d28ced8581e9c1c92f1001cc7cb3aabf8ea32e10888ad898f0a509a3929"
+        specop_wallet_bal = "893b7646de0e1c9f741bd6e9169b76a8847ae34adef7bef1e6a285371206d2e8"
 
         basket_name = args.get("basket")
 
@@ -294,9 +302,9 @@ class StorageProvider:
             if not name:
                 return None
             mapping: dict[str, str] = {
-                SPECOP_WALLET_BAL: "wallet_balance",
-                SPECOP_INVALID_CHANGE: "invalid_change",
-                SPECOP_SET_CHANGE: "set_change",
+                specop_wallet_bal: "wallet_balance",
+                specop_invalid_change: "invalid_change",
+                specop_set_change: "set_change",
                 # Friendly aliases (dev convenience)
                 "specOpWalletBalance": "wallet_balance",
                 "specOpInvalidChange": "invalid_change",
@@ -329,7 +337,7 @@ class StorageProvider:
             basket_name = "default"
             specop_ignore_limit = True
         elif specop == "invalid_change":
-            basket_name = "default" if basket_name else "default"
+            basket_name = basket_name or "default"
             specop_ignore_limit = True
             specop_include_scripts = True
             specop_include_spent = False
@@ -342,7 +350,7 @@ class StorageProvider:
             # - 'all': ignore basket filter and include spent outputs
             # - 'change': include only change outputs
             # - 'spent': include spent outputs as well
-            # - 'unspent': exclude spent outputs（default）
+            # - 'unspent': exclude spent outputs(default)
             if tags:
                 if "all" in tags:
                     basket_name = None
@@ -537,7 +545,7 @@ class StorageProvider:
                 result["BEEF"] = self._build_recursive_beef_for_txids(txids, known_txids=known_txids)
             return result
 
-    def validate_output_script(self, output_row: Output, session: Session | None = None) -> None:
+    def validate_output_script(self, output_row: Output, _session: Session | None = None) -> None:
         """Ensure `locking_script` is populated using rawTx slice if needed.
 
         Summary:
@@ -652,8 +660,6 @@ class StorageProvider:
                                     pass
                         try:
                             beef_bytes = tx.to_beef()
-                            if first_beef is None:
-                                first_beef = beef_bytes
                             chunks.append(beef_bytes)
                         except Exception:
                             chunks.append(bytes(raw))
@@ -734,7 +740,7 @@ class StorageProvider:
             mq = select(OutputTagMap.output_tag_id).where(
                 (OutputTagMap.output_id == output_id) & (OutputTagMap.is_deleted.is_(False))
             )
-            tag_ids = [i for i in s.execute(mq).scalars().all()]
+            tag_ids = list(s.execute(mq).scalars().all())
             if not tag_ids:
                 return []
             tq = select(OutputTag).where(OutputTag.output_tag_id.in_(tag_ids), OutputTag.is_deleted.is_(False))
@@ -760,7 +766,7 @@ class StorageProvider:
         """
         with session_scope(self.SessionLocal) as s:
             mq = select(TxLabelMap.tx_label_id).where(TxLabelMap.transaction_id == transaction_id)
-            label_ids = [i for i in s.execute(mq).scalars().all()]
+            label_ids = list(s.execute(mq).scalars().all())
             if not label_ids:
                 return []
             tq = select(TxLabel).where(TxLabel.tx_label_id.in_(label_ids), TxLabel.is_deleted.is_(False))
@@ -789,7 +795,7 @@ class StorageProvider:
         """
         user_id = int(auth["userId"])  # KeyError if missing
         basket_name = args.get("basket")
-        spendable = args.get("spendable", None)
+        spendable = args.get("spendable")
         with session_scope(self.SessionLocal) as s:
             q = select(Output).where(Output.user_id == user_id)
             if spendable is not None:
@@ -854,42 +860,6 @@ class StorageProvider:
             if not o:
                 return 0
             o.basket_id = None
-            s.add(o)
-            return 1
-
-    def update_output(self, output_id: int, patch: dict[str, Any]) -> int:
-        """Update fields on an `Output` row by id (minimal keys).
-
-        Summary:
-            Minimal updater to support SpecOps like 'release' (set spendable=false)
-            and basket reassignment. Only a safe subset of fields is supported.
-        TS parity:
-            Mirrors intent of TS `updateOutput` used by SpecOps and workflows.
-        Args:
-            output_id: Primary key of output to update.
-            patch: Dict of fields to update. Supported keys:
-                - 'spendable': bool
-                - 'basketId': int | None
-        Returns:
-            int: Number of rows affected (0 or 1).
-        Raises:
-            N/A
-        Reference:
-            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
-        """
-        allowed = {"spendable", "basketId"}
-        to_apply = {k: v for k, v in patch.items() if k in allowed}
-        if not to_apply:
-            return 0
-        with session_scope(self.SessionLocal) as s:
-            _result = s.execute(select(Output).where(Output.output_id == output_id))
-            o = _result.scalar_one_or_none()
-            if not o:
-                return 0
-            if "spendable" in to_apply:
-                o.spendable = bool(to_apply["spendable"])
-            if "basketId" in to_apply:
-                o.basket_id = to_apply["basketId"]
             s.add(o)
             return 1
 
@@ -1187,7 +1157,7 @@ class StorageProvider:
         rows = self.find_certificates_auth(auth, args)
         return {"totalCertificates": len(rows), "certificates": rows}
 
-    def list_actions(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    def list_actions(self, _auth: dict[str, Any], _args: dict[str, Any]) -> dict[str, Any]:
         """List actions (minimal placeholder: empty list).
 
         Summary:
@@ -1271,7 +1241,7 @@ class StorageProvider:
                 ProvenTx,
                 Certificate,
                 CertificateField,
-                Transaction,
+                TransactionModel,
                 SyncState,
                 User,
                 Settings,
@@ -1353,7 +1323,7 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Improved List Operations
     # ------------------------------------------------------------------
-    def get_actions_status_summary(self, auth: dict[str, Any]) -> dict[str, Any]:
+    def get_actions_status_summary(self, _auth: dict[str, Any]) -> dict[str, Any]:
         """Get summary of actions by status for authenticated user.
 
         Summary:
@@ -1363,8 +1333,6 @@ class StorageProvider:
         Returns:
             Dict with status counts.
         """
-        user_id = int(auth["userId"])
-
         with session_scope(self.SessionLocal) as s:
             q = (
                 select(ProvenTxReq.status, func.count())
@@ -1413,7 +1381,7 @@ class StorageProvider:
             reference = secrets.token_urlsafe(16)
 
             # Create new Transaction record
-            tx = Transaction(
+            tx = TransactionModel(
                 user_id=user_id,
                 status="unsigned",  # Initial state
                 reference=reference,
@@ -1556,7 +1524,11 @@ class StorageProvider:
 
         with session_scope(self.SessionLocal) as s:
             # Find Transaction by reference
-            tq = select(Transaction).where((Transaction.user_id == user_id) & (Transaction.reference == reference))
+            tq = (
+                select(TransactionModel).where(
+                    (TransactionModel.user_id == user_id) & (TransactionModel.reference == reference)
+                )
+            )
             _tx_result = s.execute(tq)
             tx = _tx_result.scalar_one_or_none()
 
@@ -1664,7 +1636,7 @@ class StorageProvider:
     # =====================================================================
 
     # Mapping of table names to ORM models
-    _MODEL_MAP = {
+    _MODEL_MAP: ClassVar[dict[str, type]] = {
         "user": User,
         "certificate": Certificate,
         "certificate_field": CertificateField,
@@ -1677,7 +1649,7 @@ class StorageProvider:
         "proven_tx": ProvenTx,
         "proven_tx_req": ProvenTxReq,
         "sync_state": SyncState,
-        "transaction": Transaction,
+        "transaction": TransactionModel,
         "tx_label": TxLabel,
         "tx_label_map": TxLabelMap,
         "settings": Settings,
@@ -1722,9 +1694,6 @@ class StorageProvider:
         try:
             session.add(obj)
             session.flush()
-            # Get primary key from ORM object
-            from sqlalchemy import inspect
-
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
             pk_value = getattr(obj, pk_col.name)
@@ -1828,8 +1797,6 @@ class StorageProvider:
         model = self._get_model(table_name)
 
         with session_scope(self.SessionLocal) as s:
-            from sqlalchemy import inspect
-
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
 
@@ -1848,8 +1815,6 @@ class StorageProvider:
 
     def _model_to_dict(self, obj: Any) -> dict[str, Any]:
         """Convert ORM object to camelCase dict."""
-        from sqlalchemy import inspect
-
         mapper = inspect(obj.__class__)
         result = {}
 

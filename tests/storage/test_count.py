@@ -5,8 +5,6 @@ Reference: wallet-toolbox/test/storage/count.test.ts
 
 from datetime import datetime
 
-import pytest
-
 
 class Testcount:
     """Test suite for database COUNT operations."""

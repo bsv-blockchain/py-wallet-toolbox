@@ -180,7 +180,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             the hash is unknown (404) or invalid.
 
         TS parity:
-            Matches the TypeScript provider’s intent: given a block hash,
+            Matches the TypeScript provider`s intent: given a block hash,
             provide a structured header object with version/prevHash/merkleRoot/
             time/bits/nonce/height/hash fields.
 
@@ -475,8 +475,8 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         return response.json() or {}
 
     async def get_script_history(
-        self, script_hash: str, use_next: bool | None = None
-    ) -> dict[str, Any]:  # noqa: ARG002
+        self, script_hash: str, _use_next: bool | None = None
+    ) -> dict[str, Any]:
         """Get script history for a given script hash (TS-compatible response shape).
 
         Returns two arrays, matching TS semantics:

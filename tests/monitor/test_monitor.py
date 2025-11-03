@@ -19,8 +19,8 @@ try:
         TaskReviewStatus,
         TaskSendWaiting,
     )
-    from bsv_wallet_toolbox.storage.models import EntityProvenTxReq
 
+    from bsv_wallet_toolbox.storage.models import EntityProvenTxReq
     from tests.utils.test_utils_wallet_storage import (
         create_legacy_wallet_sqlite_copy,
         create_sqlite_test_setup_1_wallet,

@@ -6,6 +6,7 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/stampLogTests.test
 import re
 
 import pytest
+
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log, stamp_log_format
 
 

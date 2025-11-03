@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-from typing import Optional
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
-    DateTime,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
-    func,
+    text,
 )
-from sqlalchemy import BigInteger
-from sqlalchemy.orm import declarative_base, mapped_column, Mapped, relationship
-from sqlalchemy import LargeBinary, text
 from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy.orm import Mapped, declarative_base, mapped_column, relationship
 
 Base = declarative_base()
 
@@ -130,10 +129,10 @@ class SyncState(TimestampMixin, Base):
     init: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ref_num: Mapped[str] = mapped_column("refNum", String(100), nullable=False)
     sync_map: Mapped[str] = mapped_column("syncMap", Text, nullable=False)
-    when: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    satoshis: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    error_local: Mapped[Optional[str]] = mapped_column("errorLocal", Text, nullable=True)
-    error_other: Mapped[Optional[str]] = mapped_column("errorOther", Text, nullable=True)
+    when: Mapped[str | None] = mapped_column(String, nullable=True)
+    satoshis: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    error_local: Mapped[str | None] = mapped_column("errorLocal", Text, nullable=True)
+    error_other: Mapped[str | None] = mapped_column("errorOther", Text, nullable=True)
 
     user: Mapped[User] = relationship("User")
 
@@ -165,25 +164,25 @@ class Transaction(TimestampMixin, Base):
 
     transaction_id: Mapped[int] = mapped_column("transactionId", Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.userId", ondelete="CASCADE"), nullable=False)
-    proven_tx_id: Mapped[Optional[int]] = mapped_column(
+    proven_tx_id: Mapped[int | None] = mapped_column(
         "provenTxId", ForeignKey("proven_txs.provenTxId"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(64), nullable=False)
     reference: Mapped[str] = mapped_column(String(64), nullable=False)
     is_outgoing: Mapped[bool] = mapped_column("isOutgoing", Boolean, nullable=False, default=False)
     satoshis: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
-    version: Mapped[Optional[int]] = mapped_column(
+    version: Mapped[int | None] = mapped_column(
         Integer().with_variant(mysql.INTEGER(unsigned=True), "mysql"), nullable=True
     )
-    lock_time: Mapped[Optional[int]] = mapped_column(
+    lock_time: Mapped[int | None] = mapped_column(
         "lockTime", Integer().with_variant(mysql.INTEGER(unsigned=True), "mysql"), nullable=True
     )
     description: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
-    txid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    input_beef: Mapped[Optional[bytes]] = mapped_column(
+    txid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    input_beef: Mapped[bytes | None] = mapped_column(
         "inputBEEF", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=True
     )
-    raw_tx: Mapped[Optional[bytes]] = mapped_column(
+    raw_tx: Mapped[bytes | None] = mapped_column(
         "rawTx", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=True
     )
 
@@ -222,7 +221,7 @@ class Output(TimestampMixin, Base):
     transaction_id: Mapped[int] = mapped_column(
         "transactionId", ForeignKey("transactions.transactionId"), nullable=False
     )
-    basket_id: Mapped[Optional[int]] = mapped_column(
+    basket_id: Mapped[int | None] = mapped_column(
         "basketId", ForeignKey("output_baskets.basketId", ondelete="SET NULL")
     )
     spendable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -232,24 +231,24 @@ class Output(TimestampMixin, Base):
     provided_by: Mapped[str] = mapped_column("providedBy", String(130), nullable=False, default="")
     purpose: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     type: Mapped[str] = mapped_column(String(50), nullable=False, default="")
-    output_description: Mapped[Optional[str]] = mapped_column("outputDescription", String(2048), nullable=True)
-    txid: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    sender_identity_key: Mapped[Optional[str]] = mapped_column("senderIdentityKey", String(130), nullable=True)
-    derivation_prefix: Mapped[Optional[str]] = mapped_column("derivationPrefix", String(200), nullable=True)
-    derivation_suffix: Mapped[Optional[str]] = mapped_column("derivationSuffix", String(200), nullable=True)
-    custom_instructions: Mapped[Optional[str]] = mapped_column("customInstructions", String(2500), nullable=True)
-    spent_by: Mapped[Optional[int]] = mapped_column(
+    output_description: Mapped[str | None] = mapped_column("outputDescription", String(2048), nullable=True)
+    txid: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    sender_identity_key: Mapped[str | None] = mapped_column("senderIdentityKey", String(130), nullable=True)
+    derivation_prefix: Mapped[str | None] = mapped_column("derivationPrefix", String(200), nullable=True)
+    derivation_suffix: Mapped[str | None] = mapped_column("derivationSuffix", String(200), nullable=True)
+    custom_instructions: Mapped[str | None] = mapped_column("customInstructions", String(2500), nullable=True)
+    spent_by: Mapped[int | None] = mapped_column(
         "spentBy", ForeignKey("transactions.transactionId", ondelete="SET NULL")
     )
-    sequence_number: Mapped[Optional[int]] = mapped_column("sequenceNumber", Integer, nullable=True)
-    spending_description: Mapped[Optional[str]] = mapped_column("spendingDescription", String(2048), nullable=True)
-    script_length: Mapped[Optional[int]] = mapped_column(
+    sequence_number: Mapped[int | None] = mapped_column("sequenceNumber", Integer, nullable=True)
+    spending_description: Mapped[str | None] = mapped_column("spendingDescription", String(2048), nullable=True)
+    script_length: Mapped[int | None] = mapped_column(
         "scriptLength", BigInteger().with_variant(mysql.BIGINT(unsigned=True), "mysql"), nullable=True
     )
-    script_offset: Mapped[Optional[int]] = mapped_column(
+    script_offset: Mapped[int | None] = mapped_column(
         "scriptOffset", BigInteger().with_variant(mysql.BIGINT(unsigned=True), "mysql"), nullable=True
     )
-    locking_script: Mapped[Optional[bytes]] = mapped_column(
+    locking_script: Mapped[bytes | None] = mapped_column(
         "lockingScript", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=True
     )
     spent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -323,18 +322,18 @@ class ProvenTxReq(TimestampMixin, Base):
     """
 
     proven_tx_req_id: Mapped[int] = mapped_column("provenTxReqId", Integer, primary_key=True)
-    proven_tx_id: Mapped[Optional[int]] = mapped_column("provenTxId", ForeignKey("proven_txs.provenTxId"))
+    proven_tx_id: Mapped[int | None] = mapped_column("provenTxId", ForeignKey("proven_txs.provenTxId"))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
     attempts: Mapped[int] = mapped_column(
         Integer().with_variant(mysql.INTEGER(unsigned=True), "mysql"), nullable=False, default=0
     )
     notified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     txid: Mapped[str] = mapped_column(String(64), nullable=False)
-    batch: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    batch: Mapped[str | None] = mapped_column(String(64), nullable=True)
     history: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     notify: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     raw_tx: Mapped[bytes] = mapped_column("rawTx", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=False)
-    input_beef: Mapped[Optional[bytes]] = mapped_column(
+    input_beef: Mapped[bytes | None] = mapped_column(
         "inputBEEF", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=True
     )
 
@@ -372,7 +371,7 @@ class Certificate(TimestampMixin, Base):
     serial_number: Mapped[str] = mapped_column("serialNumber", String(100), nullable=False)
     certifier: Mapped[str] = mapped_column(String(100), nullable=False)
     subject: Mapped[str] = mapped_column(String(100), nullable=False)
-    verifier: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    verifier: Mapped[str | None] = mapped_column(String(100), nullable=True)
     revocation_outpoint: Mapped[str] = mapped_column("revocationOutpoint", String(100), nullable=False)
     signature: Mapped[str] = mapped_column(String(255), nullable=False)
     is_deleted: Mapped[bool] = mapped_column("isDeleted", Boolean, nullable=False, default=False)
@@ -644,6 +643,6 @@ class MonitorEvent(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     event: Mapped[str] = mapped_column(String(64), nullable=False)
-    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_monitor_events_event", "event"),)

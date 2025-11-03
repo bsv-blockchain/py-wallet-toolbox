@@ -9,7 +9,6 @@ import pytest
 
 try:
     from bsv_wallet_toolbox.storage import WalletStorageManager
-
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True

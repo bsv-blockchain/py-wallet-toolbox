@@ -6,7 +6,6 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputTests.test.t
 from datetime import datetime
 from typing import Any
 
-import pytest
 from bsv_wallet_toolbox.storage.entities import Output
 
 

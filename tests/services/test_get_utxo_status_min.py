@@ -4,7 +4,6 @@
 - Verifies only the return shape and basic types, not provider semantics.
 """
 
-import pytest
 
 from bsv_wallet_toolbox.services import Services
 

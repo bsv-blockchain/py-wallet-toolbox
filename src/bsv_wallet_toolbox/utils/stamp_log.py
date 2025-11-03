@@ -4,11 +4,11 @@ This module provides utilities for stamping logs with timestamps and
 formatting log output for debugging purposes.
 """
 
-from typing import Any, Dict
 from datetime import datetime
+from typing import Any
 
 
-def stamp_log(log: Dict[str, Any] | None, message: str) -> None:
+def stamp_log(log: dict[str, Any] | None, message: str) -> None:
     """Add a timestamped message to a log dictionary.
 
     Args:
@@ -28,7 +28,7 @@ def stamp_log(log: Dict[str, Any] | None, message: str) -> None:
     log["entries"].append({"timestamp": timestamp, "message": message})
 
 
-def stamp_log_format(log: Dict[str, Any] | None) -> str:
+def stamp_log_format(log: dict[str, Any] | None) -> str:
     """Format a log dictionary for display.
 
     Args:

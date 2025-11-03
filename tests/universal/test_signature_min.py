@@ -1,14 +1,14 @@
 """Minimal TS-like shape tests for create_signature / verify_signature.
 
-既存の包括的テストは保持・スキップ方針。.cursor/rules/test-editing-rules.md に準拠し、
-ここでは戻り値の形状と基本的挙動のみ検証する。
+Comprehensive existing tests are kept and skipped per policy.
+This tests only return value shapes and basic behavior.
 """
 
-import pytest
+import hashlib
 
 
 def test_create_signature_and_verify_roundtrip(wallet_with_key_deriver):
-    # Sign data (implicit: SHA-256 のハッシュを直接署名)
+    # Sign data (implicit: direct SHA-256 hash signature)
     args = {
         "data": b"hello world",
         "protocolID": [2, "auth message signature"],
@@ -46,7 +46,7 @@ def test_verify_signature_fail_on_modified_data(wallet_with_key_deriver):
     res = wallet_with_key_deriver.create_signature(args)
     sig = res["signature"]
 
-    # 異なるデータで検証 → False
+    # Verify with different data → False
     vres = wallet_with_key_deriver.verify_signature(
         {
             "data": b"tampered",
@@ -59,9 +59,7 @@ def test_verify_signature_fail_on_modified_data(wallet_with_key_deriver):
 
 
 def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
-    # 事前ハッシュを直接署名/検証
-    import hashlib
-
+    # Direct pre-hash signature/verification
     data = b"hash me"
     digest = hashlib.sha256(data).digest()
 

@@ -1,4 +1,5 @@
 import pytest
+
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import Base, ProvenTxReq
 from bsv_wallet_toolbox.storage.provider import StorageProvider
@@ -78,7 +79,7 @@ def test_list_outputs_include_transactions_accepts_known_txids(sp):
 
 
 def test_list_outputs_specop_wallet_balance_min_shape(sp):
-    # Accept both idとフレンドリ名
+    # Accept both id and friendly name
     r = sp.list_outputs({"userId": 1}, {"basket": "specOpWalletBalance", "limit": 3})
     assert set(r.keys()) == {"totalOutputs", "outputs"}
     assert isinstance(r["totalOutputs"], int)
@@ -86,7 +87,7 @@ def test_list_outputs_specop_wallet_balance_min_shape(sp):
 
 
 def test_list_outputs_specop_set_wallet_change_params_min_shape(sp):
-    # 2つの数値タグを受理して空配列を返す
+    # Accept two numeric tags and return empty array
     r = sp.list_outputs(
         {"userId": 1},
         {"basket": "specOpSetWalletChangeParams", "tags": ["2", "5000"]},

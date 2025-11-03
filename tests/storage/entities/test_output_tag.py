@@ -5,7 +5,6 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputTagTests.tes
 
 from datetime import datetime
 
-import pytest
 from bsv_wallet_toolbox.storage.entities import OutputTag
 
 

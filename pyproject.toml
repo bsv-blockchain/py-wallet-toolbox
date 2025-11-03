@@ -65,6 +65,7 @@ ignore = [
     "ARG001",   # unused-function-argument (test fixtures)
     "PLR0915",  # too-many-statements (acceptable in tests)
     "PLR0912",  # too-many-branches (acceptable in tests)
+    "PLR0911",  # too-many-return-statements (complex but correct logic)
     "B017",     # assert-raises-exception (pytest pattern)
     "T201",     # print (acceptable in manual tests)
     "ANN204",   # missing-return-type-special-method
@@ -82,7 +83,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 # Test files have different standards
-"tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "E501"]
+"tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "E501", "B018"]
 "manual_tests/**/*.py" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "E501", "PLC0415"]
 
 [tool.mypy]

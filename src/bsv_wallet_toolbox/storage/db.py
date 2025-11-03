@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 
-def create_engine_from_url(url: str, *, echo: bool = False, **kwargs: Any):
+def create_engine_from_url(url: str, *, echo: bool = False, **kwargs: Any) -> Any:
     """Create a synchronous SQLAlchemy Engine for supported backends.
 
     Supports:
@@ -34,9 +35,9 @@ def create_session_factory(engine: Any) -> Any:
 
 
 @contextmanager
-def session_scope(SessionLocal: Any) -> Iterator[Session]:
+def session_scope(session_local: Any) -> Iterator[Session]:
     """Provide a transactional scope around a series of operations (sync)."""
-    session: Session = SessionLocal()
+    session: Session = session_local()
     try:
         yield session
         session.commit()

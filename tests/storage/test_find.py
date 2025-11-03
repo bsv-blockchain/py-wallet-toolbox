@@ -5,8 +5,6 @@ Reference: wallet-toolbox/test/storage/find.test.ts
 
 from datetime import datetime
 
-import pytest
-
 
 class Testfind:
     """Test suite for database FIND/SELECT operations."""

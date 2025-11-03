@@ -6,7 +6,6 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/TxLabelTests.test.
 from datetime import datetime
 from typing import Any
 
-import pytest
 from bsv_wallet_toolbox.storage.entities import TxLabel
 
 

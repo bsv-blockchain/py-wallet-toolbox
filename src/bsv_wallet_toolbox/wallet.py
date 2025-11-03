@@ -3,6 +3,8 @@
 Reference: ts-wallet-toolbox/src/Wallet.ts
 """
 
+import hashlib
+import hmac
 from typing import Any, Literal
 
 from bsv.keys import PublicKey
@@ -144,7 +146,7 @@ class Wallet:
         try:
             if self.services is not None and self.storage_provider is not None:
                 # set_services exists on our StorageProvider implementation
-                getattr(self.storage_provider, "set_services")(self.services)
+                self.storage_provider.set_services(self.services)
         except Exception:
             # Best-effort wiring; storage providers without set_services are tolerated
             pass
@@ -932,7 +934,7 @@ class Wallet:
     # ---------------------------------------------------------------------
     # Certificates / Proof-related (stubs; Storage/Services dependent)
     # ---------------------------------------------------------------------
-    def acquire_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def acquire_certificate(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Acquire a certificate (stub).
 
         Summary:
@@ -962,7 +964,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("acquire_certificate is not implemented yet (Storage/Services required)")
 
-    def prove_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def prove_certificate(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Prove a certificate (stub).
 
         Summary:
@@ -991,7 +993,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("prove_certificate is not implemented yet (Storage/Services required)")
 
-    def reveal_counterparty_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def reveal_counterparty_key_linkage(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Reveal counterparty key linkage (stub).
 
         Summary:
@@ -1017,7 +1019,7 @@ class Wallet:
         self._validate_originator(originator)
         raise NotImplementedError("reveal_counterparty_key_linkage is not implemented yet (Storage/Services required)")
 
-    def reveal_specific_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+    def reveal_specific_key_linkage(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Reveal specific key linkage (stub).
 
         Summary:
@@ -1182,7 +1184,6 @@ class Wallet:
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
-        for_self = args.get("forSelf", False)
 
         if not protocol_id or not key_id:
             raise InvalidParameterError("protocolID/keyID", "required")
@@ -1204,8 +1205,6 @@ class Wallet:
         else:
             data = args.get("data", b"")
             buf = _as_bytes(data, "data")
-            import hashlib
-
             to_sign = hashlib.sha256(buf).digest()
 
         # Sign without extra hashing (TS parity)
@@ -1280,8 +1279,6 @@ class Wallet:
         else:
             data = args.get("data", b"")
             buf = _as_bytes(data, "data")
-            import hashlib
-
             digest = hashlib.sha256(buf).digest()
 
         # Verify without extra hashing (TS parity)
@@ -1440,10 +1437,8 @@ class Wallet:
         counterparty = _parse_counterparty(counterparty_arg)
 
         sym_key = self.key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
-        import hmac as _hmac
-        import hashlib as _hashlib
 
-        tag = _hmac.new(sym_key, data, _hashlib.sha256).digest()
+        tag = hmac.new(sym_key, data, hashlib.sha256).digest()
         return {"hmac": _to_byte_list(tag)}
 
     def verify_hmac(
@@ -1491,9 +1486,6 @@ class Wallet:
         counterparty = _parse_counterparty(counterparty_arg)
         sym_key = self.key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
 
-        import hmac as _hmac
-        import hashlib as _hashlib
-
-        expected = _hmac.new(sym_key, data, _hashlib.sha256).digest()
-        valid = _hmac.compare_digest(expected, provided)
+        expected = hmac.new(sym_key, data, hashlib.sha256).digest()
+        valid = hmac.compare_digest(expected, provided)
         return {"valid": bool(valid)}

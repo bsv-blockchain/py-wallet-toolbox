@@ -672,9 +672,10 @@ class Services(WalletServices):
         if not isinstance(details, list):
             return False
         if outpoint:
-            for d in details:
-                if d.get("outpoint") == outpoint and not d.get("spent", False):
-                    return True
-            return False
+            return any(
+                d.get("outpoint") == outpoint and not d.get("spent", False)
+                for d in details
+                if isinstance(d, dict)
+            )
         # No outpoint requirement: any unspent occurrence counts
         return any((not d.get("spent", False)) for d in details if isinstance(d, dict))

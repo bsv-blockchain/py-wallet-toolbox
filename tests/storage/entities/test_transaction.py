@@ -6,8 +6,8 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/TransactionTests.t
 from datetime import datetime
 from typing import Any
 
-import pytest
 from bsv.transaction import Transaction as BsvTransaction
+
 from bsv_wallet_toolbox.storage.entities import Transaction
 
 
