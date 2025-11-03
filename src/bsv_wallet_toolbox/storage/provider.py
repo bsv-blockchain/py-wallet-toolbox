@@ -23,6 +23,11 @@ from .models import (
     Certificate,
     ProvenTx,
     ProvenTxReq,
+    Commission,
+    CertificateField,
+    Transaction,
+    SyncState,
+    MonitorEvent,
 )
 
 import secrets
@@ -1593,5 +1598,472 @@ class StorageProvider:
             }
             
             return result
+
+
+    # =====================================================================
+    # =====================================================================
+    # Phase 1: Generic CRUD Framework (TypeScript StorageReaderWriter parity)
+    # =====================================================================
+    #
+    # This section implements the abstract StorageReaderWriter interface from
+    # TypeScript, providing generic CRUD operations for all 17 database tables.
+    #
+    # Architecture:
+    #   1. Generic helpers (_insert_generic, _find_generic, etc.)
+    #      - Use SQLAlchemy reflection to work with any mapped ORM model
+    #      - Return primary keys for INSERT, dictionaries for FIND, counts for COUNT
+    #      - Support partial filtering (WHERE clause matching)
+    #
+    #   2. Table wrappers (insert_user, find_outputs, count_certificates, etc.)
+    #      - Provide type-safe, named accessors for each table
+    #      - Delegate to generic helpers to avoid duplication
+    #      - Support both snake_case (Python) and camelCase (API) conversions
+    #
+    #   3. API format conversion (_to_api_key, _model_to_dict)
+    #      - Convert ORM snake_case attributes to camelCase API keys
+    #      - Ensure compatibility with TypeScript API shape
+    #
+    # TypeScript Reference:
+    #   - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts (interface definition)
+    #   - toolbox/ts-wallet-toolbox/src/storage/StorageKnex.ts (implementation example)
+    #
+    # Usage Examples:
+    #   # Insert
+    #   user_id = sp.insert_user({'identityKey': 'abc123', 'activeStorage': 'storage1'})
+    #
+    #   # Find
+    #   users = sp.find_users({'identityKey': 'abc123'})
+    #
+    #   # Count
+    #   count = sp.count_outputs({'userId': user_id})
+    #
+    #   # Update
+    #   updated = sp.update_user(user_id, {'activeStorage': 'storage2'})
+    #
+    # =====================================================================
+
+    # =====================================================================
+    
+    # Mapping of table names to ORM models
+    _MODEL_MAP = {
+        'user': User,
+        'certificate': Certificate,
+        'certificate_field': CertificateField,
+        'commission': Commission,
+        'monitor_event': MonitorEvent,
+        'output': Output,
+        'output_basket': OutputBasket,
+        'output_tag': OutputTag,
+        'output_tag_map': OutputTagMap,
+        'proven_tx': ProvenTx,
+        'proven_tx_req': ProvenTxReq,
+        'sync_state': SyncState,
+        'transaction': Transaction,
+        'tx_label': TxLabel,
+        'tx_label_map': TxLabelMap,
+        'settings': Settings,
+    }
+
+    def _get_model(self, table_name: str) -> type:
+        """Get ORM model class for table name."""
+        if table_name not in self._MODEL_MAP:
+            raise ValueError(f"Unknown table: {table_name}")
+        return self._MODEL_MAP[table_name]
+
+    def _insert_generic(self, table_name: str, data: dict[str, Any], trx: Any = None) -> int:
+        """Generic insert for any table. Returns primary key.
+        
+        Supports inserting records into any mapped SQLAlchemy table. Automatically
+        handles primary key extraction and session management.
+        
+        Args:
+            table_name: Name of table to insert into (e.g., 'user', 'output')
+            data: Dictionary of column values (use snake_case Python attribute names)
+            trx: Optional database transaction/session. If provided, uses that session
+                 instead of creating a new one.
+        
+        Returns:
+            int: Primary key value of inserted record
+        
+        Raises:
+            ValueError: If table_name is not recognized
+            sqlalchemy.exc.IntegrityError: If unique or FK constraints violated
+        
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        model = self._get_model(table_name)
+        obj = model(**data)
+        
+        if trx:
+            session = trx
+        else:
+            session = self.SessionLocal()
+        
+        try:
+            session.add(obj)
+            session.flush()
+            # Get primary key from ORM object
+            from sqlalchemy import inspect
+            mapper = inspect(model)
+            pk_col = mapper.primary_key[0]
+            pk_value = getattr(obj, pk_col.name)
+            return pk_value
+        finally:
+            if not trx:
+                session.close()
+
+    def _find_generic(self, table_name: str, args: dict[str, Any] | None = None, 
+                     limit: int | None = None, offset: int = 0) -> list[dict[str, Any]]:
+        """Generic find for any table. Returns list of dicts in camelCase API format.
+        
+        Constructs a WHERE clause from partial filters and applies LIMIT/OFFSET.
+        Results are converted from ORM objects to camelCase dictionaries.
+        
+        Args:
+            table_name: Name of table to query
+            args: Dictionary of filter conditions (column_name: value)
+                  All filters are AND'ed together (exact match equality)
+            limit: Maximum number of rows to return (None = no limit)
+            offset: Number of rows to skip (for pagination)
+        
+        Returns:
+            list[dict]: Array of records in camelCase API format
+        
+        Example:
+            outputs = sp._find_generic('output', {'userId': 42, 'vout': 0}, limit=10)
+        
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        model = self._get_model(table_name)
+        
+        with session_scope(self.SessionLocal) as s:
+            query = select(model)
+            
+            if args:
+                for key, value in args.items():
+                    if hasattr(model, key):
+                        query = query.where(getattr(model, key) == value)
+            
+            if limit:
+                query = query.limit(limit)
+            if offset:
+                query = query.offset(offset)
+            
+            result = s.execute(query).scalars().all()
+            return [self._model_to_dict(obj) for obj in result]
+
+    def _count_generic(self, table_name: str, args: dict[str, Any] | None = None) -> int:
+        """Generic count for any table with optional filters.
+        
+        Counts rows matching the provided filter conditions.
+        
+        Args:
+            table_name: Name of table to count
+            args: Optional filter conditions (same format as _find_generic)
+        
+        Returns:
+            int: Number of matching rows (0 if none match)
+        
+        Example:
+            count = sp._count_generic('user', {'userId': 42})
+        
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        model = self._get_model(table_name)
+        
+        with session_scope(self.SessionLocal) as s:
+            query = select(func.count()).select_from(model)
+            
+            if args:
+                for key, value in args.items():
+                    if hasattr(model, key):
+                        query = query.where(getattr(model, key) == value)
+            
+            result = s.execute(query).scalar()
+            return result or 0
+
+    def _update_generic(self, table_name: str, pk_value: int, patch: dict[str, Any]) -> int:
+        """Generic update for any table by primary key.
+        
+        Updates specified columns in a single row identified by primary key.
+        
+        Args:
+            table_name: Name of table to update
+            pk_value: Value of primary key (e.g., user_id=42)
+            patch: Dictionary of columns to update (use snake_case Python names)
+        
+        Returns:
+            int: Number of rows updated (1 if found and updated, 0 if not found)
+        
+        Example:
+            updated = sp._update_generic('user', 42, {'activeStorage': 'storage2'})
+        
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        model = self._get_model(table_name)
+        
+        with session_scope(self.SessionLocal) as s:
+            from sqlalchemy import inspect
+            mapper = inspect(model)
+            pk_col = mapper.primary_key[0]
+            
+            query = select(model).where(getattr(model, pk_col.name) == pk_value)
+            obj = s.execute(query).scalar_one_or_none()
+            
+            if not obj:
+                return 0
+            
+            for key, value in patch.items():
+                if hasattr(obj, key):
+                    setattr(obj, key, value)
+            
+            s.commit()
+            return 1
+
+    def _model_to_dict(self, obj: Any) -> dict[str, Any]:
+        """Convert ORM object to camelCase dict."""
+        from sqlalchemy import inspect
+        mapper = inspect(obj.__class__)
+        result = {}
+        
+        for column in mapper.columns:
+            value = getattr(obj, column.name)
+            result[self._to_api_key(column.name)] = value
+        
+        return result
+
+    @staticmethod
+    def _to_api_key(snake_case: str) -> str:
+        """Convert snake_case to camelCase."""
+        parts = snake_case.split('_')
+        return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+
+    # =====================================================================
+    # TABLE WRAPPERS: INSERT methods (15 tables)
+    # =====================================================================
+
+    def insert_user(self, data: dict[str, Any]) -> int:
+        """Insert User record."""
+        return self._insert_generic('user', data)
+
+    def insert_certificate(self, data: dict[str, Any]) -> int:
+        """Insert Certificate record."""
+        return self._insert_generic('certificate', data)
+
+    def insert_certificate_field(self, data: dict[str, Any]) -> int:
+        """Insert CertificateField record."""
+        return self._insert_generic('certificate_field', data)
+
+    def insert_commission(self, data: dict[str, Any]) -> int:
+        """Insert Commission record."""
+        return self._insert_generic('commission', data)
+
+    def insert_monitor_event(self, data: dict[str, Any]) -> int:
+        """Insert MonitorEvent record."""
+        return self._insert_generic('monitor_event', data)
+
+    def insert_output(self, data: dict[str, Any]) -> int:
+        """Insert Output record."""
+        return self._insert_generic('output', data)
+
+    def insert_output_basket(self, data: dict[str, Any]) -> int:
+        """Insert OutputBasket record."""
+        return self._insert_generic('output_basket', data)
+
+    def insert_output_tag(self, data: dict[str, Any]) -> int:
+        """Insert OutputTag record."""
+        return self._insert_generic('output_tag', data)
+
+    def insert_output_tag_map(self, data: dict[str, Any]) -> int:
+        """Insert OutputTagMap record."""
+        return self._insert_generic('output_tag_map', data)
+
+    def insert_proven_tx(self, data: dict[str, Any]) -> int:
+        """Insert ProvenTx record."""
+        return self._insert_generic('proven_tx', data)
+
+    def insert_proven_tx_req(self, data: dict[str, Any]) -> int:
+        """Insert ProvenTxReq record."""
+        return self._insert_generic('proven_tx_req', data)
+
+    def insert_sync_state(self, data: dict[str, Any]) -> int:
+        """Insert SyncState record."""
+        return self._insert_generic('sync_state', data)
+
+    def insert_transaction(self, data: dict[str, Any]) -> int:
+        """Insert Transaction record."""
+        return self._insert_generic('transaction', data)
+
+    def insert_tx_label(self, data: dict[str, Any]) -> int:
+        """Insert TxLabel record."""
+        return self._insert_generic('tx_label', data)
+
+    def insert_tx_label_map(self, data: dict[str, Any]) -> int:
+        """Insert TxLabelMap record."""
+        return self._insert_generic('tx_label_map', data)
+
+    # =====================================================================
+    # TABLE WRAPPERS: FIND methods (11 tables with find queries)
+    # =====================================================================
+
+    def find_users(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find User records."""
+        return self._find_generic('user', args)
+
+    def find_certificates(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find Certificate records."""
+        return self._find_generic('certificate', args)
+
+    def find_certificate_fields(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find CertificateField records."""
+        return self._find_generic('certificate_field', args)
+
+    def find_commissions(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find Commission records."""
+        return self._find_generic('commission', args)
+
+    def find_monitor_events(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find MonitorEvent records."""
+        return self._find_generic('monitor_event', args)
+
+    def find_outputs(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find Output records."""
+        return self._find_generic('output', args)
+
+    def find_output_baskets(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find OutputBasket records."""
+        return self._find_generic('output_basket', args)
+
+    def find_output_tags(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find OutputTag records."""
+        return self._find_generic('output_tag', args)
+
+    def find_sync_states(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find SyncState records."""
+        return self._find_generic('sync_state', args)
+
+    def find_transactions(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find Transaction records."""
+        return self._find_generic('transaction', args)
+
+    def find_tx_labels(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find TxLabel records."""
+        return self._find_generic('tx_label', args)
+
+    # =====================================================================
+    # TABLE WRAPPERS: COUNT methods (11 tables)
+    # =====================================================================
+
+    def count_users(self, args: dict[str, Any] | None = None) -> int:
+        """Count User records."""
+        return self._count_generic('user', args)
+
+    def count_certificates(self, args: dict[str, Any] | None = None) -> int:
+        """Count Certificate records."""
+        return self._count_generic('certificate', args)
+
+    def count_certificate_fields(self, args: dict[str, Any] | None = None) -> int:
+        """Count CertificateField records."""
+        return self._count_generic('certificate_field', args)
+
+    def count_commissions(self, args: dict[str, Any] | None = None) -> int:
+        """Count Commission records."""
+        return self._count_generic('commission', args)
+
+    def count_monitor_events(self, args: dict[str, Any] | None = None) -> int:
+        """Count MonitorEvent records."""
+        return self._count_generic('monitor_event', args)
+
+    def count_outputs(self, args: dict[str, Any] | None = None) -> int:
+        """Count Output records."""
+        return self._count_generic('output', args)
+
+    def count_output_baskets(self, args: dict[str, Any] | None = None) -> int:
+        """Count OutputBasket records."""
+        return self._count_generic('output_basket', args)
+
+    def count_output_tags(self, args: dict[str, Any] | None = None) -> int:
+        """Count OutputTag records."""
+        return self._count_generic('output_tag', args)
+
+    def count_sync_states(self, args: dict[str, Any] | None = None) -> int:
+        """Count SyncState records."""
+        return self._count_generic('sync_state', args)
+
+    def count_transactions(self, args: dict[str, Any] | None = None) -> int:
+        """Count Transaction records."""
+        return self._count_generic('transaction', args)
+
+    def count_tx_labels(self, args: dict[str, Any] | None = None) -> int:
+        """Count TxLabel records."""
+        return self._count_generic('tx_label', args)
+
+    # =====================================================================
+    # TABLE WRAPPERS: UPDATE methods (15 tables)
+    # =====================================================================
+
+    def update_user(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update User record by ID."""
+        return self._update_generic('user', pk_value, patch)
+
+    def update_certificate(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update Certificate record by ID."""
+        return self._update_generic('certificate', pk_value, patch)
+
+    def update_certificate_field(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update CertificateField record by ID."""
+        return self._update_generic('certificate_field', pk_value, patch)
+
+    def update_commission(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update Commission record by ID."""
+        return self._update_generic('commission', pk_value, patch)
+
+    def update_monitor_event(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update MonitorEvent record by ID."""
+        return self._update_generic('monitor_event', pk_value, patch)
+
+    def update_output(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update Output record by ID."""
+        return self._update_generic('output', pk_value, patch)
+
+    def update_output_basket(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update OutputBasket record by ID."""
+        return self._update_generic('output_basket', pk_value, patch)
+
+    def update_output_tag(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update OutputTag record by ID."""
+        return self._update_generic('output_tag', pk_value, patch)
+
+    def update_output_tag_map(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update OutputTagMap record by ID."""
+        return self._update_generic('output_tag_map', pk_value, patch)
+
+    def update_proven_tx(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update ProvenTx record by ID."""
+        return self._update_generic('proven_tx', pk_value, patch)
+
+    def update_proven_tx_req(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update ProvenTxReq record by ID."""
+        return self._update_generic('proven_tx_req', pk_value, patch)
+
+    def update_sync_state(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update SyncState record by ID."""
+        return self._update_generic('sync_state', pk_value, patch)
+
+    def update_transaction(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update Transaction record by ID."""
+        return self._update_generic('transaction', pk_value, patch)
+
+    def update_tx_label(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update TxLabel record by ID."""
+        return self._update_generic('tx_label', pk_value, patch)
+
+    def update_tx_label_map(self, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update TxLabelMap record by ID."""
+        return self._update_generic('tx_label_map', pk_value, patch)
 
 
