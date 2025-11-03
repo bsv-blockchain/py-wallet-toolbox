@@ -5,7 +5,6 @@ Ported from TypeScript implementation to ensure compatibility.
 Reference: wallet-toolbox/test/Wallet/get/getVersion.test.ts
 """
 
-
 from bsv_wallet_toolbox import Wallet
 
 

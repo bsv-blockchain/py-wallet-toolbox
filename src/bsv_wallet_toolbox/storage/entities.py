@@ -245,12 +245,21 @@ class Commission:
             self.satoshis == other.get("satoshis")
             and self.is_redeemed == other.get("isRedeemed")
             and self.key_offset == other.get("keyOffset")
+            and self.transaction_id == other.get("transactionId")
+            and self.locking_script == other.get("lockingScript")
         )
 
     def merge_existing(
-        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing commission - check if updated_at changed."""
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.satoshis = ei.get("satoshis", self.satoshis)
+            self.is_redeemed = ei.get("isRedeemed", self.is_redeemed)
+            self.key_offset = ei.get("keyOffset", self.key_offset)
+            self.locking_script = ei.get("lockingScript", self.locking_script)
+            self.updated_at = ei.get("updated_at", datetime.now())
+            return True
         return False
 
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
@@ -329,12 +338,22 @@ class Output:
 
     def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """Output equality: same vout and satoshis."""
-        return self.vout == other.get("vout") and self.satoshis == other.get("satoshis")
+        return (
+            self.vout == other.get("vout")
+            and self.satoshis == other.get("satoshis")
+            and self.locking_script == other.get("lockingScript")
+        )
 
     def merge_existing(
-        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output."""
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.satoshis = ei.get("satoshis", self.satoshis)
+            self.vout = ei.get("vout", self.vout)
+            self.locking_script = ei.get("lockingScript", self.locking_script)
+            self.updated_at = ei.get("updated_at", datetime.now())
+            return True
         return False
 
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
@@ -880,6 +899,9 @@ class Certificate:
             self.type == other.get("type")
             and self.subject == other.get("subject")
             and self.serial_number == other.get("serialNumber")
+            and self.signature == other.get("signature")
+            and self.revocation_outpoint == other.get("revocationOutpoint")
+            and self.verifier == other.get("verifier")
             and self.is_deleted == other.get("isDeleted")
         )
 
@@ -888,9 +910,14 @@ class Certificate:
     ) -> bool:
         """Merge existing certificate - sync deletion and signature status."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.type = ei.get("type", self.type)
+            self.serial_number = ei.get("serialNumber", self.serial_number)
+            self.subject = ei.get("subject", self.subject)
+            self.certifier = ei.get("certifier", self.certifier)
+            self.signature = ei.get("signature", self.signature)
+            self.verifier = ei.get("verifier", self.verifier)
             self.is_deleted = ei.get("isDeleted", False)
             self.revocation_outpoint = ei.get("revocationOutpoint", "")
-            self.signature = ei.get("signature", "")
             self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
@@ -923,6 +950,7 @@ class CertificateField:
             now = datetime.now()
             self.certificate_field_id: int = 0
             self.certificate_id: int = 0
+            self.user_id: int = 0
             self.field_name: str = ""
             self.field_value: str = ""
             self.master_key: str | None = None
@@ -931,6 +959,7 @@ class CertificateField:
         else:
             self.certificate_field_id = api_object.get("certificateFieldId", 0)
             self.certificate_id = api_object.get("certificateId", 0)
+            self.user_id = api_object.get("userId", 0)
             self.field_name = api_object.get("fieldName", "")
             self.field_value = api_object.get("fieldValue", "")
             self.master_key = api_object.get("masterKey")
@@ -939,11 +968,11 @@ class CertificateField:
 
     @property
     def id(self) -> int:
-        return self.certificate_field_id
+        raise Exception('entity has no "id" value')
 
     @id.setter
-    def id(self, value: int) -> None:
-        self.certificate_field_id = value
+    def id(self, _value: int) -> None:
+        raise Exception('entity has no "id" value')
 
     @property
     def entity_name(self) -> str:
@@ -957,6 +986,7 @@ class CertificateField:
         return {
             "certificateFieldId": self.certificate_field_id,
             "certificateId": self.certificate_id,
+            "userId": self.user_id,
             "fieldName": self.field_name,
             "fieldValue": self.field_value,
             "masterKey": self.master_key,
@@ -969,7 +999,12 @@ class CertificateField:
 
     def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
         """CertificateField equality: check field name and value."""
-        return self.field_name == other.get("fieldName") and self.field_value == other.get("fieldValue")
+        return (
+            self.certificate_id == other.get("certificateId")
+            and self.field_name == other.get("fieldName")
+            and self.field_value == other.get("fieldValue")
+            and self.master_key == other.get("masterKey")
+        )
 
     def merge_existing(
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
@@ -1023,12 +1058,12 @@ class OutputTagMap:
     @property
     def id(self) -> int:
         """Composite key tables don't have a single ID."""
-        raise Exception("entity has no \"id\" value")
+        raise Exception('entity has no "id" value')
 
     @id.setter
     def id(self, _value: int) -> None:
         """Composite key tables don't support ID setter."""
-        raise Exception("entity has no \"id\" value")
+        raise Exception('entity has no "id" value')
 
     @property
     def entity_name(self) -> str:
@@ -1290,12 +1325,12 @@ class TxLabelMap:
     @property
     def id(self) -> int:
         """Composite key tables don't have a single ID."""
-        raise Exception("entity has no \"id\" value")
+        raise Exception('entity has no "id" value')
 
     @id.setter
     def id(self, _value: int) -> None:
         """Composite key tables don't support ID setter."""
-        raise Exception("entity has no \"id\" value")
+        raise Exception('entity has no "id" value')
 
     @property
     def entity_name(self) -> str:

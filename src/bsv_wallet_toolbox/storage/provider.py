@@ -1524,10 +1524,8 @@ class StorageProvider:
 
         with session_scope(self.SessionLocal) as s:
             # Find Transaction by reference
-            tq = (
-                select(TransactionModel).where(
-                    (TransactionModel.user_id == user_id) & (TransactionModel.reference == reference)
-                )
+            tq = select(TransactionModel).where(
+                (TransactionModel.user_id == user_id) & (TransactionModel.reference == reference)
             )
             _tx_result = s.execute(tq)
             tx = _tx_result.scalar_one_or_none()

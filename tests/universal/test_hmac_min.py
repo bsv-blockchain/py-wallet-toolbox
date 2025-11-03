@@ -1,7 +1,6 @@
 """Minimal TS-like shape tests for create_hmac / verify_hmac."""
 
 
-
 def test_create_hmac_and_verify_roundtrip(wallet_with_key_deriver):
     data = b"auth data"
     args = {"data": data, "protocolID": [2, "context"], "keyID": "default", "counterparty": "self"}

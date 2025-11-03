@@ -474,9 +474,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError("Failed to get UTXO status")
         return response.json() or {}
 
-    async def get_script_history(
-        self, script_hash: str, _use_next: bool | None = None
-    ) -> dict[str, Any]:
+    async def get_script_history(self, script_hash: str, _use_next: bool | None = None) -> dict[str, Any]:
         """Get script history for a given script hash (TS-compatible response shape).
 
         Returns two arrays, matching TS semantics:

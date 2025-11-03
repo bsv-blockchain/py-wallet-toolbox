@@ -164,9 +164,7 @@ class Transaction(TimestampMixin, Base):
 
     transaction_id: Mapped[int] = mapped_column("transactionId", Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.userId", ondelete="CASCADE"), nullable=False)
-    proven_tx_id: Mapped[int | None] = mapped_column(
-        "provenTxId", ForeignKey("proven_txs.provenTxId"), nullable=True
-    )
+    proven_tx_id: Mapped[int | None] = mapped_column("provenTxId", ForeignKey("proven_txs.provenTxId"), nullable=True)
     status: Mapped[str] = mapped_column(String(64), nullable=False)
     reference: Mapped[str] = mapped_column(String(64), nullable=False)
     is_outgoing: Mapped[bool] = mapped_column("isOutgoing", Boolean, nullable=False, default=False)

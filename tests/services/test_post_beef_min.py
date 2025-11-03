@@ -5,7 +5,6 @@ global FakeClient provided by conftest. It does not assert TS-specific
 business semantics beyond the TS-like shape to avoid divergence.
 """
 
-
 from bsv_wallet_toolbox.services import Services
 
 
