@@ -48,7 +48,12 @@ class TestProvenTxEntity:
             raise Exception("Unexpected txid")
 
         mock_services = type(
-            "MockServices", (), {"get_raw_tx": mock_get_raw_tx, "get_merkle_path": mock_get_merkle_path}
+            "MockServices",
+            (),
+            {
+                "get_raw_tx": staticmethod(mock_get_raw_tx),
+                "get_merkle_path": staticmethod(mock_get_merkle_path),
+            },
         )()
 
         # When
@@ -56,10 +61,10 @@ class TestProvenTxEntity:
 
         # Then
         assert result["proven"] is not None
-        assert result["proven"]["txid"] == txid
-        assert result["proven"]["height"] == height
-        assert result["proven"]["blockHash"] == block_hash
-        assert result["proven"]["merkleRoot"] == merkle_root
+        assert result["proven"].txid == txid
+        assert result["proven"].height == height
+        assert result["proven"].block_hash == block_hash
+        assert result["proven"].merkle_root == merkle_root
         assert result["rawTx"] == raw_tx
 
     def test_fromtxid_txid_with_no_rawtx_available(self) -> None:
@@ -108,7 +113,12 @@ class TestProvenTxEntity:
             return None
 
         mock_services = type(
-            "MockServices", (), {"get_raw_tx": mock_get_raw_tx, "get_merkle_path": mock_get_merkle_path}
+            "MockServices",
+            (),
+            {
+                "get_raw_tx": staticmethod(mock_get_raw_tx),
+                "get_merkle_path": staticmethod(mock_get_merkle_path),
+            },
         )()
 
         # When
