@@ -33,5 +33,3 @@ async def test_get_utxo_status_minimal_not_found() -> None:
     assert isinstance(res, dict)
     assert isinstance(res.get("details"), list)
     assert res["details"] == []
-
-

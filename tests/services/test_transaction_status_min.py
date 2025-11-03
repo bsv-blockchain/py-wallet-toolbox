@@ -29,5 +29,3 @@ async def test_get_transaction_status_minimal() -> None:
     res_nf = services.get_transaction_status("1" * 64)
     assert isinstance(res_nf, dict)
     assert res_nf.get("status") in {"not_found", "unknown"}
-
-

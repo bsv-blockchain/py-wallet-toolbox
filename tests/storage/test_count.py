@@ -3,7 +3,6 @@
 Reference: wallet-toolbox/test/storage/count.test.ts
 """
 
-
 from datetime import datetime
 
 import pytest
@@ -12,7 +11,6 @@ import pytest
 class Testcount:
     """Test suite for database COUNT operations."""
 
-    
     def test_count_proventx(self) -> None:
         """Given: Mock storage with test data
            When: Count ProvenTx with empty filter
@@ -31,7 +29,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_proventxreq(self) -> None:
         """Given: Mock storage with test data
            When: Count ProvenTxReq with empty filter
@@ -50,7 +47,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_user(self) -> None:
         """Given: Mock storage with test data
            When: Count User with empty filter
@@ -69,7 +65,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_certificate(self) -> None:
         """Given: Mock storage with test data
            When: Count Certificate with various filters (empty, certifiers, types)
@@ -96,7 +91,6 @@ class Testcount:
         assert count_certifiers >= 0
         assert count_types >= 0
 
-    
     def test_count_certificatefield(self) -> None:
         """Given: Mock storage with test data
            When: Count CertificateField with various filters (empty, userId, fieldName)
@@ -123,7 +117,6 @@ class Testcount:
         assert count_user >= 0
         assert count_field >= 0
 
-    
     def test_count_outputbasket(self) -> None:
         """Given: Mock storage with test data
            When: Count OutputBasket with empty filter and since parameter
@@ -146,7 +139,6 @@ class Testcount:
         assert count_all >= 0
         assert count_since >= 0
 
-    
     def test_count_transaction(self) -> None:
         """Given: Mock storage with test data
            When: Count Transaction with empty filter
@@ -165,7 +157,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_commission(self) -> None:
         """Given: Mock storage with test data
            When: Count Commission with empty filter
@@ -184,7 +175,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_output(self) -> None:
         """Given: Mock storage with test data
            When: Count Output with empty filter
@@ -203,7 +193,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_outputtag(self) -> None:
         """Given: Mock storage with test data
            When: Count OutputTag with empty filter
@@ -222,7 +211,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_outputtagmap(self) -> None:
         """Given: Mock storage with test data
            When: Count OutputTagMap with empty filter
@@ -241,7 +229,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_txlabel(self) -> None:
         """Given: Mock storage with test data
            When: Count TxLabel with empty filter
@@ -260,7 +247,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_txlabelmap(self) -> None:
         """Given: Mock storage with test data
            When: Count TxLabelMap with empty filter
@@ -279,7 +265,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_monitorevent(self) -> None:
         """Given: Mock storage with test data
            When: Count MonitorEvent with empty filter
@@ -300,7 +285,6 @@ class Testcount:
         # Then
         assert count >= 0
 
-    
     def test_count_syncstate(self) -> None:
         """Given: Mock storage with test data
            When: Count SyncState with empty filter

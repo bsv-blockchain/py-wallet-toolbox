@@ -710,9 +710,7 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
 
         # When
-        manager.relinquish_certificate(
-            {"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com"
-        )
+        manager.relinquish_certificate({"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.relinquish_certificate.call_count == 1

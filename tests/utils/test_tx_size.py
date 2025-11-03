@@ -5,7 +5,6 @@ This module tests transaction size calculation logic.
 Reference: go-wallet-toolbox/pkg/internal/txutils/tx_size_test.go
 """
 
-
 import pytest
 
 try:

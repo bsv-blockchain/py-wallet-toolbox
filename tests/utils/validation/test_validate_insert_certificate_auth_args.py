@@ -23,7 +23,6 @@ class TestValidateInsertCertificateAuthArgs:
     - fields: list of certificate fields with valid masterKey (hex)
     """
 
-    
     def test_validate_insert_certificate_auth_args_valid(self) -> None:
         """Given: Valid TableCertificateX
            When: Call validate_insert_certificate_auth_args
@@ -47,7 +46,6 @@ class TestValidateInsertCertificateAuthArgs:
         # When / Then
         validate_insert_certificate_auth_args(valid_args)  # Should not raise
 
-    
     def test_validate_insert_certificate_auth_args_invalid_type_non_hex(self) -> None:
         """Given: TableCertificateX with invalid type (non-hex)
            When: Call validate_insert_certificate_auth_args
@@ -70,7 +68,6 @@ class TestValidateInsertCertificateAuthArgs:
             validate_insert_certificate_auth_args(invalid_args)
         assert "type" in str(exc_info.value).lower() or "hex" in str(exc_info.value).lower()
 
-    
     def test_validate_insert_certificate_auth_args_type_odd_length(self) -> None:
         """Given: TableCertificateX with odd-length type hex
            When: Call validate_insert_certificate_auth_args
@@ -93,7 +90,6 @@ class TestValidateInsertCertificateAuthArgs:
             validate_insert_certificate_auth_args(invalid_args)
         assert "type" in str(exc_info.value).lower() or "even" in str(exc_info.value).lower()
 
-    
     def test_validate_insert_certificate_auth_args_certifier_too_long(self) -> None:
         """Given: TableCertificateX with certifier exceeding 300 characters
            When: Call validate_insert_certificate_auth_args
@@ -116,7 +112,6 @@ class TestValidateInsertCertificateAuthArgs:
             validate_insert_certificate_auth_args(invalid_args)
         assert "certifier" in str(exc_info.value).lower()
 
-    
     def test_validate_insert_certificate_auth_args_empty_subject(self) -> None:
         """Given: TableCertificateX with empty subject
            When: Call validate_insert_certificate_auth_args
@@ -139,7 +134,6 @@ class TestValidateInsertCertificateAuthArgs:
             validate_insert_certificate_auth_args(invalid_args)
         assert "subject" in str(exc_info.value).lower() or "required" in str(exc_info.value).lower()
 
-    
     def test_validate_insert_certificate_auth_args_invalid_revocation_outpoint(self) -> None:
         """Given: TableCertificateX with invalid revocationOutpoint (missing index)
            When: Call validate_insert_certificate_auth_args
@@ -164,7 +158,6 @@ class TestValidateInsertCertificateAuthArgs:
             validate_insert_certificate_auth_args(invalid_args)
         assert "outpoint" in str(exc_info.value).lower()
 
-    
     def test_validate_insert_certificate_auth_args_signature_odd_length(self) -> None:
         """Given: TableCertificateX with odd-length signature hex
            When: Call validate_insert_certificate_auth_args
@@ -188,7 +181,6 @@ class TestValidateInsertCertificateAuthArgs:
             validate_insert_certificate_auth_args(invalid_args)
         assert "signature" in str(exc_info.value).lower() or "even" in str(exc_info.value).lower()
 
-    
     def test_validate_insert_certificate_auth_args_field_invalid_master_key(self) -> None:
         """Given: TableCertificateX with field containing invalid masterKey (non-hex)
            When: Call validate_insert_certificate_auth_args

@@ -361,9 +361,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             # Match TS tests expected empty result shape
             return {
                 "name": "WoCTsc",
-                "notes": [
-                    {"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}
-                ],
+                "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}],
             }
         raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
 
@@ -416,7 +414,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         if not response.ok:
             raise RuntimeError("Failed to get fiat exchange rates")
         body = response.json() or {}
-        rates = (body.get("rates") or {})
+        rates = body.get("rates") or {}
         base0 = body.get("base") or "USD"
         if currency == base:
             return 1.0
@@ -476,7 +474,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             raise RuntimeError("Failed to get UTXO status")
         return response.json() or {}
 
-    async def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    async def get_script_history(
+        self, script_hash: str, use_next: bool | None = None
+    ) -> dict[str, Any]:  # noqa: ARG002
         """Get script history for a given script hash (TS-compatible response shape).
 
         Returns two arrays, matching TS semantics:

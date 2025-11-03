@@ -83,5 +83,3 @@ def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
         }
     )
     assert vres.get("valid") is True
-
-

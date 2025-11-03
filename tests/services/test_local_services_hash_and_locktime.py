@@ -19,9 +19,7 @@ class TestHashOutputScript:
         # Given
         services = Services("main")
         script_hex = "76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac"
-        expected_le = (
-            "db46d31e84e16e7fb031b3ab375131a7bb65775c0818dc17fe0d4444efb3d0aa"
-        )
+        expected_le = "db46d31e84e16e7fb031b3ab375131a7bb65775c0818dc17fe0d4444efb3d0aa"
 
         # When
         result = services.hash_output_script(script_hex)
@@ -70,5 +68,3 @@ class TestNLockTimeIsFinal:
         # When / Then
         assert services.n_lock_time_is_final(now - 10) is True
         assert services.n_lock_time_is_final(now + 3600) is False
-
-

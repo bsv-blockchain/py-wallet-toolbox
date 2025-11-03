@@ -5,11 +5,10 @@ This module tests UTXO containment checking logic.
 Reference: go-wallet-toolbox/pkg/internal/txutils/contains_utxo_test.go
 """
 
-
 import pytest
 
 try:
-    
+
     from bsv_wallet_toolbox.utils.contains_utxo import contains_utxo
 
     IMPORTS_AVAILABLE = True

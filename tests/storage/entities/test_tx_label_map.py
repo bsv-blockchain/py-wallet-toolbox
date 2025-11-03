@@ -13,7 +13,6 @@ from bsv_wallet_toolbox.storage.entities import TxLabelMap
 class TestTxLabelMapEntity:
     """Test suite for TxLabelMap entity."""
 
-    
     def test_creates_instance_with_default_values(self) -> None:
         """Given: No arguments
            When: Create TxLabelMap with default constructor
@@ -36,7 +35,6 @@ class TestTxLabelMapEntity:
         assert tx_label_map.created_at.timestamp() <= now.timestamp()
         assert tx_label_map.updated_at.timestamp() <= now.timestamp()
 
-    
     def test_creates_instance_with_provided_api_object(self) -> None:
         """Given: API object with all properties
            When: Create TxLabelMap with API object
@@ -60,7 +58,6 @@ class TestTxLabelMapEntity:
         assert tx_label_map.created_at == now
         assert tx_label_map.updated_at == now
 
-    
     def test_getters_and_setters_work_correctly_correctly(self) -> None:
         """Given: TxLabelMap entity
            When: Set and get all properties
@@ -88,7 +85,6 @@ class TestTxLabelMapEntity:
         assert tx_label_map.created_at == now
         assert tx_label_map.updated_at == now
 
-    
     def test_updateapi_does_nothing(self) -> None:
         """Given: TxLabelMap entity
            When: Call update_api
@@ -104,7 +100,6 @@ class TestTxLabelMapEntity:
         # When/Then
         tx_label_map.update_api()  # Should not throw
 
-    
     def test_get_id_throws_error(self) -> None:
         """Given: TxLabelMap entity
            When: Access id property
@@ -121,7 +116,6 @@ class TestTxLabelMapEntity:
         with pytest.raises(Exception):
             _ = tx_label_map.id
 
-    
     def test_equals_checks_equality_correctly(self) -> None:
         """Given: Two TxLabelMap entities with matching data and syncMap
            When: Call equals method
@@ -152,7 +146,6 @@ class TestTxLabelMapEntity:
         # Then
         assert result is True
 
-    
     def test_mergefind_finds_or_creates_entity(self) -> None:
         """Given: Storage with existing TxLabelMap and syncMap
            When: Call merge_find
@@ -180,7 +173,6 @@ class TestTxLabelMapEntity:
         assert result["eo"].transaction_id == 999
         assert result["eo"].tx_label_id == 888
 
-    
     def test_mergenew_inserts_entity(self) -> None:
         """Given: TxLabelMap entity and storage with syncMap
            When: Call merge_new
@@ -219,7 +211,6 @@ class TestTxLabelMapEntity:
         assert inserted_data["transactionId"] == 999
         assert inserted_data["txLabelId"] == 888
 
-    
     def test_mergeexisting_updates_entity(self) -> None:
         """Given: TxLabelMap entity with older data
            When: Call merge_existing with newer data
@@ -266,7 +257,6 @@ class TestTxLabelMapEntity:
         assert updated_data is not None
         assert updated_data["isDeleted"] is True
 
-    
     def test_entityname_returns_correct_value(self) -> None:
         """Given: TxLabelMap entity
            When: Access entity_name property
@@ -282,7 +272,6 @@ class TestTxLabelMapEntity:
         # When/Then
         assert tx_label_map.entity_name == "txLabelMap"
 
-    
     def test_entitytable_returns_correct_value(self) -> None:
         """Given: TxLabelMap entity
            When: Access entity_table property
@@ -298,7 +287,6 @@ class TestTxLabelMapEntity:
         # When/Then
         assert tx_label_map.entity_table == "tx_labels_map"
 
-    
     def test_equals_identifies_matching_entities_entities(self) -> None:
         """Given: Two TxLabelMap entities with matching data and syncMap
            When: Call equals method
@@ -334,7 +322,6 @@ class TestTxLabelMapEntity:
         # When/Then
         assert tx_label_map1.equals(tx_label_map2.to_api(), sync_map) is True
 
-    
     def test_equals_identifies_non_matching_entities_entities(self) -> None:
         """Given: Two TxLabelMap entities with different data
            When: Call equals method with syncMap

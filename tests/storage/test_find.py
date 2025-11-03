@@ -3,7 +3,6 @@
 Reference: wallet-toolbox/test/storage/find.test.ts
 """
 
-
 from datetime import datetime
 
 import pytest
@@ -12,7 +11,6 @@ import pytest
 class Testfind:
     """Test suite for database FIND/SELECT operations."""
 
-    
     def test_find_proventx(self) -> None:
         """Given: Mock storage with test data
            When: Find ProvenTx with empty filter
@@ -31,7 +29,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_proventxreq(self) -> None:
         """Given: Mock storage with test data
            When: Find ProvenTxReq with empty filter
@@ -50,7 +47,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_user(self) -> None:
         """Given: Mock storage with test data
            When: Find User with empty filter
@@ -69,7 +65,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_certificate(self) -> None:
         """Given: Mock storage with test data
            When: Find Certificate with various filters (empty, certifiers, types)
@@ -96,7 +91,6 @@ class Testfind:
         assert len(results_certifiers) >= 0
         assert len(results_types) >= 0
 
-    
     def test_find_certificatefield(self) -> None:
         """Given: Mock storage with test data
            When: Find CertificateField with various filters (empty, userId, fieldName)
@@ -123,7 +117,6 @@ class Testfind:
         assert len(results_user) >= 0
         assert len(results_field) >= 0
 
-    
     def test_find_outputbasket(self) -> None:
         """Given: Mock storage with test data
            When: Find OutputBasket with empty filter and since parameter
@@ -146,7 +139,6 @@ class Testfind:
         assert len(results_all) >= 0
         assert len(results_since) >= 0
 
-    
     def test_find_transaction(self) -> None:
         """Given: Mock storage with test data
            When: Find Transaction with empty filter
@@ -165,7 +157,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_commission(self) -> None:
         """Given: Mock storage with test data
            When: Find Commission with empty filter
@@ -184,7 +175,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_output(self) -> None:
         """Given: Mock storage with test data
            When: Find Output with empty filter
@@ -203,7 +193,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_outputtag(self) -> None:
         """Given: Mock storage with test data
            When: Find OutputTag with empty filter
@@ -222,7 +211,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_outputtagmap(self) -> None:
         """Given: Mock storage with test data
            When: Find OutputTagMap with empty filter
@@ -241,7 +229,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_txlabel(self) -> None:
         """Given: Mock storage with test data
            When: Find TxLabel with empty filter
@@ -260,7 +247,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_txlabelmap(self) -> None:
         """Given: Mock storage with test data
            When: Find TxLabelMap with empty filter
@@ -279,7 +265,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_monitorevent(self) -> None:
         """Given: Mock storage with test data
            When: Find MonitorEvent with empty filter
@@ -298,7 +283,6 @@ class Testfind:
         # Then
         assert len(results) >= 0
 
-    
     def test_find_syncstate(self) -> None:
         """Given: Mock storage with test data
            When: Find SyncState with empty filter

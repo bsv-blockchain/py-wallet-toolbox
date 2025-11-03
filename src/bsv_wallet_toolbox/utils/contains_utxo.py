@@ -12,5 +12,3 @@ def contains_utxo(details: Iterable[dict], outpoint: dict) -> bool:
         if d.get("txid") == target_txid and (d.get("vout") == target_vout or d.get("index") == target_vout):
             return True
     return False
-
-

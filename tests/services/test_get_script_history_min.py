@@ -28,5 +28,3 @@ async def test_get_script_history_minimal_empty() -> None:
     assert isinstance(res, dict)
     assert res.get("confirmed") == []
     assert res.get("unconfirmed") == []
-
-

@@ -164,7 +164,6 @@ def test_get_valid_beef_for_txid_min_bytes(sp):
         s.add(req)
         s.flush()
         s.commit()
-    
+
     beef = sp.get_valid_beef_for_txid(txid, known_txids=[txid])
     assert isinstance(beef, (bytes, bytearray))
-

@@ -21,7 +21,6 @@ class TestValidateCreateActionArgs:
     - lockingScript: hexadecimal string with even length
     """
 
-    
     def test_validate_create_action_args_valid(self) -> None:
         """Given: Valid CreateActionArgs
            When: Call validate_create_action_args
@@ -46,7 +45,6 @@ class TestValidateCreateActionArgs:
         # When / Then
         validate_create_action_args(valid_args)  # Should not raise
 
-    
     def test_validate_create_action_args_empty_description(self) -> None:
         """Given: CreateActionArgs with empty description
            When: Call validate_create_action_args
@@ -67,7 +65,6 @@ class TestValidateCreateActionArgs:
             validate_create_action_args(invalid_args)
         assert "description" in str(exc_info.value).lower()
 
-    
     def test_validate_create_action_args_invalid_locking_script_not_hex(self) -> None:
         """Given: CreateActionArgs with non-hexadecimal lockingScript
            When: Call validate_create_action_args
@@ -88,7 +85,6 @@ class TestValidateCreateActionArgs:
             validate_create_action_args(invalid_args)
         assert "lockingscript" in str(exc_info.value).lower() or "hex" in str(exc_info.value).lower()
 
-    
     def test_validate_create_action_args_invalid_locking_script_odd_length(self) -> None:
         """Given: CreateActionArgs with odd-length lockingScript
            When: Call validate_create_action_args

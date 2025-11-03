@@ -47,8 +47,7 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
 
     # Storage over available change
     change_store: list[dict[str, Any]] = [
-        {"satoshis": int(c["satoshis"]), "outputId": int(c["outputId"]), "spendable": True}
-        for c in available_change
+        {"satoshis": int(c["satoshis"]), "outputId": int(c["outputId"]), "spendable": True} for c in available_change
     ]
     change_store.sort(key=lambda c: (c["satoshis"], c["outputId"]))
 
@@ -210,9 +209,9 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
         None,
     )
     if fee_excess() < 0 and has_max_possible_index is not None:
-        fixed_outputs[has_max_possible_index]["satoshis"] = int(
-            fixed_outputs[has_max_possible_index]["satoshis"]
-        ) + fee_excess()
+        fixed_outputs[has_max_possible_index]["satoshis"] = (
+            int(fixed_outputs[has_max_possible_index]["satoshis"]) + fee_excess()
+        )
 
     if fee_excess() < 0:
         release_allocated_change_inputs()
@@ -362,5 +361,3 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
     result["satsPerKb"] = sats_per_kb
 
     return result
-
-

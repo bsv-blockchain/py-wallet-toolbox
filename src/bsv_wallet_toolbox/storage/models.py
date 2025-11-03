@@ -20,7 +20,6 @@ from sqlalchemy.orm import declarative_base, mapped_column, Mapped, relationship
 from sqlalchemy import LargeBinary, text
 from sqlalchemy.dialects import mysql, postgresql
 
-
 Base = declarative_base()
 
 
@@ -100,9 +99,7 @@ class User(TimestampMixin, Base):
     identity_key: Mapped[str] = mapped_column("identityKey", String(130), nullable=False)
     active_storage: Mapped[str] = mapped_column("activeStorage", String(130), nullable=False, default="")
 
-    __table_args__ = (
-        UniqueConstraint("identityKey", name="ux_users_identity"),
-    )
+    __table_args__ = (UniqueConstraint("identityKey", name="ux_users_identity"),)
 
 
 # 03 SyncState
@@ -168,7 +165,9 @@ class Transaction(TimestampMixin, Base):
 
     transaction_id: Mapped[int] = mapped_column("transactionId", Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.userId", ondelete="CASCADE"), nullable=False)
-    proven_tx_id: Mapped[Optional[int]] = mapped_column("provenTxId", ForeignKey("proven_txs.provenTxId"), nullable=True)
+    proven_tx_id: Mapped[Optional[int]] = mapped_column(
+        "provenTxId", ForeignKey("proven_txs.provenTxId"), nullable=True
+    )
     status: Mapped[str] = mapped_column(String(64), nullable=False)
     reference: Mapped[str] = mapped_column(String(64), nullable=False)
     is_outgoing: Mapped[bool] = mapped_column("isOutgoing", Boolean, nullable=False, default=False)
@@ -220,8 +219,12 @@ class Output(TimestampMixin, Base):
 
     output_id: Mapped[int] = mapped_column("outputId", Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.userId", ondelete="CASCADE"), nullable=False)
-    transaction_id: Mapped[int] = mapped_column("transactionId", ForeignKey("transactions.transactionId"), nullable=False)
-    basket_id: Mapped[Optional[int]] = mapped_column("basketId", ForeignKey("output_baskets.basketId", ondelete="SET NULL"))
+    transaction_id: Mapped[int] = mapped_column(
+        "transactionId", ForeignKey("transactions.transactionId"), nullable=False
+    )
+    basket_id: Mapped[Optional[int]] = mapped_column(
+        "basketId", ForeignKey("output_baskets.basketId", ondelete="SET NULL")
+    )
     spendable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     change: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     vout: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -235,7 +238,9 @@ class Output(TimestampMixin, Base):
     derivation_prefix: Mapped[Optional[str]] = mapped_column("derivationPrefix", String(200), nullable=True)
     derivation_suffix: Mapped[Optional[str]] = mapped_column("derivationSuffix", String(200), nullable=True)
     custom_instructions: Mapped[Optional[str]] = mapped_column("customInstructions", String(2500), nullable=True)
-    spent_by: Mapped[Optional[int]] = mapped_column("spentBy", ForeignKey("transactions.transactionId", ondelete="SET NULL"))
+    spent_by: Mapped[Optional[int]] = mapped_column(
+        "spentBy", ForeignKey("transactions.transactionId", ondelete="SET NULL")
+    )
     sequence_number: Mapped[Optional[int]] = mapped_column("sequenceNumber", Integer, nullable=True)
     spending_description: Mapped[Optional[str]] = mapped_column("spendingDescription", String(2048), nullable=True)
     script_length: Mapped[Optional[int]] = mapped_column(
@@ -248,7 +253,6 @@ class Output(TimestampMixin, Base):
         "lockingScript", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=True
     )
     spent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    
 
     user: Mapped[User] = relationship("User")
 
@@ -281,17 +285,13 @@ class ProvenTx(TimestampMixin, Base):
 
     proven_tx_id: Mapped[int] = mapped_column("provenTxId", Integer, primary_key=True)
     txid: Mapped[str] = mapped_column(String(64), nullable=False)
-    height: Mapped[int] = mapped_column(
-        Integer().with_variant(mysql.INTEGER(unsigned=True), "mysql"), nullable=False
-    )
+    height: Mapped[int] = mapped_column(Integer().with_variant(mysql.INTEGER(unsigned=True), "mysql"), nullable=False)
 
     index: Mapped[int] = mapped_column(Integer, nullable=False)
     merkle_path: Mapped[bytes] = mapped_column(
         "merklePath", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=False
     )
-    raw_tx: Mapped[bytes] = mapped_column(
-        "rawTx", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=False
-    )
+    raw_tx: Mapped[bytes] = mapped_column("rawTx", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=False)
     block_hash: Mapped[str] = mapped_column("blockHash", String(64), nullable=False)
     merkle_root: Mapped[str] = mapped_column("merkleRoot", String(64), nullable=False)
 
@@ -333,9 +333,7 @@ class ProvenTxReq(TimestampMixin, Base):
     batch: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     history: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     notify: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
-    raw_tx: Mapped[bytes] = mapped_column(
-        "rawTx", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=False
-    )
+    raw_tx: Mapped[bytes] = mapped_column("rawTx", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=False)
     input_beef: Mapped[Optional[bytes]] = mapped_column(
         "inputBEEF", LargeBinary().with_variant(mysql.LONGBLOB, "mysql"), nullable=True
     )
@@ -381,9 +379,7 @@ class Certificate(TimestampMixin, Base):
 
     user: Mapped[User] = relationship("User")
 
-    __table_args__ = (
-        UniqueConstraint("userId", "type", "certifier", "serialNumber", name="ux_certificates_unique"),
-    )
+    __table_args__ = (UniqueConstraint("userId", "type", "certifier", "serialNumber", name="ux_certificates_unique"),)
 
 
 # 09 CertificateField
@@ -407,7 +403,9 @@ class CertificateField(TimestampMixin, Base):
     """
 
     certificate_field_id: Mapped[int] = mapped_column("certificateFieldId", Integer, primary_key=True)
-    certificate_id: Mapped[int] = mapped_column("certificateId", ForeignKey("certificates.certificateId", ondelete="CASCADE"), nullable=False)
+    certificate_id: Mapped[int] = mapped_column(
+        "certificateId", ForeignKey("certificates.certificateId", ondelete="CASCADE"), nullable=False
+    )
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.userId", ondelete="CASCADE"), nullable=False)
     field_name: Mapped[str] = mapped_column("fieldName", String(100), nullable=False)
     field_value: Mapped[str] = mapped_column("fieldValue", String, nullable=False)
@@ -450,9 +448,7 @@ class OutputBasket(TimestampMixin, Base):
 
     user: Mapped[User] = relationship("User")
 
-    __table_args__ = (
-        UniqueConstraint("userId", "name", name="ux_output_baskets_user_name"),
-    )
+    __table_args__ = (UniqueConstraint("userId", "name", name="ux_output_baskets_user_name"),)
 
 
 # 11 OutputTag
@@ -482,9 +478,7 @@ class OutputTag(TimestampMixin, Base):
 
     user: Mapped[User] = relationship("User")
 
-    __table_args__ = (
-        UniqueConstraint("userId", "tag", name="ux_output_tags_user_tag"),
-    )
+    __table_args__ = (UniqueConstraint("userId", "tag", name="ux_output_tags_user_tag"),)
 
 
 # 12 OutputTagMap
@@ -507,8 +501,12 @@ class OutputTagMap(TimestampMixin, Base):
         toolbox/ts-wallet-toolbox/src/storage/schema/KnexMigrations.ts
     """
 
-    output_id: Mapped[int] = mapped_column("outputId", ForeignKey("outputs.outputId", ondelete="CASCADE"), primary_key=True)
-    output_tag_id: Mapped[int] = mapped_column("outputTagId", ForeignKey("output_tags.outputTagId", ondelete="CASCADE"), primary_key=True)
+    output_id: Mapped[int] = mapped_column(
+        "outputId", ForeignKey("outputs.outputId", ondelete="CASCADE"), primary_key=True
+    )
+    output_tag_id: Mapped[int] = mapped_column(
+        "outputTagId", ForeignKey("output_tags.outputTagId", ondelete="CASCADE"), primary_key=True
+    )
     is_deleted: Mapped[bool] = mapped_column("isDeleted", Boolean, nullable=False, default=False)
 
     output: Mapped[Output] = relationship("Output")
@@ -547,9 +545,7 @@ class TxLabel(TimestampMixin, Base):
 
     user: Mapped[User] = relationship("User")
 
-    __table_args__ = (
-        UniqueConstraint("userId", "label", name="ux_tx_labels_user_label"),
-    )
+    __table_args__ = (UniqueConstraint("userId", "label", name="ux_tx_labels_user_label"),)
 
 
 # 14 TxLabelMap
@@ -572,8 +568,12 @@ class TxLabelMap(TimestampMixin, Base):
         toolbox/ts-wallet-toolbox/src/storage/schema/KnexMigrations.ts
     """
 
-    transaction_id: Mapped[int] = mapped_column("transactionId", ForeignKey("transactions.transactionId", ondelete="CASCADE"), primary_key=True)
-    tx_label_id: Mapped[int] = mapped_column("txLabelId", ForeignKey("tx_labels.txLabelId", ondelete="CASCADE"), primary_key=True)
+    transaction_id: Mapped[int] = mapped_column(
+        "transactionId", ForeignKey("transactions.transactionId", ondelete="CASCADE"), primary_key=True
+    )
+    tx_label_id: Mapped[int] = mapped_column(
+        "txLabelId", ForeignKey("tx_labels.txLabelId", ondelete="CASCADE"), primary_key=True
+    )
     is_deleted: Mapped[bool] = mapped_column("isDeleted", Boolean, nullable=False, default=False)
 
     transaction: Mapped[Transaction] = relationship("Transaction")
@@ -607,7 +607,9 @@ class Commission(TimestampMixin, Base):
 
     commission_id: Mapped[int] = mapped_column("commissionId", Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column("userId", ForeignKey("users.userId", ondelete="CASCADE"), nullable=False)
-    transaction_id: Mapped[int] = mapped_column("transactionId", ForeignKey("transactions.transactionId", ondelete="CASCADE"), nullable=False, unique=True)
+    transaction_id: Mapped[int] = mapped_column(
+        "transactionId", ForeignKey("transactions.transactionId", ondelete="CASCADE"), nullable=False, unique=True
+    )
     satoshis: Mapped[int] = mapped_column(Integer, nullable=False)
     key_offset: Mapped[str] = mapped_column("keyOffset", String(130), nullable=False)
     is_redeemed: Mapped[bool] = mapped_column("isRedeemed", Boolean, nullable=False, default=False)
@@ -617,9 +619,7 @@ class Commission(TimestampMixin, Base):
 
     user: Mapped[User] = relationship("User")
 
-    __table_args__ = (
-        Index("ix_commissions_tx", "transactionId"),
-    )
+    __table_args__ = (Index("ix_commissions_tx", "transactionId"),)
 
 
 # 16 MonitorEvent
@@ -646,8 +646,4 @@ class MonitorEvent(TimestampMixin, Base):
     event: Mapped[str] = mapped_column(String(64), nullable=False)
     details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        Index("ix_monitor_events_event", "event"),
-    )
-
-
+    __table_args__ = (Index("ix_monitor_events_event", "event"),)

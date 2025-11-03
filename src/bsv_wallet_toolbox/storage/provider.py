@@ -359,7 +359,7 @@ class StorageProvider:
                     tags = [t for t in tags if t != "unspent"]
 
             # Base filter: user, spendability unless include_spent
-            base = (Output.user_id == user_id)
+            base = Output.user_id == user_id
             if specop_include_spent is not None:
                 include_spent = specop_include_spent
             if not include_spent:
@@ -372,7 +372,9 @@ class StorageProvider:
             # Optional basket name filter (may be overridden by SpecOp)
             if basket_name:
                 bq = select(OutputBasket.basket_id).where(
-                    (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
+                    (OutputBasket.user_id == user_id)
+                    & (OutputBasket.name == basket_name)
+                    & (OutputBasket.is_deleted.is_(False))
                 )
                 _exec_result = s.execute(bq)
                 bid = _exec_result.scalar_one_or_none()
@@ -383,12 +385,16 @@ class StorageProvider:
             # Optional tag filters
             if tags:
                 # Resolve tag ids for user
-                tag_ids = s.execute(
-                    select(OutputTag.output_tag_id)
-                    .where(OutputTag.user_id == user_id)
-                    .where(OutputTag.is_deleted.is_(False))
-                    .where(OutputTag.tag.in_(tags))
-                ).scalars().all()
+                tag_ids = (
+                    s.execute(
+                        select(OutputTag.output_tag_id)
+                        .where(OutputTag.user_id == user_id)
+                        .where(OutputTag.is_deleted.is_(False))
+                        .where(OutputTag.tag.in_(tags))
+                    )
+                    .scalars()
+                    .all()
+                )
                 if tag_query_mode == "all" and len(tag_ids) < len(tags):
                     return {"totalOutputs": 0, "outputs": []}
                 if tag_query_mode != "all" and len(tag_ids) == 0 and len(tags) > 0:
@@ -397,7 +403,9 @@ class StorageProvider:
                 if len(tag_ids) > 0:
                     # Build subquery counting tag matches per output
                     m = (
-                        select(OutputTagMap.output_id, func.count(func.distinct(OutputTagMap.output_tag_id)).label("tc"))
+                        select(
+                            OutputTagMap.output_id, func.count(func.distinct(OutputTagMap.output_tag_id)).label("tc")
+                        )
                         .where(OutputTagMap.output_tag_id.in_(tag_ids))
                         .where(OutputTagMap.is_deleted.is_(False))
                         .group_by(OutputTagMap.output_id)
@@ -588,7 +596,9 @@ class StorageProvider:
                 chunks.append(bytes(ib))
         return b"".join(chunks)
 
-    def _build_recursive_beef_for_txids(self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None) -> bytes:
+    def _build_recursive_beef_for_txids(
+        self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None
+    ) -> bytes:
         """Construct a more complete BEEF-like binary including ancestors.
 
         Summary:
@@ -786,7 +796,9 @@ class StorageProvider:
                 q = q.where(Output.spendable.is_(bool(spendable)))
             if basket_name:
                 bq = select(OutputBasket.basket_id).where(
-                    (OutputBasket.user_id == user_id) & (OutputBasket.name == basket_name) & (OutputBasket.is_deleted.is_(False))
+                    (OutputBasket.user_id == user_id)
+                    & (OutputBasket.name == basket_name)
+                    & (OutputBasket.is_deleted.is_(False))
                 )
                 _exec_result = s.execute(bq)
                 bid = _exec_result.scalar_one_or_none()
@@ -1220,10 +1232,10 @@ class StorageProvider:
             q = select(ProvenTxReq).where(ProvenTxReq.txid == action_reference)
             _result = s.execute(q)
             req = _result.scalar_one_or_none()
-            
+
             if req is None:
                 return 0
-            
+
             req.status = "aborted"
             s.add(req)
             s.flush()
@@ -1248,18 +1260,29 @@ class StorageProvider:
         with session_scope(self.SessionLocal) as s:
             # Truncate all tables in dependency order
             tables_to_truncate = [
-                OutputTagMap, TxLabelMap, OutputTag, TxLabel,
-                OutputBasket, Output, Commission,
-                ProvenTxReq, ProvenTx, Certificate, CertificateField,
-                Transaction, SyncState, User, Settings
+                OutputTagMap,
+                TxLabelMap,
+                OutputTag,
+                TxLabel,
+                OutputBasket,
+                Output,
+                Commission,
+                ProvenTxReq,
+                ProvenTx,
+                Certificate,
+                CertificateField,
+                Transaction,
+                SyncState,
+                User,
+                Settings,
             ]
-            
+
             for table_model in tables_to_truncate:
                 try:
                     s.query(table_model).delete()
                 except Exception:
                     pass
-            
+
             s.commit()
 
     def insert_certificate_auth(self, auth: dict[str, Any], certificate_api: dict[str, Any]) -> int:
@@ -1280,14 +1303,14 @@ class StorageProvider:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
         user_id = int(auth["userId"])
-        
+
         with session_scope(self.SessionLocal) as s:
             cert = Certificate(
                 user_id=user_id,
                 type=certificate_api.get("type", ""),
                 certifier=certificate_api.get("certifier", ""),
                 serial_number=certificate_api.get("serialNumber", ""),
-                is_deleted=False
+                is_deleted=False,
             )
             s.add(cert)
             s.flush()
@@ -1311,18 +1334,17 @@ class StorageProvider:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
         user_id = int(auth["userId"])
-        
+
         with session_scope(self.SessionLocal) as s:
             q = select(Certificate).where(
-                (Certificate.certificate_id == certificate_id) & 
-                (Certificate.user_id == user_id)
+                (Certificate.certificate_id == certificate_id) & (Certificate.user_id == user_id)
             )
             _result = s.execute(q)
             cert = _result.scalar_one_or_none()
-            
+
             if cert is None:
                 return 0
-            
+
             cert.is_deleted = True
             s.add(cert)
             s.flush()
@@ -1342,19 +1364,21 @@ class StorageProvider:
             Dict with status counts.
         """
         user_id = int(auth["userId"])
-        
+
         with session_scope(self.SessionLocal) as s:
-            q = select(ProvenTxReq.status, func.count()).where(
-                ProvenTxReq.txid != ""  # placeholder for user filter
-            ).group_by(ProvenTxReq.status)
-            
+            q = (
+                select(ProvenTxReq.status, func.count())
+                .where(ProvenTxReq.txid != "")  # placeholder for user filter
+                .group_by(ProvenTxReq.status)
+            )
+
             _result = s.execute(q)
             rows = _result.all()
-            
+
             summary = {}
             for status, count in rows:
                 summary[status] = int(count)
-            
+
             return summary
 
     # ------------------------------------------------------------------
@@ -1380,14 +1404,14 @@ class StorageProvider:
         """
         user_id = int(auth["userId"])
         is_new_tx = args.get("isNewTx", True)
-        
+
         if not is_new_tx:
             raise ValueError("createAction requires isNewTx=true for new transactions")
-        
+
         with session_scope(self.SessionLocal) as s:
             # Generate reference (random base64-like string)
             reference = secrets.token_urlsafe(16)
-            
+
             # Create new Transaction record
             tx = Transaction(
                 user_id=user_id,
@@ -1398,13 +1422,13 @@ class StorageProvider:
                 version=args.get("version", 2),
                 lock_time=args.get("lockTime", 0),
                 description=args.get("description", ""),
-                input_beef=None
+                input_beef=None,
             )
             s.add(tx)
             s.flush()
-            
+
             transaction_id = tx.transaction_id
-            
+
             # Create ProvenTxReq for this action
             req = ProvenTxReq(
                 txid=reference,  # Use reference as txid for tracking
@@ -1413,33 +1437,35 @@ class StorageProvider:
                 notified=False,
                 raw_tx=b"",  # Placeholder
                 history="{}",
-                notify="{}"
+                notify="{}",
             )
             s.add(req)
             s.flush()
-            
+
             # Process inputs (minimal: just collect info)
             inputs_list = []
             input_satoshis_total = 0
-            
+
             for i, inp in enumerate(args.get("inputs", [])):
                 input_satoshis_total += inp.get("satoshis", 0)
-                inputs_list.append({
-                    "index": i,
-                    "outpoint": inp.get("outpoint", ""),
-                    "satoshis": inp.get("satoshis", 0),
-                    "unlockingScript": inp.get("unlockingScript", "")
-                })
-            
+                inputs_list.append(
+                    {
+                        "index": i,
+                        "outpoint": inp.get("outpoint", ""),
+                        "satoshis": inp.get("satoshis", 0),
+                        "unlockingScript": inp.get("unlockingScript", ""),
+                    }
+                )
+
             # Process outputs (minimal: just collect info)
             outputs_list = []
             output_satoshis_total = 0
             change_vouts = []
-            
+
             for i, out in enumerate(args.get("outputs", [])):
                 satoshis = out.get("satoshis", 0)
                 output_satoshis_total += satoshis
-                
+
                 # Create Output record
                 output_record = Output(
                     user_id=user_id,
@@ -1453,26 +1479,28 @@ class StorageProvider:
                     purpose=out.get("purpose", ""),
                     type=out.get("type", ""),
                     txid=None,
-                    spent=False
+                    spent=False,
                 )
                 s.add(output_record)
                 s.flush()
-                
+
                 if out.get("change", False):
                     change_vouts.append(i)
-                
-                outputs_list.append({
-                    "index": i,
-                    "satoshis": satoshis,
-                    "lockingScript": out.get("lockingScript", ""),
-                    "change": out.get("change", False)
-                })
-            
+
+                outputs_list.append(
+                    {
+                        "index": i,
+                        "satoshis": satoshis,
+                        "lockingScript": out.get("lockingScript", ""),
+                        "change": out.get("change", False),
+                    }
+                )
+
             # Update transaction satoshis (outputs - inputs)
             satoshis = output_satoshis_total - input_satoshis_total
             tx.satoshis = satoshis
             s.add(tx)
-            
+
             # Return result
             result = {
                 "reference": reference,
@@ -1482,9 +1510,9 @@ class StorageProvider:
                 "outputs": outputs_list,
                 "derivationPrefix": args.get("derivationPrefix", ""),
                 "inputBeef": None,
-                "noSendChangeOutputVouts": change_vouts if args.get("isNoSend", False) else None
+                "noSendChangeOutputVouts": change_vouts if args.get("isNoSend", False) else None,
             }
-            
+
             return result
 
     # ------------------------------------------------------------------
@@ -1515,46 +1543,38 @@ class StorageProvider:
         is_no_send = args.get("isNoSend", False)
         is_delayed = args.get("isDelayed", False)
         is_send_with = args.get("isSendWith", False)
-        
+
         # Basic validation
         if not reference or not txid or raw_tx is None:
             raise ValueError("processAction requires reference, txid, and rawTx")
-        
+
         # Convert rawTx to bytes if hex string
         if isinstance(raw_tx, str):
             raw_tx = bytes.fromhex(raw_tx)
         elif isinstance(raw_tx, list):
             raw_tx = bytes(raw_tx)
-        
+
         with session_scope(self.SessionLocal) as s:
             # Find Transaction by reference
-            tq = select(Transaction).where(
-                (Transaction.user_id == user_id) & (Transaction.reference == reference)
-            )
+            tq = select(Transaction).where((Transaction.user_id == user_id) & (Transaction.reference == reference))
             _tx_result = s.execute(tq)
             tx = _tx_result.scalar_one_or_none()
-            
+
             if tx is None:
                 raise ValueError(f"Transaction with reference {reference} not found")
-            
+
             # Verify transaction status is "unsigned" or "unprocessed"
             if tx.status not in ("unsigned", "unprocessed"):
                 raise ValueError(f"Invalid transaction status: {tx.status}")
-            
+
             # Find or create ProvenTxReq
             rq = select(ProvenTxReq).where(ProvenTxReq.txid == txid)
             _req_result = s.execute(rq)
             req = _req_result.scalar_one_or_none()
-            
+
             if req is None:
                 req = ProvenTxReq(
-                    txid=txid,
-                    status="pending",
-                    attempts=0,
-                    notified=False,
-                    raw_tx=raw_tx,
-                    history="{}",
-                    notify="{}"
+                    txid=txid, status="pending", attempts=0, notified=False, raw_tx=raw_tx, history="{}", notify="{}"
                 )
                 s.add(req)
                 s.flush()
@@ -1562,7 +1582,7 @@ class StorageProvider:
                 # Update existing req
                 req.raw_tx = raw_tx
                 s.add(req)
-            
+
             # Determine status based on isNoSend/isDelayed/isSendWith
             if is_no_send and not is_send_with:
                 tx_status = "nosend"
@@ -1575,18 +1595,18 @@ class StorageProvider:
                 req_status = "unprocessed"
             else:
                 raise ValueError("Invalid status combination")
-            
+
             # Update Transaction status
             tx.status = tx_status
             s.add(tx)
-            
+
             # Update ProvenTxReq status
             req.status = req_status
             s.add(req)
-            
+
             # Flush to ensure IDs are available
             s.flush()
-            
+
             # Return result
             result = {
                 "reference": reference,
@@ -1594,11 +1614,10 @@ class StorageProvider:
                 "status": req_status,
                 "transactionStatus": tx_status,
                 "sendWithResults": None,
-                "notDelayedResults": None
+                "notDelayedResults": None,
             }
-            
-            return result
 
+            return result
 
     # =====================================================================
     # =====================================================================
@@ -1643,25 +1662,25 @@ class StorageProvider:
     # =====================================================================
 
     # =====================================================================
-    
+
     # Mapping of table names to ORM models
     _MODEL_MAP = {
-        'user': User,
-        'certificate': Certificate,
-        'certificate_field': CertificateField,
-        'commission': Commission,
-        'monitor_event': MonitorEvent,
-        'output': Output,
-        'output_basket': OutputBasket,
-        'output_tag': OutputTag,
-        'output_tag_map': OutputTagMap,
-        'proven_tx': ProvenTx,
-        'proven_tx_req': ProvenTxReq,
-        'sync_state': SyncState,
-        'transaction': Transaction,
-        'tx_label': TxLabel,
-        'tx_label_map': TxLabelMap,
-        'settings': Settings,
+        "user": User,
+        "certificate": Certificate,
+        "certificate_field": CertificateField,
+        "commission": Commission,
+        "monitor_event": MonitorEvent,
+        "output": Output,
+        "output_basket": OutputBasket,
+        "output_tag": OutputTag,
+        "output_tag_map": OutputTagMap,
+        "proven_tx": ProvenTx,
+        "proven_tx_req": ProvenTxReq,
+        "sync_state": SyncState,
+        "transaction": Transaction,
+        "tx_label": TxLabel,
+        "tx_label_map": TxLabelMap,
+        "settings": Settings,
     }
 
     def _get_model(self, table_name: str) -> type:
@@ -1672,39 +1691,40 @@ class StorageProvider:
 
     def _insert_generic(self, table_name: str, data: dict[str, Any], trx: Any = None) -> int:
         """Generic insert for any table. Returns primary key.
-        
+
         Supports inserting records into any mapped SQLAlchemy table. Automatically
         handles primary key extraction and session management.
-        
+
         Args:
             table_name: Name of table to insert into (e.g., 'user', 'output')
             data: Dictionary of column values (use snake_case Python attribute names)
             trx: Optional database transaction/session. If provided, uses that session
                  instead of creating a new one.
-        
+
         Returns:
             int: Primary key value of inserted record
-        
+
         Raises:
             ValueError: If table_name is not recognized
             sqlalchemy.exc.IntegrityError: If unique or FK constraints violated
-        
+
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
         """
         model = self._get_model(table_name)
         obj = model(**data)
-        
+
         if trx:
             session = trx
         else:
             session = self.SessionLocal()
-        
+
         try:
             session.add(obj)
             session.flush()
             # Get primary key from ORM object
             from sqlalchemy import inspect
+
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
             pk_value = getattr(obj, pk_col.name)
@@ -1713,134 +1733,137 @@ class StorageProvider:
             if not trx:
                 session.close()
 
-    def _find_generic(self, table_name: str, args: dict[str, Any] | None = None, 
-                     limit: int | None = None, offset: int = 0) -> list[dict[str, Any]]:
+    def _find_generic(
+        self, table_name: str, args: dict[str, Any] | None = None, limit: int | None = None, offset: int = 0
+    ) -> list[dict[str, Any]]:
         """Generic find for any table. Returns list of dicts in camelCase API format.
-        
+
         Constructs a WHERE clause from partial filters and applies LIMIT/OFFSET.
         Results are converted from ORM objects to camelCase dictionaries.
-        
+
         Args:
             table_name: Name of table to query
             args: Dictionary of filter conditions (column_name: value)
                   All filters are AND'ed together (exact match equality)
             limit: Maximum number of rows to return (None = no limit)
             offset: Number of rows to skip (for pagination)
-        
+
         Returns:
             list[dict]: Array of records in camelCase API format
-        
+
         Example:
             outputs = sp._find_generic('output', {'userId': 42, 'vout': 0}, limit=10)
-        
+
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
         """
         model = self._get_model(table_name)
-        
+
         with session_scope(self.SessionLocal) as s:
             query = select(model)
-            
+
             if args:
                 for key, value in args.items():
                     if hasattr(model, key):
                         query = query.where(getattr(model, key) == value)
-            
+
             if limit:
                 query = query.limit(limit)
             if offset:
                 query = query.offset(offset)
-            
+
             result = s.execute(query).scalars().all()
             return [self._model_to_dict(obj) for obj in result]
 
     def _count_generic(self, table_name: str, args: dict[str, Any] | None = None) -> int:
         """Generic count for any table with optional filters.
-        
+
         Counts rows matching the provided filter conditions.
-        
+
         Args:
             table_name: Name of table to count
             args: Optional filter conditions (same format as _find_generic)
-        
+
         Returns:
             int: Number of matching rows (0 if none match)
-        
+
         Example:
             count = sp._count_generic('user', {'userId': 42})
-        
+
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
         """
         model = self._get_model(table_name)
-        
+
         with session_scope(self.SessionLocal) as s:
             query = select(func.count()).select_from(model)
-            
+
             if args:
                 for key, value in args.items():
                     if hasattr(model, key):
                         query = query.where(getattr(model, key) == value)
-            
+
             result = s.execute(query).scalar()
             return result or 0
 
     def _update_generic(self, table_name: str, pk_value: int, patch: dict[str, Any]) -> int:
         """Generic update for any table by primary key.
-        
+
         Updates specified columns in a single row identified by primary key.
-        
+
         Args:
             table_name: Name of table to update
             pk_value: Value of primary key (e.g., user_id=42)
             patch: Dictionary of columns to update (use snake_case Python names)
-        
+
         Returns:
             int: Number of rows updated (1 if found and updated, 0 if not found)
-        
+
         Example:
             updated = sp._update_generic('user', 42, {'activeStorage': 'storage2'})
-        
+
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
         """
         model = self._get_model(table_name)
-        
+
         with session_scope(self.SessionLocal) as s:
             from sqlalchemy import inspect
+
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
-            
+
             query = select(model).where(getattr(model, pk_col.name) == pk_value)
             obj = s.execute(query).scalar_one_or_none()
-            
+
             if not obj:
                 return 0
-            
+
             for key, value in patch.items():
                 if hasattr(obj, key):
                     setattr(obj, key, value)
-            
+
             s.commit()
             return 1
 
     def _model_to_dict(self, obj: Any) -> dict[str, Any]:
         """Convert ORM object to camelCase dict."""
         from sqlalchemy import inspect
+
         mapper = inspect(obj.__class__)
         result = {}
-        
+
         for column in mapper.columns:
             value = getattr(obj, column.name)
             result[self._to_api_key(column.name)] = value
-        
+
         return result
 
     @staticmethod
     def _to_api_key(snake_case: str) -> str:
         """Convert snake_case to camelCase."""
-        parts = snake_case.split('_')
-        return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+        parts = snake_case.split("_")
+        return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
     # =====================================================================
     # TABLE WRAPPERS: INSERT methods (15 tables)
@@ -1848,63 +1871,63 @@ class StorageProvider:
 
     def insert_user(self, data: dict[str, Any]) -> int:
         """Insert User record."""
-        return self._insert_generic('user', data)
+        return self._insert_generic("user", data)
 
     def insert_certificate(self, data: dict[str, Any]) -> int:
         """Insert Certificate record."""
-        return self._insert_generic('certificate', data)
+        return self._insert_generic("certificate", data)
 
     def insert_certificate_field(self, data: dict[str, Any]) -> int:
         """Insert CertificateField record."""
-        return self._insert_generic('certificate_field', data)
+        return self._insert_generic("certificate_field", data)
 
     def insert_commission(self, data: dict[str, Any]) -> int:
         """Insert Commission record."""
-        return self._insert_generic('commission', data)
+        return self._insert_generic("commission", data)
 
     def insert_monitor_event(self, data: dict[str, Any]) -> int:
         """Insert MonitorEvent record."""
-        return self._insert_generic('monitor_event', data)
+        return self._insert_generic("monitor_event", data)
 
     def insert_output(self, data: dict[str, Any]) -> int:
         """Insert Output record."""
-        return self._insert_generic('output', data)
+        return self._insert_generic("output", data)
 
     def insert_output_basket(self, data: dict[str, Any]) -> int:
         """Insert OutputBasket record."""
-        return self._insert_generic('output_basket', data)
+        return self._insert_generic("output_basket", data)
 
     def insert_output_tag(self, data: dict[str, Any]) -> int:
         """Insert OutputTag record."""
-        return self._insert_generic('output_tag', data)
+        return self._insert_generic("output_tag", data)
 
     def insert_output_tag_map(self, data: dict[str, Any]) -> int:
         """Insert OutputTagMap record."""
-        return self._insert_generic('output_tag_map', data)
+        return self._insert_generic("output_tag_map", data)
 
     def insert_proven_tx(self, data: dict[str, Any]) -> int:
         """Insert ProvenTx record."""
-        return self._insert_generic('proven_tx', data)
+        return self._insert_generic("proven_tx", data)
 
     def insert_proven_tx_req(self, data: dict[str, Any]) -> int:
         """Insert ProvenTxReq record."""
-        return self._insert_generic('proven_tx_req', data)
+        return self._insert_generic("proven_tx_req", data)
 
     def insert_sync_state(self, data: dict[str, Any]) -> int:
         """Insert SyncState record."""
-        return self._insert_generic('sync_state', data)
+        return self._insert_generic("sync_state", data)
 
     def insert_transaction(self, data: dict[str, Any]) -> int:
         """Insert Transaction record."""
-        return self._insert_generic('transaction', data)
+        return self._insert_generic("transaction", data)
 
     def insert_tx_label(self, data: dict[str, Any]) -> int:
         """Insert TxLabel record."""
-        return self._insert_generic('tx_label', data)
+        return self._insert_generic("tx_label", data)
 
     def insert_tx_label_map(self, data: dict[str, Any]) -> int:
         """Insert TxLabelMap record."""
-        return self._insert_generic('tx_label_map', data)
+        return self._insert_generic("tx_label_map", data)
 
     # =====================================================================
     # TABLE WRAPPERS: FIND methods (11 tables with find queries)
@@ -1912,47 +1935,47 @@ class StorageProvider:
 
     def find_users(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find User records."""
-        return self._find_generic('user', args)
+        return self._find_generic("user", args)
 
     def find_certificates(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find Certificate records."""
-        return self._find_generic('certificate', args)
+        return self._find_generic("certificate", args)
 
     def find_certificate_fields(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find CertificateField records."""
-        return self._find_generic('certificate_field', args)
+        return self._find_generic("certificate_field", args)
 
     def find_commissions(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find Commission records."""
-        return self._find_generic('commission', args)
+        return self._find_generic("commission", args)
 
     def find_monitor_events(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find MonitorEvent records."""
-        return self._find_generic('monitor_event', args)
+        return self._find_generic("monitor_event", args)
 
     def find_outputs(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find Output records."""
-        return self._find_generic('output', args)
+        return self._find_generic("output", args)
 
     def find_output_baskets(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find OutputBasket records."""
-        return self._find_generic('output_basket', args)
+        return self._find_generic("output_basket", args)
 
     def find_output_tags(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find OutputTag records."""
-        return self._find_generic('output_tag', args)
+        return self._find_generic("output_tag", args)
 
     def find_sync_states(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find SyncState records."""
-        return self._find_generic('sync_state', args)
+        return self._find_generic("sync_state", args)
 
     def find_transactions(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find Transaction records."""
-        return self._find_generic('transaction', args)
+        return self._find_generic("transaction", args)
 
     def find_tx_labels(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find TxLabel records."""
-        return self._find_generic('tx_label', args)
+        return self._find_generic("tx_label", args)
 
     # =====================================================================
     # TABLE WRAPPERS: COUNT methods (11 tables)
@@ -1960,47 +1983,47 @@ class StorageProvider:
 
     def count_users(self, args: dict[str, Any] | None = None) -> int:
         """Count User records."""
-        return self._count_generic('user', args)
+        return self._count_generic("user", args)
 
     def count_certificates(self, args: dict[str, Any] | None = None) -> int:
         """Count Certificate records."""
-        return self._count_generic('certificate', args)
+        return self._count_generic("certificate", args)
 
     def count_certificate_fields(self, args: dict[str, Any] | None = None) -> int:
         """Count CertificateField records."""
-        return self._count_generic('certificate_field', args)
+        return self._count_generic("certificate_field", args)
 
     def count_commissions(self, args: dict[str, Any] | None = None) -> int:
         """Count Commission records."""
-        return self._count_generic('commission', args)
+        return self._count_generic("commission", args)
 
     def count_monitor_events(self, args: dict[str, Any] | None = None) -> int:
         """Count MonitorEvent records."""
-        return self._count_generic('monitor_event', args)
+        return self._count_generic("monitor_event", args)
 
     def count_outputs(self, args: dict[str, Any] | None = None) -> int:
         """Count Output records."""
-        return self._count_generic('output', args)
+        return self._count_generic("output", args)
 
     def count_output_baskets(self, args: dict[str, Any] | None = None) -> int:
         """Count OutputBasket records."""
-        return self._count_generic('output_basket', args)
+        return self._count_generic("output_basket", args)
 
     def count_output_tags(self, args: dict[str, Any] | None = None) -> int:
         """Count OutputTag records."""
-        return self._count_generic('output_tag', args)
+        return self._count_generic("output_tag", args)
 
     def count_sync_states(self, args: dict[str, Any] | None = None) -> int:
         """Count SyncState records."""
-        return self._count_generic('sync_state', args)
+        return self._count_generic("sync_state", args)
 
     def count_transactions(self, args: dict[str, Any] | None = None) -> int:
         """Count Transaction records."""
-        return self._count_generic('transaction', args)
+        return self._count_generic("transaction", args)
 
     def count_tx_labels(self, args: dict[str, Any] | None = None) -> int:
         """Count TxLabel records."""
-        return self._count_generic('tx_label', args)
+        return self._count_generic("tx_label", args)
 
     # =====================================================================
     # TABLE WRAPPERS: UPDATE methods (15 tables)
@@ -2008,62 +2031,60 @@ class StorageProvider:
 
     def update_user(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update User record by ID."""
-        return self._update_generic('user', pk_value, patch)
+        return self._update_generic("user", pk_value, patch)
 
     def update_certificate(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update Certificate record by ID."""
-        return self._update_generic('certificate', pk_value, patch)
+        return self._update_generic("certificate", pk_value, patch)
 
     def update_certificate_field(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update CertificateField record by ID."""
-        return self._update_generic('certificate_field', pk_value, patch)
+        return self._update_generic("certificate_field", pk_value, patch)
 
     def update_commission(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update Commission record by ID."""
-        return self._update_generic('commission', pk_value, patch)
+        return self._update_generic("commission", pk_value, patch)
 
     def update_monitor_event(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update MonitorEvent record by ID."""
-        return self._update_generic('monitor_event', pk_value, patch)
+        return self._update_generic("monitor_event", pk_value, patch)
 
     def update_output(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update Output record by ID."""
-        return self._update_generic('output', pk_value, patch)
+        return self._update_generic("output", pk_value, patch)
 
     def update_output_basket(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update OutputBasket record by ID."""
-        return self._update_generic('output_basket', pk_value, patch)
+        return self._update_generic("output_basket", pk_value, patch)
 
     def update_output_tag(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update OutputTag record by ID."""
-        return self._update_generic('output_tag', pk_value, patch)
+        return self._update_generic("output_tag", pk_value, patch)
 
     def update_output_tag_map(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update OutputTagMap record by ID."""
-        return self._update_generic('output_tag_map', pk_value, patch)
+        return self._update_generic("output_tag_map", pk_value, patch)
 
     def update_proven_tx(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update ProvenTx record by ID."""
-        return self._update_generic('proven_tx', pk_value, patch)
+        return self._update_generic("proven_tx", pk_value, patch)
 
     def update_proven_tx_req(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update ProvenTxReq record by ID."""
-        return self._update_generic('proven_tx_req', pk_value, patch)
+        return self._update_generic("proven_tx_req", pk_value, patch)
 
     def update_sync_state(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update SyncState record by ID."""
-        return self._update_generic('sync_state', pk_value, patch)
+        return self._update_generic("sync_state", pk_value, patch)
 
     def update_transaction(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update Transaction record by ID."""
-        return self._update_generic('transaction', pk_value, patch)
+        return self._update_generic("transaction", pk_value, patch)
 
     def update_tx_label(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update TxLabel record by ID."""
-        return self._update_generic('tx_label', pk_value, patch)
+        return self._update_generic("tx_label", pk_value, patch)
 
     def update_tx_label_map(self, pk_value: int, patch: dict[str, Any]) -> int:
         """Update TxLabelMap record by ID."""
-        return self._update_generic('tx_label_map', pk_value, patch)
-
-
+        return self._update_generic("tx_label_map", pk_value, patch)

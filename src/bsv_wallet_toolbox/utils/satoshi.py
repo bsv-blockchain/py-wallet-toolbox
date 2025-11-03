@@ -100,5 +100,3 @@ def satoshi_to_uint64(value: int) -> int:
     if value > (2**64 - 1):
         raise OverflowError("value does not fit into uint64")
     return value
-
-

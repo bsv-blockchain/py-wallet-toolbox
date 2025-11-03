@@ -5,7 +5,6 @@ This module tests wallet initialization and basic functionality.
 Reference: wallet-toolbox/test/wallet/construct/Wallet.constructor.test.ts
 """
 
-
 import pytest
 
 try:

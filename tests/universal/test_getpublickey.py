@@ -50,10 +50,10 @@ class TestUniversalVectorsGetPublicKey:
             py-sdk's KeyDeriver implementation uses a different key derivation algorithm
             than TypeScript's deriveChild (BIP32-style). This causes derived public keys
             to differ from Universal Test Vectors.
-            
+
             TypeScript: counterparty.deriveChild(rootKey, invoiceNumber)
             Python: HMAC-based derivation with elliptic curve addition
-            
+
             This is a py-sdk issue that needs to be addressed for full compatibility.
         """
         # Given

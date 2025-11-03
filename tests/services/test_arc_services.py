@@ -8,7 +8,6 @@ Reference: wallet-toolbox/src/services/__tests/arcServices.test.ts
 import pytest
 
 try:
-    
 
     IMPORTS_AVAILABLE = True
 except ImportError:

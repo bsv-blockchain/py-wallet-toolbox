@@ -58,6 +58,7 @@ async def test_post_beef_array_arc_minimal_enabled() -> None:
         assert set(res.keys()) == {"accepted", "txid", "message"}
         assert res["accepted"] in (True, False)
 
+
 @pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
 def test_post_beef_placeholder() -> None:
     """Placeholder for `postBeef` until TS/So test is available."""
@@ -66,6 +67,7 @@ def test_post_beef_placeholder() -> None:
 @pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
 def test_post_beef_array_placeholder() -> None:
     """Placeholder for `postBeefArray` until TS/So test is available."""
+
 
 """Unit tests for postBeef service.
 

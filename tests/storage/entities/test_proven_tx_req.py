@@ -14,7 +14,6 @@ from bsv_wallet_toolbox.storage.entities import ProvenTxReq
 class TestProvenTxReqEntity:
     """Test suite for ProvenTxReq entity."""
 
-    
     def test_apinotify_getter_and_setter(self) -> None:
         """Given: ProvenTxReq instance
            When: Set and get api_notify property
@@ -48,7 +47,6 @@ class TestProvenTxReqEntity:
         assert proven_tx_req.api_notify == json.dumps(notify_data)
         assert proven_tx_req.notify["transactionIds"] == [1, 2, 3]
 
-    
     def test_gethistorysummary(self) -> None:
         """Given: ProvenTxReq instance with history
            When: Call get_history_summary
@@ -65,7 +63,6 @@ class TestProvenTxReqEntity:
         # When/Then
         # Test implementation pending
 
-    
     def test_parsehistorynote(self) -> None:
         """Given: ProvenTxReq instance
            When: Call parse_history_note
@@ -94,7 +91,6 @@ class TestProvenTxReqEntity:
         # When/Then
         # Test implementation details
 
-    
     def test_updatestorage(self) -> None:
         """Given: ProvenTxReq instance
            When: Call update_storage
@@ -143,7 +139,6 @@ class TestProvenTxReqEntity:
         assert len(fetched) == 1
         assert fetched[0]["txid"] == "test-txid"
 
-    
     def test_insertormerge(self) -> None:
         """Given: ProvenTxReq instance
            When: Call insert_or_merge
@@ -181,7 +176,6 @@ class TestProvenTxReqEntity:
         # Then
         assert result["txid"] == "test-txid-merge"
 
-    
     def test_equals_identifies_matching_entities(self) -> None:
         """Given: Two ProvenTxReq entities with matching data
            When: Call equals method
@@ -227,7 +221,6 @@ class TestProvenTxReqEntity:
         # When/Then
         assert proven_tx_req1.equals(proven_tx_req2_api, sync_map) is True
 
-    
     def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two ProvenTxReq entities with different data
            When: Call equals method
@@ -265,7 +258,6 @@ class TestProvenTxReqEntity:
         # When/Then
         assert proven_tx_req1.equals(proven_tx_req2_api, sync_map) is False
 
-    
     def test_mergenotifytransactionids(self) -> None:
         """Given: ProvenTxReq with existing notify transactionIds
            When: Call merge_notify_transaction_ids with new IDs
@@ -286,7 +278,6 @@ class TestProvenTxReqEntity:
         # Then
         assert set(proven_tx_req.notify["transactionIds"]) == {1, 2, 3, 4}
 
-    
     def test_getters_and_setters(self) -> None:
         """Given: ProvenTxReq instance
            When: Set and get all properties
@@ -337,7 +328,6 @@ class TestProvenTxReqEntity:
         assert proven_tx_req.entity_name == "provenTxReq"
         assert proven_tx_req.entity_table == "proven_tx_reqs"
 
-    
     def test_parsehistorynote_82(self) -> None:
         """Given: ProvenTxReq with history data
            When: Call parse_history_note
@@ -354,7 +344,6 @@ class TestProvenTxReqEntity:
         # When/Then
         # Test implementation pending
 
-    
     def test_mergehistory(self) -> None:
         """Given: ProvenTxReq with history
            When: Call merge_history with new history
@@ -371,7 +360,6 @@ class TestProvenTxReqEntity:
         # When/Then
         # Test implementation pending
 
-    
     def test_isterminalstatus_with_real_data(self) -> None:
         """Given: ProvenTxReq with various statuses
            When: Call is_terminal_status
@@ -391,7 +379,6 @@ class TestProvenTxReqEntity:
             # When/Then
             assert proven_tx_req.is_terminal_status() == expected_terminal
 
-    
     def test_mergeexisting_real_data(self) -> None:
         """Given: Existing ProvenTxReq
            When: Call merge_existing with updated data

@@ -57,8 +57,7 @@ def _parse_counterparty(value: str | PublicKey) -> Counterparty:
         return Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
     except Exception as e:
         raise InvalidParameterError(
-            "counterparty",
-            f"'self', 'anyone', or a valid hex-encoded public key (got {value!r}, error: {e})"
+            "counterparty", f"'self', 'anyone', or a valid hex-encoded public key (got {value!r}, error: {e})"
         ) from e
 
 
@@ -268,7 +267,7 @@ class Wallet:
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
         reference = args.get("reference", "")
-        
+
         result = self.storage_provider.abort_action(reference)
         return {"aborted": bool(result)}
 
@@ -292,7 +291,7 @@ class Wallet:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth") or {}
         cert_id = args.get("certificateId")
-        
+
         result = self.storage_provider.relinquish_certificate(auth, cert_id)
         return {"relinquished": bool(result)}
 
@@ -315,7 +314,7 @@ class Wallet:
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth") or {}
-        
+
         return self.storage_provider.create_action(auth, args)
 
     def process_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
@@ -337,7 +336,7 @@ class Wallet:
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth") or {}
-        
+
         return self.storage_provider.process_action(auth, args)
 
     def get_network(
@@ -1079,7 +1078,7 @@ class Wallet:
             >>> result = wallet.get_public_key({"identityKey": True})
             >>> print(result["publicKey"][:10])
             02a1b2c3d4
-            
+
             >>> # Derive a protocol-specific key
             >>> result = wallet.get_public_key({
             ...     "protocolID": [0, "my protocol"],
@@ -1106,27 +1105,18 @@ class Wallet:
         # Case 2: Derive a key
         # Validate required parameters (matching TS ProtoWallet.getPublicKey)
         if "protocolID" not in args or "keyID" not in args:
-            raise InvalidParameterError(
-                "protocolID and keyID",
-                "required if identityKey is false or undefined"
-            )
+            raise InvalidParameterError("protocolID and keyID", "required if identityKey is false or undefined")
 
         protocol_id = args["protocolID"]
         key_id = args["keyID"]
 
         # Validate keyID is not empty (matching TS check)
         if not key_id or key_id == "":
-            raise InvalidParameterError(
-                "keyID",
-                "a non-empty string"
-            )
+            raise InvalidParameterError("keyID", "a non-empty string")
 
         # Convert TypeScript protocolID format [security_level, protocol_name] to Protocol
         if not isinstance(protocol_id, (list, tuple)) or len(protocol_id) != 2:
-            raise InvalidParameterError(
-                "protocolID",
-                "a tuple/list of [security_level, protocol_name]"
-            )
+            raise InvalidParameterError("protocolID", "a tuple/list of [security_level, protocol_name]")
 
         security_level, protocol_name = protocol_id
         protocol = Protocol(security_level=security_level, protocol=protocol_name)

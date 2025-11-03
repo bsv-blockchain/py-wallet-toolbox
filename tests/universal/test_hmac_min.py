@@ -28,5 +28,3 @@ def test_verify_hmac_fail_on_tamper(wallet_with_key_deriver):
         {"data": data, "hmac": bytes(tag), "protocolID": [2, "context"], "keyID": "default"}
     )
     assert vres.get("valid") is False
-
-

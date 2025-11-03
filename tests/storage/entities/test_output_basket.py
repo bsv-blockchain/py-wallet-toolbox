@@ -12,7 +12,6 @@ from bsv_wallet_toolbox.storage.entities import OutputBasket
 class TestOutputBasketEntity:
     """Test suite for OutputBasket entity."""
 
-    
     def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at(
         self,
     ) -> None:
@@ -59,7 +58,6 @@ class TestOutputBasketEntity:
         assert entity.minimum_desired_utxo_value == 10000
         assert entity.is_deleted == 1
 
-    
     def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: OutputBasket entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
@@ -104,7 +102,6 @@ class TestOutputBasketEntity:
         assert entity.minimum_desired_utxo_value == 5000
         assert entity.is_deleted == 0
 
-    
     def test_equals_identifies_matching_entities_with_and_without_syncmap(self) -> None:
         """Given: Two OutputBasket entities with identical data
            When: Call equals method with and without syncMap
@@ -135,7 +132,6 @@ class TestOutputBasketEntity:
         assert entity1.equals(entity2.to_api()) is True
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    
     def test_equals_identifies_non_matching_entities(self) -> None:
         """Given: Two OutputBasket entities with different data
            When: Call equals method with and without syncMap
@@ -177,7 +173,6 @@ class TestOutputBasketEntity:
         assert entity1.equals(entity2.to_api()) is False
         assert entity1.equals(entity2.to_api(), sync_map) is False
 
-    
     def test_outputbasket_getters_setters_and_updateapi(self) -> None:
         """Given: OutputBasket entity with initial data
            When: Get and set all properties

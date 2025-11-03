@@ -17,33 +17,33 @@ from typing import Any
 
 class User:
     """User entity DTO - Represents a wallet user with authentication and storage configuration.
-    
+
     Attributes:
         user_id: Unique user identifier (auto-incremented by database)
         identity_key: User's identity key for authentication
         active_storage: Currently active storage identity key
         created_at: Timestamp when user record was created
         updated_at: Timestamp when user record was last modified
-    
+
     Special Behavior:
         - merge_new() always raises an exception (users are never created via sync)
         - merge_existing() is a no-op (user properties don't sync from remote)
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityUser.ts
         toolbox/py-wallet-toolbox/tests/storage/entities/test_users.py
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize User with optional API object.
-        
+
         Args:
-            api_object: Dictionary with keys userId, identityKey, activeStorage, 
+            api_object: Dictionary with keys userId, identityKey, activeStorage,
                        createdAt/created_at, updatedAt/updated_at.
                        - If None: Initialize with default values (0/""/empty string)
                        - If empty dict: Initialize with None values
                        - If populated: Use provided values or defaults
-        
+
         Returns:
             None
         """
@@ -64,12 +64,12 @@ class User:
             self.updated_at: datetime | None = None
         else:
             # API object provided - extract values with camelCase keys
-            self.user_id: int | None = api_object.get('userId')
-            self.identity_key: str | None = api_object.get('identityKey')
-            self.active_storage: str | None = api_object.get('activeStorage')
+            self.user_id: int | None = api_object.get("userId")
+            self.identity_key: str | None = api_object.get("identityKey")
+            self.active_storage: str | None = api_object.get("activeStorage")
             # Support both camelCase and snake_case for timestamps
-            self.created_at: datetime | None = api_object.get('createdAt') or api_object.get('created_at')
-            self.updated_at: datetime | None = api_object.get('updatedAt') or api_object.get('updated_at')
+            self.created_at: datetime | None = api_object.get("createdAt") or api_object.get("created_at")
+            self.updated_at: datetime | None = api_object.get("updatedAt") or api_object.get("updated_at")
 
     @property
     def id(self) -> int:
@@ -84,30 +84,30 @@ class User:
     @property
     def entity_name(self) -> str:
         """Entity type name for ORM mapping."""
-        return 'user'
+        return "user"
 
     @property
     def entity_table(self) -> str:
         """Database table name for this entity."""
-        return 'users'
+        return "users"
 
     def to_api(self) -> dict[str, Any]:
         """Convert entity to API object format (camelCase).
-        
+
         Returns:
             dict with camelCase keys suitable for API responses
         """
         return {
-            'userId': self.user_id,
-            'identityKey': self.identity_key,
-            'activeStorage': self.active_storage,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "userId": self.user_id,
+            "identityKey": self.identity_key,
+            "activeStorage": self.active_storage,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
         """Sync decoded properties back to api object.
-        
+
         This is called before to_api() to ensure any decoded JSON properties
         are re-encoded. For User, no decoding happens, so this is a no-op.
         """
@@ -115,54 +115,53 @@ class User:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """Check equality with another user record.
-        
+
         Two users are equal if they have the same identity_key and active_storage.
         This supports sync convergence for distributed updates.
-        
+
         Args:
             other: User API object to compare with
             sync_map: Optional sync map (unused for User)
-        
+
         Returns:
             True if users are considered equal
         """
-        other_id_key = other.get('identityKey')
-        other_active_storage = other.get('activeStorage')
-        return (self.identity_key == other_id_key and 
-                self.active_storage == other_active_storage)
+        other_id_key = other.get("identityKey")
+        other_active_storage = other.get("activeStorage")
+        return self.identity_key == other_id_key and self.active_storage == other_active_storage
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any], 
-                       sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge incoming user entity into existing local user.
-        
+
         User properties don't sync from remote (users are storage-local),
         so this is always a no-op.
-        
+
         Args:
             storage: StorageProvider instance (not used)
             since: Last sync timestamp (not used)
             ei: External incoming user entity (not used)
             sync_map: Sync coordination map (not used)
             trx: Database transaction token (not used)
-        
+
         Returns:
             False (never updates)
         """
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, 
-                  trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new user entity from sync chunk.
-        
+
         Users are storage-local and must NEVER be created via sync chunk.
         This method always raises an exception to enforce that invariant.
-        
+
         Args:
             storage: StorageProvider instance (not used)
             user_id: New user ID (not used)
             sync_map: Sync coordination map (not used)
             trx: Database transaction token (not used)
-        
+
         Raises:
             Exception: Always raises with specific message
         """
@@ -171,7 +170,7 @@ class User:
 
 class Commission:
     """Commission entity DTO - Represents a service fee output for StorageProvider operations.
-    
+
     Attributes:
         commission_id: Primary key
         transaction_id: Associated transaction ID
@@ -182,12 +181,12 @@ class Commission:
         locking_script: Script bytes for the fee output
         created_at: Timestamp when record was created
         updated_at: Timestamp when record was last modified
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityCommission.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableCommission.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize Commission with optional API object."""
         if api_object is None:
@@ -202,15 +201,15 @@ class Commission:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.commission_id = api_object.get('commissionId', 0)
-            self.transaction_id = api_object.get('transactionId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.satoshis = api_object.get('satoshis', 0)
-            self.is_redeemed = api_object.get('isRedeemed', False)
-            self.key_offset = api_object.get('keyOffset', "")
-            self.locking_script = api_object.get('lockingScript')
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.commission_id = api_object.get("commissionId", 0)
+            self.transaction_id = api_object.get("transactionId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.satoshis = api_object.get("satoshis", 0)
+            self.is_redeemed = api_object.get("isRedeemed", False)
+            self.key_offset = api_object.get("keyOffset", "")
+            self.locking_script = api_object.get("lockingScript")
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -222,24 +221,24 @@ class Commission:
 
     @property
     def entity_name(self) -> str:
-        return 'commission'
+        return "commission"
 
     @property
     def entity_table(self) -> str:
-        return 'commissions'
+        return "commissions"
 
     def to_api(self) -> dict[str, Any]:
         """Convert to API format (camelCase)."""
         return {
-            'commissionId': self.commission_id,
-            'transactionId': self.transaction_id,
-            'userId': self.user_id,
-            'satoshis': self.satoshis,
-            'isRedeemed': self.is_redeemed,
-            'keyOffset': self.key_offset,
-            'lockingScript': self.locking_script,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "commissionId": self.commission_id,
+            "transactionId": self.transaction_id,
+            "userId": self.user_id,
+            "satoshis": self.satoshis,
+            "isRedeemed": self.is_redeemed,
+            "keyOffset": self.key_offset,
+            "lockingScript": self.locking_script,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -248,24 +247,26 @@ class Commission:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """Commission equality: same satoshis, redeemed status, and key offset."""
-        return (self.satoshis == other.get('satoshis') and
-                self.is_redeemed == other.get('isRedeemed') and
-                self.key_offset == other.get('keyOffset'))
+        return (
+            self.satoshis == other.get("satoshis")
+            and self.is_redeemed == other.get("isRedeemed")
+            and self.key_offset == other.get("keyOffset")
+        )
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing commission - check if updated_at changed."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new commission from sync."""
         pass
 
 
 class Output:
     """Output entity DTO - Represents an unspent transaction output (UTXO).
-    
+
     Attributes:
         output_id: Primary key
         transaction_id: Associated transaction
@@ -275,12 +276,12 @@ class Output:
         locking_script: Bitcoin script bytes
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityOutput.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableOutput.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         if api_object is None:
             now = datetime.now()
@@ -293,14 +294,14 @@ class Output:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.output_id = api_object.get('outputId', 0)
-            self.transaction_id = api_object.get('transactionId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.vout = api_object.get('vout', 0)
-            self.satoshis = api_object.get('satoshis', 0)
-            self.locking_script = api_object.get('lockingScript')
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.output_id = api_object.get("outputId", 0)
+            self.transaction_id = api_object.get("transactionId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.vout = api_object.get("vout", 0)
+            self.satoshis = api_object.get("satoshis", 0)
+            self.locking_script = api_object.get("lockingScript")
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -312,22 +313,22 @@ class Output:
 
     @property
     def entity_name(self) -> str:
-        return 'output'
+        return "output"
 
     @property
     def entity_table(self) -> str:
-        return 'outputs'
+        return "outputs"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'outputId': self.output_id,
-            'transactionId': self.transaction_id,
-            'userId': self.user_id,
-            'vout': self.vout,
-            'satoshis': self.satoshis,
-            'lockingScript': self.locking_script,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "outputId": self.output_id,
+            "transactionId": self.transaction_id,
+            "userId": self.user_id,
+            "vout": self.vout,
+            "satoshis": self.satoshis,
+            "lockingScript": self.locking_script,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -335,23 +336,22 @@ class Output:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """Output equality: same vout and satoshis."""
-        return (self.vout == other.get('vout') and
-                self.satoshis == other.get('satoshis'))
+        return self.vout == other.get("vout") and self.satoshis == other.get("satoshis")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing output."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new output from sync."""
         pass
 
 
 class OutputBasket:
     """OutputBasket entity DTO - Groups outputs for wallet operations.
-    
+
     Attributes:
         basket_id: Primary key
         user_id: Owner's user ID
@@ -361,12 +361,12 @@ class OutputBasket:
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityOutputBasket.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableOutputBasket.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         if api_object is None:
             now = datetime.now()
@@ -379,14 +379,14 @@ class OutputBasket:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.basket_id = api_object.get('basketId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.name = api_object.get('name', "")
-            self.number_of_desired_utxos = api_object.get('numberOfDesiredUTXOs', 0)
-            self.minimum_desired_utxo_value = api_object.get('minimumDesiredUTXOValue', 0)
-            self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.basket_id = api_object.get("basketId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.name = api_object.get("name", "")
+            self.number_of_desired_utxos = api_object.get("numberOfDesiredUTXOs", 0)
+            self.minimum_desired_utxo_value = api_object.get("minimumDesiredUTXOValue", 0)
+            self.is_deleted = api_object.get("isDeleted", False)
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -398,22 +398,22 @@ class OutputBasket:
 
     @property
     def entity_name(self) -> str:
-        return 'outputBasket'
+        return "outputBasket"
 
     @property
     def entity_table(self) -> str:
-        return 'output_baskets'
+        return "output_baskets"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'basketId': self.basket_id,
-            'userId': self.user_id,
-            'name': self.name,
-            'numberOfDesiredUTXOs': self.number_of_desired_utxos,
-            'minimumDesiredUTXOValue': self.minimum_desired_utxo_value,
-            'isDeleted': self.is_deleted,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "basketId": self.basket_id,
+            "userId": self.user_id,
+            "name": self.name,
+            "numberOfDesiredUTXOs": self.number_of_desired_utxos,
+            "minimumDesiredUTXOValue": self.minimum_desired_utxo_value,
+            "isDeleted": self.is_deleted,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -421,39 +421,41 @@ class OutputBasket:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """OutputBasket equality: all fields must match."""
-        return (self.basket_id == other.get('basketId') and
-                self.user_id == other.get('userId') and
-                self.name == other.get('name') and
-                self.number_of_desired_utxos == other.get('numberOfDesiredUTXOs') and
-                self.minimum_desired_utxo_value == other.get('minimumDesiredUTXOValue') and
-                self.is_deleted == other.get('isDeleted'))
+        return (
+            self.basket_id == other.get("basketId")
+            and self.user_id == other.get("userId")
+            and self.name == other.get("name")
+            and self.number_of_desired_utxos == other.get("numberOfDesiredUTXOs")
+            and self.minimum_desired_utxo_value == other.get("minimumDesiredUTXOValue")
+            and self.is_deleted == other.get("isDeleted")
+        )
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing output basket."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new output basket from sync."""
         pass
 
 
 class OutputTag:
     """OutputTag entity DTO - Labels for categorizing outputs.
-    
+
     Attributes:
         output_tag_id: Primary key
         user_id: Owner's user ID
         tag: Tag label string (e.g., 'received', 'change', 'cold-storage')
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityOutputTag.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableOutputTag.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         if api_object is None:
             now = datetime.now()
@@ -463,11 +465,11 @@ class OutputTag:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.output_tag_id = api_object.get('outputTagId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.tag = api_object.get('tag', "")
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.output_tag_id = api_object.get("outputTagId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.tag = api_object.get("tag", "")
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -479,19 +481,19 @@ class OutputTag:
 
     @property
     def entity_name(self) -> str:
-        return 'outputTag'
+        return "outputTag"
 
     @property
     def entity_table(self) -> str:
-        return 'output_tags'
+        return "output_tags"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'outputTagId': self.output_tag_id,
-            'userId': self.user_id,
-            'tag': self.tag,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "outputTagId": self.output_tag_id,
+            "userId": self.user_id,
+            "tag": self.tag,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -499,34 +501,34 @@ class OutputTag:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """OutputTag equality: same tag string."""
-        return self.tag == other.get('tag')
+        return self.tag == other.get("tag")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing output tag."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new output tag from sync."""
         pass
 
 
 class Transaction:
     """Transaction entity DTO - Represents a Bitcoin transaction in the wallet.
-    
+
     Attributes:
         transaction_id: Primary key
         user_id: Owner's user ID
         satoshis: Transaction value (outputs - inputs)
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityTransaction.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableTransaction.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         if api_object is None:
             now = datetime.now()
@@ -536,11 +538,11 @@ class Transaction:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.transaction_id = api_object.get('transactionId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.satoshis = api_object.get('satoshis', 0)
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.transaction_id = api_object.get("transactionId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.satoshis = api_object.get("satoshis", 0)
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -552,19 +554,19 @@ class Transaction:
 
     @property
     def entity_name(self) -> str:
-        return 'transaction'
+        return "transaction"
 
     @property
     def entity_table(self) -> str:
-        return 'transactions'
+        return "transactions"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'transactionId': self.transaction_id,
-            'userId': self.user_id,
-            'satoshis': self.satoshis,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "transactionId": self.transaction_id,
+            "userId": self.user_id,
+            "satoshis": self.satoshis,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -572,22 +574,22 @@ class Transaction:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """Transaction equality: same satoshis."""
-        return self.satoshis == other.get('satoshis')
+        return self.satoshis == other.get("satoshis")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing transaction."""
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new transaction from sync."""
         pass
 
 
 class ProvenTx:
     """ProvenTx entity DTO - Proven transaction with merkle path.
-    
+
     Attributes:
         proven_tx_id: Primary key
         txid: Transaction ID (hash)
@@ -599,15 +601,15 @@ class ProvenTx:
         merkle_root: Merkle root of block
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Special Behavior:
         ProvenTxs are immutable records - mergeExisting always returns False
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityProvenTx.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableProvenTx.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize ProvenTx with optional API object."""
         if api_object is None:
@@ -623,19 +625,19 @@ class ProvenTx:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.proven_tx_id = api_object.get('provenTxId', 0)
-            self.txid = api_object.get('txid', "")
-            self.height = api_object.get('height', 0)
-            self.index = api_object.get('index', 0)
+            self.proven_tx_id = api_object.get("provenTxId", 0)
+            self.txid = api_object.get("txid", "")
+            self.height = api_object.get("height", 0)
+            self.index = api_object.get("index", 0)
             # Handle both bytes and list[int] for binary data
-            mp = api_object.get('merklePath', b"")
+            mp = api_object.get("merklePath", b"")
             self.merkle_path = bytes(mp) if isinstance(mp, list) else (mp or b"")
-            rt = api_object.get('rawTx', b"")
+            rt = api_object.get("rawTx", b"")
             self.raw_tx = bytes(rt) if isinstance(rt, list) else (rt or b"")
-            self.block_hash = api_object.get('blockHash', "")
-            self.merkle_root = api_object.get('merkleRoot', "")
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.block_hash = api_object.get("blockHash", "")
+            self.merkle_root = api_object.get("merkleRoot", "")
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -647,24 +649,24 @@ class ProvenTx:
 
     @property
     def entity_name(self) -> str:
-        return 'provenTx'
+        return "provenTx"
 
     @property
     def entity_table(self) -> str:
-        return 'proven_txs'
+        return "proven_txs"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'provenTxId': self.proven_tx_id,
-            'txid': self.txid,
-            'height': self.height,
-            'index': self.index,
-            'merklePath': self.merkle_path,
-            'rawTx': self.raw_tx,
-            'blockHash': self.block_hash,
-            'merkleRoot': self.merkle_root,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "provenTxId": self.proven_tx_id,
+            "txid": self.txid,
+            "height": self.height,
+            "index": self.index,
+            "merklePath": self.merkle_path,
+            "rawTx": self.raw_tx,
+            "blockHash": self.block_hash,
+            "merkleRoot": self.merkle_root,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -672,20 +674,20 @@ class ProvenTx:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """ProvenTx equality: immutable, check identifying fields."""
-        return (self.txid == other.get('txid') and
-                self.height == other.get('height') and
-                self.index == other.get('index'))
+        return (
+            self.txid == other.get("txid") and self.height == other.get("height") and self.index == other.get("index")
+        )
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing proven tx - immutable, always False.
-        
+
         ProvenTxs are shared read-only records. They cannot be updated.
         """
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new proven tx from sync - insert only."""
         # Reset ID to 0 for insertion
         self.proven_tx_id = 0
@@ -694,7 +696,7 @@ class ProvenTx:
 
 class ProvenTxReq:
     """ProvenTxReq entity DTO - Proven transaction request tracking.
-    
+
     Attributes:
         proven_tx_req_id: Primary key
         user_id: Owner's user ID
@@ -706,15 +708,15 @@ class ProvenTxReq:
         raw_tx: Raw transaction bytes
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Special Behavior:
         mergeExisting performs complex status state machine merging
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityProvenTxReq.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableProvenTxReq.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize ProvenTxReq with optional API object."""
         if api_object is None:
@@ -730,17 +732,17 @@ class ProvenTxReq:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.proven_tx_req_id = api_object.get('provenTxReqId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.txid = api_object.get('txid', "")
-            self.proven_tx_id = api_object.get('provenTxId')
-            self.status = api_object.get('status', "")
-            self.reference = api_object.get('reference', "")
-            self.attempts = api_object.get('attempts', 0)
-            rt = api_object.get('rawTx', b"")
+            self.proven_tx_req_id = api_object.get("provenTxReqId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.txid = api_object.get("txid", "")
+            self.proven_tx_id = api_object.get("provenTxId")
+            self.status = api_object.get("status", "")
+            self.reference = api_object.get("reference", "")
+            self.attempts = api_object.get("attempts", 0)
+            rt = api_object.get("rawTx", b"")
             self.raw_tx = bytes(rt) if isinstance(rt, list) else (rt or b"")
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -752,24 +754,24 @@ class ProvenTxReq:
 
     @property
     def entity_name(self) -> str:
-        return 'provenTxReq'
+        return "provenTxReq"
 
     @property
     def entity_table(self) -> str:
-        return 'proven_tx_reqs'
+        return "proven_tx_reqs"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'provenTxReqId': self.proven_tx_req_id,
-            'userId': self.user_id,
-            'txid': self.txid,
-            'provenTxId': self.proven_tx_id,
-            'status': self.status,
-            'reference': self.reference,
-            'attempts': self.attempts,
-            'rawTx': self.raw_tx,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "provenTxReqId": self.proven_tx_req_id,
+            "userId": self.user_id,
+            "txid": self.txid,
+            "provenTxId": self.proven_tx_id,
+            "status": self.status,
+            "reference": self.reference,
+            "attempts": self.attempts,
+            "rawTx": self.raw_tx,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -777,13 +779,13 @@ class ProvenTxReq:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """ProvenTxReq equality: check status and reference."""
-        return (self.status == other.get('status') and
-                self.reference == other.get('reference'))
+        return self.status == other.get("status") and self.reference == other.get("reference")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing proven tx req - complex status state machine.
-        
+
         TypeScript enforces careful status transitions:
         - Remote completes before local
         - Must pass through 'notifying' before 'completed'
@@ -791,13 +793,12 @@ class ProvenTxReq:
         """
         # For now, basic merge: sync batch, attempts, timestamp
         # Full implementation requires batch/history/notify tracking
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new proven tx req from sync - insert only."""
         # Reset ID to 0 for insertion
         self.proven_tx_req_id = 0
@@ -805,7 +806,7 @@ class ProvenTxReq:
 
 class Certificate:
     """Certificate entity DTO - Authentication certificate.
-    
+
     Attributes:
         certificate_id: Primary key
         user_id: Owner's user ID
@@ -819,12 +820,12 @@ class Certificate:
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityCertificate.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableCertificate.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize Certificate with optional API object."""
         if api_object is None:
@@ -842,18 +843,18 @@ class Certificate:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.certificate_id = api_object.get('certificateId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.type = api_object.get('type', "")
-            self.serial_number = api_object.get('serialNumber', "")
-            self.certifier = api_object.get('certifier', "")
-            self.subject = api_object.get('subject', "")
-            self.verifier = api_object.get('verifier')
-            self.revocation_outpoint = api_object.get('revocationOutpoint', "")
-            self.signature = api_object.get('signature', "")
-            self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.certificate_id = api_object.get("certificateId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.type = api_object.get("type", "")
+            self.serial_number = api_object.get("serialNumber", "")
+            self.certifier = api_object.get("certifier", "")
+            self.subject = api_object.get("subject", "")
+            self.verifier = api_object.get("verifier")
+            self.revocation_outpoint = api_object.get("revocationOutpoint", "")
+            self.signature = api_object.get("signature", "")
+            self.is_deleted = api_object.get("isDeleted", False)
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -865,26 +866,26 @@ class Certificate:
 
     @property
     def entity_name(self) -> str:
-        return 'certificate'
+        return "certificate"
 
     @property
     def entity_table(self) -> str:
-        return 'certificates'
+        return "certificates"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'certificateId': self.certificate_id,
-            'userId': self.user_id,
-            'type': self.type,
-            'serialNumber': self.serial_number,
-            'certifier': self.certifier,
-            'subject': self.subject,
-            'verifier': self.verifier,
-            'revocationOutpoint': self.revocation_outpoint,
-            'signature': self.signature,
-            'isDeleted': self.is_deleted,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "certificateId": self.certificate_id,
+            "userId": self.user_id,
+            "type": self.type,
+            "serialNumber": self.serial_number,
+            "certifier": self.certifier,
+            "subject": self.subject,
+            "verifier": self.verifier,
+            "revocationOutpoint": self.revocation_outpoint,
+            "signature": self.signature,
+            "isDeleted": self.is_deleted,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -892,24 +893,26 @@ class Certificate:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """Certificate equality: check identifying fields and deletion state."""
-        return (self.type == other.get('type') and
-                self.subject == other.get('subject') and
-                self.serial_number == other.get('serialNumber') and
-                self.is_deleted == other.get('isDeleted'))
+        return (
+            self.type == other.get("type")
+            and self.subject == other.get("subject")
+            and self.serial_number == other.get("serialNumber")
+            and self.is_deleted == other.get("isDeleted")
+        )
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing certificate - sync deletion and signature status."""
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.is_deleted = ei.get('isDeleted', False)
-            self.revocation_outpoint = ei.get('revocationOutpoint', "")
-            self.signature = ei.get('signature', "")
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.is_deleted = ei.get("isDeleted", False)
+            self.revocation_outpoint = ei.get("revocationOutpoint", "")
+            self.signature = ei.get("signature", "")
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new certificate from sync - insert only."""
         # Reset ID to 0 for insertion
         self.certificate_id = 0
@@ -917,7 +920,7 @@ class Certificate:
 
 class CertificateField:
     """CertificateField entity DTO - Field within a certificate.
-    
+
     Attributes:
         certificate_field_id: Primary key
         certificate_id: Associated certificate
@@ -926,12 +929,12 @@ class CertificateField:
         master_key: Master key associated with field
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityCertificateField.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableCertificateField.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize CertificateField with optional API object."""
         if api_object is None:
@@ -944,13 +947,13 @@ class CertificateField:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.certificate_field_id = api_object.get('certificateFieldId', 0)
-            self.certificate_id = api_object.get('certificateId', 0)
-            self.field_name = api_object.get('fieldName', "")
-            self.field_value = api_object.get('fieldValue', "")
-            self.master_key = api_object.get('masterKey')
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.certificate_field_id = api_object.get("certificateFieldId", 0)
+            self.certificate_id = api_object.get("certificateId", 0)
+            self.field_name = api_object.get("fieldName", "")
+            self.field_value = api_object.get("fieldValue", "")
+            self.master_key = api_object.get("masterKey")
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -962,21 +965,21 @@ class CertificateField:
 
     @property
     def entity_name(self) -> str:
-        return 'certificateField'
+        return "certificateField"
 
     @property
     def entity_table(self) -> str:
-        return 'certificate_fields'
+        return "certificate_fields"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'certificateFieldId': self.certificate_field_id,
-            'certificateId': self.certificate_id,
-            'fieldName': self.field_name,
-            'fieldValue': self.field_value,
-            'masterKey': self.master_key,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "certificateFieldId": self.certificate_field_id,
+            "certificateId": self.certificate_id,
+            "fieldName": self.field_name,
+            "fieldValue": self.field_value,
+            "masterKey": self.master_key,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -984,21 +987,20 @@ class CertificateField:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """CertificateField equality: check field name and value."""
-        return (self.field_name == other.get('fieldName') and
-                self.field_value == other.get('fieldValue'))
+        return self.field_name == other.get("fieldName") and self.field_value == other.get("fieldValue")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing certificate field - update if remote is newer."""
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.field_value = ei.get('fieldValue', "")
-            self.master_key = ei.get('masterKey')
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.field_value = ei.get("fieldValue", "")
+            self.master_key = ei.get("masterKey")
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new certificate field from sync - insert only."""
         # Reset ID to 0 for insertion
         self.certificate_field_id = 0
@@ -1006,21 +1008,21 @@ class CertificateField:
 
 class OutputTagMap:
     """OutputTagMap entity DTO - Join table mapping outputs to tags.
-    
+
     Attributes:
         output_id: Output identifier
         tag_id: Tag identifier
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Note: This is a composite key table (output_id + tag_id)
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityOutputTagMap.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableOutputTagMap.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize OutputTagMap with optional API object."""
         if api_object is None:
@@ -1031,11 +1033,11 @@ class OutputTagMap:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.output_id = api_object.get('outputId', 0)
-            self.tag_id = api_object.get('tagId', 0)
-            self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.output_id = api_object.get("outputId", 0)
+            self.tag_id = api_object.get("tagId", 0)
+            self.is_deleted = api_object.get("isDeleted", False)
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1049,19 +1051,19 @@ class OutputTagMap:
 
     @property
     def entity_name(self) -> str:
-        return 'outputTagMap'
+        return "outputTagMap"
 
     @property
     def entity_table(self) -> str:
-        return 'output_tag_maps'
+        return "output_tag_maps"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'outputId': self.output_id,
-            'tagId': self.tag_id,
-            'isDeleted': self.is_deleted,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "outputId": self.output_id,
+            "tagId": self.tag_id,
+            "isDeleted": self.is_deleted,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -1069,28 +1071,30 @@ class OutputTagMap:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """OutputTagMap equality: check output/tag IDs and deletion state."""
-        return (self.output_id == other.get('outputId') and
-                self.tag_id == other.get('tagId') and
-                self.is_deleted == other.get('isDeleted'))
+        return (
+            self.output_id == other.get("outputId")
+            and self.tag_id == other.get("tagId")
+            and self.is_deleted == other.get("isDeleted")
+        )
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing output tag map - sync deletion state."""
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.is_deleted = ei.get('isDeleted', False)
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.is_deleted = ei.get("isDeleted", False)
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new output tag map from sync."""
         pass
 
 
 class SyncState:
     """SyncState entity DTO - Tracks sync progress and state.
-    
+
     Attributes:
         sync_state_id: Primary key
         user_id: Owner's user ID
@@ -1102,12 +1106,12 @@ class SyncState:
         sync_map: Serialized sync map for convergence
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntitySyncState.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableSyncState.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize SyncState with optional API object."""
         if api_object is None:
@@ -1123,16 +1127,16 @@ class SyncState:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.sync_state_id = api_object.get('syncStateId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.storage_identity_key = api_object.get('storageIdentityKey', "")
-            self.storage_name = api_object.get('storageName', "")
-            self.status = api_object.get('status', "")
-            self.init = api_object.get('init', False)
-            self.ref_num = api_object.get('refNum', 0)
-            self.sync_map = api_object.get('syncMap', "")
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.sync_state_id = api_object.get("syncStateId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.storage_identity_key = api_object.get("storageIdentityKey", "")
+            self.storage_name = api_object.get("storageName", "")
+            self.status = api_object.get("status", "")
+            self.init = api_object.get("init", False)
+            self.ref_num = api_object.get("refNum", 0)
+            self.sync_map = api_object.get("syncMap", "")
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1144,24 +1148,24 @@ class SyncState:
 
     @property
     def entity_name(self) -> str:
-        return 'syncState'
+        return "syncState"
 
     @property
     def entity_table(self) -> str:
-        return 'sync_states'
+        return "sync_states"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'syncStateId': self.sync_state_id,
-            'userId': self.user_id,
-            'storageIdentityKey': self.storage_identity_key,
-            'storageName': self.storage_name,
-            'status': self.status,
-            'init': self.init,
-            'refNum': self.ref_num,
-            'syncMap': self.sync_map,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "syncStateId": self.sync_state_id,
+            "userId": self.user_id,
+            "storageIdentityKey": self.storage_identity_key,
+            "storageName": self.storage_name,
+            "status": self.status,
+            "init": self.init,
+            "refNum": self.ref_num,
+            "syncMap": self.sync_map,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -1169,22 +1173,21 @@ class SyncState:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """SyncState equality: check status and ref_num."""
-        return (self.status == other.get('status') and
-                self.ref_num == other.get('refNum'))
+        return self.status == other.get("status") and self.ref_num == other.get("refNum")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing sync state - update if remote is newer."""
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.status = ei.get('status', "")
-            self.ref_num = ei.get('refNum', 0)
-            self.sync_map = ei.get('syncMap', "")
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.status = ei.get("status", "")
+            self.ref_num = ei.get("refNum", 0)
+            self.sync_map = ei.get("syncMap", "")
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new sync state from sync - insert only."""
         # Reset ID to 0 for insertion
         self.sync_state_id = 0
@@ -1192,7 +1195,7 @@ class SyncState:
 
 class TxLabel:
     """TxLabel entity DTO - User-defined transaction labels.
-    
+
     Attributes:
         tx_label_id: Primary key
         user_id: Owner's user ID
@@ -1200,12 +1203,12 @@ class TxLabel:
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityTxLabel.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableTxLabel.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize TxLabel with optional API object."""
         if api_object is None:
@@ -1217,12 +1220,12 @@ class TxLabel:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.tx_label_id = api_object.get('txLabelId', 0)
-            self.user_id = api_object.get('userId', 0)
-            self.label = api_object.get('label', "")
-            self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.tx_label_id = api_object.get("txLabelId", 0)
+            self.user_id = api_object.get("userId", 0)
+            self.label = api_object.get("label", "")
+            self.is_deleted = api_object.get("isDeleted", False)
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1234,20 +1237,20 @@ class TxLabel:
 
     @property
     def entity_name(self) -> str:
-        return 'txLabel'
+        return "txLabel"
 
     @property
     def entity_table(self) -> str:
-        return 'tx_labels'
+        return "tx_labels"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'txLabelId': self.tx_label_id,
-            'userId': self.user_id,
-            'label': self.label,
-            'isDeleted': self.is_deleted,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "txLabelId": self.tx_label_id,
+            "userId": self.user_id,
+            "label": self.label,
+            "isDeleted": self.is_deleted,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -1255,20 +1258,19 @@ class TxLabel:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """TxLabel equality: check label text and deletion state."""
-        return (self.label == other.get('label') and
-                self.is_deleted == other.get('isDeleted'))
+        return self.label == other.get("label") and self.is_deleted == other.get("isDeleted")
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing tx label - sync deletion state."""
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.is_deleted = ei.get('isDeleted', False)
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.is_deleted = ei.get("isDeleted", False)
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new tx label from sync."""
         # Reset ID to 0 for insertion
         self.tx_label_id = 0
@@ -1276,21 +1278,21 @@ class TxLabel:
 
 class TxLabelMap:
     """TxLabelMap entity DTO - Join table mapping transactions to labels.
-    
+
     Attributes:
         transaction_id: Transaction identifier
         label_id: Label identifier
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
-    
+
     Note: This is a composite key table (transaction_id + label_id)
-    
+
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityTxLabelMap.ts
         toolbox/ts-wallet-toolbox/src/storage/schema/tables/TableTxLabelMap.ts
     """
-    
+
     def __init__(self, api_object: dict[str, Any] | None = None) -> None:
         """Initialize TxLabelMap with optional API object."""
         if api_object is None:
@@ -1301,11 +1303,11 @@ class TxLabelMap:
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
-            self.transaction_id = api_object.get('transactionId', 0)
-            self.label_id = api_object.get('labelId', 0)
-            self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
-            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
+            self.transaction_id = api_object.get("transactionId", 0)
+            self.label_id = api_object.get("labelId", 0)
+            self.is_deleted = api_object.get("isDeleted", False)
+            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1319,19 +1321,19 @@ class TxLabelMap:
 
     @property
     def entity_name(self) -> str:
-        return 'txLabelMap'
+        return "txLabelMap"
 
     @property
     def entity_table(self) -> str:
-        return 'tx_label_maps'
+        return "tx_label_maps"
 
     def to_api(self) -> dict[str, Any]:
         return {
-            'transactionId': self.transaction_id,
-            'labelId': self.label_id,
-            'isDeleted': self.is_deleted,
-            'createdAt': self.created_at,
-            'updatedAt': self.updated_at,
+            "transactionId": self.transaction_id,
+            "labelId": self.label_id,
+            "isDeleted": self.is_deleted,
+            "createdAt": self.created_at,
+            "updatedAt": self.updated_at,
         }
 
     def update_api(self) -> None:
@@ -1339,39 +1341,40 @@ class TxLabelMap:
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """TxLabelMap equality: check transaction/label IDs and deletion state."""
-        return (self.transaction_id == other.get('transactionId') and
-                self.label_id == other.get('labelId') and
-                self.is_deleted == other.get('isDeleted'))
+        return (
+            self.transaction_id == other.get("transactionId")
+            and self.label_id == other.get("labelId")
+            and self.is_deleted == other.get("isDeleted")
+        )
 
-    def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
-                      sync_map: Any = None, trx: Any = None) -> bool:
+    def merge_existing(
+        self, storage: Any, since: Any, ei: dict[str, Any], sync_map: Any = None, trx: Any = None
+    ) -> bool:
         """Merge existing tx label map - sync deletion state."""
-        if ei.get('updated_at', datetime.now()) > self.updated_at:
-            self.is_deleted = ei.get('isDeleted', False)
-            self.updated_at = ei.get('updated_at', datetime.now())
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.is_deleted = ei.get("isDeleted", False)
+            self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
 
-    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None,
-                 trx: Any = None) -> None:
+    def merge_new(self, storage: Any, user_id: int, sync_map: Any = None, trx: Any = None) -> None:
         """Merge new tx label map from sync."""
         pass
 
 
 __all__ = [
-    'User',
-    'Commission',
-    'Output',
-    'OutputBasket',
-    'OutputTag',
-    'Transaction',
-    'ProvenTx',
-    'ProvenTxReq',
-    'Certificate',
-    'CertificateField',
-    'OutputTagMap',
-    'SyncState',
-    'TxLabel',
-    'TxLabelMap',
+    "User",
+    "Commission",
+    "Output",
+    "OutputBasket",
+    "OutputTag",
+    "Transaction",
+    "ProvenTx",
+    "ProvenTxReq",
+    "Certificate",
+    "CertificateField",
+    "OutputTagMap",
+    "SyncState",
+    "TxLabel",
+    "TxLabelMap",
 ]
-

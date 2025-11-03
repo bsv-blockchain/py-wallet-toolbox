@@ -106,7 +106,6 @@ class TestWhatsOnChain:
         woc_test = WhatsOnChain(env_test.chain, {"apiKey": env_test.taal_api_key})
         services = Services(env_test.chain)
 
-
         # When - valid txid
         r = woc_test.get_merkle_path("7e5b797b86abd31a654bf296900d6cb14d04ef0811568ff4675494af2d92166b", services)
         s = json.dumps(r, sort_keys=True, separators=(",", ":"))

@@ -342,6 +342,7 @@ def validate_insert_certificate_auth_args(args: dict[str, Any]) -> None:
     """Validate insertCertificateAuth (TableCertificateX) arguments."""
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
+
     def _require_even_hex(field: str) -> None:
         v = args.get(field)
         if not isinstance(v, str) or (len(v) % 2 != 0) or not _is_hex_string(v):

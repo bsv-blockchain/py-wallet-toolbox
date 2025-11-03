@@ -5,7 +5,6 @@ This module tests complete flows for MasterCertificate and VerifiableCertificate
 Reference: wallet-toolbox/src/sdk/__test/CertificateLifeCycle.test.ts
 """
 
-
 import pytest
 
 try:
@@ -105,9 +104,7 @@ class TestCertificateLifeCycle:
         assert signed_cert.verify() is True
 
         # Confirm subject can decrypt the certifier's copy of the cert:
-        MasterCertificate.decrypt_fields(
-            subject_wallet, r1["masterKeyring"], signed_cert.fields, signed_cert.certifier
-        )
+        MasterCertificate.decrypt_fields(subject_wallet, r1["masterKeyring"], signed_cert.fields, signed_cert.certifier)
 
         # Prepare to send certificate to third party verifier of the 'name' and 'email' fields.
         # The verifier must be able to confirm the signature on the original certificate's encrypted values.

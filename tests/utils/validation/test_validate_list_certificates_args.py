@@ -20,7 +20,6 @@ class TestValidateListCertificatesArgs:
     - partial: optional filter with valid certifier, type, serialNumber, revocationOutpoint, signature, subject
     """
 
-    
     def test_validate_list_certificates_args_valid(self) -> None:
         """Given: Valid ListCertificatesArgs
            When: Call validate_list_certificates_args
@@ -40,7 +39,6 @@ class TestValidateListCertificatesArgs:
         # When / Then
         validate_list_certificates_args(valid_args)  # Should not raise
 
-    
     def test_validate_list_certificates_args_invalid_certifier_non_hex(self) -> None:
         """Given: ListCertificatesArgs with invalid (non-hex) certifier
            When: Call validate_list_certificates_args
@@ -58,7 +56,6 @@ class TestValidateListCertificatesArgs:
             validate_list_certificates_args(invalid_args)
         assert "certifier" in str(exc_info.value).lower() or "hex" in str(exc_info.value).lower()
 
-    
     def test_validate_list_certificates_args_certifier_odd_length(self) -> None:
         """Given: ListCertificatesArgs with odd-length hex certifier
            When: Call validate_list_certificates_args
@@ -76,7 +73,6 @@ class TestValidateListCertificatesArgs:
             validate_list_certificates_args(invalid_args)
         assert "certifier" in str(exc_info.value).lower() or "even" in str(exc_info.value).lower()
 
-    
     def test_validate_list_certificates_args_invalid_type_not_base64(self) -> None:
         """Given: ListCertificatesArgs with invalid (non-base64) type
            When: Call validate_list_certificates_args
@@ -94,7 +90,6 @@ class TestValidateListCertificatesArgs:
             validate_list_certificates_args(invalid_args)
         assert "type" in str(exc_info.value).lower() or "base64" in str(exc_info.value).lower()
 
-    
     def test_validate_list_certificates_args_limit_above_maximum(self) -> None:
         """Given: ListCertificatesArgs with limit exceeding 10000
            When: Call validate_list_certificates_args
@@ -112,7 +107,6 @@ class TestValidateListCertificatesArgs:
             validate_list_certificates_args(invalid_args)
         assert "limit" in str(exc_info.value).lower()
 
-    
     def test_validate_list_certificates_args_partial_invalid_certifier(self) -> None:
         """Given: ListCertificatesArgs with partial filter containing invalid certifier hex
            When: Call validate_list_certificates_args
@@ -130,7 +124,6 @@ class TestValidateListCertificatesArgs:
             validate_list_certificates_args(invalid_args)
         assert "certifier" in str(exc_info.value).lower() or "hex" in str(exc_info.value).lower()
 
-    
     def test_validate_list_certificates_args_partial_malformed_outpoint(self) -> None:
         """Given: ListCertificatesArgs with partial filter containing malformed revocationOutpoint
            When: Call validate_list_certificates_args

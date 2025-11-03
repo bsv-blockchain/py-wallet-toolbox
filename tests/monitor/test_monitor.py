@@ -187,9 +187,7 @@ class TestMonitor:
                    test('0 TaskClock')
         """
         # Given
-        ctx = create_sqlite_test_setup_1_wallet(
-            database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64
-        )
+        ctx = create_sqlite_test_setup_1_wallet(database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64)
 
         monitor = ctx.monitor
         if monitor is None:
@@ -223,9 +221,7 @@ class TestMonitor:
                    test('1 TaskNewHeader')
         """
         # Given
-        ctx = create_sqlite_test_setup_1_wallet(
-            database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64
-        )
+        ctx = create_sqlite_test_setup_1_wallet(database_name="walletMonitorMain", chain="main", root_key_hex="3" * 64)
 
         monitor = ctx.monitor
         if monitor is None:

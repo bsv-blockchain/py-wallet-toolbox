@@ -50,5 +50,3 @@ def session_scope(SessionLocal: Any) -> Iterator[Session]:
 def create_sqlite_engine(path: str = "wallet.db", *, echo: bool = False) -> Any:
     """Create a synchronous SQLite Engine."""
     return create_engine_from_url(f"sqlite:///{path}", echo=echo)
-
-

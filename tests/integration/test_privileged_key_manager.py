@@ -6,7 +6,6 @@ signing, HMAC, key derivation, and key lifecycle.
 Reference: wallet-toolbox/src/sdk/__test/PrivilegedKeyManager.test.ts
 """
 
-
 import asyncio
 
 import pytest

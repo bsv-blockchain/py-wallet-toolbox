@@ -50,5 +50,3 @@ class ChangeDistribution:
             raise ValueError(
                 f"Cannot distribute change outputs among given outputs (count: {count}) for given amount ({amount})"
             )
-
-

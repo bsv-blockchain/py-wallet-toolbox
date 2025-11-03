@@ -19,5 +19,3 @@ def hash_output_script(script_hex: str) -> str:
     digest = sha256(data)  # returns bytes in big-endian
     # Return as little-endian hex to match expected fixtures
     return bytes(reversed(digest)).hex()
-
-

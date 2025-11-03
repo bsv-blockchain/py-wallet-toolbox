@@ -17,7 +17,6 @@ class TestValidateAbortActionArgs:
     - reference: non-empty string, valid base64 format (length divisible by 4)
     """
 
-    
     def test_validate_abort_action_args_valid(self) -> None:
         """Given: Valid AbortActionArgs
            When: Call validate_abort_action_args
@@ -32,7 +31,6 @@ class TestValidateAbortActionArgs:
         # When / Then
         validate_abort_action_args(valid_args)  # Should not raise
 
-    
     def test_validate_abort_action_args_nil_args(self) -> None:
         """Given: None as arguments
            When: Call validate_abort_action_args
@@ -46,7 +44,6 @@ class TestValidateAbortActionArgs:
             validate_abort_action_args(None)
         assert "args" in str(exc_info.value).lower() or "required" in str(exc_info.value).lower()
 
-    
     def test_validate_abort_action_args_blank_reference(self) -> None:
         """Given: AbortActionArgs with blank reference
            When: Call validate_abort_action_args
@@ -63,7 +60,6 @@ class TestValidateAbortActionArgs:
             validate_abort_action_args(invalid_args)
         assert "reference" in str(exc_info.value).lower()
 
-    
     def test_validate_abort_action_args_invalid_base64(self) -> None:
         """Given: AbortActionArgs with invalid base64 reference (length not divisible by 4)
            When: Call validate_abort_action_args

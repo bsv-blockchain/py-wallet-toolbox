@@ -33,9 +33,7 @@ class TestWalletSyncToWriter:
     """Test suite for Wallet.sync_to_writer method."""
 
     @pytest.mark.skip(reason="Waiting for sync_to_writer implementation with test database")
-    def test_sync_initial_then_no_changes_then_one_change(
-        self, wallet: Wallet, destination_storage
-    ) -> None:
+    def test_sync_initial_then_no_changes_then_one_change(self, wallet: Wallet, destination_storage) -> None:
         """Given: Source wallet and empty destination storage
            When: Call sync_to_writer multiple times with different states
            Then: First sync inserts all data, second sync has no changes, third sync only new data

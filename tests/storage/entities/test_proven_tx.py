@@ -13,7 +13,6 @@ from bsv_wallet_toolbox.storage.entities import ProvenTx
 class TestProvenTxEntity:
     """Test suite for ProvenTx entity."""
 
-    
     def test_fromtxid_valid_txid_with_rawtx_and_merkle_proof_real_database(self) -> None:
         """Given: Valid txid with rawTx and Merkle proof in database
            When: Call from_txid with services
@@ -64,7 +63,6 @@ class TestProvenTxEntity:
         assert result["proven"]["merkleRoot"] == merkle_root
         assert result["rawTx"] == raw_tx
 
-    
     def test_fromtxid_txid_with_no_rawtx_available(self) -> None:
         """Given: Txid with no rawTx available
            When: Call from_txid
@@ -90,7 +88,6 @@ class TestProvenTxEntity:
         assert result["proven"] is None
         assert result["rawTx"] is None
 
-    
     def test_fromtxid_txid_with_no_merkle_proof_available(self) -> None:
         """Given: Txid with rawTx but no Merkle proof
            When: Call from_txid
@@ -122,7 +119,6 @@ class TestProvenTxEntity:
         assert result["proven"] is None
         assert result["rawTx"] == raw_tx
 
-    
     def test_proventx_getters_and_setters(self) -> None:
         """Given: ProvenTx instance with mock data
            When: Set and get all properties
@@ -184,7 +180,6 @@ class TestProvenTxEntity:
         proven_tx.id = 3
         assert proven_tx.proven_tx_id == 3
 
-    
     def test_equals_identifies_matching_proventx_entities(self) -> None:
         """Given: Two ProvenTx entities with matching data
            When: Call equals method with syncMap
@@ -228,7 +223,6 @@ class TestProvenTxEntity:
         # When/Then
         assert proven_tx1.equals(proven_tx2_api, sync_map) is True
 
-    
     def test_equals_identifies_non_matching_txid(self) -> None:
         """Given: Two ProvenTx entities with different txids
            When: Call equals method
@@ -246,7 +240,6 @@ class TestProvenTxEntity:
         # When/Then
         assert proven_tx1.equals(proven_tx2_api) is False
 
-    
     def test_equals_identifies_non_matching_height(self) -> None:
         """Given: Two ProvenTx entities with different heights
            When: Call equals method
@@ -269,7 +262,6 @@ class TestProvenTxEntity:
         # When/Then
         assert proven_tx1.equals(proven_tx2_api) is False
 
-    
     def test_equals_identifies_non_matching_merklepath(self) -> None:
         """Given: Two ProvenTx entities with different merklePaths
            When: Call equals method
@@ -292,7 +284,6 @@ class TestProvenTxEntity:
         # When/Then
         assert proven_tx1.equals(proven_tx2_api) is False
 
-    
     def test_equals_identifies_non_matching_syncmap(self) -> None:
         """Given: Two ProvenTx entities with mismatched syncMap
            When: Call equals method with syncMap
@@ -312,7 +303,6 @@ class TestProvenTxEntity:
         # When/Then
         assert proven_tx1.equals(proven_tx2_api, sync_map) is False
 
-    
     def test_equals_proventxid_mismatch_without_syncmap(self) -> None:
         """Given: Two ProvenTx entities with different provenTxIds, no syncMap
            When: Call equals method
@@ -350,7 +340,6 @@ class TestProvenTxEntity:
         # When/Then
         assert tx1.equals(tx2_api) is False
 
-    
     def test_mergeexisting_always_returns_false(self) -> None:
         """Given: ProvenTx entity
            When: Call merge_existing

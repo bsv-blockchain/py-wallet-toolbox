@@ -12,7 +12,6 @@ from bsv_wallet_toolbox.storage.entities import OutputTag
 class TestOutputTagEntity:
     """Test suite for OutputTag entity."""
 
-    
     def test_mergeexisting_merges_and_updates_entity_when_ei_updated_at_greater_than_this_updated_at(
         self,
     ) -> None:
@@ -49,7 +48,6 @@ class TestOutputTagEntity:
         assert was_merged is True
         assert entity.is_deleted == 1
 
-    
     def test_mergeexisting_does_not_merge_when_ei_updated_at_less_than_or_equal_this_updated_at(self) -> None:
         """Given: OutputTag entity with same or newer updated_at
            When: Call merge_existing with same or older updated_at
@@ -84,7 +82,6 @@ class TestOutputTagEntity:
         assert was_merged is False
         assert entity.is_deleted == 0
 
-    
     def test_equals_identifies_matching_entities_without_syncmap(self) -> None:
         """Given: Two OutputTag entities with identical data
            When: Call equals method without syncMap
@@ -110,7 +107,6 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is True
 
-    
     def test_equals_identifies_non_matching_entities_when_tags_differ(self) -> None:
         """Given: Two OutputTag entities with different tags
            When: Call equals method
@@ -137,7 +133,6 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    
     def test_equals_identifies_non_matching_entities_when_isdeleted_differs(self) -> None:
         """Given: Two OutputTag entities with different isDeleted
            When: Call equals method
@@ -164,7 +159,6 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    
     def test_equals_identifies_matching_entities_with_syncmap(self) -> None:
         """Given: Two OutputTag entities with identical data
            When: Call equals method with syncMap
@@ -192,7 +186,6 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api(), sync_map) is True
 
-    
     def test_equals_identifies_non_matching_entities_when_userids_differ_and_no_syncmap_is_provided(self) -> None:
         """Given: Two OutputTag entities with different userIds
            When: Call equals method without syncMap
@@ -219,7 +212,6 @@ class TestOutputTagEntity:
         # When/Then
         assert entity1.equals(entity2.to_api()) is False
 
-    
     def test_getters_and_setters_work_as_expected_for_outputtag(self) -> None:
         """Given: OutputTag entity
            When: Set and get all properties

@@ -45,7 +45,6 @@ class TestSatoshiAdd:
         Reference: TestAdd - add two max satoshis
         """
 
-
         with pytest.raises((InvalidParameterError, OverflowError)):
             satoshi_add(MAX_SATOSHIS, MAX_SATOSHIS)
 
@@ -116,7 +115,6 @@ class TestSatoshiSubtract:
         Reference: TestSubtract - subtract exceeding max positive value
         """
 
-
         with pytest.raises((InvalidParameterError, OverflowError)):
             satoshi_subtract(MAX_SATOSHIS, -1)
 
@@ -164,7 +162,6 @@ class TestSatoshiFrom:
 
         Reference: TestFrom - from max satoshi + 1
         """
-
 
         with pytest.raises(InvalidParameterError):
             satoshi_from(MAX_SATOSHIS + 1)
@@ -214,7 +211,6 @@ class TestSatoshiSum:
         Reference: TestSum - sum exceeding max satoshi value
         """
 
-
         with pytest.raises((InvalidParameterError, OverflowError)):
             satoshi_sum([MAX_SATOSHIS, 1])
 
@@ -240,7 +236,6 @@ class TestSatoshiMultiply:
 
         Reference: TestMultiply - multiplication overflow
         """
-
 
         with pytest.raises((InvalidParameterError, OverflowError)):
             satoshi_multiply(MAX_SATOSHIS, 2)
@@ -290,7 +285,6 @@ class TestSatoshiEqual:
         Reference: TestEqual - try equal with max satoshis + 1
         """
 
-
         with pytest.raises(InvalidParameterError):
             satoshi_equal(0, MAX_SATOSHIS + 1)
 
@@ -316,7 +310,6 @@ class TestSatoshiToUint64:
 
         Reference: TestUInt64 - negative value
         """
-
 
         with pytest.raises((InvalidParameterError, ValueError)):
             satoshi_to_uint64(-50)

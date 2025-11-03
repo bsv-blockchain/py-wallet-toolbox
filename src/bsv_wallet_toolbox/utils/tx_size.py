@@ -59,5 +59,3 @@ def inputs_outputs_sizes(
     inputs = [transaction_input_size(int(s)) for s in unlocking_script_sizes]
     outputs = [transaction_output_size(int(s)) for s in locking_script_sizes]
     return inputs, outputs
-
-

@@ -19,7 +19,6 @@ class TestValidateListOutputsArgs:
     - tagQueryMode: must be valid query mode (any, all)
     """
 
-    
     def test_validate_list_outputs_args_valid_paging_only(self) -> None:
         """Given: Valid ListOutputsArgs with only paging parameters
            When: Call validate_list_outputs_args
@@ -35,7 +34,6 @@ class TestValidateListOutputsArgs:
         # When / Then
         validate_list_outputs_args(valid_args)  # Should not raise
 
-    
     def test_validate_list_outputs_args_valid_with_tag_query_all(self) -> None:
         """Given: Valid ListOutputsArgs with tagQueryMode='all'
            When: Call validate_list_outputs_args
@@ -51,7 +49,6 @@ class TestValidateListOutputsArgs:
         # When / Then
         validate_list_outputs_args(valid_args)  # Should not raise
 
-    
     def test_validate_list_outputs_args_valid_with_tag_query_any(self) -> None:
         """Given: Valid ListOutputsArgs with tagQueryMode='any'
            When: Call validate_list_outputs_args
@@ -67,7 +64,6 @@ class TestValidateListOutputsArgs:
         # When / Then
         validate_list_outputs_args(valid_args)  # Should not raise
 
-    
     def test_validate_list_outputs_args_invalid_txid(self) -> None:
         """Given: ListOutputsArgs with invalid txid in knownTxids
            When: Call validate_list_outputs_args
@@ -85,7 +81,6 @@ class TestValidateListOutputsArgs:
             validate_list_outputs_args(invalid_args)
         assert "txid" in str(exc_info.value).lower() or "hex" in str(exc_info.value).lower()
 
-    
     def test_validate_list_outputs_args_zero_limit(self) -> None:
         """Given: ListOutputsArgs with zero limit
            When: Call validate_list_outputs_args
@@ -103,7 +98,6 @@ class TestValidateListOutputsArgs:
             validate_list_outputs_args(invalid_args)
         assert "limit" in str(exc_info.value).lower()
 
-    
     def test_validate_list_outputs_args_wrong_tag_query(self) -> None:
         """Given: ListOutputsArgs with invalid tagQueryMode
            When: Call validate_list_outputs_args

@@ -21,5 +21,3 @@ async def test_post_beef_array_minimal() -> None:
         assert isinstance(res, dict)
         assert set(res.keys()) == {"accepted", "txid", "message"}
         assert res["accepted"] in (True, False)
-
-

@@ -38,8 +38,4 @@ def test_encrypt_decrypt_roundtrip(wallet_with_key_deriver):
 
 def test_encrypt_requires_bytes(wallet_with_key_deriver):
     with pytest.raises(Exception):
-        wallet_with_key_deriver.encrypt(
-            {"plaintext": "not-bytes", "protocolID": [2, "encryption"], "keyID": "default"}
-        )
-
-
+        wallet_with_key_deriver.encrypt({"plaintext": "not-bytes", "protocolID": [2, "encryption"], "keyID": "default"})

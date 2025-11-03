@@ -5,7 +5,6 @@ Main implementation of WalletServices interface with provider support.
 Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts
 """
 
-
 from time import time
 from typing import Any
 
@@ -287,7 +286,6 @@ class Services(WalletServices):
         """
         return utils_hash_output_script(script_hex)
 
-
     def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
         """Determine if an nLockTime value (or transaction) is final.
 
@@ -338,7 +336,6 @@ class Services(WalletServices):
 
         height = self.get_height()
         return n_lock_time < int(height)
-
 
     #
     # WalletServices external service methods
@@ -656,7 +653,9 @@ class Services(WalletServices):
         """
         txid = getattr(output, "txid", None) if not isinstance(output, dict) else output.get("txid")
         vout = getattr(output, "vout", None) if not isinstance(output, dict) else output.get("vout")
-        script = getattr(output, "locking_script", None) if not isinstance(output, dict) else output.get("lockingScript")
+        script = (
+            getattr(output, "locking_script", None) if not isinstance(output, dict) else output.get("lockingScript")
+        )
         if script is None or len(script) == 0:
             return False
         try:
