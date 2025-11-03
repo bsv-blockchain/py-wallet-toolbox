@@ -276,6 +276,22 @@ class Output:
         vout: Output index in transaction
         satoshis: Output value in satoshis
         locking_script: Bitcoin script bytes
+        basket_id: Associated output basket
+        spent_by: Transaction that spends this output (if any)
+        spendable: Whether this output can be spent
+        change: Whether this is a change output
+        output_description: Human-readable description
+        txid: Transaction ID string
+        type: Output type (e.g., 'p2pkh', 'p2sh')
+        provided_by: Who provided this output
+        purpose: Purpose of this output
+        spending_description: Description of spending
+        derivation_prefix: Derivation path prefix
+        derivation_suffix: Derivation path suffix
+        sender_identity_key: Sender's identity key
+        custom_instructions: Custom instructions
+        script_length: Length of locking script
+        script_offset: Offset in script
         created_at: Creation timestamp
         updated_at: Modification timestamp
 
@@ -293,6 +309,22 @@ class Output:
             self.vout: int = 0
             self.satoshis: int = 0
             self.locking_script: list[int] | None = None
+            self.basket_id: int | None = None
+            self.spent_by: int | None = None
+            self.spendable: bool = True
+            self.change: bool = False
+            self.output_description: str = ""
+            self.txid: str = ""
+            self.type: str = ""
+            self.provided_by: str = ""
+            self.purpose: str = ""
+            self.spending_description: str = ""
+            self.derivation_prefix: str = ""
+            self.derivation_suffix: str = ""
+            self.sender_identity_key: str = ""
+            self.custom_instructions: str = ""
+            self.script_length: int = 0
+            self.script_offset: int = 0
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
@@ -302,6 +334,22 @@ class Output:
             self.vout = api_object.get("vout", 0)
             self.satoshis = api_object.get("satoshis", 0)
             self.locking_script = api_object.get("lockingScript")
+            self.basket_id = api_object.get("basketId")
+            self.spent_by = api_object.get("spentBy")
+            self.spendable = api_object.get("spendable", True)
+            self.change = api_object.get("change", False)
+            self.output_description = api_object.get("outputDescription", "")
+            self.txid = api_object.get("txid", "")
+            self.type = api_object.get("type", "")
+            self.provided_by = api_object.get("providedBy", "")
+            self.purpose = api_object.get("purpose", "")
+            self.spending_description = api_object.get("spendingDescription", "")
+            self.derivation_prefix = api_object.get("derivationPrefix", "")
+            self.derivation_suffix = api_object.get("derivationSuffix", "")
+            self.sender_identity_key = api_object.get("senderIdentityKey", "")
+            self.custom_instructions = api_object.get("customInstructions", "")
+            self.script_length = api_object.get("scriptLength", 0)
+            self.script_offset = api_object.get("scriptOffset", 0)
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
@@ -329,6 +377,22 @@ class Output:
             "vout": self.vout,
             "satoshis": self.satoshis,
             "lockingScript": self.locking_script,
+            "basketId": self.basket_id,
+            "spentBy": self.spent_by,
+            "spendable": self.spendable,
+            "change": self.change,
+            "outputDescription": self.output_description,
+            "txid": self.txid,
+            "type": self.type,
+            "providedBy": self.provided_by,
+            "purpose": self.purpose,
+            "spendingDescription": self.spending_description,
+            "derivationPrefix": self.derivation_prefix,
+            "derivationSuffix": self.derivation_suffix,
+            "senderIdentityKey": self.sender_identity_key,
+            "customInstructions": self.custom_instructions,
+            "scriptLength": self.script_length,
+            "scriptOffset": self.script_offset,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
         }
@@ -352,6 +416,21 @@ class Output:
             self.satoshis = ei.get("satoshis", self.satoshis)
             self.vout = ei.get("vout", self.vout)
             self.locking_script = ei.get("lockingScript", self.locking_script)
+            self.spent_by = ei.get("spentBy", self.spent_by)
+            self.spendable = ei.get("spendable", self.spendable)
+            self.change = ei.get("change", self.change)
+            self.output_description = ei.get("outputDescription", self.output_description)
+            self.txid = ei.get("txid", self.txid)
+            self.type = ei.get("type", self.type)
+            self.provided_by = ei.get("providedBy", self.provided_by)
+            self.purpose = ei.get("purpose", self.purpose)
+            self.spending_description = ei.get("spendingDescription", self.spending_description)
+            self.derivation_prefix = ei.get("derivationPrefix", self.derivation_prefix)
+            self.derivation_suffix = ei.get("derivationSuffix", self.derivation_suffix)
+            self.sender_identity_key = ei.get("senderIdentityKey", self.sender_identity_key)
+            self.custom_instructions = ei.get("customInstructions", self.custom_instructions)
+            self.script_length = ei.get("scriptLength", self.script_length)
+            self.script_offset = ei.get("scriptOffset", self.script_offset)
             self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
@@ -386,7 +465,7 @@ class OutputBasket:
             self.name: str = ""
             self.number_of_desired_utxos: int = 0
             self.minimum_desired_utxo_value: int = 0
-            self.is_deleted: bool = False
+            self.is_deleted: int | bool = False
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
@@ -395,7 +474,7 @@ class OutputBasket:
             self.name = api_object.get("name", "")
             self.number_of_desired_utxos = api_object.get("numberOfDesiredUTXOs", 0)
             self.minimum_desired_utxo_value = api_object.get("minimumDesiredUTXOValue", 0)
-            self.is_deleted = api_object.get("isDeleted", False)
+            self.is_deleted = bool(api_object.get("isDeleted", False))
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
@@ -442,9 +521,17 @@ class OutputBasket:
         )
 
     def merge_existing(
-        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output basket."""
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.name = ei.get("name", self.name)
+            self.number_of_desired_utxos = ei.get("numberOfDesiredUTXOs", self.number_of_desired_utxos)
+            self.minimum_desired_utxo_value = ei.get("minimumDesiredUTXOValue", self.minimum_desired_utxo_value)
+            is_del = ei.get("isDeleted", False)
+            self.is_deleted = 1 if is_del else 0
+            self.updated_at = ei.get("updated_at", datetime.now())
+            return True
         return False
 
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
@@ -458,6 +545,7 @@ class OutputTag:
         output_tag_id: Primary key
         user_id: Owner's user ID
         tag: Tag label string (e.g., 'received', 'change', 'cold-storage')
+        is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
 
@@ -472,12 +560,15 @@ class OutputTag:
             self.output_tag_id: int = 0
             self.user_id: int = 0
             self.tag: str = ""
+            self.is_deleted: int = 0
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
             self.output_tag_id = api_object.get("outputTagId", 0)
             self.user_id = api_object.get("userId", 0)
             self.tag = api_object.get("tag", "")
+            is_del = api_object.get("isDeleted", False)
+            self.is_deleted = 1 if is_del else 0
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
@@ -502,6 +593,7 @@ class OutputTag:
             "outputTagId": self.output_tag_id,
             "userId": self.user_id,
             "tag": self.tag,
+            "isDeleted": bool(self.is_deleted),
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
         }
@@ -510,13 +602,23 @@ class OutputTag:
         pass
 
     def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
-        """OutputTag equality: same tag string."""
-        return self.tag == other.get("tag")
+        """OutputTag equality: same tag string, user_id, and deletion state."""
+        return (
+            self.tag == other.get("tag")
+            and self.user_id == other.get("userId")
+            and bool(self.is_deleted) == other.get("isDeleted")
+        )
 
     def merge_existing(
-        self, _storage: Any, _since: Any, _ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
+        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
-        """Merge existing output tag."""
+        """Merge existing output tag - sync deletion state."""
+        if ei.get("updated_at", datetime.now()) > self.updated_at:
+            self.tag = ei.get("tag", self.tag)
+            is_del = ei.get("isDeleted", False)
+            self.is_deleted = 1 if is_del else 0
+            self.updated_at = ei.get("updated_at", datetime.now())
+            return True
         return False
 
     def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
@@ -1027,12 +1129,12 @@ class OutputTagMap:
 
     Attributes:
         output_id: Output identifier
-        tag_id: Tag identifier
+        output_tag_id: Tag identifier
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
 
-    Note: This is a composite key table (output_id + tag_id)
+    Note: This is a composite key table (output_id + output_tag_id)
 
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityOutputTagMap.ts
@@ -1044,14 +1146,14 @@ class OutputTagMap:
         if api_object is None:
             now = datetime.now()
             self.output_id: int = 0
-            self.tag_id: int = 0
+            self.output_tag_id: int = 0
             self.is_deleted: bool = False
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
             self.output_id = api_object.get("outputId", 0)
-            self.tag_id = api_object.get("tagId", 0)
-            self.is_deleted = api_object.get("isDeleted", False)
+            self.output_tag_id = api_object.get("outputTagId", 0)
+            self.is_deleted = bool(api_object.get("isDeleted", False))
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
@@ -1071,12 +1173,12 @@ class OutputTagMap:
 
     @property
     def entity_table(self) -> str:
-        return "output_tag_maps"
+        return "output_tags_map"
 
     def to_api(self) -> dict[str, Any]:
         return {
             "outputId": self.output_id,
-            "tagId": self.tag_id,
+            "outputTagId": self.output_tag_id,
             "isDeleted": self.is_deleted,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
@@ -1089,7 +1191,7 @@ class OutputTagMap:
         """OutputTagMap equality: check output/tag IDs and deletion state."""
         return (
             self.output_id == other.get("outputId")
-            and self.tag_id == other.get("tagId")
+            and self.output_tag_id == other.get("outputTagId")
             and self.is_deleted == other.get("isDeleted")
         )
 
@@ -1098,7 +1200,7 @@ class OutputTagMap:
     ) -> bool:
         """Merge existing output tag map - sync deletion state."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
-            self.is_deleted = ei.get("isDeleted", False)
+            self.is_deleted = bool(ei.get("isDeleted", False))
             self.updated_at = ei.get("updated_at", datetime.now())
             return True
         return False
@@ -1294,12 +1396,12 @@ class TxLabelMap:
 
     Attributes:
         transaction_id: Transaction identifier
-        label_id: Label identifier
+        tx_label_id: Label identifier
         is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
 
-    Note: This is a composite key table (transaction_id + label_id)
+    Note: This is a composite key table (transaction_id + tx_label_id)
 
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntityTxLabelMap.ts
@@ -1311,13 +1413,13 @@ class TxLabelMap:
         if api_object is None:
             now = datetime.now()
             self.transaction_id: int = 0
-            self.label_id: int = 0
+            self.tx_label_id: int = 0
             self.is_deleted: bool = False
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
             self.transaction_id = api_object.get("transactionId", 0)
-            self.label_id = api_object.get("labelId", 0)
+            self.tx_label_id = api_object.get("txLabelId", 0)
             self.is_deleted = api_object.get("isDeleted", False)
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
@@ -1338,12 +1440,12 @@ class TxLabelMap:
 
     @property
     def entity_table(self) -> str:
-        return "tx_label_maps"
+        return "tx_labels_map"
 
     def to_api(self) -> dict[str, Any]:
         return {
             "transactionId": self.transaction_id,
-            "labelId": self.label_id,
+            "txLabelId": self.tx_label_id,
             "isDeleted": self.is_deleted,
             "createdAt": self.created_at,
             "updatedAt": self.updated_at,
@@ -1352,26 +1454,78 @@ class TxLabelMap:
     def update_api(self) -> None:
         pass
 
-    def equals(self, other: dict[str, Any], _sync_map: Any = None) -> bool:
+    def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
         """TxLabelMap equality: check transaction/label IDs and deletion state."""
+        # Map IDs using sync_map if provided
+        self_tx_id = self.transaction_id
+        self_label_id = self.tx_label_id
+        other_tx_id = other.get("transactionId", 0)
+        other_label_id = other.get("txLabelId", 0)
+
+        if sync_map:
+            if "transaction" in sync_map and "idMap" in sync_map["transaction"]:
+                self_tx_id = sync_map["transaction"]["idMap"].get(self.transaction_id, self.transaction_id)
+                other_tx_id = sync_map["transaction"]["idMap"].get(other_tx_id, other_tx_id)
+            if "txLabel" in sync_map and "idMap" in sync_map["txLabel"]:
+                self_label_id = sync_map["txLabel"]["idMap"].get(self.tx_label_id, self.tx_label_id)
+                other_label_id = sync_map["txLabel"]["idMap"].get(other_label_id, other_label_id)
+
         return (
-            self.transaction_id == other.get("transactionId")
-            and self.label_id == other.get("labelId")
-            and self.is_deleted == other.get("isDeleted")
+            self_tx_id == other_tx_id and self_label_id == other_label_id and self.is_deleted == other.get("isDeleted")
         )
 
     def merge_existing(
-        self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
+        self, storage: Any, _since: Any, ei: dict[str, Any], sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing tx label map - sync deletion state."""
         if ei.get("updated_at", datetime.now()) > self.updated_at:
             self.is_deleted = ei.get("isDeleted", False)
             self.updated_at = ei.get("updated_at", datetime.now())
+            # Call storage update if needed
+            if hasattr(storage, "updateTxLabelMap"):
+                mapped_tx_id = self.transaction_id
+                mapped_label_id = self.tx_label_id
+                if sync_map:
+                    if "transaction" in sync_map and "idMap" in sync_map["transaction"]:
+                        mapped_tx_id = sync_map["transaction"]["idMap"].get(self.transaction_id, self.transaction_id)
+                    if "txLabel" in sync_map and "idMap" in sync_map["txLabel"]:
+                        mapped_label_id = sync_map["txLabel"]["idMap"].get(self.tx_label_id, self.tx_label_id)
+                # Call as sync function (test mocks are sync)
+                storage.updateTxLabelMap(mapped_tx_id, mapped_label_id, {"isDeleted": self.is_deleted})
             return True
         return False
 
-    def merge_new(self, _storage: Any, _user_id: int, _sync_map: Any = None, _trx: Any = None) -> None:
+    def merge_new(self, storage: Any, _user_id: int, sync_map: Any = None, _trx: Any = None) -> None:
         """Merge new tx label map from sync."""
+        # Map IDs using sync_map before inserting
+        mapped_tx_id = self.transaction_id
+        mapped_label_id = self.tx_label_id
+        if sync_map:
+            if "transaction" in sync_map and "idMap" in sync_map["transaction"]:
+                mapped_tx_id = sync_map["transaction"]["idMap"].get(self.transaction_id, self.transaction_id)
+            if "txLabel" in sync_map and "idMap" in sync_map["txLabel"]:
+                mapped_label_id = sync_map["txLabel"]["idMap"].get(self.tx_label_id, self.tx_label_id)
+        # Insert with mapped IDs (call as sync function for test mocks)
+        if hasattr(storage, "insertTxLabelMap"):
+            storage.insertTxLabelMap({"transactionId": mapped_tx_id, "txLabelId": mapped_label_id})
+
+    @classmethod
+    def merge_find(cls, storage: Any, _user_id: int, ei: dict[str, Any], sync_map: Any = None) -> dict[str, Any]:
+        """Find or create entity during merge."""
+        # Map IDs to find
+        search_tx_id = ei.get("transactionId", 0)
+        search_label_id = ei.get("txLabelId", 0)
+        if sync_map:
+            if "transaction" in sync_map and "idMap" in sync_map["transaction"]:
+                search_tx_id = sync_map["transaction"]["idMap"].get(search_tx_id, search_tx_id)
+            if "txLabel" in sync_map and "idMap" in sync_map["txLabel"]:
+                search_label_id = sync_map["txLabel"]["idMap"].get(search_label_id, search_label_id)
+        # Find in storage
+        if hasattr(storage, "findTxLabelMaps"):
+            results = storage.findTxLabelMaps({"transactionId": search_tx_id, "txLabelId": search_label_id})
+            if results:
+                return {"found": True, "eo": cls(results[0])}
+        return {"found": False, "eo": cls(ei)}
 
 
 __all__ = [
