@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.models import Output
+from bsv_wallet_toolbox.storage.entities import Output
 
 
 class TestOutputEntity:

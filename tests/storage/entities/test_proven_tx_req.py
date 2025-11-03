@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 
 import pytest
-from bsv_wallet_toolbox.storage.models import ProvenTxReq
+from bsv_wallet_toolbox.storage.entities import ProvenTxReq
 
 
 class TestProvenTxReqEntity:

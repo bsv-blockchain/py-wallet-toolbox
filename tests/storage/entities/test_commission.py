@@ -6,7 +6,7 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/CommissionTests.te
 from datetime import datetime
 
 import pytest
-from bsv_wallet_toolbox.storage.models import Commission
+from bsv_wallet_toolbox.storage.entities import Commission
 
 
 class TestCommissionEntity:

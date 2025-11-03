@@ -424,35 +424,3 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("bsv.broadcasters.arc.default_http_client", fake_default_http_client)
     except Exception:
         pass
-
-
-# ========================================================================
-# Phase 4-5 Boundary: Entity tests deferred
-# ========================================================================
-
-def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
-    """Skip Entity tests pending Phase 5 ORM implementation.
-    
-    These tests require full Entity DTO implementation which is deferred.
-    User tests (test_users.py) are included since User DTO is implemented.
-    """
-    entity_skip_tests = [
-        "test_certificate.py",
-        "test_certificate_field.py",
-        "test_commission.py",
-        "test_output.py",
-        "test_output_basket.py",
-        "test_output_tag.py",
-        "test_output_tag_map.py",
-        "test_proven_tx.py",
-        "test_proven_tx_req.py",
-        "test_stamp_log.py",
-        "test_transaction.py",
-        "test_tx_label.py",
-        "test_tx_label_map.py",
-    ]
-    
-    skip_marker = pytest.mark.skip(reason="Entity ORM implementation deferred to Phase 5")
-    for item in items:
-        if any(skip_test in str(item.fspath) for skip_test in entity_skip_tests):
-            item.add_marker(skip_marker)

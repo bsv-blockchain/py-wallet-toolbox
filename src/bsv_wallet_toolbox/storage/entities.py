@@ -209,8 +209,8 @@ class Commission:
             self.is_redeemed = api_object.get('isRedeemed', False)
             self.key_offset = api_object.get('keyOffset', "")
             self.locking_script = api_object.get('lockingScript')
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -299,8 +299,8 @@ class Output:
             self.vout = api_object.get('vout', 0)
             self.satoshis = api_object.get('satoshis', 0)
             self.locking_script = api_object.get('lockingScript')
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -356,6 +356,9 @@ class OutputBasket:
         basket_id: Primary key
         user_id: Owner's user ID
         name: Human-readable basket name (e.g., 'default', 'savings')
+        number_of_desired_utxos: Target UTXO count for this basket
+        minimum_desired_utxo_value: Minimum value per UTXO in satoshis
+        is_deleted: Soft delete flag
         created_at: Creation timestamp
         updated_at: Modification timestamp
     
@@ -370,14 +373,20 @@ class OutputBasket:
             self.basket_id: int = 0
             self.user_id: int = 0
             self.name: str = ""
+            self.number_of_desired_utxos: int = 0
+            self.minimum_desired_utxo_value: int = 0
+            self.is_deleted: bool = False
             self.created_at: datetime = now
             self.updated_at: datetime = now
         else:
             self.basket_id = api_object.get('basketId', 0)
             self.user_id = api_object.get('userId', 0)
             self.name = api_object.get('name', "")
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.number_of_desired_utxos = api_object.get('numberOfDesiredUTXOs', 0)
+            self.minimum_desired_utxo_value = api_object.get('minimumDesiredUTXOValue', 0)
+            self.is_deleted = api_object.get('isDeleted', False)
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -389,7 +398,7 @@ class OutputBasket:
 
     @property
     def entity_name(self) -> str:
-        return 'output_basket'
+        return 'outputBasket'
 
     @property
     def entity_table(self) -> str:
@@ -400,6 +409,9 @@ class OutputBasket:
             'basketId': self.basket_id,
             'userId': self.user_id,
             'name': self.name,
+            'numberOfDesiredUTXOs': self.number_of_desired_utxos,
+            'minimumDesiredUTXOValue': self.minimum_desired_utxo_value,
+            'isDeleted': self.is_deleted,
             'createdAt': self.created_at,
             'updatedAt': self.updated_at,
         }
@@ -408,8 +420,13 @@ class OutputBasket:
         pass
 
     def equals(self, other: dict[str, Any], sync_map: Any = None) -> bool:
-        """OutputBasket equality: same name."""
-        return self.name == other.get('name')
+        """OutputBasket equality: all fields must match."""
+        return (self.basket_id == other.get('basketId') and
+                self.user_id == other.get('userId') and
+                self.name == other.get('name') and
+                self.number_of_desired_utxos == other.get('numberOfDesiredUTXOs') and
+                self.minimum_desired_utxo_value == other.get('minimumDesiredUTXOValue') and
+                self.is_deleted == other.get('isDeleted'))
 
     def merge_existing(self, storage: Any, since: Any, ei: dict[str, Any],
                       sync_map: Any = None, trx: Any = None) -> bool:
@@ -449,8 +466,8 @@ class OutputTag:
             self.output_tag_id = api_object.get('outputTagId', 0)
             self.user_id = api_object.get('userId', 0)
             self.tag = api_object.get('tag', "")
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -462,7 +479,7 @@ class OutputTag:
 
     @property
     def entity_name(self) -> str:
-        return 'output_tag'
+        return 'outputTag'
 
     @property
     def entity_table(self) -> str:
@@ -522,8 +539,8 @@ class Transaction:
             self.transaction_id = api_object.get('transactionId', 0)
             self.user_id = api_object.get('userId', 0)
             self.satoshis = api_object.get('satoshis', 0)
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -617,8 +634,8 @@ class ProvenTx:
             self.raw_tx = bytes(rt) if isinstance(rt, list) else (rt or b"")
             self.block_hash = api_object.get('blockHash', "")
             self.merkle_root = api_object.get('merkleRoot', "")
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -630,7 +647,7 @@ class ProvenTx:
 
     @property
     def entity_name(self) -> str:
-        return 'proven_tx'
+        return 'provenTx'
 
     @property
     def entity_table(self) -> str:
@@ -722,8 +739,8 @@ class ProvenTxReq:
             self.attempts = api_object.get('attempts', 0)
             rt = api_object.get('rawTx', b"")
             self.raw_tx = bytes(rt) if isinstance(rt, list) else (rt or b"")
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -735,7 +752,7 @@ class ProvenTxReq:
 
     @property
     def entity_name(self) -> str:
-        return 'proven_tx_req'
+        return 'provenTxReq'
 
     @property
     def entity_table(self) -> str:
@@ -835,8 +852,8 @@ class Certificate:
             self.revocation_outpoint = api_object.get('revocationOutpoint', "")
             self.signature = api_object.get('signature', "")
             self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -932,8 +949,8 @@ class CertificateField:
             self.field_name = api_object.get('fieldName', "")
             self.field_value = api_object.get('fieldValue', "")
             self.master_key = api_object.get('masterKey')
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -945,7 +962,7 @@ class CertificateField:
 
     @property
     def entity_name(self) -> str:
-        return 'certificate_field'
+        return 'certificateField'
 
     @property
     def entity_table(self) -> str:
@@ -1017,8 +1034,8 @@ class OutputTagMap:
             self.output_id = api_object.get('outputId', 0)
             self.tag_id = api_object.get('tagId', 0)
             self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -1032,7 +1049,7 @@ class OutputTagMap:
 
     @property
     def entity_name(self) -> str:
-        return 'output_tag_map'
+        return 'outputTagMap'
 
     @property
     def entity_table(self) -> str:
@@ -1114,8 +1131,8 @@ class SyncState:
             self.init = api_object.get('init', False)
             self.ref_num = api_object.get('refNum', 0)
             self.sync_map = api_object.get('syncMap', "")
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -1127,7 +1144,7 @@ class SyncState:
 
     @property
     def entity_name(self) -> str:
-        return 'sync_state'
+        return 'syncState'
 
     @property
     def entity_table(self) -> str:
@@ -1204,8 +1221,8 @@ class TxLabel:
             self.user_id = api_object.get('userId', 0)
             self.label = api_object.get('label', "")
             self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -1217,7 +1234,7 @@ class TxLabel:
 
     @property
     def entity_name(self) -> str:
-        return 'tx_label'
+        return 'txLabel'
 
     @property
     def entity_table(self) -> str:
@@ -1287,8 +1304,8 @@ class TxLabelMap:
             self.transaction_id = api_object.get('transactionId', 0)
             self.label_id = api_object.get('labelId', 0)
             self.is_deleted = api_object.get('isDeleted', False)
-            self.created_at = api_object.get('createdAt', datetime.now())
-            self.updated_at = api_object.get('updatedAt', datetime.now())
+            self.created_at = api_object.get('createdAt') or api_object.get('created_at', datetime.now())
+            self.updated_at = api_object.get('updatedAt') or api_object.get('updated_at', datetime.now())
 
     @property
     def id(self) -> int:
@@ -1302,7 +1319,7 @@ class TxLabelMap:
 
     @property
     def entity_name(self) -> str:
-        return 'tx_label_map'
+        return 'txLabelMap'
 
     @property
     def entity_table(self) -> str:

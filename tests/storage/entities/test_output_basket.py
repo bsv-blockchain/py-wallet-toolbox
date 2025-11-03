@@ -6,7 +6,7 @@ Reference: wallet-toolbox/src/storage/schema/entities/__tests/OutputBasketTests.
 from datetime import datetime
 
 import pytest
-from bsv_wallet_toolbox.storage.models import OutputBasket
+from bsv_wallet_toolbox.storage.entities import OutputBasket
 
 
 class TestOutputBasketEntity:

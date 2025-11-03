@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 from bsv.transaction import Transaction as BsvTransaction
-from bsv_wallet_toolbox.storage.models import Transaction
+from bsv_wallet_toolbox.storage.entities import Transaction
 
 
 class TestTransactionEntity:
