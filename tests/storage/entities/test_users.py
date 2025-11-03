@@ -277,7 +277,6 @@ class TestUsersEntity:
         # When/Then
         assert user.entity_table == "users"
 
-    @pytest.mark.skip(reason="Mock calling issue")
     def test_mergeexisting_updates_user_when_ei_updated_at_is_newer(self) -> None:
         """Given: Existing User with old updated_at
            When: Call merge_existing with newer updated_at
@@ -326,7 +325,6 @@ class TestUsersEntity:
         assert user.active_storage == "newStorage"
         assert update_called
 
-    @pytest.mark.skip(reason="Mock calling issue")
     def test_mergeexisting_does_not_update_user_when_ei_updated_at_is_older(self) -> None:
         """Given: Existing User with new updated_at
            When: Call merge_existing with older updated_at
@@ -368,7 +366,6 @@ class TestUsersEntity:
         assert result is False
         assert user.active_storage == "oldStorage"
 
-    @pytest.mark.skip(reason="Mock calling issue")
     def test_mergeexisting_updates_user_with_trx(self) -> None:
         """Given: Existing User and transaction token
            When: Call merge_existing with newer updated_at and trx

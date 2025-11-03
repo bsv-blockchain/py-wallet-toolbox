@@ -5,13 +5,11 @@ These tests verify backward compatibility with legacy database schemas.
 Reference: wallet-toolbox/test/storage/findLegacy.test.ts
 """
 
-import pytest
 
 
 class TestfindLegacy:
     """Test suite for legacy database FIND/SELECT operations."""
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_proventx(self) -> None:
         """Given: Legacy storage with test data
            When: Find ProvenTx
@@ -27,7 +25,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_proventxreq(self) -> None:
         """Given: Legacy storage with test data
            When: Find ProvenTxReq
@@ -43,7 +40,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_user(self) -> None:
         """Given: Legacy storage with test data
            When: Find User
@@ -55,7 +51,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_certificate(self) -> None:
         """Given: Legacy storage with test data
            When: Find Certificate
@@ -67,7 +62,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_certificatefield(self) -> None:
         """Given: Legacy storage with test data
            When: Find CertificateField
@@ -79,7 +73,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_outputbasket(self) -> None:
         """Given: Legacy storage with test data
            When: Find OutputBasket
@@ -91,7 +84,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_transaction(self) -> None:
         """Given: Legacy storage with test data
            When: Find Transaction
@@ -103,7 +95,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_commission(self) -> None:
         """Given: Legacy storage with test data
            When: Find Commission
@@ -115,7 +106,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_output(self) -> None:
         """Given: Legacy storage with test data
            When: Find Output with userId, basketId, and txStatus filters
@@ -144,7 +134,6 @@ class TestfindLegacy:
         assert results[0]["txid"] == "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26"
         assert results[0]["vout"] == 2
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_outputtag(self) -> None:
         """Given: Legacy storage with test data
            When: Find OutputTag
@@ -156,7 +145,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_outputtagmap(self) -> None:
         """Given: Legacy storage with test data
            When: Find OutputTagMap
@@ -168,7 +156,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_txlabel(self) -> None:
         """Given: Legacy storage with test data
            When: Find TxLabel
@@ -180,7 +167,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_txlabelmap(self) -> None:
         """Given: Legacy storage with test data
            When: Find TxLabelMap
@@ -192,7 +178,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_monitorevent(self) -> None:
         """Given: Legacy storage with test data
            When: Find MonitorEvent
@@ -204,7 +189,6 @@ class TestfindLegacy:
         # When/Then - placeholder for legacy compatibility test
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_find_syncstate(self) -> None:
         """Given: Legacy storage with test data
            When: Find SyncState

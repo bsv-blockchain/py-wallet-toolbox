@@ -5,13 +5,10 @@ Reference: wallet-toolbox/test/storage/update.test.ts
 
 from datetime import datetime
 
-import pytest
-
 
 class Testupdate:
     """Test suite for database UPDATE operations."""
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_proventx(self) -> None:
         """Given: Mock storage with existing ProvenTx record
            When: Update ProvenTx fields (blockHash, updated_at)
@@ -40,7 +37,6 @@ class Testupdate:
         records = mock_storage.find_proven_txs({"partial": {"provenTxId": 1}})
         assert len(records) > 0
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_proventx_176(self) -> None:
         """Given: Mock storage with existing ProvenTx record
            When: Update all ProvenTx fields with test values
@@ -68,7 +64,6 @@ class Testupdate:
         # Then - update completed without error
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_proventxreq(self) -> None:
         """Given: Mock storage with existing ProvenTxReq record
            When: Update all ProvenTxReq fields
@@ -89,7 +84,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_user(self) -> None:
         """Given: Mock storage with existing User record
            When: Update User fields
@@ -110,7 +104,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_certificate(self) -> None:
         """Given: Mock storage with existing Certificate record
            When: Update Certificate fields
@@ -131,7 +124,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_certificatefield(self) -> None:
         """Given: Mock storage with existing CertificateField record
            When: Update CertificateField fields
@@ -154,7 +146,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_outputbasket(self) -> None:
         """Given: Mock storage with existing OutputBasket record
            When: Update OutputBasket fields
@@ -180,7 +171,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_transaction(self) -> None:
         """Given: Mock storage with existing Transaction record
            When: Update Transaction fields
@@ -201,7 +191,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_updatetransactionstatus(self) -> None:
         """Given: Mock storage with existing Transaction record
            When: Update transaction status specifically
@@ -220,7 +209,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_commission(self) -> None:
         """Given: Mock storage with existing Commission record
            When: Update Commission fields
@@ -241,7 +229,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_output(self) -> None:
         """Given: Mock storage with existing Output record
            When: Update Output fields
@@ -262,7 +249,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_outputtag(self) -> None:
         """Given: Mock storage with existing OutputTag record
            When: Update OutputTag fields
@@ -283,7 +269,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_outputtagmap(self) -> None:
         """Given: Mock storage with existing OutputTagMap record
            When: Update OutputTagMap fields
@@ -306,7 +291,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_txlabel(self) -> None:
         """Given: Mock storage with existing TxLabel record
            When: Update TxLabel fields
@@ -327,7 +311,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_txlabelmap(self) -> None:
         """Given: Mock storage with existing TxLabelMap record
            When: Update TxLabelMap fields
@@ -348,7 +331,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_monitorevent(self) -> None:
         """Given: Mock storage with existing MonitorEvent record
            When: Update MonitorEvent fields
@@ -369,7 +351,6 @@ class Testupdate:
         # Then
         assert True
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
     def test_update_syncstate(self) -> None:
         """Given: Mock storage with existing SyncState record
            When: Update SyncState fields

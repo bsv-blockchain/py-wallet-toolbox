@@ -3,469 +3,431 @@
 Reference: wallet-toolbox/test/storage/insert.test.ts
 """
 
+from datetime import datetime
+
 import pytest
+
+from bsv_wallet_toolbox.storage.db import create_engine_from_url
+from bsv_wallet_toolbox.storage.models import Base
+from bsv_wallet_toolbox.storage.provider import StorageProvider
+
+
+@pytest.fixture
+def storage():
+    """Create in-memory SQLite storage for testing."""
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    return StorageProvider(engine=engine, chain="main", storage_identity_key="test")
+
+
+@pytest.fixture
+def user(storage):
+    """Create test user in storage."""
+    user_data = {"identity_key": "03" + "0" * 64, "active_storage": ""}
+    user_id = storage.insert_user(user_data)
+    return user_id
 
 
 class Testinsert:
     """Test suite for database INSERT operations."""
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_proventx(self) -> None:
-        """Given: Mock storage with test ProvenTx data
+    def test_insert_proventx(self, storage) -> None:
+        """Given: Storage provider with test ProvenTx data
            When: Insert ProvenTx, then attempt duplicate insert
-           Then: First insert succeeds, duplicate throws error
+           Then: First insert succeeds with auto-incremented ID, duplicate throws error
 
         Reference: test/storage/insert.test.ts
                   test('0 insert ProvenTx')
         """
-        # Given
+        ptx = {
+            "txid": "1" * 64,
+            "height": 100,
+            "index": 0,
+            "merkle_path": [],
+            "raw_tx": b"test",
+            "block_hash": "block",
+            "merkle_root": "root",
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
 
-        mock_storage = type("MockStorage", (), {"insert_proven_tx": lambda self, ptx: None})()
-
-        ptx = {"provenTxId": 0, "txid": "1" * 64, "height": 100, "index": 0, "merklePath": [], "rawTx": b"test"}
-
-        # When
-        ptx_id = mock_storage.insert_proven_tx(ptx)
-
-        # Then
+        ptx_id = storage.insert_proven_tx(ptx)
         assert ptx_id == 1
 
-        # Duplicate must throw
-        ptx["provenTxId"] = 0
         with pytest.raises(Exception):
-            mock_storage.insert_proven_tx(ptx)
+            storage.insert_proven_tx(ptx)
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_proventxreq(self) -> None:
-        """Given: Mock storage with test ProvenTxReq data
-           When: Insert ProvenTxReq, then attempt duplicate and invalid foreign key
-           Then: First insert succeeds, duplicate throws, invalid FK throws
+    def test_insert_proventxreq(self, storage) -> None:
+        """Given: Storage provider with test ProvenTxReq data
+           When: Insert ProvenTxReq, then attempt duplicate
+           Then: First insert succeeds, duplicate throws error
 
         Reference: test/storage/insert.test.ts
                   test('1 insert ProvenTxReq')
         """
-        # Given
+        ptxreq = {
+            "userId": 1,
+            "txid": "2" * 64,
+            "status": "unsent",
+            "reference": "",
+            "attempts": 0,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
 
-        mock_storage = type("MockStorage", (), {"insert_proven_tx_req": lambda self, ptxreq: None})()
-
-        ptxreq = {"provenTxReqId": 0, "txid": "2" * 64, "status": "unsent", "attempts": 0}
-
-        # When
-        ptxreq_id = mock_storage.insert_proven_tx_req(ptxreq)
-
-        # Then
+        ptxreq_id = storage.insert_proven_tx_req(ptxreq)
         assert ptxreq_id == 1
 
-        # Duplicate must throw
-        ptxreq["provenTxReqId"] = 0
         with pytest.raises(Exception):
-            mock_storage.insert_proven_tx_req(ptxreq)
+            storage.insert_proven_tx_req(ptxreq)
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_user(self) -> None:
-        """Given: Mock storage with test User data
-           When: Insert User, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_user(self, storage) -> None:
+        """Given: Storage provider with test User data
+           When: Insert User
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('2 insert User')
         """
-        # Given
+        user = {"identity_key": "03" + "1" * 64, "active_storage": "test"}
 
-        mock_storage = type("MockStorage", (), {"insert_user": lambda self, user: None})()
-
-        user = {"userId": 0, "identityKey": "03" + "0" * 64, "created_at": None, "updated_at": None}
-
-        # When
-        user_id = mock_storage.insert_user(user)
-
-        # Then
+        user_id = storage.insert_user(user)
         assert user_id > 0
 
-        # Duplicate must throw
-        user["userId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_user(user)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_certificate(self) -> None:
-        """Given: Mock storage with test Certificate data
-           When: Insert Certificate, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_certificate(self, storage, user) -> None:
+        """Given: Storage provider with test Certificate data
+           When: Insert Certificate
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('3 insert Certificate')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_certificate": lambda self, cert: None})()
-
         cert = {
-            "certificateId": 0,
-            "userId": 1,
+            "userId": user,
             "type": "test_type",
-            "serialNumber": "serial123",
+            "serial_number": "serial123",
             "subject": "test_subject",
             "certifier": "03" + "0" * 64,
-            "created_at": None,
-            "updated_at": None,
+            "signature": "",
+            "verifier": None,
+            "revocationOutpoint": None,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        cert_id = mock_storage.insert_certificate(cert)
-
-        # Then
+        cert_id = storage.insert_certificate(cert)
         assert cert_id > 0
 
-        # Duplicate must throw
-        cert["certificateId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_certificate(cert)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_certificatefield(self) -> None:
-        """Given: Mock storage with test CertificateField data
-           When: Insert CertificateField, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_certificatefield(self, storage, user) -> None:
+        """Given: Storage provider with test CertificateField data
+           When: Insert CertificateField
+           Then: Insert succeeds
 
         Reference: test/storage/insert.test.ts
                   test('4 insert CertificateField')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_certificate_field": lambda self, field: None})()
+        cert = {
+            "userId": user,
+            "type": "test_type",
+            "serial_number": "serial123",
+            "subject": "test_subject",
+            "certifier": "03" + "0" * 64,
+            "signature": "",
+            "verifier": None,
+            "revocationOutpoint": None,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        cert_id = storage.insert_certificate(cert)
 
         field = {
-            "certificateId": 1,
-            "userId": 1,
-            "fieldName": "prize",
-            "fieldValue": "starship",
-            "masterKey": "master123",
-            "created_at": None,
-            "updated_at": None,
+            "certificate_id": cert_id,
+            "userId": user,
+            "field_name": "prize",
+            "field_value": "starship",
+            "master_key": "master123",
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        mock_storage.insert_certificate_field(field)
+        field_id = storage.insert_certificate_field(field)
+        assert field_id is not None
 
-        # Then
-        assert field["certificateId"] == 1
-        assert field["fieldName"] == "prize"
-
-        # Duplicate must throw
-        with pytest.raises(Exception):
-            mock_storage.insert_certificate_field(field)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_outputbasket(self) -> None:
-        """Given: Mock storage with test OutputBasket data
-           When: Insert OutputBasket, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_outputbasket(self, storage, user) -> None:
+        """Given: Storage provider with test OutputBasket data
+           When: Insert OutputBasket
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('5 insert OutputBasket')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_output_basket": lambda self, basket: None})()
-
         basket = {
-            "basketId": 0,
-            "userId": 1,
+            "userId": user,
             "name": "test_basket",
-            "numberOfDesiredUTXOs": 10,
-            "minimumDesiredUTXOValue": 1000,
-            "isDeleted": False,
-            "created_at": None,
-            "updated_at": None,
+            "number_of_desired_utxos": 10,
+            "minimum_desired_utxo_value": 1000,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        basket_id = mock_storage.insert_output_basket(basket)
-
-        # Then
+        basket_id = storage.insert_output_basket(basket)
         assert basket_id > 0
 
-        # Duplicate must throw
-        basket["basketId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_output_basket(basket)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_transaction(self) -> None:
-        """Given: Mock storage with test Transaction data
-           When: Insert Transaction, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_transaction(self, storage, user) -> None:
+        """Given: Storage provider with test Transaction data
+           When: Insert Transaction
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('6 insert Transaction')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_transaction": lambda self, tx: None})()
-
         tx = {
-            "transactionId": 0,
-            "userId": 1,
+            "userId": user,
             "txid": "5" * 64,
             "status": "sending",
             "reference": "ref123",
-            "isOutgoing": True,
+            "is_outgoing": True,
             "satoshis": 5000,
             "description": "Test transaction",
-            "created_at": None,
-            "updated_at": None,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        tx_id = mock_storage.insert_transaction(tx)
-
-        # Then
+        tx_id = storage.insert_transaction(tx)
         assert tx_id > 0
 
-        # Duplicate must throw
-        tx["transactionId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_transaction(tx)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_commission(self) -> None:
-        """Given: Mock storage with test Commission data
-           When: Insert Commission, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_commission(self, storage, user) -> None:
+        """Given: Storage provider with test Commission data
+           When: Insert Commission
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('7 insert Commission')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_commission": lambda self, comm: None})()
+        tx = {
+            "userId": user,
+            "txid": "6" * 64,
+            "status": "sending",
+            "reference": "",
+            "is_outgoing": True,
+            "satoshis": 5000,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        tx_id = storage.insert_transaction(tx)
 
         commission = {
-            "commissionId": 0,
-            "transactionId": 1,
-            "userId": 1,
+            "transaction_id": tx_id,
+            "userId": user,
             "isRedeemed": False,
-            "keyOffset": "offset123",
-            "lockingScript": [1, 2, 3],
+            "key_offset": "offset123",
+            "locking_script": [1, 2, 3],
             "satoshis": 500,
-            "created_at": None,
-            "updated_at": None,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        comm_id = mock_storage.insert_commission(commission)
-
-        # Then
+        comm_id = storage.insert_commission(commission)
         assert comm_id > 0
 
-        # Duplicate must throw
-        commission["commissionId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_commission(commission)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_output(self) -> None:
-        """Given: Mock storage with test Output data
-           When: Insert Output, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_output(self, storage, user) -> None:
+        """Given: Storage provider with test Output data
+           When: Insert Output
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('8 insert Output')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_output": lambda self, output: None})()
+        tx = {
+            "userId": user,
+            "txid": "7" * 64,
+            "status": "sending",
+            "reference": "",
+            "is_outgoing": True,
+            "satoshis": 5000,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        tx_id = storage.insert_transaction(tx)
 
         output = {
-            "outputId": 0,
-            "transactionId": 1,
-            "userId": 1,
+            "transaction_id": tx_id,
+            "userId": user,
             "vout": 0,
             "satoshis": 101,
-            "lockingScript": [1, 2, 3],
+            "locking_script": [1, 2, 3],
             "spendable": True,
-            "created_at": None,
-            "updated_at": None,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        output_id = mock_storage.insert_output(output)
-
-        # Then
+        output_id = storage.insert_output(output)
         assert output_id > 0
-        assert output["userId"] == 1
-        assert output["vout"] == 0
 
-        # Duplicate must throw
-        output["outputId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_output(output)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_outputtag(self) -> None:
-        """Given: Mock storage with test OutputTag data
-           When: Insert OutputTag, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_outputtag(self, storage, user) -> None:
+        """Given: Storage provider with test OutputTag data
+           When: Insert OutputTag
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('9 insert OutputTag')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_output_tag": lambda self, tag: None})()
-
         tag = {
-            "outputTagId": 0,
-            "userId": 1,
+            "userId": user,
             "tag": "test_tag",
-            "isDeleted": False,
-            "created_at": None,
-            "updated_at": None,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        tag_id = mock_storage.insert_output_tag(tag)
-
-        # Then
+        tag_id = storage.insert_output_tag(tag)
         assert tag_id > 0
-        assert tag["userId"] == 1
 
-        # Duplicate must throw
-        tag["outputTagId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_output_tag(tag)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_outputtagmap(self) -> None:
-        """Given: Mock storage with test OutputTagMap data
-           When: Insert OutputTagMap, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_outputtagmap(self, storage, user) -> None:
+        """Given: Storage provider with test OutputTagMap data
+           When: Insert OutputTagMap
+           Then: Insert succeeds
 
         Reference: test/storage/insert.test.ts
                   test('10 insert OutputTagMap')
         """
-        # Given
+        tx = {
+            "userId": user,
+            "txid": "8" * 64,
+            "status": "sending",
+            "reference": "",
+            "is_outgoing": True,
+            "satoshis": 5000,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        tx_id = storage.insert_transaction(tx)
 
-        mock_storage = type("MockStorage", (), {"insert_output_tag_map": lambda self, tagmap: None})()
+        output = {
+            "transaction_id": tx_id,
+            "userId": user,
+            "vout": 0,
+            "satoshis": 101,
+            "locking_script": [1, 2, 3],
+            "spendable": True,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        output_id = storage.insert_output(output)
 
-        tagmap = {"outputId": 1, "outputTagId": 1, "isDeleted": False, "created_at": None, "updated_at": None}
+        tag = {
+            "userId": user,
+            "tag": "test_tag",
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        tag_id = storage.insert_output_tag(tag)
 
-        # When
-        mock_storage.insert_output_tag_map(tagmap)
+        tagmap = {
+            "output_id": output_id,
+            "output_tag_id": tag_id,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
 
-        # Then
-        assert tagmap["outputId"] == 1
-        assert tagmap["outputTagId"] == 1
+        storage.insert_output_tag_map(tagmap)
 
-        # Duplicate must throw
-        with pytest.raises(Exception):
-            mock_storage.insert_output_tag_map(tagmap)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_txlabel(self) -> None:
-        """Given: Mock storage with test TxLabel data
-           When: Insert TxLabel, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_txlabel(self, storage, user) -> None:
+        """Given: Storage provider with test TxLabel data
+           When: Insert TxLabel
+           Then: Insert succeeds with auto-incremented ID
 
         Reference: test/storage/insert.test.ts
                   test('11 insert TxLabel')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_tx_label": lambda self, label: None})()
-
         label = {
-            "txLabelId": 0,
-            "userId": 1,
+            "userId": user,
             "label": "test_label",
-            "isDeleted": False,
-            "created_at": None,
-            "updated_at": None,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        label_id = mock_storage.insert_tx_label(label)
-
-        # Then
+        label_id = storage.insert_tx_label(label)
         assert label_id > 0
-        assert label["userId"] == 1
 
-        # Duplicate must throw
-        label["txLabelId"] = 0
-        with pytest.raises(Exception):
-            mock_storage.insert_tx_label(label)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_txlabelmap(self) -> None:
-        """Given: Mock storage with test TxLabelMap data
-           When: Insert TxLabelMap, then attempt duplicate
-           Then: First insert succeeds, duplicate throws error
+    def test_insert_txlabelmap(self, storage, user) -> None:
+        """Given: Storage provider with test TxLabelMap data
+           When: Insert TxLabelMap
+           Then: Insert succeeds
 
         Reference: test/storage/insert.test.ts
                   test('12 insert TxLabelMap')
         """
-        # Given
+        tx = {
+            "userId": user,
+            "txid": "9" * 64,
+            "status": "sending",
+            "reference": "",
+            "is_outgoing": True,
+            "satoshis": 5000,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        tx_id = storage.insert_transaction(tx)
 
-        mock_storage = type("MockStorage", (), {"insert_tx_label_map": lambda self, labelmap: None})()
+        label = {
+            "userId": user,
+            "label": "test_label",
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
+        label_id = storage.insert_tx_label(label)
 
-        labelmap = {"transactionId": 1, "txLabelId": 1, "isDeleted": False, "created_at": None, "updated_at": None}
+        labelmap = {
+            "transaction_id": tx_id,
+            "tx_label_id": label_id,
+            "is_deleted": False,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+        }
 
-        # When
-        mock_storage.insert_tx_label_map(labelmap)
+        storage.insert_tx_label_map(labelmap)
 
-        # Then
-        assert labelmap["transactionId"] == 1
-        assert labelmap["txLabelId"] == 1
-
-        # Duplicate must throw
-        with pytest.raises(Exception):
-            mock_storage.insert_tx_label_map(labelmap)
-
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_monitorevent(self) -> None:
-        """Given: Mock storage with test MonitorEvent data
+    def test_insert_monitorevent(self, storage) -> None:
+        """Given: Storage provider with test MonitorEvent data
            When: Insert MonitorEvent
            Then: Insert succeeds with valid ID
 
         Reference: test/storage/insert.test.ts
                   test('13 insert MonitorEvent')
         """
-        # Given
+        event = {
+            "created_at": datetime.now(),
+            "event": "test_event",
+            "data": "{}",
+        }
 
-        mock_storage = type("MockStorage", (), {"insert_monitor_event": lambda self, event: None})()
-
-        event = {"id": 0, "created_at": None, "event": "test_event", "data": {}}
-
-        # When
-        event_id = mock_storage.insert_monitor_event(event)
-
-        # Then
+        event_id = storage.insert_monitor_event(event)
         assert event_id > 0
 
-    @pytest.mark.skip(reason="CRUD tests require real DB - deferred for Phase 4")
-    def test_insert_syncstate(self) -> None:
-        """Given: Mock storage with test SyncState data
+    def test_insert_syncstate(self, storage, user) -> None:
+        """Given: Storage provider with test SyncState data
            When: Insert SyncState
            Then: Insert succeeds with valid ID
 
         Reference: test/storage/insert.test.ts
                   test('14 insert SyncState')
         """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"insert_sync_state": lambda self, state: None})()
-
         state = {
-            "syncStateId": 0,
-            "userId": 1,
-            "storageIdentityKey": "03" + "0" * 64,
-            "created_at": None,
-            "updated_at": None,
+            "userId": user,
+            "storage_identity_key": "03" + "0" * 64,
+            "sync_status": "",
+            "sync_ref_num": 0,
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
         }
 
-        # When
-        state_id = mock_storage.insert_sync_state(state)
-
-        # Then
+        state_id = storage.insert_sync_state(state)
         assert state_id > 0

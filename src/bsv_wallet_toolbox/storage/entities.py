@@ -899,43 +899,45 @@ class ProvenTx:
     @classmethod
     def from_txid(cls, txid: str, services: Any = None, raw_tx: list[int] | None = None) -> dict[str, Any]:
         """Create ProvenTx from transaction ID (TypeScript: fromTxid).
-        
+
         Given a txid and optionally its rawTx, create a new ProvenTx object.
         rawTx is fetched if not provided.
-        
+
         Returns dict with:
           - proven: ProvenTx instance or None (if proof not confirmed)
           - rawTx: Raw transaction bytes or None
         """
         result: dict[str, Any] = {"proven": None, "rawTx": raw_tx}
-        
+
         if not services:
             return result
-        
+
         try:
             # Get raw transaction if not provided
             if not result["rawTx"]:
                 raw_tx_response = services.get_raw_tx(txid)
                 if not raw_tx_response:
                     return result
-                
+
                 raw_tx_data = raw_tx_response.get("rawTx") if isinstance(raw_tx_response, dict) else raw_tx_response
-                result["rawTx"] = raw_tx_data if isinstance(raw_tx_data, list) else list(raw_tx_data) if raw_tx_data else None
-            
+                result["rawTx"] = (
+                    raw_tx_data if isinstance(raw_tx_data, list) else list(raw_tx_data) if raw_tx_data else None
+                )
+
             if not result["rawTx"]:
                 return result
-            
+
             # Get merkle proof
             merkle_response = services.get_merkle_path(txid)
             if not merkle_response:
                 return result
-            
+
             merkle_path_obj = merkle_response.get("merklePath")
             header = merkle_response.get("header")
-            
+
             if not merkle_path_obj or not header:
                 return result
-            
+
             # Find the index (offset) of txid in merkle path
             index = None
             if isinstance(merkle_path_obj, dict):
@@ -947,10 +949,10 @@ class ProvenTx:
                                 if isinstance(entry, dict) and entry.get("hash") == txid:
                                     index = entry.get("offset")
                                     break
-            
+
             if index is None:
                 return result
-            
+
             # Get binary merkle path
             merkle_binary = None
             if hasattr(merkle_path_obj, "toBinary") and callable(merkle_path_obj.toBinary):
@@ -959,10 +961,10 @@ class ProvenTx:
                 func = merkle_path_obj["toBinary"]
                 if callable(func):
                     merkle_binary = func()
-            
+
             if not merkle_binary:
                 return result
-            
+
             # Create ProvenTx API dict
             api_dict = {
                 "provenTxId": 0,
@@ -976,13 +978,13 @@ class ProvenTx:
                 "blockHash": header.get("hash", ""),
                 "merkleRoot": header.get("merkleRoot", ""),
             }
-            
+
             # Create ProvenTx instance (TypeScript: new EntityProvenTx(api))
             result["proven"] = cls(api_dict)
-            
+
         except Exception:
             pass
-        
+
         return result
 
 
