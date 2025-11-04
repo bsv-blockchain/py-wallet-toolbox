@@ -23,6 +23,7 @@ from .errors import InvalidParameterError
 from .services import WalletServices
 from .utils.validation import (
     validate_abort_action_args,
+    validate_create_action_args,
     validate_list_actions_args,
     validate_relinquish_certificate_args,
 )
@@ -377,23 +378,49 @@ class Wallet:
     def create_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Create a new transaction action.
 
-        Summary:
-            Begin construction of a new transaction with inputs and outputs.
+        BRC-100 WalletInterface method implementation.
+        Begin construction of a new transaction with inputs and outputs.
+
+        TS parity:
+            Mirrors TypeScript Wallet.createAction behavior by delegating to storage
+            with validated arguments, initialized options, and auth object.
+
         Args:
-            args: Transaction construction args (inputs, outputs, options, etc).
-            originator: Optional caller identity (under 250 bytes).
+            args: Input dict containing transaction construction parameters:
+                - inputs: list - transaction inputs
+                - outputs: list - transaction outputs
+                - labels: list - action labels (optional)
+                - options: dict - transaction options (optional, auto-initialized)
+            originator: Optional originator domain name (under 250 bytes)
+
         Returns:
-            Result dict with reference, version, lockTime, inputs, outputs, derivationPrefix.
+            dict: With keys reference, version, lockTime, inputs, outputs, derivationPrefix
+
         Raises:
-            ValueError: If validation fails.
+            InvalidParameterError: If originator or args are invalid
+            RuntimeError: If storage_provider or keyDeriver is not configured
+
         Reference:
-            toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (createAction method)
+            - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts (createAction function)
+            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateCreateActionArgs)
         """
         self._validate_originator(originator)
+
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
-        auth = args.get("auth") or {}
 
+        # Validate input arguments (raises InvalidParameterError on failure)
+        validate_create_action_args(args)
+
+        # Initialize options if not provided (TypeScript parity)
+        if "options" not in args or args["options"] is None:
+            args["options"] = {}
+
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Delegate to storage provider (TypeScript parity)
         return self.storage_provider.create_action(auth, args)
 
     def process_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
