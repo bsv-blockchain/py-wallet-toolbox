@@ -12,8 +12,7 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 class TestWalletListCertificates:
     """Test suite for Wallet.list_certificates method."""
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation")
-    def test_invalid_params_invalid_certifier(self, wallet: Wallet) -> None:
+    def test_invalid_params_invalid_certifier(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with invalid certifier (not base64/hex)
            When: Call list_certificates
            Then: Raises InvalidParameterError
@@ -26,10 +25,9 @@ class TestWalletListCertificates:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_certificates(invalid_args)
+            wallet_with_storage.list_certificates(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation with test database")
-    def test_filter_by_certifier_lowercase(self, wallet: Wallet) -> None:
+    def test_filter_by_certifier_lowercase(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with valid certifier (lowercase hex)
            When: Call list_certificates
            Then: Returns certificates from that certifier
@@ -48,14 +46,13 @@ class TestWalletListCertificates:
         expected_count = 4  # From test data
 
         # When
-        result = wallet.list_certificates(args)
+        result = wallet_with_storage.list_certificates(args)
 
         # Then
         assert len(result["certificates"]) == min(args["limit"], expected_count)
         assert result["totalCertificates"] == expected_count
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation with test database")
-    def test_filter_by_certifier_uppercase(self, wallet: Wallet) -> None:
+    def test_filter_by_certifier_uppercase(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with valid certifier (uppercase hex)
            When: Call list_certificates
            Then: Returns certificates from that certifier (case-insensitive)
@@ -74,14 +71,13 @@ class TestWalletListCertificates:
         expected_count = 4  # From test data
 
         # When
-        result = wallet.list_certificates(args)
+        result = wallet_with_storage.list_certificates(args)
 
         # Then
         assert len(result["certificates"]) == min(args["limit"], expected_count)
         assert result["totalCertificates"] == expected_count
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation with test database")
-    def test_filter_by_multiple_certifiers(self, wallet: Wallet) -> None:
+    def test_filter_by_multiple_certifiers(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with multiple certifiers
            When: Call list_certificates
            Then: Returns certificates from any of those certifiers
@@ -103,14 +99,13 @@ class TestWalletListCertificates:
         expected_count = 5  # From test data (4 + 1)
 
         # When
-        result = wallet.list_certificates(args)
+        result = wallet_with_storage.list_certificates(args)
 
         # Then
         assert len(result["certificates"]) == min(args["limit"], expected_count)
         assert result["totalCertificates"] == expected_count
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation with test database")
-    def test_filter_by_type(self, wallet: Wallet) -> None:
+    def test_filter_by_type(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with certificate type filter
            When: Call list_certificates
            Then: Returns only certificates of that type
@@ -125,7 +120,7 @@ class TestWalletListCertificates:
         expected_count = 2  # From test data
 
         # When
-        result = wallet.list_certificates(args)
+        result = wallet_with_storage.list_certificates(args)
 
         # Then
         assert len(result["certificates"]) == min(args["limit"], expected_count)

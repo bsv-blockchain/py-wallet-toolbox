@@ -5,16 +5,13 @@ These methods handle HMAC creation/verification and digital signatures.
 Reference: wallet-toolbox/src/Wallet.ts
 """
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
 class TestWalletCreateHmac:
     """Test suite for Wallet.create_hmac method."""
 
-    @pytest.mark.skip(reason="Waiting for create_hmac implementation")
-    def test_create_hmac(self, wallet: Wallet) -> None:
+    def test_create_hmac(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateHmacArgs with data and protocol/key
            When: Call create_hmac
            Then: Returns HMAC of the data
@@ -25,7 +22,7 @@ class TestWalletCreateHmac:
         args = {"data": b"Test data for HMAC", "protocolID": [0, "test protocol"], "keyID": "hmac_key_1"}
 
         # When
-        result = wallet.create_hmac(args)
+        result = wallet_with_storage.create_hmac(args)
 
         # Then
         assert "hmac" in result
@@ -36,8 +33,7 @@ class TestWalletCreateHmac:
 class TestWalletVerifyHmac:
     """Test suite for Wallet.verify_hmac method."""
 
-    @pytest.mark.skip(reason="Waiting for verify_hmac implementation")
-    def test_verify_hmac_valid(self, wallet: Wallet) -> None:
+    def test_verify_hmac_valid(self, wallet_with_storage: Wallet) -> None:
         """Given: VerifyHmacArgs with data, HMAC, and protocol/key
            When: Call verify_hmac with correct HMAC
            Then: Returns valid=True
@@ -46,7 +42,7 @@ class TestWalletVerifyHmac:
         """
         # Given - First create an HMAC
         create_args = {"data": b"Test data for HMAC", "protocolID": [0, "test protocol"], "keyID": "hmac_key_1"}
-        create_result = wallet.create_hmac(create_args)
+        create_result = wallet_with_storage.create_hmac(create_args)
 
         verify_args = {
             "data": b"Test data for HMAC",
@@ -56,14 +52,13 @@ class TestWalletVerifyHmac:
         }
 
         # When
-        result = wallet.verify_hmac(verify_args)
+        result = wallet_with_storage.verify_hmac(verify_args)
 
         # Then
         assert "valid" in result
         assert result["valid"] is True
 
-    @pytest.mark.skip(reason="Waiting for verify_hmac implementation")
-    def test_verify_hmac_invalid(self, wallet: Wallet) -> None:
+    def test_verify_hmac_invalid(self, wallet_with_storage: Wallet) -> None:
         """Given: VerifyHmacArgs with incorrect HMAC
            When: Call verify_hmac
            Then: Returns valid=False
@@ -79,7 +74,7 @@ class TestWalletVerifyHmac:
         }
 
         # When
-        result = wallet.verify_hmac(verify_args)
+        result = wallet_with_storage.verify_hmac(verify_args)
 
         # Then
         assert "valid" in result
@@ -89,8 +84,7 @@ class TestWalletVerifyHmac:
 class TestWalletCreateSignature:
     """Test suite for Wallet.create_signature method."""
 
-    @pytest.mark.skip(reason="Waiting for create_signature implementation")
-    def test_create_signature(self, wallet: Wallet) -> None:
+    def test_create_signature(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateSignatureArgs with data and protocol/key
            When: Call create_signature
            Then: Returns digital signature of the data
@@ -101,7 +95,7 @@ class TestWalletCreateSignature:
         args = {"data": b"Data to sign", "protocolID": [0, "test protocol"], "keyID": "signing_key_1"}
 
         # When
-        result = wallet.create_signature(args)
+        result = wallet_with_storage.create_signature(args)
 
         # Then
         assert "signature" in result
@@ -112,8 +106,7 @@ class TestWalletCreateSignature:
 class TestWalletVerifySignature:
     """Test suite for Wallet.verify_signature method."""
 
-    @pytest.mark.skip(reason="Waiting for verify_signature implementation")
-    def test_verify_signature_valid(self, wallet: Wallet) -> None:
+    def test_verify_signature_valid(self, wallet_with_storage: Wallet) -> None:
         """Given: VerifySignatureArgs with data, signature, and public key
            When: Call verify_signature with correct signature
            Then: Returns valid=True
@@ -122,10 +115,12 @@ class TestWalletVerifySignature:
         """
         # Given - First create a signature
         create_args = {"data": b"Data to sign", "protocolID": [0, "test protocol"], "keyID": "signing_key_1"}
-        create_result = wallet.create_signature(create_args)
+        create_result = wallet_with_storage.create_signature(create_args)
 
         # Get public key for verification
-        pubkey_result = wallet.get_public_key({"protocolID": [0, "test protocol"], "keyID": "signing_key_1"})
+        pubkey_result = wallet_with_storage.get_public_key(
+            {"protocolID": [0, "test protocol"], "keyID": "signing_key_1"}
+        )
 
         verify_args = {
             "data": b"Data to sign",
@@ -134,14 +129,13 @@ class TestWalletVerifySignature:
         }
 
         # When
-        result = wallet.verify_signature(verify_args)
+        result = wallet_with_storage.verify_signature(verify_args)
 
         # Then
         assert "valid" in result
         assert result["valid"] is True
 
-    @pytest.mark.skip(reason="Waiting for verify_signature implementation")
-    def test_verify_signature_invalid(self, wallet: Wallet) -> None:
+    def test_verify_signature_invalid(self, wallet_with_storage: Wallet) -> None:
         """Given: VerifySignatureArgs with incorrect signature
            When: Call verify_signature
            Then: Returns valid=False
@@ -156,7 +150,7 @@ class TestWalletVerifySignature:
         }
 
         # When
-        result = wallet.verify_signature(verify_args)
+        result = wallet_with_storage.verify_signature(verify_args)
 
         # Then
         assert "valid" in result

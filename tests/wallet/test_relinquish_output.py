@@ -3,16 +3,13 @@
 Reference: wallet-toolbox/test/wallet/action/relinquishOutput.test.ts
 """
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
 class TestWalletRelinquishOutput:
     """Test suite for Wallet.relinquish_output method."""
 
-    @pytest.mark.skip(reason="Waiting for relinquish_output implementation with test database")
-    def test_relinquish_specific_output(self, wallet: Wallet) -> None:
+    def test_relinquish_specific_output(self, wallet_with_storage: Wallet) -> None:
         """Given: RelinquishOutputArgs with existing output
            When: Call relinquish_output
            Then: Returns relinquished=True
@@ -28,7 +25,7 @@ class TestWalletRelinquishOutput:
         expected_result = {"relinquished": True}
 
         # When
-        result = wallet.relinquish_output(args)
+        result = wallet_with_storage.relinquish_output(args)
 
         # Then
         assert result == expected_result

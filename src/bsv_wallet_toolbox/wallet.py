@@ -216,29 +216,43 @@ class Wallet:
         return self.storage_provider.list_outputs(auth, args)
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """List certificates via Storage provider (minimal TS-like shape).
+        """List certificates with optional filters."""
+        self._validate_originator(originator)
 
-        Summary:
-            Wallet API delegating to Storage to enumerate certificates with minimal
-            TS-like shape.
-        TS parity:
-            Matches TypeScript Wallet listCertificates minimal result keys.
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Delegate to storage provider (TS parity)
+        return self.storage_provider.list_certificates(auth, args)
+
+    def relinquish_output(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Mark an output as relinquished (soft-delete).
+
         Args:
-            args: Input dict including 'auth' (with 'userId') and optional filters.
-            originator: Optional originator domain string.
+            args: Input dict containing:
+                - output: str - output identifier (txid.index)
+                - basket: str - basket name
+            originator: Optional originator domain name (under 250 bytes)
+
         Returns:
-            Dict with keys: totalCertificates, certificates.
+            dict: With key 'relinquished' (bool)
+
         Raises:
-            InvalidParameterError: If originator is invalid.
-            RuntimeError: If storage provider is not configured.
-        Reference:
-            toolbox/ts-wallet-toolbox/src/Wallet.ts
+            RuntimeError: If storage_provider is not configured
         """
+
         self._validate_originator(originator)
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
-        auth = args.get("auth") or {}
-        return self.storage_provider.list_certificates(auth, args)
+
+        # For now, simple stub that returns success
+        # Full implementation would parse output identifier and update storage
+        result = self.storage_provider.relinquish_output(args)
+
+        return {"relinquished": bool(result)}
 
     def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List actions with optional filters.
@@ -585,42 +599,45 @@ class Wallet:
         return {"version": self.VERSION}
 
     def _make_auth(self) -> dict[str, Any]:
-        """Generate auth object containing wallet identity key.
+        """Generate auth object containing wallet userId.
 
-        Helper method that creates an auth dict with the wallet's identity key
-        (root public key) for use by storage provider methods.
+        Helper method that creates an auth dict with the wallet's user ID
+        for use by storage provider methods.
 
-        Mirrors TypeScript: `{ identityKey: this.identityKey }`
+        Mirrors TypeScript: `{ userId: this.userId }`
 
         TS parity:
-            The identity key is the wallet's root public key in hex format,
+            The userId is the wallet's user record ID in the database,
             used by StorageProvider to identify the user across storage operations.
 
         Returns:
-            dict: Auth object with 'identityKey' key containing hex-encoded public key
+            dict: Auth object with 'userId' key containing integer user ID
 
         Raises:
-            RuntimeError: If keyDeriver is not configured
+            RuntimeError: If storage_provider or keyDeriver is not configured
 
         Example:
-            >>> wallet = Wallet(chain="main", key_deriver=my_key_deriver)
+            >>> wallet = Wallet(chain="main", storage_provider=sp, key_deriver=kd)
             >>> auth = wallet._make_auth()
-            >>> assert "identityKey" in auth
-            >>> assert len(auth["identityKey"]) == 130  # 1 prefix + 128 hex chars
+            >>> assert "userId" in auth
+            >>> assert isinstance(auth["userId"], int)
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (validateAuthAndArgs pattern)
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts (identityKey retrieval)
-            - sdk/ts-sdk/src/wallet/KeyDeriver.ts
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
+        if self.storage_provider is None:
+            raise RuntimeError("storage_provider is not configured")
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        # Retrieve identity key from key_deriver's root public key
-        root_public_key = self.key_deriver._root_public_key
-        identity_key_hex = root_public_key.hex()
+        # Get or create user based on identity key
+        identity_key_hex = self.key_deriver._root_public_key.hex()
 
-        return {"identityKey": identity_key_hex}
+        # Get or create user by identity key
+        user_id = self.storage_provider.get_or_create_user_id(identity_key_hex)
+
+        return {"userId": user_id}
 
     def is_authenticated(
         self,

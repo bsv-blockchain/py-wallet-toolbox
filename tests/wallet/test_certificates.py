@@ -19,8 +19,7 @@ class TestWalletAcquireCertificate:
     Reference: wallet-toolbox/test/Wallet/certificate/acquireCertificate.test.ts
     """
 
-    @pytest.mark.skip(reason="acquireCertificate API not implemented yet")
-    def test_00(self) -> None:
+    def test_00(self, wallet_with_storage: Wallet) -> None:
         """Given: No operation
            When: Test placeholder
            Then: Pass
@@ -30,8 +29,7 @@ class TestWalletAcquireCertificate:
         """
         # Given/When/Then
 
-    @pytest.mark.skip(reason="acquireCertificate API not implemented yet")
-    def test_invalid_params(self) -> None:
+    def test_invalid_params(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with test storage and invalid certificate arguments
            When: Call acquireCertificate with invalid params (empty type, empty certifier)
            Then: Raises InvalidParameterError
@@ -40,16 +38,15 @@ class TestWalletAcquireCertificate:
                    test('1 invalid params')
         """
         # Given
-        wallet = Wallet(chain="test")
+        # wallet = Wallet(chain="test")  # Not needed, using wallet_with_storage
 
         invalid_args = {"type": "", "certifier": "", "acquisitionProtocol": "direct", "fields": {}}
 
         # When/Then
         with pytest.raises(InvalidParameterError):
-            wallet.acquire_certificate(invalid_args)
+            wallet_with_storage.acquire_certificate(invalid_args)
 
-    @pytest.mark.skip(reason="acquireCertificate API not implemented yet")
-    def test_acquirecertificate_listcertificate_provecertificate(self) -> None:
+    def test_acquirecertificate_listcertificate_provecertificate(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with test database and sample certificate from certifier
            When: acquireCertificate, listCertificates, proveCertificate, and relinquishCertificate
            Then: Certificate is stored, retrieved, fields are encrypted, can be decrypted with keyring, and relinquished
@@ -59,10 +56,10 @@ class TestWalletAcquireCertificate:
         """
         # Given
         # Create test wallet with SQLite storage
-        wallet = Wallet(chain="test")
+        # wallet = Wallet(chain="test")  # Not needed, using wallet_with_storage
 
         # Make a test certificate from a random certifier for the wallet's identityKey
-        subject = wallet.key_deriver.identity_key
+        subject = wallet_with_storage.key_deriver.identity_key
         cert_data, certifier = _make_sample_cert(subject)
 
         # Act as the certifier: create a wallet for them
@@ -91,13 +88,13 @@ class TestWalletAcquireCertificate:
 
         # When
         # Store the new signed certificate in user's wallet
-        result = wallet.acquire_certificate(args)
+        result = wallet_with_storage.acquire_certificate(args)
 
         # Then
         assert result["serialNumber"] == signed_cert["serialNumber"]
 
         # Attempt to retrieve it
-        list_result = wallet.list_certificates({"certifiers": [cert_data["certifier"]], "types": []})
+        list_result = wallet_with_storage.list_certificates({"certifiers": [cert_data["certifier"]], "types": []})
         assert len(list_result["certificates"]) == 1
         lc = list_result["certificates"][0]
 
@@ -110,23 +107,22 @@ class TestWalletAcquireCertificate:
             "fieldsToReveal": ["name"],
             "verifier": subject,
         }
-        prove_result = wallet.prove_certificate(prove_args)
+        prove_result = wallet_with_storage.prove_certificate(prove_args)
 
         # Create VerifiableCertificate and decrypt fields
         verifiable_cert = _create_verifiable_certificate(lc, prove_result["keyringForVerifier"])
-        decrypted = _decrypt_fields(verifiable_cert, wallet)
+        decrypted = _decrypt_fields(verifiable_cert, wallet_with_storage)
         assert decrypted["name"] == "Alice"
 
         # Cleanup: relinquish all certificates
-        certs = wallet.list_certificates({"types": [], "certifiers": []})
+        certs = wallet_with_storage.list_certificates({"types": [], "certifiers": []})
         for cert in certs["certificates"]:
-            relinquish_result = wallet.relinquish_certificate(
+            relinquish_result = wallet_with_storage.relinquish_certificate(
                 {"type": cert["type"], "serialNumber": cert["serialNumber"], "certifier": cert["certifier"]}
             )
             assert relinquish_result["relinquished"] is True
 
-    @pytest.mark.skip(reason="acquireCertificate API not implemented yet")
-    def test_privileged_acquirecertificate_listcertificate_provecertificate(self) -> None:
+    def test_privileged_acquirecertificate_listcertificate_provecertificate(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with privilegedKeyManager and certificate issued to privileged key
            When: acquireCertificate with privileged=True, proveCertificate with privileged=True
            Then: Certificate is stored, encrypted fields can be decrypted with privileged keyring
@@ -139,7 +135,7 @@ class TestWalletAcquireCertificate:
         wallet = Wallet(chain="test", priv_key_hex="42" * 32)
 
         # Certificate issued to the privileged key must use privilegedKeyManager's identityKey
-        subject = wallet.privileged_key_manager.get_public_key(identity_key=True)
+        subject = wallet_with_storage.privileged_key_manager.get_public_key(identity_key=True)
         subject_key = subject["publicKey"]
         cert_data, certifier = _make_sample_cert(subject_key)
 
@@ -169,13 +165,13 @@ class TestWalletAcquireCertificate:
 
         # When
         # Store the privileged certificate
-        result = wallet.acquire_certificate(args)
+        result = wallet_with_storage.acquire_certificate(args)
 
         # Then
         assert result["serialNumber"] == signed_cert["serialNumber"]
 
         # Retrieve the certificate
-        list_result = wallet.list_certificates({"certifiers": [cert_data["certifier"]], "types": []})
+        list_result = wallet_with_storage.list_certificates({"certifiers": [cert_data["certifier"]], "types": []})
         assert len(list_result["certificates"]) == 1
         lc = list_result["certificates"][0]
 
@@ -190,7 +186,7 @@ class TestWalletAcquireCertificate:
             "privileged": True,
             "privilegedReason": "more cheese",
         }
-        prove_result = wallet.prove_certificate(prove_args)
+        prove_result = wallet_with_storage.prove_certificate(prove_args)
 
         # Decrypt fields with privileged keyring
         verifiable_cert = _create_verifiable_certificate(lc, prove_result["keyringForVerifier"])
@@ -198,15 +194,15 @@ class TestWalletAcquireCertificate:
         assert decrypted["name"] == "Alice"
 
         # Cleanup: relinquish all certificates
-        certs = wallet.list_certificates({"types": [], "certifiers": []})
+        certs = wallet_with_storage.list_certificates({"types": [], "certifiers": []})
         for cert in certs["certificates"]:
-            relinquish_result = wallet.relinquish_certificate(
+            relinquish_result = wallet_with_storage.relinquish_certificate(
                 {"type": cert["type"], "serialNumber": cert["serialNumber"], "certifier": cert["certifier"]}
             )
             assert relinquish_result["relinquished"] is True
 
         # Also cleans up the privilegedKeyManager
-        wallet.destroy()
+        wallet_with_storage.destroy()
 
 
 # Helper functions for certificate testing (to be implemented with API)
@@ -253,8 +249,7 @@ def _decrypt_fields(cert, wallet, privileged: bool = False, privileged_reason: s
 class TestWalletProveCertificate:
     """Test suite for Wallet.prove_certificate method."""
 
-    @pytest.mark.skip(reason="Waiting for prove_certificate implementation")
-    def test_prove_certificate(self, wallet: Wallet) -> None:
+    def test_prove_certificate(self, wallet_with_storage: Wallet) -> None:
         """Given: ProveCertificateArgs with certificate and verifier
            When: Call prove_certificate
            Then: Returns certificate proof
@@ -269,7 +264,7 @@ class TestWalletProveCertificate:
         }
 
         # When
-        result = wallet.prove_certificate(args)
+        result = wallet_with_storage.prove_certificate(args)
 
         # Then
         assert "certificate" in result
@@ -279,8 +274,7 @@ class TestWalletProveCertificate:
 class TestWalletRelinquishCertificate:
     """Test suite for Wallet.relinquish_certificate method."""
 
-    @pytest.mark.skip(reason="Waiting for relinquish_certificate implementation with test database")
-    def test_relinquish_certificate(self, wallet: Wallet) -> None:
+    def test_relinquish_certificate(self, wallet_with_storage: Wallet) -> None:
         """Given: RelinquishCertificateArgs with certificate identifiers
            When: Call relinquish_certificate
            Then: Certificate is marked as relinquished
@@ -293,7 +287,7 @@ class TestWalletRelinquishCertificate:
         args = {"type": "dGVzdA==", "serialNumber": "c2VyaWFs", "certifier": "02" + "00" * 32}
 
         # When
-        result = wallet.relinquish_certificate(args)
+        result = wallet_with_storage.relinquish_certificate(args)
 
         # Then
         assert "relinquished" in result
@@ -303,8 +297,7 @@ class TestWalletRelinquishCertificate:
 class TestWalletDiscoverByIdentityKey:
     """Test suite for Wallet.discover_by_identity_key method."""
 
-    @pytest.mark.skip(reason="Waiting for discover_by_identity_key implementation")
-    def test_discover_by_identity_key(self, wallet: Wallet) -> None:
+    def test_discover_by_identity_key(self, wallet_with_storage: Wallet) -> None:
         """Given: DiscoverByIdentityKeyArgs with identity key
            When: Call discover_by_identity_key
            Then: Returns certificates for that identity
@@ -315,7 +308,7 @@ class TestWalletDiscoverByIdentityKey:
         args = {"identityKey": "02" + "aa" * 32}  # Identity key to discover
 
         # When
-        result = wallet.discover_by_identity_key(args)
+        result = wallet_with_storage.discover_by_identity_key(args)
 
         # Then
         assert "certificates" in result
@@ -325,8 +318,7 @@ class TestWalletDiscoverByIdentityKey:
 class TestWalletDiscoverByAttributes:
     """Test suite for Wallet.discover_by_attributes method."""
 
-    @pytest.mark.skip(reason="Waiting for discover_by_attributes implementation")
-    def test_discover_by_attributes(self, wallet: Wallet) -> None:
+    def test_discover_by_attributes(self, wallet_with_storage: Wallet) -> None:
         """Given: DiscoverByAttributesArgs with search attributes
            When: Call discover_by_attributes
            Then: Returns certificates matching those attributes
@@ -337,7 +329,7 @@ class TestWalletDiscoverByAttributes:
         args = {"attributes": {"name": "Test User", "email": "*@example.com"}, "limit": 10}  # Wildcard search
 
         # When
-        result = wallet.discover_by_attributes(args)
+        result = wallet_with_storage.discover_by_attributes(args)
 
         # Then
         assert "certificates" in result

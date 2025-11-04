@@ -12,8 +12,7 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 class TestWalletListActions:
     """Test suite for Wallet.list_actions method."""
 
-    @pytest.mark.skip(reason="Waiting for list_actions implementation")
-    def test_invalid_params_label_too_long(self, wallet: Wallet) -> None:
+    def test_invalid_params_label_too_long(self, wallet_with_storage: Wallet) -> None:
         """Given: ListActionsArgs with label exceeding 300 characters
            When: Call list_actions
            Then: Raises InvalidParameterError
@@ -26,10 +25,9 @@ class TestWalletListActions:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_actions(invalid_args)
+            wallet_with_storage.list_actions(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_actions implementation with test database")
-    def test_all_actions(self, wallet: Wallet) -> None:
+    def test_all_actions(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with existing actions
            When: Call list_actions with includeLabels=True
            Then: Returns paginated list of actions with labels
@@ -43,7 +41,7 @@ class TestWalletListActions:
         args = {"includeLabels": True, "labels": []}
 
         # When
-        result = wallet.list_actions(args)
+        result = wallet_with_storage.list_actions(args)
 
         # Then
         assert "totalActions" in result
@@ -55,8 +53,7 @@ class TestWalletListActions:
             assert "outputs" not in action or action["outputs"] is None
             assert isinstance(action.get("labels"), list)
 
-    @pytest.mark.skip(reason="Waiting for list_actions implementation with test database")
-    def test_non_existing_label_with_any(self, wallet: Wallet) -> None:
+    def test_non_existing_label_with_any(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet and non-existing label
            When: Call list_actions with labelQueryMode='any'
            Then: Returns empty result
@@ -70,14 +67,13 @@ class TestWalletListActions:
         args = {"includeLabels": True, "labels": ["xyzzy"], "labelQueryMode": "any"}  # Non-existing label
 
         # When
-        result = wallet.list_actions(args)
+        result = wallet_with_storage.list_actions(args)
 
         # Then
         assert result["totalActions"] == 0
         assert len(result["actions"]) == 0
 
-    @pytest.mark.skip(reason="Waiting for list_actions implementation with test database")
-    def test_specific_label_filter(self, wallet: Wallet) -> None:
+    def test_specific_label_filter(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with actions having specific label
            When: Call list_actions with label filter
            Then: Returns only actions with that label
@@ -91,7 +87,7 @@ class TestWalletListActions:
         args = {"includeLabels": True, "labels": ["test_label"]}
 
         # When
-        result = wallet.list_actions(args)
+        result = wallet_with_storage.list_actions(args)
 
         # Then
         assert result["totalActions"] >= len(result["actions"])

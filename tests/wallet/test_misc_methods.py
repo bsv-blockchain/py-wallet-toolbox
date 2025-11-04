@@ -18,8 +18,7 @@ class TestWalletGetHeader:
     This is similar to getHeaderForHeight but follows BRC-100 args format.
     """
 
-    @pytest.mark.skip(reason="Waiting for get_header implementation")
-    def test_get_header_invalid_params_negative_height(self, wallet: Wallet) -> None:
+    def test_get_header_invalid_params_negative_height(self, _wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with negative height
            When: Call get_header
            Then: Raises InvalidParameterError
@@ -31,10 +30,9 @@ class TestWalletGetHeader:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.get_header(invalid_args)
+            _wallet_with_storage.get_header(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for get_header implementation with services")
-    def test_get_header_valid_height(self, wallet: Wallet) -> None:
+    def test_get_header_valid_height(self, _wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with valid height
            When: Call get_header
            Then: Returns block header for that height
@@ -47,7 +45,7 @@ class TestWalletGetHeader:
         args = {"height": 850000}  # Known block height
 
         # When
-        result = wallet.get_header(args)
+        result = _wallet_with_storage.get_header(args)
 
         # Then
         assert "header" in result
@@ -58,8 +56,7 @@ class TestWalletGetHeader:
 class TestWalletGetVersion:
     """Test suite for Wallet.get_version method (comprehensive tests)."""
 
-    @pytest.mark.skip(reason="Waiting for get_version originator validation")
-    def test_get_version_with_valid_originator(self, wallet: Wallet) -> None:
+    def test_get_version_with_valid_originator(self, _wallet_with_storage: Wallet) -> None:
         """Given: Valid originator domain
            When: Call get_version with originator
            Then: Returns version without error
@@ -71,12 +68,11 @@ class TestWalletGetVersion:
 
         # When / Then
         for originator in valid_originators:
-            result = wallet.get_version({}, originator=originator)
+            result = _wallet_with_storage.get_version({}, originator=originator)
             assert "version" in result
             assert isinstance(result["version"], str)
 
-    @pytest.mark.skip(reason="Waiting for get_version originator validation")
-    def test_get_version_with_invalid_originator_too_long(self, wallet: Wallet) -> None:
+    def test_get_version_with_invalid_originator_too_long(self, _wallet_with_storage: Wallet) -> None:
         """Given: Originator exceeding 250 characters
            When: Call get_version
            Then: Raises InvalidParameterError
@@ -88,10 +84,9 @@ class TestWalletGetVersion:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.get_version({}, originator=too_long_originator)
+            _wallet_with_storage.get_version({}, originator=too_long_originator)
 
-    @pytest.mark.skip(reason="Waiting for get_version originator validation")
-    def test_get_version_with_invalid_originator_type(self, wallet: Wallet) -> None:
+    def test_get_version_with_invalid_originator_type(self, _wallet_with_storage: Wallet) -> None:
         """Given: Originator with invalid type (not string)
            When: Call get_version
            Then: Raises InvalidParameterError
@@ -103,7 +98,7 @@ class TestWalletGetVersion:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.get_version({}, originator=invalid_originator)
+            _wallet_with_storage.get_version({}, originator=invalid_originator)
 
 
 class TestWalletConstructor:
@@ -112,8 +107,7 @@ class TestWalletConstructor:
     Reference: wallet-toolbox/test/wallet/construct/Wallet.constructor.test.ts
     """
 
-    @pytest.mark.skip(reason="Waiting for Wallet constructor implementation")
-    def test_wallet_constructor_with_valid_params(self) -> None:
+    def test_wallet_constructor_with_valid_params(self, _wallet_with_storage: Wallet) -> None:
         """Given: Valid constructor parameters
            When: Create Wallet instance
            Then: Wallet is successfully initialized
@@ -125,10 +119,9 @@ class TestWalletConstructor:
 
         # Then
         assert wallet is not None
-        assert wallet.chain == "main"
+        assert _wallet_with_storage.chain == "main"
 
-    @pytest.mark.skip(reason="Waiting for Wallet constructor implementation")
-    def test_wallet_constructor_with_invalid_root_key(self) -> None:
+    def test_wallet_constructor_with_invalid_root_key(self, _wallet_with_storage: Wallet) -> None:
         """Given: Invalid root key (not hex)
            When: Create Wallet instance
            Then: Raises InvalidParameterError
@@ -139,8 +132,7 @@ class TestWalletConstructor:
         with pytest.raises(InvalidParameterError):
             Wallet(chain="main", root_key="not_a_valid_hex_key")
 
-    @pytest.mark.skip(reason="Waiting for Wallet constructor implementation")
-    def test_wallet_constructor_with_invalid_chain(self) -> None:
+    def test_wallet_constructor_with_invalid_chain(self, _wallet_with_storage: Wallet) -> None:
         """Given: Invalid chain value (not 'main' or 'test')
            When: Create Wallet instance
            Then: Raises InvalidParameterError

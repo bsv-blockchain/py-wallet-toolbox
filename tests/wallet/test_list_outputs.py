@@ -12,8 +12,7 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 class TestWalletListOutputs:
     """Test suite for Wallet.list_outputs method."""
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    def test_invalid_params_empty_basket(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_basket(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with empty basket
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -26,10 +25,9 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_outputs(invalid_args)
+            wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    def test_invalid_params_empty_tag(self, wallet: Wallet) -> None:
+    def test_invalid_params_empty_tag(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with empty tag in tags list
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -42,10 +40,9 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_outputs(invalid_args)
+            wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    def test_invalid_params_limit_zero(self, wallet: Wallet) -> None:
+    def test_invalid_params_limit_zero(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with limit=0
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -58,10 +55,9 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_outputs(invalid_args)
+            wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    def test_invalid_params_limit_exceeds_max(self, wallet: Wallet) -> None:
+    def test_invalid_params_limit_exceeds_max(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with limit exceeding 10000
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -74,10 +70,9 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_outputs(invalid_args)
+            wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    def test_invalid_params_negative_offset(self, wallet: Wallet) -> None:
+    def test_invalid_params_negative_offset(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with negative offset
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -90,10 +85,9 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_outputs(invalid_args)
+            wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation")
-    def test_invalid_originator_too_long(self, wallet: Wallet) -> None:
+    def test_invalid_originator_too_long(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid args but originator exceeding 250 characters
            When: Call list_outputs
            Then: Raises InvalidParameterError
@@ -107,10 +101,9 @@ class TestWalletListOutputs:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.list_outputs(valid_args, originator=too_long_originator)
+            wallet_with_storage.list_outputs(valid_args, originator=too_long_originator)
 
-    @pytest.mark.skip(reason="Waiting for list_outputs implementation with test database")
-    def test_valid_params_with_originator(self, wallet: Wallet) -> None:
+    def test_valid_params_with_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid ListOutputsArgs and valid originator
            When: Call list_outputs
            Then: Returns output list successfully
@@ -137,6 +130,6 @@ class TestWalletListOutputs:
 
         # When / Then
         for originator in valid_originators:
-            result = wallet.list_outputs(valid_args, originator=originator)
+            result = wallet_with_storage.list_outputs(valid_args, originator=originator)
             assert "totalOutputs" in result
             assert result["totalOutputs"] >= 0

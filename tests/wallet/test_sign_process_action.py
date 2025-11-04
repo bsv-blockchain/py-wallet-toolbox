@@ -20,8 +20,7 @@ class TestWalletSignAction:
     and produces a signed transaction ready for broadcasting.
     """
 
-    @pytest.mark.skip(reason="Waiting for sign_action implementation")
-    def test_sign_action_invalid_params_empty_reference(self, wallet: Wallet) -> None:
+    def test_sign_action_invalid_params_empty_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with empty reference
            When: Call sign_action
            Then: Raises InvalidParameterError
@@ -33,10 +32,9 @@ class TestWalletSignAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.sign_action(invalid_args)
+            wallet_with_storage.sign_action(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for sign_action implementation with test database")
-    def test_sign_action_with_valid_reference(self, wallet: Wallet) -> None:
+    def test_sign_action_with_valid_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with valid reference from createAction
            When: Call sign_action
            Then: Returns signed transaction with txid
@@ -56,7 +54,7 @@ class TestWalletSignAction:
             ],
             "options": {"randomizeOutputs": False, "signAndProcess": False, "noSend": True},  # Get unsigned tx
         }
-        create_result = wallet.create_action(create_args)
+        create_result = wallet_with_storage.create_action(create_args)
 
         sign_args = {
             "reference": create_result["signableTransaction"]["reference"],
@@ -64,7 +62,7 @@ class TestWalletSignAction:
         }
 
         # When
-        result = wallet.sign_action(sign_args)
+        result = wallet_with_storage.sign_action(sign_args)
 
         # Then
         assert "txid" in result
@@ -72,8 +70,7 @@ class TestWalletSignAction:
         assert result["txid"] is not None
         assert result["tx"] is not None
 
-    @pytest.mark.skip(reason="Waiting for sign_action implementation with test database")
-    def test_sign_action_with_spend_authorizations(self, wallet: Wallet) -> None:
+    def test_sign_action_with_spend_authorizations(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with specific spend authorizations
            When: Call sign_action
            Then: Returns signed transaction respecting spend policies
@@ -91,7 +88,7 @@ class TestWalletSignAction:
         }
 
         # When
-        result = wallet.sign_action(sign_args)
+        result = wallet_with_storage.sign_action(sign_args)
 
         # Then
         assert "txid" in result
@@ -105,8 +102,7 @@ class TestWalletProcessAction:
     including broadcasting to the network and updating wallet state.
     """
 
-    @pytest.mark.skip(reason="Waiting for process_action implementation")
-    def test_process_action_invalid_params_missing_txid(self, wallet: Wallet) -> None:
+    def test_process_action_invalid_params_missing_txid(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs without required txid
            When: Call process_action
            Then: Raises InvalidParameterError
@@ -123,10 +119,9 @@ class TestWalletProcessAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.process_action(invalid_args)
+            wallet_with_storage.process_action(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for process_action implementation")
-    def test_process_action_invalid_params_new_tx_missing_reference(self, wallet: Wallet) -> None:
+    def test_process_action_invalid_params_new_tx_missing_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with isNewTx=True but missing reference
            When: Call process_action
            Then: Raises InvalidParameterError
@@ -143,10 +138,9 @@ class TestWalletProcessAction:
 
         # When / Then
         with pytest.raises(InvalidParameterError):
-            wallet.process_action(invalid_args)
+            wallet_with_storage.process_action(invalid_args)
 
-    @pytest.mark.skip(reason="Waiting for process_action implementation with test database")
-    def test_process_action_new_transaction(self, wallet: Wallet) -> None:
+    def test_process_action_new_transaction(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs for a new signed transaction
            When: Call process_action
            Then: Transaction is broadcast and wallet state is updated
@@ -166,14 +160,13 @@ class TestWalletProcessAction:
         }
 
         # When
-        result = wallet.process_action(process_args)
+        result = wallet_with_storage.process_action(process_args)
 
         # Then
         assert "txid" in result
         assert result["txid"] == process_args["txid"]
 
-    @pytest.mark.skip(reason="Waiting for process_action implementation with test database")
-    def test_process_action_with_send_with(self, wallet: Wallet) -> None:
+    def test_process_action_with_send_with(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with isSendWith=True and sendWith data
            When: Call process_action
            Then: Transaction is sent to specified recipients
@@ -195,7 +188,7 @@ class TestWalletProcessAction:
         }
 
         # When
-        result = wallet.process_action(process_args)
+        result = wallet_with_storage.process_action(process_args)
 
         # Then
         assert "txid" in result

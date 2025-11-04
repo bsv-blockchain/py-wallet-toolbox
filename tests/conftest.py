@@ -36,6 +36,9 @@ from bsv.wallet import KeyDeriver
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import WalletServices
+from bsv_wallet_toolbox.storage.db import create_engine_from_url
+from bsv_wallet_toolbox.storage.models import Base
+from bsv_wallet_toolbox.storage.provider import StorageProvider
 
 # Universal Test Vectors root private key (used in BRC-2/BRC-3 compliance vectors)
 # Reference: sdk/ts-sdk/src/wallet/__tests/ProtoWallet.test.ts
@@ -228,6 +231,31 @@ def wallet_with_key_deriver(test_key_deriver: KeyDeriver) -> Wallet:
         Wallet instance configured with Universal Test Vectors KeyDeriver
     """
     return Wallet(chain="main", key_deriver=test_key_deriver)
+
+
+@pytest.fixture
+def wallet_with_storage(test_key_deriver: KeyDeriver) -> Wallet:
+    """Create a test wallet instance with storage provider configured.
+
+    This wallet is configured with:
+    - In-memory SQLite database for isolated testing
+    - Universal Test Vectors key deriver
+    - Storage provider for storage operations
+
+    Returns:
+        Wallet instance with storage provider ready for testing
+    """
+    # Create in-memory SQLite database
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    # Create storage provider
+    storage = StorageProvider(engine=engine, chain="main", storage_identity_key="test_wallet")
+
+    # Create wallet with storage provider and key deriver
+    wallet = Wallet(chain="main", key_deriver=test_key_deriver, storage_provider=storage)
+
+    return wallet
 
 
 # ========================================================================
