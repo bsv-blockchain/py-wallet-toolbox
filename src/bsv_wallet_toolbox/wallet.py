@@ -21,6 +21,7 @@ from bsv.wallet.wallet_interface import (
 
 from .errors import InvalidParameterError
 from .services import WalletServices
+from .utils.validation import validate_list_actions_args
 
 # Type alias for chain (matches TypeScript: 'main' | 'test')
 Chain = Literal["main", "test"]
@@ -235,20 +236,52 @@ class Wallet:
     def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List actions with optional filters.
 
-        Summary:
-            Return a list of actions for the wallet.
+        BRC-100 WalletInterface method implementation.
+        Returns a list of actions for the wallet with optional label and pagination filters.
+
+        TS parity:
+            Mirrors TypeScript Wallet.listActions behavior by delegating to storage
+            with validated arguments and generated auth object.
+
         Args:
-            args: Optional action filters.
-            originator: Optional caller identity (under 250 bytes).
+            args: Input dict containing optional filters:
+                - labels: list[str] - action labels to filter by
+                - labelQueryMode: 'any' | 'all' - how to combine label filters (default 'any')
+                - limit: int - max results to return (default 50, max 10000)
+                - offset: int - pagination offset (default 0, max 10000)
+            originator: Optional originator domain name (under 250 bytes)
+
         Returns:
-            Dict with totalActions and actions list.
+            dict: With keys 'totalActions' (int) and 'actions' (list)
+
         Raises:
-            NotImplementedError: Placeholder until full implementation.
+            InvalidParameterError: If originator or args are invalid
+            RuntimeError: If storage_provider or keyDeriver is not configured
+
+        Example:
+            >>> wallet = Wallet(chain="main", storage_provider=sp, key_deriver=kd)
+            >>> result = wallet.list_actions({})
+            >>> assert "totalActions" in result
+            >>> assert "actions" in result
+
         Reference:
-            toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (listActions method)
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (listActions method)
+            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateListActionsArgs)
         """
         self._validate_originator(originator)
-        return self.storage_provider.list_actions(self._make_auth(), args)
+
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+
+        # Validate input arguments (raises InvalidParameterError on failure)
+        validate_list_actions_args(args)
+
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Delegate to storage provider (TS parity)
+        return self.storage_provider.list_actions(auth, args)
 
     def abort_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Abort an action.
@@ -403,6 +436,44 @@ class Wallet:
         """
         self._validate_originator(originator)
         return {"version": self.VERSION}
+
+    def _make_auth(self) -> dict[str, Any]:
+        """Generate auth object containing wallet identity key.
+
+        Helper method that creates an auth dict with the wallet's identity key
+        (root public key) for use by storage provider methods.
+
+        Mirrors TypeScript: `{ identityKey: this.identityKey }`
+
+        TS parity:
+            The identity key is the wallet's root public key in hex format,
+            used by StorageProvider to identify the user across storage operations.
+
+        Returns:
+            dict: Auth object with 'identityKey' key containing hex-encoded public key
+
+        Raises:
+            RuntimeError: If keyDeriver is not configured
+
+        Example:
+            >>> wallet = Wallet(chain="main", key_deriver=my_key_deriver)
+            >>> auth = wallet._make_auth()
+            >>> assert "identityKey" in auth
+            >>> assert len(auth["identityKey"]) == 130  # 1 prefix + 128 hex chars
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (validateAuthAndArgs pattern)
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (identityKey retrieval)
+            - sdk/ts-sdk/src/wallet/KeyDeriver.ts
+        """
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        # Retrieve identity key from key_deriver's root public key
+        root_public_key = self.key_deriver._root_public_key
+        identity_key_hex = root_public_key.hex()
+
+        return {"identityKey": identity_key_hex}
 
     def is_authenticated(
         self,
