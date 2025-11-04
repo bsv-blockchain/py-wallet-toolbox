@@ -21,7 +21,11 @@ from bsv.wallet.wallet_interface import (
 
 from .errors import InvalidParameterError
 from .services import WalletServices
-from .utils.validation import validate_list_actions_args
+from .utils.validation import (
+    validate_abort_action_args,
+    validate_list_actions_args,
+    validate_relinquish_certificate_args,
+)
 
 # Type alias for chain (matches TypeScript: 'main' | 'test')
 Chain = Literal["main", "test"]
@@ -286,49 +290,89 @@ class Wallet:
     def abort_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Abort an action.
 
-        Summary:
-            Cancel/abort an in-progress action by reference.
+        BRC-100 WalletInterface method implementation.
+        Cancel/abort an in-progress action by reference.
+
+        TS parity:
+            Mirrors TypeScript Wallet.abortAction behavior by delegating to storage
+            with validated arguments.
+
         Args:
-            args: Action reference (action_reference key).
-            originator: Optional caller identity (under 250 bytes).
+            args: Input dict containing:
+                - reference: str - base64-encoded action reference (required)
+            originator: Optional originator domain name (under 250 bytes)
+
         Returns:
-            Result dict indicating abort status.
+            dict: With key 'aborted' (bool) indicating success
+
         Raises:
-            N/A
+            InvalidParameterError: If originator or args are invalid
+            RuntimeError: If storage_provider is not configured
+
         Reference:
-            toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (abortAction method)
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (abortAction method)
+            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateAbortActionArgs)
         """
         self._validate_originator(originator)
+
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
-        reference = args.get("reference", "")
 
+        # Validate input arguments (raises InvalidParameterError on failure)
+        validate_abort_action_args(args)
+
+        # Extract reference and call storage provider
+        reference = args.get("reference", "")
         result = self.storage_provider.abort_action(reference)
+
         return {"aborted": bool(result)}
 
     def relinquish_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Mark a certificate as no longer in use.
 
-        Summary:
-            Soft-delete a certificate from active use.
+        BRC-100 WalletInterface method implementation.
+        Soft-delete a certificate from active use.
+
+        TS parity:
+            Mirrors TypeScript Wallet.relinquishCertificate behavior by delegating
+            to storage with validated arguments and always returning success.
+
         Args:
-            args: Certificate ID (certificateId key).
-            originator: Optional caller identity (under 250 bytes).
+            args: Input dict containing:
+                - type: str - base64-encoded certificate type (required)
+                - serialNumber: str - base64-encoded serial number (required)
+                - certifier: str - non-empty even-length hex string (required)
+            originator: Optional originator domain name (under 250 bytes)
+
         Returns:
-            Result dict indicating relinquish status.
+            dict: With key 'relinquished' (bool), always True on success
+
         Raises:
-            N/A
+            InvalidParameterError: If originator or args are invalid
+            RuntimeError: If storage_provider is not configured
+
         Reference:
-            toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (relinquishCertificate method)
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (relinquishCertificate method)
+            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateRelinquishCertificateArgs)
         """
         self._validate_originator(originator)
+
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
-        auth = args.get("auth") or {}
-        cert_id = args.get("certificateId")
 
-        result = self.storage_provider.relinquish_certificate(auth, cert_id)
-        return {"relinquished": bool(result)}
+        # Validate input arguments (raises InvalidParameterError on failure)
+        validate_relinquish_certificate_args(args)
+
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Call storage provider with auth (TypeScript parity)
+        self.storage_provider.relinquish_certificate(auth, args)
+
+        # Always return success (TypeScript parity)
+        return {"relinquished": True}
 
     def create_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Create a new transaction action.
