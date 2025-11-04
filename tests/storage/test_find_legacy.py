@@ -6,7 +6,6 @@ Reference: wallet-toolbox/test/storage/findLegacy.test.ts
 """
 
 
-
 class TestfindLegacy:
     """Test suite for legacy database FIND/SELECT operations."""
 
