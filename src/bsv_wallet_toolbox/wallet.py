@@ -24,6 +24,7 @@ from .services import WalletServices
 from .utils.validation import (
     validate_abort_action_args,
     validate_create_action_args,
+    validate_internalize_action_args,
     validate_list_actions_args,
     validate_process_action_args,
     validate_relinquish_certificate_args,
@@ -471,6 +472,54 @@ class Wallet:
 
         # Delegate to storage provider (TypeScript parity)
         return self.storage_provider.process_action(auth, args)
+
+    def internalize_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Internalize a transaction action (take ownership of outputs).
+
+        BRC-100 WalletInterface method implementation.
+        Allow a wallet to take ownership of outputs in a pre-existing transaction.
+
+        TS parity:
+            Mirrors TypeScript Wallet.internalizeAction behavior by delegating to storage
+            with validated arguments and generated auth object.
+
+        Args:
+            args: Input dict containing transaction internalization parameters:
+                - tx: str - atomic BEEF (Binary Encoded Expression Format) of transaction
+                - outputs: list - output internalization specifications:
+                    - outputIndex: int - index of output in transaction
+                    - protocol: str - 'wallet payment' or 'basket insertion'
+                    - paymentRemittance: dict - for wallet payment outputs
+                    - basketName: str - for basket insertion outputs
+            originator: Optional originator domain name (under 250 bytes)
+
+        Returns:
+            dict: With keys accepted (bool), isMerge (bool), txid (str), satoshis (int)
+
+        Raises:
+            InvalidParameterError: If originator or args are invalid
+            RuntimeError: If storage_provider or keyDeriver is not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (internalizeAction method)
+            - toolbox/ts-wallet-toolbox/src/signer/methods/internalizeAction.ts (internalizeAction function)
+            - toolbox/ts-wallet-toolbox/src/storage/methods/internalizeAction.ts (storage internalizeAction)
+            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateInternalizeActionArgs)
+        """
+        self._validate_originator(originator)
+
+        if not self.storage_provider:
+            raise RuntimeError("storage provider is not configured")
+
+        # Validate input arguments (raises InvalidParameterError on failure)
+        validate_internalize_action_args(args)
+
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Delegate to storage provider (TypeScript parity)
+        # Note: Storage layer implementation (internalizeAction) is required
+        return self.storage_provider.internalize_action(auth, args)
 
     def get_network(
         self,
