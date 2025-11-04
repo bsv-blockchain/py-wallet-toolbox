@@ -25,6 +25,7 @@ from .utils.validation import (
     validate_abort_action_args,
     validate_create_action_args,
     validate_list_actions_args,
+    validate_process_action_args,
     validate_relinquish_certificate_args,
 )
 
@@ -426,23 +427,49 @@ class Wallet:
     def process_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Process a transaction action (finalize & sign).
 
-        Summary:
-            Finalize a transaction by committing it to storage with signed rawTx.
+        BRC-100 WalletInterface method implementation.
+        Finalize a transaction by committing it to storage with a signed rawTx.
+
+        TS parity:
+            Mirrors TypeScript Wallet.signAction behavior for storage layer processing.
+            Delegates to storage with validated arguments and generated auth object.
+
         Args:
-            args: Contains reference, txid, rawTx, isNoSend, isDelayed, isSendWith.
-            originator: Optional caller identity (under 250 bytes).
+            args: Input dict containing signed transaction details:
+                - reference: str - action reference
+                - txid: str - transaction ID (hex)
+                - rawTx: str - signed raw transaction (hex or binary)
+                - isNewTx: bool - whether this is a new transaction
+                - isSendWith: bool - whether to send with other txids
+                - isNoSend: bool - whether to suppress network broadcast
+                - isDelayed: bool - whether to accept delayed broadcast
+                - sendWith: list - txids to send with (optional)
+            originator: Optional originator domain name (under 250 bytes)
+
         Returns:
-            Result dict with status and results.
+            dict: With keys sendWithResults and notDelayedResults
+
         Raises:
-            ValueError: If validation fails.
+            InvalidParameterError: If originator or args are invalid
+            RuntimeError: If storage_provider or keyDeriver is not configured
+
         Reference:
-            toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - toolbox/ts-wallet-toolbox/src/signer/methods/signAction.ts (signAction function)
+            - toolbox/ts-wallet-toolbox/src/storage/methods/processAction.ts (processAction function)
+            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateProcessActionArgs)
         """
         self._validate_originator(originator)
+
         if not self.storage_provider:
             raise RuntimeError("storage provider is not configured")
-        auth = args.get("auth") or {}
 
+        # Validate input arguments (raises InvalidParameterError on failure)
+        validate_process_action_args(args)
+
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Delegate to storage provider (TypeScript parity)
         return self.storage_provider.process_action(auth, args)
 
     def get_network(
