@@ -1748,7 +1748,12 @@ class StorageProvider:
 
     def _insert_generic(self, table_name: str, data: dict[str, Any], trx: Any = None) -> int:
         model = self._get_model(table_name)
-        obj = model(**data)
+        # Convert camelCase keys in data dict to snake_case
+        converted_data = {}
+        for key, value in data.items():
+            converted_key = StorageProvider._to_snake_case(key) if key[0].islower() and "_" not in key else key
+            converted_data[converted_key] = value
+        obj = model(**converted_data)
         if trx:
             session = trx
         else:
@@ -1758,7 +1763,9 @@ class StorageProvider:
             session.flush()
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
-            pk_value = getattr(obj, pk_col.name)
+            # Convert camelCase column name to snake_case Python attribute
+            pk_attr_name = StorageProvider._to_snake_case(pk_col.name)
+            pk_value = getattr(obj, pk_attr_name)
             return pk_value
         finally:
             if not trx:
@@ -1819,6 +1826,21 @@ class StorageProvider:
     def _to_api_key(snake_case: str) -> str:
         parts = snake_case.split("_")
         return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
+    @staticmethod
+    def _to_snake_case(camel_case: str) -> str:
+        """Convert camelCase to snake_case.
+
+        Example: userId -> user_id, provenTxId -> proven_tx_id
+        """
+        result = []
+        for i, char in enumerate(camel_case):
+            if char.isupper() and i > 0:
+                result.append("_")
+                result.append(char.lower())
+            else:
+                result.append(char)
+        return "".join(result)
 
     def insert_user(self, data: dict[str, Any]) -> int:
         return self._insert_generic("user", data)
