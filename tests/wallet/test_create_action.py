@@ -135,3 +135,50 @@ class TestWalletCreateAction:
         assert result["signableTransaction"] is not None
         assert "reference" in result["signableTransaction"]
         assert "tx" in result["signableTransaction"]  # AtomicBEEF format
+
+    def test_create_action_defaults_options_and_returns_signable(
+        self, wallet_with_mocked_create_action
+    ) -> None:
+        wallet, _storage, call_log, user_id = wallet_with_mocked_create_action
+
+        args = {
+            "description": "Mock flow",
+            "outputs": [
+                {
+                    "satoshis": 1200,
+                    "lockingScript": "76a914" + "11" * 20 + "88ac",
+                    "outputDescription": "payment",
+                }
+            ],
+        }
+
+        result = wallet.create_action(args)
+
+        assert call_log["auth"]["userId"] == user_id
+        assert "options" in call_log["args"]
+        assert call_log["args"]["options"] == {}
+        assert result["signableTransaction"] == {"reference": "ref-456", "tx": [0xDE, 0xAD]}
+        assert result["noSendChange"] == ["mock.txid.0"]
+
+    def test_create_action_sign_and_process_flow(self, wallet_with_mocked_create_action) -> None:
+        wallet, _storage, call_log, _ = wallet_with_mocked_create_action
+
+        args = {
+            "description": "Process flow",
+            "outputs": [
+                {
+                    "satoshis": 5000,
+                    "lockingScript": "76a914" + "22" * 20 + "88ac",
+                    "outputDescription": "service",
+                }
+            ],
+            "options": {"signAndProcess": True, "noSend": True},
+        }
+
+        result = wallet.create_action(args)
+
+        assert result["txid"] == "mock-deterministic-txid"
+        assert result["noSendChangeOutputVouts"] == [1, 2]
+        assert call_log["args"]["options"]["signAndProcess"] is True
+        assert call_log["args"]["options"]["noSend"] is True
+        assert "signableTransaction" not in result

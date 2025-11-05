@@ -1,372 +1,283 @@
-"""Unit tests for storage UPDATE operations.
-
-Reference: wallet-toolbox/test/storage/update.test.ts
-"""
+"""Integration-style tests for StorageProvider update operations."""
 
 from datetime import datetime
 
 
-class Testupdate:
-    """Test suite for database UPDATE operations."""
+def _first(records):
+    return records[0]
 
-    def test_update_proventx(self) -> None:
-        """Given: Mock storage with existing ProvenTx record
-           When: Update ProvenTx fields (blockHash, updated_at)
-           Then: Record is updated successfully
 
-        Reference: test/storage/update.test.ts
-                  test('0_update ProvenTx')
-        """
-        # Given
+def test_update_proventx(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    record = seed["proven_tx"]
+    new_time = datetime(2001, 1, 2, 12, 0, 0)
 
-        mock_storage = type(
-            "MockStorage",
-            (),
-            {
-                "update_proven_tx": lambda self, id, updates: None,
-                "find_proven_txs": lambda self, query: [{"provenTxId": 1, "blockHash": "old"}],
-            },
-        )()
+    updated = storage.update_proven_tx(
+        record["provenTxId"],
+        {
+            "blockHash": "updated-block-hash",
+            "updatedAt": new_time,
+        },
+    )
+    assert updated == 1
 
-        time = datetime(2001, 1, 2, 12, 0, 0)
+    refreshed = _first(storage.find_proven_txs({"partial": {"provenTxId": record["provenTxId"]}}))
+    assert refreshed["blockHash"] == "updated-block-hash"
+    assert refreshed["updatedAt"] == new_time
 
-        # When
-        mock_storage.update_proven_tx(1, {"blockHash": "fred", "updated_at": time})
 
-        # Then
-        records = mock_storage.find_proven_txs({"partial": {"provenTxId": 1}})
-        assert len(records) > 0
-
-    def test_update_proventx_176(self) -> None:
-        """Given: Mock storage with existing ProvenTx record
-           When: Update all ProvenTx fields with test values
-           Then: All fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('1_update ProvenTx')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_proven_tx": lambda self, id, updates: None})()
-
-        test_values = {
-            "txid": "2" * 64,
-            "height": 200,
+def test_update_proventx_all_fields(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    record = seed["proven_tx"]
+    updated = storage.update_proven_tx(
+        record["provenTxId"],
+        {
+            "txid": "updated-txid",
+            "height": 321,
             "index": 5,
-            "blockHash": "test_hash",
-            "merklePath": [],
-            "rawTx": b"test_tx",
-        }
+            "merklePath": b"\x09\x09",
+            "rawTx": b"\x01\x02",
+            "blockHash": "f" * 64,
+            "merkleRoot": "e" * 64,
+        },
+    )
+    assert updated == 1
 
-        # When
-        mock_storage.update_proven_tx(1, test_values)
+    refreshed = _first(storage.find_proven_txs({"partial": {"provenTxId": record["provenTxId"]}}))
+    assert refreshed["txid"] == "updated-txid"
+    assert refreshed["height"] == 321
+    assert refreshed["index"] == 5
+    assert refreshed["merklePath"] == b"\x09\x09"
+    assert refreshed["rawTx"] == b"\x01\x02"
 
-        # Then - update completed without error
-        assert True
 
-    def test_update_proventxreq(self) -> None:
-        """Given: Mock storage with existing ProvenTxReq record
-           When: Update all ProvenTxReq fields
-           Then: All fields are updated correctly
+def test_update_proventxreq(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    record = seed["proven_tx_reqs"]["pending"]
+    updated = storage.update_proven_tx_req(
+        record["provenTxReqId"],
+        {
+            "status": "completed",
+            "attempts": 5,
+            "notified": True,
+            "batch": "batch-updated",
+            "history": "{\"updated\":true}",
+        },
+    )
+    assert updated == 1
 
-        Reference: test/storage/update.test.ts
-                  test('2_update ProvenTxReq')
-        """
-        # Given
+    refreshed = _first(
+        storage.find_proven_tx_reqs({"partial": {"provenTxReqId": record["provenTxReqId"]}})
+    )
+    assert refreshed["status"] == "completed"
+    assert refreshed["attempts"] == 5
+    assert refreshed["notified"] is True
+    assert refreshed.get("batch") == "batch-updated"
 
-        mock_storage = type("MockStorage", (), {"update_proven_tx_req": lambda self, id, updates: None})()
 
-        test_values = {"txid": "3" * 64, "status": "completed", "attempts": 5, "notified": True}
+def test_update_user(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    user_id = seed["user1"]["userId"]
+    updated = storage.update_user(
+        user_id,
+        {
+            "identityKey": "03" + "9" * 64,
+            "activeStorage": "remote",
+        },
+    )
+    assert updated == 1
 
-        # When
-        mock_storage.update_proven_tx_req(1, test_values)
+    refreshed = _first(storage.find_users({"partial": {"userId": user_id}}))
+    assert refreshed["identityKey"] == "03" + "9" * 64
+    assert refreshed["activeStorage"] == "remote"
 
-        # Then
-        assert True
 
-    def test_update_user(self) -> None:
-        """Given: Mock storage with existing User record
-           When: Update User fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('3_update User')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_user": lambda self, id, updates: None})()
-
-        test_values = {"identityKey": "04" + "1" * 64}
-
-        # When
-        mock_storage.update_user(1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_certificate(self) -> None:
-        """Given: Mock storage with existing Certificate record
-           When: Update Certificate fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('4_update Certificate')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_certificate": lambda self, id, updates: None})()
-
-        test_values = {"type": "updated_type", "subject": "updated_subject", "isDeleted": True}
-
-        # When
-        mock_storage.update_certificate(1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_certificatefield(self) -> None:
-        """Given: Mock storage with existing CertificateField record
-           When: Update CertificateField fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('5_update CertificateField')
-        """
-        # Given
-
-        mock_storage = type(
-            "MockStorage", (), {"update_certificate_field": lambda self, cert_id, user_id, field_name, updates: None}
-        )()
-
-        test_values = {"fieldValue": "updated_value", "masterKey": "updated_master"}
-
-        # When
-        mock_storage.update_certificate_field(1, 1, "name", test_values)
-
-        # Then
-        assert True
-
-    def test_update_outputbasket(self) -> None:
-        """Given: Mock storage with existing OutputBasket record
-           When: Update OutputBasket fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('6_update OutputBasket')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_output_basket": lambda self, id, updates: None})()
-
-        test_values = {
-            "name": "updated_basket",
-            "numberOfDesiredUTXOs": 20,
-            "minimumDesiredUTXOValue": 2000,
+def test_update_certificate(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    cert = seed["certificates"]["primary"]
+    updated = storage.update_certificate(
+        cert["certificateId"],
+        {
+            "type": "updated-type",
+            "subject": "updated-subject",
             "isDeleted": True,
-        }
+        },
+    )
+    assert updated == 1
 
-        # When
-        mock_storage.update_output_basket(1, test_values)
+    refreshed = _first(
+        storage.find_certificates({"partial": {"certificateId": cert["certificateId"]}})
+    )
+    assert refreshed["type"] == "updated-type"
+    assert refreshed["subject"] == "updated-subject"
+    assert refreshed["isDeleted"] is True
 
-        # Then
-        assert True
 
-    def test_update_transaction(self) -> None:
-        """Given: Mock storage with existing Transaction record
-           When: Update Transaction fields
-           Then: Fields are updated correctly
+def test_update_certificate_field(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    field = seed["certificate_fields"]["primary_name"]
+    field_id = field["certificateFieldId"]
+    updated = storage.update_certificate_field(
+        field_id,
+        {
+            "fieldName": field["fieldName"],
+            "fieldValue": "updated-value",
+            "masterKey": "updated-key",
+        },
+    )
+    assert updated == 1
 
-        Reference: test/storage/update.test.ts
-                  test('7_update Transaction')
-        """
-        # Given
+    refreshed = _first(
+        storage.find_certificate_fields({"partial": {"certificateFieldId": field_id}})
+    )
+    assert refreshed["fieldValue"] == "updated-value"
+    assert refreshed["masterKey"] == "updated-key"
 
-        mock_storage = type("MockStorage", (), {"update_transaction": lambda self, id, updates: None})()
 
-        test_values = {"status": "completed", "description": "updated_description", "satoshis": 10000}
+def test_update_output_basket(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    basket = seed["output_baskets"][0]
+    updated = storage.update_output_basket(
+        basket["basketId"],
+        {
+            "numberOfDesiredUTXOs": 42,
+            "minimumDesiredUTXOValue": 2048,
+            "name": "updated-basket",
+        },
+    )
+    assert updated == 1
 
-        # When
-        mock_storage.update_transaction(1, test_values)
+    refreshed = _first(
+        storage.find_output_baskets({"partial": {"basketId": basket["basketId"]}})
+    )
+    assert refreshed["numberOfDesiredUTXOs"] == 42
+    assert refreshed["minimumDesiredUTXOValue"] == 2048
+    assert refreshed["name"] == "updated-basket"
 
-        # Then
-        assert True
 
-    def test_updatetransactionstatus(self) -> None:
-        """Given: Mock storage with existing Transaction record
-           When: Update transaction status specifically
-           Then: Status is updated correctly
+def test_update_transaction(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    tx = seed["transactions"]["tx1"]
+    updated = storage.update_transaction(
+        tx["transactionId"],
+        {
+            "status": "completed",
+            "description": "updated description",
+            "satoshis": 9999,
+        },
+    )
+    assert updated == 1
 
-        Reference: test/storage/update.test.ts
-                  test('7a updateTransactionStatus')
-        """
-        # Given
+    refreshed = _first(
+        storage.find_transactions({"partial": {"transactionId": tx["transactionId"]}})
+    )
+    assert refreshed["status"] == "completed"
+    assert refreshed["description"] == "updated description"
+    assert refreshed["satoshis"] == 9999
 
-        mock_storage = type("MockStorage", (), {"update_transaction_status": lambda self, id, status: None})()
 
-        # When
-        mock_storage.update_transaction_status(1, "completed")
+def test_update_commission(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    commission = seed["commissions"]["tx1"]
+    updated = storage.update_commission(
+        commission["commissionId"],
+        {
+            "satoshis": 777,
+            "isRedeemed": True,
+        },
+    )
+    assert updated == 1
 
-        # Then
-        assert True
+    refreshed = _first(
+        storage.find_commissions({"partial": {"commissionId": commission["commissionId"]}})
+    )
+    assert refreshed["satoshis"] == 777
+    assert refreshed["isRedeemed"] is True
 
-    def test_update_commission(self) -> None:
-        """Given: Mock storage with existing Commission record
-           When: Update Commission fields
-           Then: Fields are updated correctly
 
-        Reference: test/storage/update.test.ts
-                  test('8_update Commission')
-        """
-        # Given
+def test_update_output(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    output = seed["outputs"]["o1"]
+    updated = storage.update_output(
+        output["outputId"],
+        {
+            "spendable": False,
+            "purpose": "updated-purpose",
+        },
+    )
+    assert updated == 1
 
-        mock_storage = type("MockStorage", (), {"update_commission": lambda self, id, updates: None})()
+    refreshed = _first(
+        storage.find_outputs({"partial": {"outputId": output["outputId"]}})
+    )
+    assert refreshed["spendable"] is False
+    assert refreshed["purpose"] == "updated-purpose"
 
-        test_values = {"isRedeemed": True, "satoshis": 1000}
 
-        # When
-        mock_storage.update_commission(1, test_values)
+def test_update_output_tag(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    tag = seed["output_tags"]["tag1"]
+    updated = storage.update_output_tag(
+        tag["outputTagId"],
+        {
+            "tag": "updated-tag",
+        },
+    )
+    assert updated == 1
 
-        # Then
-        assert True
+    refreshed = _first(
+        storage.find_output_tags({"partial": {"outputTagId": tag["outputTagId"]}})
+    )
+    assert refreshed["tag"] == "updated-tag"
 
-    def test_update_output(self) -> None:
-        """Given: Mock storage with existing Output record
-           When: Update Output fields
-           Then: Fields are updated correctly
 
-        Reference: test/storage/update.test.ts
-                  test('9_update Output')
-        """
-        # Given
+def test_update_monitor_event(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    event = seed["monitor_event"]
+    updated = storage.update_monitor_event(
+        event["id"],
+        {
+            "details": "updated",
+        },
+    )
+    assert updated == 1
 
-        mock_storage = type("MockStorage", (), {"update_output": lambda self, id, updates: None})()
+    refreshed = _first(storage.find_monitor_events({"partial": {"id": event["id"]}}))
+    assert refreshed["details"] == "updated"
 
-        test_values = {"spendable": False, "satoshis": 5000, "customInstructions": "updated_instructions"}
 
-        # When
-        mock_storage.update_output(1, test_values)
+def test_update_sync_state(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    sync_state = seed["sync_state"]
+    updated = storage.update_sync_state(
+        sync_state["syncStateId"],
+        {
+            "status": "resync",
+            "init": False,
+        },
+    )
+    assert updated == 1
 
-        # Then
-        assert True
+    refreshed = _first(
+        storage.find_sync_states({"partial": {"syncStateId": sync_state["syncStateId"]}})
+    )
+    assert refreshed["status"] == "resync"
+    assert refreshed["init"] is False
 
-    def test_update_outputtag(self) -> None:
-        """Given: Mock storage with existing OutputTag record
-           When: Update OutputTag fields
-           Then: Fields are updated correctly
 
-        Reference: test/storage/update.test.ts
-                  test('10_update OutputTag')
-        """
-        # Given
+def test_update_tx_label(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    label = seed["tx_labels"]["label1"]
+    updated = storage.update_tx_label(
+        label["txLabelId"],
+        {
+            "label": "updated-label",
+        },
+    )
+    assert updated == 1
 
-        mock_storage = type("MockStorage", (), {"update_output_tag": lambda self, id, updates: None})()
+    refreshed = _first(
+        storage.find_tx_labels({"partial": {"txLabelId": label["txLabelId"]}})
+    )
+    assert refreshed["label"] == "updated-label"
 
-        test_values = {"tag": "updated_tag", "isDeleted": True}
-
-        # When
-        mock_storage.update_output_tag(1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_outputtagmap(self) -> None:
-        """Given: Mock storage with existing OutputTagMap record
-           When: Update OutputTagMap fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('11_update OutputTagMap')
-        """
-        # Given
-
-        mock_storage = type(
-            "MockStorage", (), {"update_output_tag_map": lambda self, output_id, tag_id, updates: None}
-        )()
-
-        test_values = {"isDeleted": True}
-
-        # When
-        mock_storage.update_output_tag_map(1, 1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_txlabel(self) -> None:
-        """Given: Mock storage with existing TxLabel record
-           When: Update TxLabel fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('12_update TxLabel')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_tx_label": lambda self, id, updates: None})()
-
-        test_values = {"label": "updated_label", "isDeleted": True}
-
-        # When
-        mock_storage.update_tx_label(1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_txlabelmap(self) -> None:
-        """Given: Mock storage with existing TxLabelMap record
-           When: Update TxLabelMap fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('13_update TxLabelMap')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_tx_label_map": lambda self, tx_id, label_id, updates: None})()
-
-        test_values = {"isDeleted": True}
-
-        # When
-        mock_storage.update_tx_label_map(1, 1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_monitorevent(self) -> None:
-        """Given: Mock storage with existing MonitorEvent record
-           When: Update MonitorEvent fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('14_update MonitorEvent')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_monitor_event": lambda self, id, updates: None})()
-
-        test_values = {"event": "updated_event", "data": {"key": "value"}}
-
-        # When
-        mock_storage.update_monitor_event(1, test_values)
-
-        # Then
-        assert True
-
-    def test_update_syncstate(self) -> None:
-        """Given: Mock storage with existing SyncState record
-           When: Update SyncState fields
-           Then: Fields are updated correctly
-
-        Reference: test/storage/update.test.ts
-                  test('15_update SyncState')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"update_sync_state": lambda self, id, updates: None})()
-
-        test_values = {"storageIdentityKey": "05" + "2" * 64}
-
-        # When
-        mock_storage.update_sync_state(1, test_values)
-
-        # Then
-        assert True

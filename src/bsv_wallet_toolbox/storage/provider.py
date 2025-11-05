@@ -4,6 +4,7 @@ import base64
 import secrets
 from collections.abc import Iterable
 from datetime import UTC, datetime
+import re
 from typing import Any, ClassVar
 
 from bsv.merkle_path import MerklePath
@@ -19,6 +20,12 @@ from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
     validate_internalize_action_args,
     validate_process_action_args,
+)
+from .create_action import (
+    deterministic_txid,
+    generate_reference,
+    normalize_create_action_args,
+    validate_required_outputs,
 )
 
 from .db import create_session_factory, session_scope
@@ -177,7 +184,7 @@ class StorageProvider:
                     basket.is_deleted = False
                     session.add(basket)
                     session.commit()
-                return self._model_to_dict(basket)
+        return self._model_to_dict(basket)
 
             # Create new basket
             now = datetime.now(UTC)
@@ -1000,43 +1007,6 @@ class StorageProvider:
                 for r in rows
             ]
 
-    def find_proven_tx_reqs(self, args: dict[str, Any]) -> list[dict[str, Any]]:
-        """Find ProvenTxReq rows by partial filters (subset fields).
-
-        Summary:
-            Query current proven transaction requests using optional filters.
-        TS parity:
-            Returns minimal fields {provenTxReqId, txid, status, attempts, notified}.
-        Args:
-            args: Optional filters: 'txid', 'status', 'batch'.
-        Returns:
-            List of proven tx req dicts.
-        Raises:
-            N/A
-        Reference:
-            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
-        """
-        with session_scope(self.SessionLocal) as s:
-            q = select(ProvenTxReq)
-            if txid := args.get("txid"):
-                q = q.where(ProvenTxReq.txid == txid)
-            if status := args.get("status"):
-                q = q.where(ProvenTxReq.status == status)
-            if batch := args.get("batch"):
-                q = q.where(ProvenTxReq.batch == batch)
-            _exec_result = s.execute(q)
-            rows = _exec_result.scalars()
-            return [
-                {
-                    "provenTxReqId": r.proven_tx_req_id,
-                    "txid": r.txid,
-                    "status": r.status,
-                    "attempts": int(r.attempts),
-                    "notified": bool(r.notified),
-                }
-                for r in rows
-            ]
-
     def get_proven_or_raw_tx(self, txid: str) -> dict[str, Any]:
         """Return proven or raw tx for a txid if known (subset fields).
 
@@ -1540,6 +1510,128 @@ class StorageProvider:
         return result
 
     # ------------------------------------------------------------------
+    # Action Pipeline - createAction (initial parity scaffold)
+    # ------------------------------------------------------------------
+    def create_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+        """Create a new transaction action (simplified TS parity).
+
+        Summary:
+            Normalizes arguments, persists an unsigned transaction shell, and
+            returns a deterministic placeholder result pending full TS parity.
+
+        TS parity:
+            Reference implementation: `storage/methods/createAction.ts`. The
+            current Python scaffold focuses on argument normalization,
+            transaction shell creation, output persistence, and deterministic
+            response shapes. Funding, BEEF validation, and change allocation are
+            planned for subsequent steps.
+
+        Args:
+            auth: Authentication dictionary containing `userId` (int).
+            args: Raw `create_action` arguments from the wallet layer.
+
+        Returns:
+            Dict with keys mirroring TS result shape (reference/version/lockTime,
+            plus either `txid` or `signableTransaction`).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
+        """
+
+        user_id = int(auth["userId"])  # KeyError propagates if auth malformed
+
+        vargs = normalize_create_action_args(args)
+        if not vargs.is_new_tx:
+            raise InvalidParameterError("createAction", "transaction must include new inputs or outputs")
+
+        reference = generate_reference()
+        created_at = self._now()
+
+        storage_beef_bytes = vargs.input_beef_bytes or b""
+
+        transaction_id = self.insert_transaction(
+            {
+                "userId": user_id,
+                "status": "unsigned",
+                "reference": reference,
+                "isOutgoing": True,
+                "satoshis": 0,
+                "version": vargs.version,
+                "lockTime": vargs.lock_time,
+                "description": vargs.description,
+                "inputBEEF": storage_beef_bytes,
+                "createdAt": created_at,
+                "updatedAt": created_at,
+            }
+        )
+
+        for label in vargs.labels:
+            tx_label = self.find_or_insert_tx_label(user_id, label)
+            self.find_or_insert_tx_label_map(transaction_id, int(tx_label["txLabelId"]))
+
+        outputs_payload = []
+        xoutputs = validate_required_outputs(self, user_id, vargs)
+        for xo in xoutputs:
+            locking_script_bytes = xo.locking_script
+            output_id = self.insert_output(
+                {
+                    "transactionId": transaction_id,
+                    "userId": user_id,
+                    "satoshis": xo.satoshis,
+                    "lockingScript": locking_script_bytes,
+                    "outputDescription": xo.output_description or "",
+                    "vout": xo.vout,
+                    "providedBy": xo.provided_by,
+                    "purpose": xo.purpose or "",
+                    "customInstructions": xo.custom_instructions,
+                    "derivationSuffix": xo.derivation_suffix,
+                    "change": False,
+                    "spendable": True,
+                    "type": "custom",
+                    "createdAt": created_at,
+                    "updatedAt": created_at,
+                }
+            )
+
+            outputs_payload.append(
+                {
+                    "vout": xo.vout,
+                    "satoshis": xo.satoshis,
+                    "providedBy": xo.provided_by,
+                    "purpose": xo.purpose,
+                    "tags": xo.tags,
+                    "outputId": output_id,
+                }
+            )
+
+        result: dict[str, Any] = {
+            "reference": reference,
+            "version": vargs.version,
+            "lockTime": vargs.lock_time,
+            "inputs": [],
+            "outputs": outputs_payload,
+            "derivationPrefix": "mock-derivation-prefix",
+            "inputBeef": storage_beef_bytes,
+            "noSendChangeOutputVouts": [],
+        }
+
+        if vargs.options.no_send:
+            result["noSendChange"] = []
+
+        if vargs.options.sign_and_process:
+            txid = deterministic_txid(reference, vargs.outputs)
+            self.update_transaction(transaction_id, {"txid": txid})
+            result["txid"] = txid
+        else:
+            signable_tx = {
+                "reference": reference,
+                "tx": list(storage_beef_bytes) if storage_beef_bytes else [],
+            }
+            result["signableTransaction"] = signable_tx
+
+        return result
+
+    # ------------------------------------------------------------------
     # Action Pipeline - processAction (Complete Implementation)
     # ------------------------------------------------------------------
     def process_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
@@ -1826,16 +1918,60 @@ class StorageProvider:
     }
 
     def _get_model(self, table_name: str) -> type:
+        """Return ORM model class for the given logical table name.
+
+        Summary:
+            Resolves the TypeScript-style table key to the corresponding
+            SQLAlchemy declarative model. Centralises the mapping used by the
+            generic CRUD helpers.
+
+        TS parity:
+            Aligns with TS storage helper lookups that operate on string table
+            identifiers.
+
+        Args:
+            table_name: Canonical table string (e.g. 'user', 'transaction').
+
+        Returns:
+            SQLAlchemy model class associated with the table.
+
+        Raises:
+            ValueError: If the table name is not recognised.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
         if table_name not in self._MODEL_MAP:
             raise ValueError(f"Unknown table: {table_name}")
         return self._MODEL_MAP[table_name]
 
     def _insert_generic(self, table_name: str, data: dict[str, Any], trx: Any = None) -> int:
+        """Insert a row into the specified table, normalising key casing.
+
+        Summary:
+            Converts camelCase keys to snake_case and performs an insert using
+            either a provided transactional session or an ephemeral one.
+
+        TS parity:
+            Mirrors the TS storage helpers that accept camelCase payloads and
+            forward them to Knex.
+
+        Args:
+            table_name: Logical table name.
+            data: Payload dict (camelCase accepted).
+            trx: Optional active SQLAlchemy session for batching.
+
+        Returns:
+            Primary key value of the inserted row.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
         model = self._get_model(table_name)
         # Convert camelCase keys in data dict to snake_case
         converted_data = {}
         for key, value in data.items():
-            converted_key = StorageProvider._to_snake_case(key) if key[0].islower() and "_" not in key else key
+            converted_key = self._normalize_key(key) if isinstance(key, str) else key
             converted_data[converted_key] = value
         obj = model(**converted_data)
         if trx:
@@ -1850,6 +1986,8 @@ class StorageProvider:
             # Convert camelCase column name to snake_case Python attribute
             pk_attr_name = StorageProvider._to_snake_case(pk_col.name)
             pk_value = getattr(obj, pk_attr_name)
+            if not trx:
+                session.commit()
             return pk_value
         finally:
             if not trx:
@@ -1858,13 +1996,40 @@ class StorageProvider:
     def _find_generic(
         self, table_name: str, args: dict[str, Any] | None = None, limit: int | None = None, offset: int = 0
     ) -> list[dict[str, Any]]:
+        """Retrieve rows from a table with optional equality filters.
+
+        Summary:
+            Applies TypeScript-style filters (camelCase supported) and optional
+            pagination, returning camelCase dictionaries for each row.
+
+        TS parity:
+            Equivalent to TS storage reader helpers that back `findX` methods.
+
+        Args:
+            table_name: Logical table key.
+            args: Optional filter dict or `partial` query payload.
+            limit: Optional LIMIT clause.
+            offset: Optional OFFSET clause.
+
+        Returns:
+            List of dicts in camelCase shape.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
         model = self._get_model(table_name)
         with session_scope(self.SessionLocal) as s:
             query = select(model)
             if args:
-                for key, value in args.items():
-                    if hasattr(model, key):
-                        query = query.where(getattr(model, key) == value)
+                normalized_args = self._normalize_dict_keys(args)
+                for key, value in normalized_args.items():
+                    column = getattr(model, key, None)
+                    if column is None:
+                        continue
+                    if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
+                        query = query.where(column.in_(list(value)))
+                    else:
+                        query = query.where(column == value)
             if limit:
                 query = query.limit(limit)
             if offset:
@@ -1873,17 +2038,62 @@ class StorageProvider:
             return [self._model_to_dict(obj) for obj in result]
 
     def _count_generic(self, table_name: str, args: dict[str, Any] | None = None) -> int:
+        """Return count of rows satisfying filters for the given table.
+
+        Summary:
+            Wrapper over COUNT(*) with camelCase filter support. Used by
+            externally exposed `count_*` helpers.
+
+        TS parity:
+            Matches TS storage counting helpers.
+
+        Args:
+            table_name: Logical table key.
+            args: Optional equality filters.
+
+        Returns:
+            Integer count of rows.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
         model = self._get_model(table_name)
         with session_scope(self.SessionLocal) as s:
             query = select(func.count()).select_from(model)
             if args:
-                for key, value in args.items():
-                    if hasattr(model, key):
-                        query = query.where(getattr(model, key) == value)
+                normalized_args = self._normalize_dict_keys(args)
+                for key, value in normalized_args.items():
+                    column = getattr(model, key, None)
+                    if column is None:
+                        continue
+                    if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
+                        query = query.where(column.in_(list(value)))
+                    else:
+                        query = query.where(column == value)
             result = s.execute(query).scalar()
             return result or 0
 
     def _update_generic(self, table_name: str, pk_value: int, patch: dict[str, Any]) -> int:
+        """Update a row identified by primary key using camelCase patches.
+
+        Summary:
+            Loads the row, converts patch keys to snake_case, applies the
+            update, and commits the transaction.
+
+        TS parity:
+            Parallel to TS update helpers that operate on arbitrary tables.
+
+        Args:
+            table_name: Logical table key.
+            pk_value: Primary key value.
+            patch: Fields to update (camelCase accepted).
+
+        Returns:
+            1 if the row was updated; 0 if no matching row exists.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
         model = self._get_model(table_name)
         with session_scope(self.SessionLocal) as s:
             mapper = inspect(model)
@@ -1892,13 +2102,26 @@ class StorageProvider:
             obj = s.execute(query).scalar_one_or_none()
             if not obj:
                 return 0
-            for key, value in patch.items():
+            normalized_patch = self._normalize_dict_keys(patch)
+            for key, value in normalized_patch.items():
                 if hasattr(obj, key):
                     setattr(obj, key, value)
             s.commit()
             return 1
 
     def _model_to_dict(self, obj: Any) -> dict[str, Any]:
+        """Convert ORM model instance into camelCase dict for API responses.
+
+        Summary:
+            Iterates mapped columns, resolves SQLAlchemy attribute names, and
+            normalises them to camelCase to satisfy TS parity.
+
+        Args:
+            obj: SQLAlchemy model instance.
+
+        Returns:
+            Dict representation with camelCase keys.
+        """
         mapper = inspect(obj.__class__)
         result = {}
         for column in mapper.columns:
@@ -1921,18 +2144,54 @@ class StorageProvider:
 
     @staticmethod
     def _to_snake_case(camel_case: str) -> str:
-        """Convert camelCase to snake_case.
+        """Convert camelCase/PascalCase keys to snake_case."""
+        if not camel_case:
+            return camel_case
+        pattern1 = re.compile("([A-Z]+)([A-Z][a-z])")
+        pattern2 = re.compile("([a-z0-9])([A-Z])")
+        snake = pattern1.sub(r"\1_\2", camel_case)
+        snake = pattern2.sub(r"\1_\2", snake)
+        return snake.lower()
 
-        Example: userId -> user_id, provenTxId -> proven_tx_id
-        """
-        result = []
-        for i, char in enumerate(camel_case):
-            if char.isupper() and i > 0:
-                result.append("_")
-                result.append(char.lower())
-            else:
-                result.append(char)
-        return "".join(result)
+    @staticmethod
+    def _normalize_key(key: str) -> str:
+        if not isinstance(key, str):
+            return key
+        if "_" in key:
+            return key
+        return StorageProvider._to_snake_case(key)
+
+    @classmethod
+    def _normalize_dict_keys(cls, data: dict[str, Any] | None) -> dict[str, Any]:
+        if not data:
+            return {}
+        return {cls._normalize_key(k): v for k, v in data.items()}
+
+    @classmethod
+    def _split_query(
+        cls,
+        query: dict[str, Any] | None,
+        extra_keys: Iterable[str] | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        if extra_keys is None:
+            extra_keys = ()
+        extras_set = set(extra_keys)
+        if not query:
+            return {}, {}
+
+        if "partial" in query:
+            partial = query.get("partial") or {}
+            extras: dict[str, Any] = {}
+            for key, value in query.items():
+                if key == "partial":
+                    continue
+                if not extras_set or key in extras_set:
+                    extras[key] = value
+        else:
+            partial = {k: v for k, v in query.items() if not extras_set or k not in extras_set}
+            extras = {k: v for k, v in query.items() if extras_set and k in extras_set}
+
+        return cls._normalize_dict_keys(partial), extras
 
     def insert_user(self, data: dict[str, Any]) -> int:
         return self._insert_generic("user", data)
@@ -1979,38 +2238,409 @@ class StorageProvider:
     def insert_tx_label_map(self, data: dict[str, Any]) -> int:
         return self._insert_generic("tx_label_map", data)
 
-    def find_users(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("user", args)
+    def _now(self) -> datetime:
+        return datetime.now(UTC)
 
-    def find_certificates(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("certificate", args)
+    def find_or_insert_tx_label(self, user_id: int, label: str) -> dict[str, Any]:
+        """Insert or return a transaction label row for the given user.
 
-    def find_certificate_fields(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("certificate_field", args)
+        Summary:
+            Mirrors the TypeScript storage helper used during `createAction`
+            label processing. Ensures that labels are unique per user and
+            returns the canonical row even when the label already exists.
 
-    def find_commissions(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("commission", args)
+        TS parity:
+            Parity target: `StorageProvider.findOrInsertTxLabel` in
+            `toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts`.
+            Alignment: identical Upsert semantics (lookup, insert, retry on
+            IntegrityError) and return shape.
 
-    def find_monitor_events(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("monitor_event", args)
+        Args:
+            user_id: Wallet user identifier owning the label namespace.
+            label: Label string to resolve (case-sensitive).
 
-    def find_outputs(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("output", args)
+        Returns:
+            Dict with TS-aligned keys (`txLabelId`, `label`, timestamps, etc.).
 
-    def find_output_baskets(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("output_basket", args)
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+              (method `findOrInsertTxLabel`).
+        """
+        with session_scope(self.SessionLocal) as s:
+            query = select(TxLabel).where((TxLabel.user_id == user_id) & (TxLabel.label == label))
+            existing = s.execute(query).scalar_one_or_none()
+            if existing is not None:
+                return self._model_to_dict(existing)
 
-    def find_output_tags(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("output_tag", args)
+            now = self._now()
+            record = TxLabel(
+                user_id=user_id,
+                label=label,
+                is_deleted=False,
+                created_at=now,
+                updated_at=now,
+            )
+            s.add(record)
+            try:
+                s.flush()
+            except IntegrityError:
+                s.rollback()
+                existing = s.execute(query).scalar_one()
+                return self._model_to_dict(existing)
+            return self._model_to_dict(record)
 
-    def find_sync_states(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("sync_state", args)
+    def find_or_insert_tx_label_map(self, transaction_id: int, tx_label_id: int) -> dict[str, Any]:
+        """Attach a label to a transaction, returning the mapping row.
 
-    def find_transactions(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("transaction", args)
+        Summary:
+            Port of the TypeScript storage helper that links a label to a
+            transaction, guaranteeing idempotency for repeated associations.
 
-    def find_tx_labels(self, args: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        return self._find_generic("tx_label", args)
+        TS parity:
+            Parity target: `StorageProvider.findOrInsertTxLabelMap` in
+            `toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts`.
+            Alignment: same lookup/insert/retry flow and return shape for the
+            join table row.
+
+        Args:
+            transaction_id: Primary key of the transaction.
+            tx_label_id: Primary key of the label to attach.
+
+        Returns:
+            Dict describing the `TxLabelMap` entry (TS field names).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+              (method `findOrInsertTxLabelMap`).
+        """
+        with session_scope(self.SessionLocal) as s:
+            query = select(TxLabelMap).where(
+                (TxLabelMap.transaction_id == transaction_id) & (TxLabelMap.tx_label_id == tx_label_id)
+            )
+            existing = s.execute(query).scalar_one_or_none()
+            if existing is not None:
+                return self._model_to_dict(existing)
+
+            now = self._now()
+            record = TxLabelMap(
+                transaction_id=transaction_id,
+                tx_label_id=tx_label_id,
+                is_deleted=False,
+                created_at=now,
+                updated_at=now,
+            )
+            s.add(record)
+            try:
+                s.flush()
+            except IntegrityError:
+                s.rollback()
+                existing = s.execute(query).scalar_one()
+                return self._model_to_dict(existing)
+            return self._model_to_dict(record)
+
+    def find_or_insert_output_tag(self, user_id: int, tag: str) -> dict[str, Any]:
+        """Insert or return an output tag row for the given user.
+
+        Summary:
+            Ensures tag strings are de-duplicated per user and returns the
+            canonical row, just like the TypeScript storage helper referenced by
+            create-action and internalize-action flows.
+
+        TS parity:
+            Parity target: `StorageProvider.findOrInsertOutputTag` in
+            `toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts`.
+            Alignment: identical lookup + insert + retry on IntegrityError,
+            shared return shape.
+
+        Args:
+            user_id: Wallet user identifier.
+            tag: Tag string to find or insert.
+
+        Returns:
+            Dict describing the `OutputTag` record (TS-compatible keys).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+              (method `findOrInsertOutputTag`).
+        """
+        with session_scope(self.SessionLocal) as s:
+            query = select(OutputTag).where((OutputTag.user_id == user_id) & (OutputTag.tag == tag))
+            existing = s.execute(query).scalar_one_or_none()
+            if existing is not None:
+                return self._model_to_dict(existing)
+
+            now = self._now()
+            record = OutputTag(
+                user_id=user_id,
+                tag=tag,
+                is_deleted=False,
+                created_at=now,
+                updated_at=now,
+            )
+            s.add(record)
+            try:
+                s.flush()
+            except IntegrityError:
+                s.rollback()
+                existing = s.execute(query).scalar_one()
+                return self._model_to_dict(existing)
+            return self._model_to_dict(record)
+
+    def find_or_insert_output_tag_map(self, output_id: int, output_tag_id: int) -> dict[str, Any]:
+        """Create (or fetch) the mapping between an output and a tag.
+
+        Summary:
+            Port of the TypeScript helper that links outputs to tags while
+            maintaining idempotency for repeated associations.
+
+        TS parity:
+            Parity target: `StorageProvider.findOrInsertOutputTagMap` in
+            `toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts`.
+            Alignment: same lookup, insert, retry pattern and return structure.
+
+        Args:
+            output_id: Primary key of the `Output` record.
+            output_tag_id: Primary key of the `OutputTag` record.
+
+        Returns:
+            Dict representing the mapping row (TS-aligned keys).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+              (method `findOrInsertOutputTagMap`).
+        """
+        with session_scope(self.SessionLocal) as s:
+            query = select(OutputTagMap).where(
+                (OutputTagMap.output_id == output_id) & (OutputTagMap.output_tag_id == output_tag_id)
+            )
+            existing = s.execute(query).scalar_one_or_none()
+            if existing is not None:
+                return self._model_to_dict(existing)
+
+            now = self._now()
+            record = OutputTagMap(
+                output_id=output_id,
+                output_tag_id=output_tag_id,
+                is_deleted=False,
+                created_at=now,
+                updated_at=now,
+            )
+            s.add(record)
+            try:
+                s.flush()
+            except IntegrityError:
+                s.rollback()
+                existing = s.execute(query).scalar_one()
+                return self._model_to_dict(existing)
+            return self._model_to_dict(record)
+
+    def find_users(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find users matching optional filters (TS parity).
+
+        Summary:
+            Delegates to `_find_generic` for the `user` table while accepting
+            camelCase filters under `partial`.
+
+        TS parity:
+            Mirrors `StorageProvider.findUsers` in TS.
+
+        Args:
+            query: Optional filter dict.
+
+        Returns:
+            List of user dicts with camelCase keys.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("user", partial)
+
+    def find_proven_txs(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find proven transactions matching optional filters.
+
+        Summary:
+            Wrapper around `_find_generic` for the `proven_tx` table.
+
+        TS parity:
+            Equivalent to `StorageProvider.findProvenTxs`.
+
+        Args:
+            query: Optional filter dict with `partial` key.
+
+        Returns:
+            List of proven transaction dicts.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("proven_tx", partial)
+
+    def find_proven_tx_reqs(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find ProvenTxReq rows with optional batch filter.
+
+        Summary:
+            Supports camelCase filters under `partial` plus TS-style extras
+            (e.g. `batch`).
+
+        TS parity:
+            Mimics `StorageProvider.findProvenTxReqs` in TS.
+
+        Args:
+            query: Optional filter dict.
+
+        Returns:
+            List of proven transaction request dicts.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, extras = self._split_query(query)
+        with session_scope(self.SessionLocal) as s:
+            q = select(ProvenTxReq)
+            for key, value in partial.items():
+                column = getattr(ProvenTxReq, key, None)
+                if column is None:
+                    continue
+                if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
+                    q = q.where(column.in_(list(value)))
+                else:
+                    q = q.where(column == value)
+            if batch := extras.get("batch"):
+                q = q.where(ProvenTxReq.batch == batch)
+            result = s.execute(q).scalars().all()
+            return [self._model_to_dict(row) for row in result]
+
+    def find_certificates(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find certificates with optional certifier/type filters.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, extras = self._split_query(query, extra_keys={"certifiers", "types"})
+        with session_scope(self.SessionLocal) as s:
+            q = select(Certificate).where(Certificate.is_deleted.is_(False))
+            for key, value in partial.items():
+                column = getattr(Certificate, key, None)
+                if column is None:
+                    continue
+                q = q.where(column == value)
+            if certifiers := extras.get("certifiers"):
+                q = q.where(Certificate.certifier.in_(certifiers))
+            if types := extras.get("types"):
+                q = q.where(Certificate.type.in_(types))
+            result = s.execute(q).scalars().all()
+            return [self._model_to_dict(row) for row in result]
+
+    def find_certificate_fields(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find certificate fields (TS-compatible shape).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("certificate_field", partial)
+
+    def find_commissions(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find commission configuration rows.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("commission", partial)
+
+    def find_monitor_events(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find monitor daemon events for diagnostics.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("monitor_event", partial)
+
+    def find_outputs(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find outputs with optional equality filters.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("output", partial)
+
+    def find_output_baskets(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find output baskets, supporting `since` filter like TS implementation.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, extras = self._split_query(query, extra_keys={"since"})
+        with session_scope(self.SessionLocal) as s:
+            q = select(OutputBasket)
+            for key, value in partial.items():
+                column = getattr(OutputBasket, key, None)
+                if column is None:
+                    continue
+                q = q.where(column == value)
+            if since := extras.get("since"):
+                q = q.where(OutputBasket.created_at >= since)
+            result = s.execute(q).scalars().all()
+            return [self._model_to_dict(row) for row in result]
+
+    def find_output_tags(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find output tags associated with a user.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("output_tag", partial)
+
+    def find_output_tag_maps(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find mapping rows between outputs and tags.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("output_tag_map", partial)
+
+    def find_sync_states(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find sync state rows for peer storage instances.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("sync_state", partial)
+
+    def find_transactions(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find transactions with optional equality filters.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("transaction", partial)
+
+    def find_tx_labels(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find transaction labels for a user.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("tx_label", partial)
+
+    def find_tx_label_maps(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+        """Find label-to-transaction mapping rows.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+        """
+        partial, _ = self._split_query(query)
+        return self._find_generic("tx_label_map", partial)
 
     def count_users(self, args: dict[str, Any] | None = None) -> int:
         return self._count_generic("user", args)

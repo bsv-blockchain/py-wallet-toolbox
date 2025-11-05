@@ -1,300 +1,155 @@
-"""Unit tests for storage FIND operations.
+from datetime import datetime, timedelta
 
-Reference: wallet-toolbox/test/storage/find.test.ts
-"""
 
-from datetime import datetime
+def test_find_proventx(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    results = storage.find_proven_txs({"partial": {}})
+    assert len(results) == 1
+    assert results[0]["provenTxId"] == seed["proven_tx"]["provenTxId"]
 
 
-class Testfind:
-    """Test suite for database FIND/SELECT operations."""
+def test_find_proventxreq(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    all_results = storage.find_proven_tx_reqs({"partial": {}})
+    assert len(all_results) == 2
 
-    def test_find_proventx(self) -> None:
-        """Given: Mock storage with test data
-           When: Find ProvenTx with empty filter
-           Then: Returns expected number of records
+    completed = storage.find_proven_tx_reqs({"partial": {"status": "completed"}})
+    assert len(completed) == 1
+    assert completed[0]["provenTxReqId"] == seed["proven_tx_reqs"]["completed"]["provenTxReqId"]
 
-        Reference: test/storage/find.test.ts
-                  test('0 find ProvenTx')
-        """
-        # Given
+    batched = storage.find_proven_tx_reqs({"batch": "batch-001"})
+    assert len(batched) == 1
 
-        mock_storage = type("MockStorage", (), {"find_proven_txs": lambda self, query: []})()
 
-        # When
-        results = mock_storage.find_proven_txs({"partial": {}})
+def test_find_users(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    users = storage.find_users({"partial": {}})
+    assert {u["userId"] for u in users} == {seed["user1"]["userId"], seed["user2"]["userId"]}
 
-        # Then
-        assert len(results) >= 0
 
-    def test_find_proventxreq(self) -> None:
-        """Given: Mock storage with test data
-           When: Find ProvenTxReq with empty filter
-           Then: Returns expected number of records
+def test_find_certificates(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    certs = storage.find_certificates({"partial": {}})
+    assert len(certs) == 3
 
-        Reference: test/storage/find.test.ts
-                  test('1 find ProvenTxReq')
-        """
-        # Given
+    certifier = seed["certificates"]["primary"]["certifier"]
+    by_certifier = storage.find_certificates({"certifiers": [certifier]})
+    assert len(by_certifier) == 1
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx_reqs": lambda self, query: []})()
+    cert_type = seed["certificates"]["secondary"]["type"]
+    by_type = storage.find_certificates({"types": [cert_type]})
+    assert len(by_type) == 1
 
-        # When
-        results = mock_storage.find_proven_tx_reqs({"partial": {}})
+    missing = storage.find_certificates({"types": ["non-existent"]})
+    assert not missing
 
-        # Then
-        assert len(results) >= 0
 
-    def test_find_user(self) -> None:
-        """Given: Mock storage with test data
-           When: Find User with empty filter
-           Then: Returns expected number of records
+def test_find_certificate_fields(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    fields = storage.find_certificate_fields({"partial": {}})
+    assert len(fields) == 3
 
-        Reference: test/storage/find.test.ts
-                  test('2 find User')
-        """
-        # Given
+    for_user1 = storage.find_certificate_fields({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(for_user1) == 3
 
-        mock_storage = type("MockStorage", (), {"find_users": lambda self, query: []})()
+    for_user2 = storage.find_certificate_fields({"partial": {"userId": seed["user2"]["userId"]}})
+    assert not for_user2
 
-        # When
-        results = mock_storage.find_users({"partial": {}})
+    name_fields = storage.find_certificate_fields({"partial": {"fieldName": "name"}})
+    assert len(name_fields) == 2
 
-        # Then
-        assert len(results) >= 0
 
-    def test_find_certificate(self) -> None:
-        """Given: Mock storage with test data
-           When: Find Certificate with various filters (empty, certifiers, types)
-           Then: Returns expected number of records for each filter
+def test_find_output_baskets(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    baskets = storage.find_output_baskets({"partial": {}})
+    assert len(baskets) == 3
 
-        Reference: test/storage/find.test.ts
-                  test('3 find Certificate')
-        """
-        # Given
+    user1_baskets = storage.find_output_baskets({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(user1_baskets) == 3
 
-        mock_storage = type("MockStorage", (), {"find_certificates": lambda self, query: []})()
+    inclusive = storage.find_output_baskets({"since": seed["since_anchor"]})
+    assert len(inclusive) == 3
 
-        # When - empty filter
-        results_all = mock_storage.find_certificates({"partial": {}})
+    future = storage.find_output_baskets({"since": datetime.utcnow()})
+    assert not future
 
-        # When - with certifiers filter
-        results_certifiers = mock_storage.find_certificates({"partial": {}, "certifiers": ["test_certifier"]})
+    first_created = min(basket["created_at"] for basket in baskets)
+    exclusive = storage.find_output_baskets({
+        "partial": {"userId": seed["user1"]["userId"]},
+        "since": first_created + timedelta(minutes=1),
+    })
+    assert len(exclusive) == 2
 
-        # When - with types filter
-        results_types = mock_storage.find_certificates({"partial": {}, "types": ["test_type"]})
 
-        # Then
-        assert len(results_all) >= 0
-        assert len(results_certifiers) >= 0
-        assert len(results_types) >= 0
+def test_find_outputs(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    outputs = storage.find_outputs({"partial": {}})
+    assert len(outputs) == 3
 
-    def test_find_certificatefield(self) -> None:
-        """Given: Mock storage with test data
-           When: Find CertificateField with various filters (empty, userId, fieldName)
-           Then: Returns expected number of records for each filter
+    user1_outputs = storage.find_outputs({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(user1_outputs) == 2
 
-        Reference: test/storage/find.test.ts
-                  test('4 find CertificateField')
-        """
-        # Given
+    user2_outputs = storage.find_outputs({"partial": {"userId": seed["user2"]["userId"]}})
+    assert len(user2_outputs) == 1
 
-        mock_storage = type("MockStorage", (), {"find_certificate_fields": lambda self, query: []})()
 
-        # When - empty filter
-        results_all = mock_storage.find_certificate_fields({"partial": {}})
+def test_find_output_tags_and_maps(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    tags = storage.find_output_tags({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(tags) == 2
 
-        # When - with userId filter
-        results_user = mock_storage.find_certificate_fields({"partial": {"userId": 1}})
+    tag_maps = storage.find_output_tag_maps({"partial": {}})
+    assert len(tag_maps) == 3
 
-        # When - with fieldName filter
-        results_field = mock_storage.find_certificate_fields({"partial": {"fieldName": "name"}})
 
-        # Then
-        assert len(results_all) >= 0
-        assert len(results_user) >= 0
-        assert len(results_field) >= 0
+def test_find_transactions_and_commissions(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    txs = storage.find_transactions({"partial": {}})
+    assert len(txs) == 3
 
-    def test_find_outputbasket(self) -> None:
-        """Given: Mock storage with test data
-           When: Find OutputBasket with empty filter and since parameter
-           Then: Returns expected number of records
+    txs_user1 = storage.find_transactions({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(txs_user1) == 2
 
-        Reference: test/storage/find.test.ts
-                  test('5 find OutputBasket')
-        """
-        # Given
+    txs_user2 = storage.find_transactions({"partial": {"userId": seed["user2"]["userId"]}})
+    assert len(txs_user2) == 1
 
-        mock_storage = type("MockStorage", (), {"find_output_baskets": lambda self, query: []})()
+    commissions = storage.find_commissions({"partial": {}})
+    assert len(commissions) == 3
 
-        # When - empty filter
-        results_all = mock_storage.find_output_baskets({"partial": {}})
+    commissions_user1 = storage.find_commissions({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(commissions_user1) == 2
 
-        # When - with since parameter
-        results_since = mock_storage.find_output_baskets({"partial": {}, "since": datetime.now()})
 
-        # Then
-        assert len(results_all) >= 0
-        assert len(results_since) >= 0
+def test_find_tx_labels_and_maps(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    labels = storage.find_tx_labels({"partial": {}})
+    assert len(labels) == 3
 
-    def test_find_transaction(self) -> None:
-        """Given: Mock storage with test data
-           When: Find Transaction with empty filter
-           Then: Returns expected number of records
+    labels_user1 = storage.find_tx_labels({"partial": {"userId": seed["user1"]["userId"]}})
+    assert len(labels_user1) == 2
 
-        Reference: test/storage/find.test.ts
-                  test('6 find Transaction')
-        """
-        # Given
+    tx1_id = seed["transactions"]["tx1"]["transactionId"]
+    label_maps = storage.find_tx_label_maps({"partial": {"transactionId": tx1_id}})
+    assert len(label_maps) == 2
 
-        mock_storage = type("MockStorage", (), {"find_transactions": lambda self, query: []})()
 
-        # When
-        results = mock_storage.find_transactions({"partial": {}})
+def test_find_monitor_and_sync_state(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    monitor_events = storage.find_monitor_events({"partial": {}})
+    assert len(monitor_events) == 1
+    assert monitor_events[0]["event"] == seed["monitor_event"]["event"]
 
-        # Then
-        assert len(results) >= 0
+    sync_states = storage.find_sync_states({"partial": {}})
+    assert len(sync_states) == 1
+    assert sync_states[0]["status"] == seed["sync_state"]["status"]
 
-    def test_find_commission(self) -> None:
-        """Given: Mock storage with test data
-           When: Find Commission with empty filter
-           Then: Returns expected number of records
 
-        Reference: test/storage/find.test.ts
-                  test('7 find Commission')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_commissions": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_commissions({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_output(self) -> None:
-        """Given: Mock storage with test data
-           When: Find Output with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('8 find Output')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_outputs": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_outputs({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_outputtag(self) -> None:
-        """Given: Mock storage with test data
-           When: Find OutputTag with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('9 find OutputTag')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_output_tags": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_output_tags({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_outputtagmap(self) -> None:
-        """Given: Mock storage with test data
-           When: Find OutputTagMap with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('10 find OutputTagMap')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_output_tag_maps": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_output_tag_maps({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_txlabel(self) -> None:
-        """Given: Mock storage with test data
-           When: Find TxLabel with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('11 find TxLabel')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_tx_labels": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_tx_labels({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_txlabelmap(self) -> None:
-        """Given: Mock storage with test data
-           When: Find TxLabelMap with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('12 find TxLabelMap')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_tx_label_maps": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_tx_label_maps({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_monitorevent(self) -> None:
-        """Given: Mock storage with test data
-           When: Find MonitorEvent with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('13 find MonitorEvent')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_monitor_events": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_monitor_events({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
-
-    def test_find_syncstate(self) -> None:
-        """Given: Mock storage with test data
-           When: Find SyncState with empty filter
-           Then: Returns expected number of records
-
-        Reference: test/storage/find.test.ts
-                  test('14 find SyncState')
-        """
-        # Given
-
-        mock_storage = type("MockStorage", (), {"find_sync_states": lambda self, query: []})()
-
-        # When
-        results = mock_storage.find_sync_states({"partial": {}})
-
-        # Then
-        assert len(results) >= 0
+def test_find_output_baskets_since_filter_per_user(storage_seeded) -> None:
+    storage, seed = storage_seeded
+    earliest = min(basket["created_at"] for basket in seed["output_baskets"])
+    later_threshold = earliest + timedelta(minutes=2)
+    filtered = storage.find_output_baskets({
+        "partial": {"userId": seed["user1"]["userId"]},
+        "since": later_threshold,
+    })
+    assert len(filtered) == 1
