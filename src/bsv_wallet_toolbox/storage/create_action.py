@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """CreateAction storage helpers (TypeScript parity).
 
 Summary:
@@ -14,22 +12,19 @@ Reference:
     - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
 """
 
-from dataclasses import dataclass, field
+from __future__ import annotations
+
 import base64
 import hashlib
-import os
 import secrets
-from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any
 
 from bsv.keys import PrivateKey, PublicKey, curve, curve_add, curve_multiply
-from bsv.merkle_path import MerklePath
-from bsv.transaction import Beef, Transaction, parse_beef_ex
 from bsv.script.type import P2PKH
+from bsv.transaction import Beef, parse_beef_ex
 
-from bsv_wallet_toolbox.storage.models import Output, OutputBasket, OutputTag
 from bsv_wallet_toolbox.utils.validation import InvalidParameterError
-from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
 
 
 @dataclass
@@ -43,15 +38,16 @@ class CreateActionOptions:
     Reference:
         - toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
     """
+
     randomize_outputs: bool = False
     sign_and_process: bool = False
     no_send: bool = False
-    no_send_change: List[Dict[str, Any]] = field(default_factory=list)
-    known_txids: List[str] = field(default_factory=list)
+    no_send_change: list[dict[str, Any]] = field(default_factory=list)
+    known_txids: list[str] = field(default_factory=list)
     return_txid_only: bool = False
     trust_self: str = "unknown"
     accept_delayed_broadcast: bool = True
-    send_with: List[str] = field(default_factory=list)
+    send_with: list[str] = field(default_factory=list)
     include_all_source_transactions: bool = False
 
 
@@ -66,16 +62,17 @@ class NormalizedCreateActionArgs:
     Reference:
         - toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
     """
+
     description: str
-    inputs: List[Dict[str, Any]]
-    outputs: List[Dict[str, Any]]
-    labels: List[str]
+    inputs: list[dict[str, Any]]
+    outputs: list[dict[str, Any]]
+    labels: list[str]
     lock_time: int
     version: int
     options: CreateActionOptions
-    random_vals: List[float]
-    input_beef: Optional[Beef]
-    input_beef_bytes: Optional[bytes]
+    random_vals: list[float]
+    input_beef: Beef | None
+    input_beef_bytes: bytes | None
     is_send_with: bool
     is_remix_change: bool
     is_new_tx: bool
@@ -91,13 +88,14 @@ class XInput:
     Reference:
         - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
     """
+
     vin: int
     satoshis: int
     locking_script: bytes
-    output: Optional[Dict[str, Any]]
-    unlocking_script_length: Optional[int]
-    input_description: Optional[str]
-    outpoint: Dict[str, Any]
+    output: dict[str, Any] | None
+    unlocking_script_length: int | None
+    input_description: str | None
+    outpoint: dict[str, Any]
 
 
 @dataclass
@@ -107,17 +105,18 @@ class XOutput:
     Reference:
         - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
     """
+
     vout: int
     satoshis: int
     locking_script: bytes
-    output_description: Optional[str]
-    basket: Optional[str]
-    tags: List[str]
+    output_description: str | None
+    basket: str | None
+    tags: list[str]
     provided_by: str = "you"
-    purpose: Optional[str] = None
-    derivation_suffix: Optional[str] = None
-    key_offset: Optional[str] = None
-    custom_instructions: Optional[str] = None
+    purpose: str | None = None
+    derivation_suffix: str | None = None
+    key_offset: str | None = None
+    custom_instructions: str | None = None
 
 
 def _ensure_even_hex(value: str, field: str) -> None:
@@ -138,7 +137,7 @@ def _ensure_base64(value: str, field: str) -> None:
         raise InvalidParameterError(field, "a base64 string") from exc
 
 
-def normalize_create_action_args(args: Dict[str, Any]) -> NormalizedCreateActionArgs:
+def normalize_create_action_args(args: dict[str, Any]) -> NormalizedCreateActionArgs:
     """Validate and normalise createAction arguments (TS parity).
 
     Summary:
@@ -187,7 +186,7 @@ def normalize_create_action_args(args: Dict[str, Any]) -> NormalizedCreateAction
         include_all_source_transactions=bool(options_dict.get("includeAllSourceTransactions", False)),
     )
 
-    normalized_outputs: List[Dict[str, Any]] = []
+    normalized_outputs: list[dict[str, Any]] = []
     for output in outputs:
         if not isinstance(output, dict):
             raise InvalidParameterError("outputs", "list of dicts")
@@ -237,8 +236,7 @@ def normalize_create_action_args(args: Dict[str, Any]) -> NormalizedCreateAction
     is_new_tx = is_remix_change or len(inputs) > 0 or len(outputs) > 0
 
     any_missing_unlock = any(
-        isinstance(inp, dict)
-        and (inp.get("unlockingScript") is None and inp.get("unlocking_script") is None)
+        isinstance(inp, dict) and (inp.get("unlockingScript") is None and inp.get("unlocking_script") is None)
         for inp in inputs
     )
     is_sign_action = is_new_tx and (not options.sign_and_process or any_missing_unlock)
@@ -265,7 +263,7 @@ def normalize_create_action_args(args: Dict[str, Any]) -> NormalizedCreateAction
     )
 
 
-def _normalize_no_send_change(value: Any) -> List[Dict[str, Any]]:
+def _normalize_no_send_change(value: Any) -> list[dict[str, Any]]:
     """Convert noSendChange option to canonical list of dicts.
 
     Summary:
@@ -317,7 +315,7 @@ def generate_reference() -> str:
     return base64.b64encode(secrets.token_bytes(9)).decode("ascii")
 
 
-def deterministic_txid(reference: str, outputs: List[Dict[str, Any]]) -> str:
+def deterministic_txid(reference: str, outputs: list[dict[str, Any]]) -> str:
     """Derive deterministic txid placeholder for repeatable testing.
 
     Summary:
@@ -348,7 +346,7 @@ def validate_required_outputs(
     storage: Any,
     user_id: int,
     vargs: NormalizedCreateActionArgs,
-) -> List[XOutput]:
+) -> list[XOutput]:
     """Validate outputs and append storage commission output when required.
 
     Summary:
@@ -367,7 +365,7 @@ def validate_required_outputs(
     Reference:
         - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
     """
-    xoutputs: List[XOutput] = []
+    xoutputs: list[XOutput] = []
     for idx, output in enumerate(vargs.outputs):
         locking_script_hex = output.get("lockingScript")
         satoshis = int(output.get("satoshis", 0))
@@ -420,7 +418,7 @@ def validate_required_outputs(
     return xoutputs
 
 
-def key_offset_to_hashed_secret(pub: PublicKey, key_offset: Optional[str] = None) -> tuple[int, str]:
+def key_offset_to_hashed_secret(pub: PublicKey, key_offset: str | None = None) -> tuple[int, str]:
     """Derive hashed secret scalar used for commission key offsetting.
 
     Summary:
@@ -455,7 +453,7 @@ def key_offset_to_hashed_secret(pub: PublicKey, key_offset: Optional[str] = None
     return hashed_int, key_offset
 
 
-def offset_pub_key(pub_key_hex: str, key_offset: Optional[str] = None) -> tuple[str, str]:
+def offset_pub_key(pub_key_hex: str, key_offset: str | None = None) -> tuple[str, str]:
     """Offset a public key using hashed secret (TS parity helper).
 
     Args:
@@ -491,5 +489,3 @@ def create_storage_service_charge_script(pub_key_hex: str) -> tuple[str, str]:
     offset_pub = PublicKey(offset_hex)
     script_obj = P2PKH().lock(offset_pub.address())
     return script_obj.hex(), key_offset
-
-

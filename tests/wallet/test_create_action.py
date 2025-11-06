@@ -136,9 +136,7 @@ class TestWalletCreateAction:
         assert "reference" in result["signableTransaction"]
         assert "tx" in result["signableTransaction"]  # AtomicBEEF format
 
-    def test_create_action_defaults_options_and_returns_signable(
-        self, wallet_with_mocked_create_action
-    ) -> None:
+    def test_create_action_defaults_options_and_returns_signable(self, wallet_with_mocked_create_action) -> None:
         wallet, _storage, call_log, user_id = wallet_with_mocked_create_action
 
         args = {

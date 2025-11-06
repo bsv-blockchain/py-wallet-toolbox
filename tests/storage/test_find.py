@@ -74,10 +74,12 @@ def test_find_output_baskets(storage_seeded) -> None:
     assert not future
 
     first_created = min(basket["created_at"] for basket in baskets)
-    exclusive = storage.find_output_baskets({
-        "partial": {"userId": seed["user1"]["userId"]},
-        "since": first_created + timedelta(minutes=1),
-    })
+    exclusive = storage.find_output_baskets(
+        {
+            "partial": {"userId": seed["user1"]["userId"]},
+            "since": first_created + timedelta(minutes=1),
+        }
+    )
     assert len(exclusive) == 2
 
 
@@ -148,8 +150,10 @@ def test_find_output_baskets_since_filter_per_user(storage_seeded) -> None:
     storage, seed = storage_seeded
     earliest = min(basket["created_at"] for basket in seed["output_baskets"])
     later_threshold = earliest + timedelta(minutes=2)
-    filtered = storage.find_output_baskets({
-        "partial": {"userId": seed["user1"]["userId"]},
-        "since": later_threshold,
-    })
+    filtered = storage.find_output_baskets(
+        {
+            "partial": {"userId": seed["user1"]["userId"]},
+            "since": later_threshold,
+        }
+    )
     assert len(filtered) == 1

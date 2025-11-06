@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,7 +12,7 @@ from bsv_wallet_toolbox.storage.provider import StorageProvider
 
 
 @pytest.fixture
-def wallet_with_mocked_create_action(test_key_deriver) -> Tuple[Wallet, StorageProvider, Dict[str, Any], int]:
+def wallet_with_mocked_create_action(test_key_deriver) -> tuple[Wallet, StorageProvider, dict[str, Any], int]:
     """Wallet fixture that records create_action invocations.
 
     The underlying storage provider's ``create_action`` method is monkeypatched
@@ -34,7 +34,7 @@ def wallet_with_mocked_create_action(test_key_deriver) -> Tuple[Wallet, StorageP
     seed_auth = wallet._make_auth()
     seed_user_id = seed_auth["userId"]
 
-    call_log: Dict[str, Any] = {}
+    call_log: dict[str, Any] = {}
 
     def stub_create_action(auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         call_log.clear()
@@ -94,4 +94,3 @@ def wallet_with_mocked_create_action(test_key_deriver) -> Tuple[Wallet, StorageP
     storage.create_action = MagicMock(side_effect=stub_create_action)
 
     return wallet, storage, call_log, seed_user_id
-

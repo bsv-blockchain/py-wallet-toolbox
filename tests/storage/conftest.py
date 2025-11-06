@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import pytest
 
@@ -22,7 +22,7 @@ def _record_by_id(storage: StorageProvider, finder: str, identifier_key: str, id
     return results[0]
 
 
-def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
+def seed_storage(storage: StorageProvider) -> dict[str, Any]:
     base_time = datetime(2024, 1, 1, 12, 0, 0)
 
     # Users
@@ -62,10 +62,7 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
                 }
             )
         )
-    baskets = [
-        _record_by_id(storage, "find_output_baskets", "basketId", basket_id)
-        for basket_id in basket_ids
-    ]
+    baskets = [_record_by_id(storage, "find_output_baskets", "basketId", basket_id) for basket_id in basket_ids]
 
     # Transactions
     tx1_id = storage.insert_transaction(
@@ -110,8 +107,8 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
             "description": "User2 transaction",
             "version": 2,
             "lockTime": 0,
-            "inputBEEF": b"\x09\x0A",
-            "rawTx": b"\x0B\x0C",
+            "inputBEEF": b"\x09\x0a",
+            "rawTx": b"\x0b\x0c",
             "created_at": _ts(base_time, 22),
             "updated_at": _ts(base_time, 22),
         }
@@ -124,7 +121,7 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
     }
 
     # Commissions
-    commissions: Dict[str, dict[str, Any]] = {}
+    commissions: dict[str, dict[str, Any]] = {}
     for key, tx_id, user_id, sat in (
         ("tx1", tx1_id, user1_id, 900),
         ("tx2", tx2_id, user1_id, 400),
@@ -137,7 +134,7 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
                 "satoshis": sat,
                 "keyOffset": f"offset-{key}",
                 "isRedeemed": False,
-                "lockingScript": b"\x0D\x0E",
+                "lockingScript": b"\x0d\x0e",
                 "created_at": _ts(base_time, 30),
                 "updated_at": _ts(base_time, 30),
             }
@@ -446,8 +443,8 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
             "notified": False,
             "history": "{}",
             "notify": "{}",
-            "rawTx": b"\x1A",
-            "inputBEEF": b"\x1B",
+            "rawTx": b"\x1a",
+            "inputBEEF": b"\x1b",
             "created_at": _ts(base_time, 101),
             "updated_at": _ts(base_time, 101),
         }
@@ -462,8 +459,8 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
             "batch": "batch-001",
             "history": '{"validated": true}',
             "notify": '{"email": "test@example.com"}',
-            "rawTx": b"\x1C",
-            "inputBEEF": b"\x1D",
+            "rawTx": b"\x1c",
+            "inputBEEF": b"\x1d",
             "created_at": _ts(base_time, 102),
             "updated_at": _ts(base_time, 102),
         }
@@ -496,502 +493,10 @@ def seed_storage(storage: StorageProvider) -> Dict[str, Any]:
 
 
 @pytest.fixture
-def storage_seeded() -> Tuple[StorageProvider, Dict[str, Any]]:
+def storage_seeded() -> tuple[StorageProvider, dict[str, Any]]:
     engine = create_engine_from_url("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     storage = StorageProvider(engine=engine, chain="test", storage_identity_key="seed-storage")
     storage.make_available()
     seed = seed_storage(storage)
     return storage, seed
-from __future__ import annotations
-
-from datetime import datetime, timedelta
-from typing import Any
-
-import pytest
-
-from bsv_wallet_toolbox.storage.db import create_engine_from_url
-from bsv_wallet_toolbox.storage.models import Base
-from bsv_wallet_toolbox.storage.provider import StorageProvider
-
-
-BASE_TIME = datetime(2024, 1, 1, 12, 0, 0)
-
-
-def _seed_storage(storage: StorageProvider) -> dict[str, Any]:
-    seed_data: dict[str, Any] = {}
-
-    def timestamp(offset_minutes: int = 0) -> datetime:
-        return BASE_TIME + timedelta(minutes=offset_minutes)
-
-    # Users
-    user1_id = storage.insert_user(
-        {
-            "identityKey": "03" + "1" * 64,
-            "activeStorage": "local",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    user2_id = storage.insert_user(
-        {
-            "identityKey": "03" + "2" * 64,
-            "activeStorage": "local",
-            "createdAt": timestamp(1),
-            "updatedAt": timestamp(1),
-        }
-    )
-
-    seed_data["users"] = {
-        "u1": storage.find_users({"partial": {"userId": user1_id}})[0],
-        "u2": storage.find_users({"partial": {"userId": user2_id}})[0],
-    }
-
-    # Sync state for user1
-    storage.insert_sync_state(
-        {
-            "userId": user1_id,
-            "storageIdentityKey": storage.storage_identity_key,
-            "storageName": "default",
-            "status": "synced",
-            "init": True,
-            "refNum": "ref-1",
-            "syncMap": "{}",
-            "when": "2024-01-01T00:00:00Z",
-            "satoshis": 1000,
-            "errorLocal": None,
-            "errorOther": None,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    # Output baskets
-    basket1_id = storage.insert_output_basket(
-        {
-            "userId": user1_id,
-            "name": "default",
-            "numberOfDesiredUTXOs": 10,
-            "minimumDesiredUTXOValue": 500,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    basket2_id = storage.insert_output_basket(
-        {
-            "userId": user1_id,
-            "name": "savings",
-            "numberOfDesiredUTXOs": 5,
-            "minimumDesiredUTXOValue": 1000,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    basket3_id = storage.insert_output_basket(
-        {
-            "userId": user2_id,
-            "name": "default",
-            "numberOfDesiredUTXOs": 2,
-            "minimumDesiredUTXOValue": 200,
-            "isDeleted": False,
-            "createdAt": timestamp(1),
-            "updatedAt": timestamp(1),
-        }
-    )
-
-    seed_data["baskets"] = {"ids": [basket1_id, basket2_id, basket3_id]}
-
-    # Tx labels
-    label1_id = storage.insert_tx_label(
-        {
-            "userId": user1_id,
-            "label": "invoice",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    label2_id = storage.insert_tx_label(
-        {
-            "userId": user1_id,
-            "label": "rent",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    label3_id = storage.insert_tx_label(
-        {
-            "userId": user2_id,
-            "label": "utilities",
-            "isDeleted": False,
-            "createdAt": timestamp(1),
-            "updatedAt": timestamp(1),
-        }
-    )
-
-    # Output tags
-    tag1_id = storage.insert_output_tag(
-        {
-            "userId": user1_id,
-            "tag": "priority",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    tag2_id = storage.insert_output_tag(
-        {
-            "userId": user1_id,
-            "tag": "gift",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    # Transactions
-    tx1_id = storage.insert_transaction(
-        {
-            "userId": user1_id,
-            "status": "sending",
-            "reference": "ref-u1-1",
-            "isOutgoing": True,
-            "satoshis": 5000,
-            "description": "User1 primary",
-            "txid": "a" * 64,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    tx2_id = storage.insert_transaction(
-        {
-            "userId": user2_id,
-            "status": "confirmed",
-            "reference": "ref-u2-1",
-            "isOutgoing": True,
-            "satoshis": 2000,
-            "description": "User2 primary",
-            "txid": "b" * 64,
-            "createdAt": timestamp(1),
-            "updatedAt": timestamp(1),
-        }
-    )
-    tx3_id = storage.insert_transaction(
-        {
-            "userId": user2_id,
-            "status": "confirmed",
-            "reference": "ref-u2-2",
-            "isOutgoing": False,
-            "satoshis": 3500,
-            "description": "User2 secondary",
-            "txid": "c" * 64,
-            "createdAt": timestamp(2),
-            "updatedAt": timestamp(2),
-        }
-    )
-
-    # Commissions
-    for tx_id, owner in ((tx1_id, user1_id), (tx2_id, user2_id), (tx3_id, user2_id)):
-        storage.insert_commission(
-            {
-                "transactionId": tx_id,
-                "userId": owner,
-                "satoshis": 150,
-                "keyOffset": f"key-{tx_id}",
-                "isRedeemed": False,
-                "lockingScript": b"\x51",
-                "createdAt": timestamp(0),
-                "updatedAt": timestamp(0),
-            }
-        )
-
-    # Outputs (3 total)
-    output1_id = storage.insert_output(
-        {
-            "transactionId": tx1_id,
-            "userId": user1_id,
-            "basketId": basket1_id,
-            "vout": 0,
-            "satoshis": 101,
-            "spendable": True,
-            "change": False,
-            "providedBy": "wallet",
-            "purpose": "payment",
-            "type": "p2pkh",
-            "lockingScript": b"\x51",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    output2_id = storage.insert_output(
-        {
-            "transactionId": tx1_id,
-            "userId": user1_id,
-            "basketId": basket2_id,
-            "vout": 1,
-            "satoshis": 111,
-            "spendable": True,
-            "change": True,
-            "providedBy": "wallet",
-            "purpose": "change",
-            "type": "p2pkh",
-            "lockingScript": b"\x52",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    output3_id = storage.insert_output(
-        {
-            "transactionId": tx2_id,
-            "userId": user2_id,
-            "basketId": basket3_id,
-            "vout": 0,
-            "satoshis": 210,
-            "spendable": False,
-            "change": False,
-            "providedBy": "wallet",
-            "purpose": "payment",
-            "type": "p2pkh",
-            "lockingScript": b"\x53",
-            "createdAt": timestamp(1),
-            "updatedAt": timestamp(1),
-        }
-    )
-
-    # Output tag maps (3 total)
-    storage.insert_output_tag_map(
-        {
-            "outputId": output1_id,
-            "outputTagId": tag1_id,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_output_tag_map(
-        {
-            "outputId": output1_id,
-            "outputTagId": tag2_id,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_output_tag_map(
-        {
-            "outputId": output2_id,
-            "outputTagId": tag1_id,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    # Tx label maps
-    storage.insert_tx_label_map(
-        {
-            "transactionId": tx1_id,
-            "txLabelId": label1_id,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_tx_label_map(
-        {
-            "transactionId": tx1_id,
-            "txLabelId": label2_id,
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_tx_label_map(
-        {
-            "transactionId": tx2_id,
-            "txLabelId": label3_id,
-            "isDeleted": False,
-            "createdAt": timestamp(1),
-            "updatedAt": timestamp(1),
-        }
-    )
-
-    # Certificates and fields (3 certs, 3 fields)
-    certifier_primary = "certifier-primary"
-    certifier_secondary = "certifier-secondary"
-    cert1_id = storage.insert_certificate(
-        {
-            "userId": user1_id,
-            "type": "type-primary",
-            "serialNumber": "serial-1",
-            "certifier": certifier_primary,
-            "subject": "subject-1",
-            "verifier": None,
-            "revocationOutpoint": "rev-1",
-            "signature": "sig-1",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    cert2_type = "type-secondary"
-    cert2_id = storage.insert_certificate(
-        {
-            "userId": user1_id,
-            "type": cert2_type,
-            "serialNumber": "serial-2",
-            "certifier": certifier_secondary,
-            "subject": "subject-2",
-            "verifier": None,
-            "revocationOutpoint": "rev-2",
-            "signature": "sig-2",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    cert3_id = storage.insert_certificate(
-        {
-            "userId": user1_id,
-            "type": "type-tertiary",
-            "serialNumber": "serial-3",
-            "certifier": "certifier-tertiary",
-            "subject": "subject-3",
-            "verifier": None,
-            "revocationOutpoint": "rev-3",
-            "signature": "sig-3",
-            "isDeleted": False,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    storage.insert_certificate_field(
-        {
-            "certificateId": cert1_id,
-            "userId": user1_id,
-            "fieldName": "bob",
-            "fieldValue": "your uncle",
-            "masterKey": "key",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_certificate_field(
-        {
-            "certificateId": cert1_id,
-            "userId": user1_id,
-            "fieldName": "name",
-            "fieldValue": "alice",
-            "masterKey": "key",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_certificate_field(
-        {
-            "certificateId": cert2_id,
-            "userId": user1_id,
-            "fieldName": "name",
-            "fieldValue": "alice",
-            "masterKey": "key",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    # Proven transactions
-    proven_tx_id = storage.insert_proven_tx(
-        {
-            "txid": "d" * 64,
-            "height": 100,
-            "index": 0,
-            "merklePath": b"\x01\x02\x03",
-            "rawTx": b"\x00\x01",
-            "blockHash": "e" * 64,
-            "merkleRoot": "f" * 64,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    storage.insert_proven_tx_req(
-        {
-            "provenTxId": proven_tx_id,
-            "status": "pending",
-            "attempts": 1,
-            "notified": False,
-            "txid": "g" * 64,
-            "batch": "batch-1",
-            "history": "{}",
-            "notify": "{}",
-            "rawTx": b"\x00",
-            "inputBEEF": b"\x01",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-    storage.insert_proven_tx_req(
-        {
-            "provenTxId": None,
-            "status": "queued",
-            "attempts": 0,
-            "notified": True,
-            "txid": "h" * 64,
-            "batch": "batch-2",
-            "history": "{}",
-            "notify": "{}",
-            "rawTx": b"\x00",
-            "inputBEEF": None,
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    # Monitor event
-    storage.insert_monitor_event(
-        {
-            "event": "startup",
-            "details": "seed",
-            "createdAt": timestamp(0),
-            "updatedAt": timestamp(0),
-        }
-    )
-
-    seed_data["certifiers"] = {
-        "primary": certifier_primary,
-        "secondary": certifier_secondary,
-        "missing": "none",
-    }
-    seed_data["types"] = {
-        "secondary": cert2_type,
-        "missing": "oblongata",
-    }
-    seed_data["field_names"] = {
-        "exists": "name",
-        "alternate": "bob",
-        "missing": "bob42",
-    }
-    seed_data["timestamps"] = {
-        "base": timestamp(0),
-        "future": timestamp(0) + timedelta(days=1),
-    }
-
-    return seed_data
-
-
-@pytest.fixture
-def storage_seeded() -> tuple[StorageProvider, dict[str, Any]]:
-    engine = create_engine_from_url("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    storage = StorageProvider(engine=engine, chain="test", storage_identity_key="seed")
-    storage.make_available()
-    seed = _seed_storage(storage)
-    try:
-        yield storage, seed
-    finally:
-        engine.dispose()
-

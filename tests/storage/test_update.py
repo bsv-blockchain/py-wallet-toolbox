@@ -61,14 +61,12 @@ def test_update_proventxreq(storage_seeded) -> None:
             "attempts": 5,
             "notified": True,
             "batch": "batch-updated",
-            "history": "{\"updated\":true}",
+            "history": '{"updated":true}',
         },
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_proven_tx_reqs({"partial": {"provenTxReqId": record["provenTxReqId"]}})
-    )
+    refreshed = _first(storage.find_proven_tx_reqs({"partial": {"provenTxReqId": record["provenTxReqId"]}}))
     assert refreshed["status"] == "completed"
     assert refreshed["attempts"] == 5
     assert refreshed["notified"] is True
@@ -105,9 +103,7 @@ def test_update_certificate(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_certificates({"partial": {"certificateId": cert["certificateId"]}})
-    )
+    refreshed = _first(storage.find_certificates({"partial": {"certificateId": cert["certificateId"]}}))
     assert refreshed["type"] == "updated-type"
     assert refreshed["subject"] == "updated-subject"
     assert refreshed["isDeleted"] is True
@@ -127,9 +123,7 @@ def test_update_certificate_field(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_certificate_fields({"partial": {"certificateFieldId": field_id}})
-    )
+    refreshed = _first(storage.find_certificate_fields({"partial": {"certificateFieldId": field_id}}))
     assert refreshed["fieldValue"] == "updated-value"
     assert refreshed["masterKey"] == "updated-key"
 
@@ -147,9 +141,7 @@ def test_update_output_basket(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_output_baskets({"partial": {"basketId": basket["basketId"]}})
-    )
+    refreshed = _first(storage.find_output_baskets({"partial": {"basketId": basket["basketId"]}}))
     assert refreshed["numberOfDesiredUTXOs"] == 42
     assert refreshed["minimumDesiredUTXOValue"] == 2048
     assert refreshed["name"] == "updated-basket"
@@ -168,9 +160,7 @@ def test_update_transaction(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_transactions({"partial": {"transactionId": tx["transactionId"]}})
-    )
+    refreshed = _first(storage.find_transactions({"partial": {"transactionId": tx["transactionId"]}}))
     assert refreshed["status"] == "completed"
     assert refreshed["description"] == "updated description"
     assert refreshed["satoshis"] == 9999
@@ -188,9 +178,7 @@ def test_update_commission(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_commissions({"partial": {"commissionId": commission["commissionId"]}})
-    )
+    refreshed = _first(storage.find_commissions({"partial": {"commissionId": commission["commissionId"]}}))
     assert refreshed["satoshis"] == 777
     assert refreshed["isRedeemed"] is True
 
@@ -207,9 +195,7 @@ def test_update_output(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_outputs({"partial": {"outputId": output["outputId"]}})
-    )
+    refreshed = _first(storage.find_outputs({"partial": {"outputId": output["outputId"]}}))
     assert refreshed["spendable"] is False
     assert refreshed["purpose"] == "updated-purpose"
 
@@ -225,9 +211,7 @@ def test_update_output_tag(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_output_tags({"partial": {"outputTagId": tag["outputTagId"]}})
-    )
+    refreshed = _first(storage.find_output_tags({"partial": {"outputTagId": tag["outputTagId"]}}))
     assert refreshed["tag"] == "updated-tag"
 
 
@@ -258,9 +242,7 @@ def test_update_sync_state(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_sync_states({"partial": {"syncStateId": sync_state["syncStateId"]}})
-    )
+    refreshed = _first(storage.find_sync_states({"partial": {"syncStateId": sync_state["syncStateId"]}}))
     assert refreshed["status"] == "resync"
     assert refreshed["init"] is False
 
@@ -276,8 +258,5 @@ def test_update_tx_label(storage_seeded) -> None:
     )
     assert updated == 1
 
-    refreshed = _first(
-        storage.find_tx_labels({"partial": {"txLabelId": label["txLabelId"]}})
-    )
+    refreshed = _first(storage.find_tx_labels({"partial": {"txLabelId": label["txLabelId"]}}))
     assert refreshed["label"] == "updated-label"
-

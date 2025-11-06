@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import base64
+import re
 import secrets
 from collections.abc import Iterable
 from datetime import UTC, datetime
-import re
 from typing import Any, ClassVar
 
 from bsv.merkle_path import MerklePath
@@ -21,13 +21,13 @@ from bsv_wallet_toolbox.utils.validation import (
     validate_internalize_action_args,
     validate_process_action_args,
 )
+
 from .create_action import (
     deterministic_txid,
     generate_reference,
     normalize_create_action_args,
     validate_required_outputs,
 )
-
 from .db import create_session_factory, session_scope
 from .models import (
     Base,
@@ -184,7 +184,7 @@ class StorageProvider:
                     basket.is_deleted = False
                     session.add(basket)
                     session.commit()
-        return self._model_to_dict(basket)
+                return self._model_to_dict(basket)
 
             # Create new basket
             now = datetime.now(UTC)
