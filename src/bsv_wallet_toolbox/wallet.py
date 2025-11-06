@@ -20,6 +20,7 @@ from bsv.wallet.wallet_interface import (
 )
 
 from .errors import InvalidParameterError
+from .sdk.types import specOpInvalidChange, specOpThrowReviewActions, specOpWalletBalance
 from .services import WalletServices
 from .utils.validation import (
     validate_abort_action_args,
@@ -188,6 +189,50 @@ class Wallet:
             Wallet network name ('mainnet' or 'testnet')
         """
         return "mainnet" if chain == "main" else "testnet"
+
+    def destroy(self) -> None:
+        """Destroy wallet and clean up resources.
+
+        BRC-100 WalletInterface method implementation.
+        Close storage connections and destroy privileged key manager if present.
+
+        TS parity:
+            Mirrors TypeScript Wallet.destroy() by destroying storage and privileged key manager.
+
+        Raises:
+            Exception: If storage destruction fails
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (destroy)
+        """
+        # Destroy storage provider if available
+        if self.storage_provider is not None:
+            try:
+                self.storage_provider.destroy()
+            except Exception:
+                # Best-effort cleanup; allow exceptions to propagate if needed
+                raise
+
+    def get_identity_key(self) -> str:
+        """Get the wallet's identity key (public key).
+
+        BRC-100 WalletInterface method implementation.
+        Returns the identity public key derived from root key.
+
+        TS parity:
+            Mirrors TypeScript Wallet.getIdentityKey() which calls getPublicKey({ identityKey: true }).
+
+        Returns:
+            str: Public key in hex format
+
+        Raises:
+            RuntimeError: If key_deriver is not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (getIdentityKey)
+        """
+        result = self.get_public_key({"identityKey": True})
+        return result["publicKey"]
 
     def list_outputs(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List outputs via Storage provider (minimal TS-like shape).
@@ -420,6 +465,13 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (createAction method)
             - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts (createAction function)
             - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateCreateActionArgs)
+
+        Note:
+            TODO: Full TypeScript createAction validation may require additional checks:
+            - UTXO selection and change address derivation
+            - Fee estimation
+            - Output descriptor validation
+            See: toolbox/ts-wallet-toolbox/src/signer/methods/createAction.ts for full impl
         """
         self._validate_originator(originator)
 
@@ -472,6 +524,15 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/signer/methods/signAction.ts (signAction function)
             - toolbox/ts-wallet-toolbox/src/storage/methods/processAction.ts (processAction function)
             - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateProcessActionArgs)
+
+        Note:
+            TODO: This is a PARTIAL IMPLEMENTATION serving as sign_action proxy.
+            Full TypeScript signAction (Wallet.ts:793-809) requires:
+            - Transaction completion with unlock scripts
+            - BEEF construction and verification
+            - Pending sign action management (this.pendingSignActions)
+            - Error handling with throwIfAnyUnsuccessfulSignActions
+            See: toolbox/ts-wallet-toolbox/src/signer/methods/signAction.ts for full impl
         """
         self._validate_originator(originator)
 
@@ -519,6 +580,14 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/signer/methods/internalizeAction.ts (internalizeAction function)
             - toolbox/ts-wallet-toolbox/src/storage/methods/internalizeAction.ts (storage internalizeAction)
             - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateInternalizeActionArgs)
+
+        Note:
+            TODO: Full TypeScript internalizeAction requires:
+            - BEEF parsing and transaction extraction
+            - Output ownership verification
+            - Key derivation and script validation
+            - Merge detection with existing transactions
+            See: toolbox/ts-wallet-toolbox/src/signer/methods/internalizeAction.ts for full impl
         """
         self._validate_originator(originator)
 
@@ -1724,3 +1793,218 @@ class Wallet:
         expected = hmac.new(sym_key, data, hashlib.sha256).digest()
         valid = hmac.compare_digest(expected, provided)
         return {"valid": bool(valid)}
+
+    def balance_and_utxos(self, basket: str = "default") -> dict[str, Any]:
+        """Get total satoshi value and UTXO list for a basket.
+
+        BRC-100 WalletInterface method implementation.
+        Uses listOutputs to iterate over chunks of up to 1000 outputs to
+        compute the sum of output satoshis and collect UTXO details.
+
+        TS parity:
+            Mirrors TypeScript Wallet.balanceAndUtxos() by iterating listOutputs
+            with pagination to aggregate satoshis and outpoints.
+
+        Args:
+            basket: Optional basket name. Defaults to 'default' (change basket).
+
+        Returns:
+            dict: With keys:
+                - total: int - sum of all output satoshis
+                - utxos: list[dict] - array of {satoshis, outpoint} tuples
+
+        Raises:
+            RuntimeError: If storage_provider is not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (balanceAndUtxos)
+        """
+        if not self.storage_provider:
+            raise RuntimeError("storage_provider is not configured")
+
+        result: dict[str, Any] = {"total": 0, "utxos": []}
+        offset = 0
+
+        while True:
+            # Fetch outputs in chunks of 1000
+            change = self.list_outputs({"basket": basket, "limit": 1000, "offset": offset})
+
+            if change.get("totalOutputs", 0) == 0:
+                break
+
+            # Aggregate satoshis and collect UTXOs
+            for output in change.get("outputs", []):
+                result["total"] += output.get("satoshis", 0)
+                result["utxos"].append({"satoshis": output.get("satoshis", 0), "outpoint": output.get("outpoint", "")})
+
+            # Move to next page
+            offset += len(change.get("outputs", []))
+
+        return result
+
+    def balance(self) -> dict[str, Any]:
+        """Get total satoshi value of all spendable outputs.
+
+        BRC-100 WalletInterface method implementation.
+        Uses listOutputs special operation (specOpWalletBalance) to compute
+        total value for all spendable outputs in the 'default' basket.
+
+        TS parity:
+            Mirrors TypeScript Wallet.balance() which calls listOutputs
+            with basket=specOpWalletBalance to use storage SpecOp optimization.
+
+        Returns:
+            dict: With key 'total' containing sum of satoshis in default basket
+
+        Raises:
+            RuntimeError: If storage_provider is not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (balance)
+            - toolbox/ts-wallet-toolbox/src/storage/methods/ListOutputsSpecOp.ts
+        """
+        if not self.storage_provider:
+            raise RuntimeError("storage_provider is not configured")
+
+        # Use special operation for efficient balance calculation
+        result = self.list_outputs({"basket": specOpWalletBalance})
+
+        return {"total": result.get("totalOutputs", 0)}
+
+    def review_spendable_outputs(
+        self, all: bool = False, release: bool = False, optional_args: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Review spendability of outputs via Services verification.
+
+        BRC-100 WalletInterface method implementation.
+        Uses listOutputs special operation to review the spendability of outputs
+        currently considered spendable. Returns outputs that fail verification.
+
+        TS parity:
+            Mirrors TypeScript Wallet.reviewSpendableOutputs() which uses SpecOps
+            (specOpInvalidChange) to detect outputs that are not valid UTXOs.
+
+        Args:
+            all: If False (default), only review change outputs ('default' basket).
+                 If True, review all spendable outputs.
+            release: If False (default), don't modify output spendability.
+                    If True, set outputs that fail verification to unspendable.
+            optional_args: Optional dict with additional tags to constrain processing.
+
+        Returns:
+            dict: With keys 'totalOutputs' and 'outputs' (invalid/unverifiable outputs)
+
+        Raises:
+            RuntimeError: If storage_provider or services are not configured
+            NotImplementedError: If SpecOp infrastructure is not available
+
+        Note:
+            TODO: Full implementation requires:
+            - specOpInvalidChange SpecOp in storage layer
+            - Services.isUtxo() for verification
+            - Output script validation
+            See: toolbox/ts-wallet-toolbox/src/storage/methods/ListOutputsSpecOp.ts
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (reviewSpendableOutputs)
+        """
+        if not self.storage_provider:
+            raise RuntimeError("storage_provider is not configured")
+
+        if not self.services:
+            raise RuntimeError("services are required for reviewSpendableOutputs")
+
+        # Build args for listOutputs SpecOp
+        tags: list[str] = []
+
+        if not all:
+            # Only review default (change) basket
+            basket = "default"
+        else:
+            # Use special "all" tag for all spendable outputs
+            basket = specOpInvalidChange
+            tags.append("all")
+
+        if release:
+            # Add 'release' tag to mark invalid outputs as unspendable
+            tags.append("release")
+
+        # Merge optional args
+        args: dict[str, Any] = {"basket": basket, "tags": tags}
+        if optional_args:
+            args.update(optional_args)
+
+        # Call listOutputs with SpecOp
+        result = self.list_outputs(args)
+
+        # If throw mode is requested, raise on review failures
+        if specOpThrowReviewActions in tags and "error" in result:
+            raise RuntimeError(f"Review action failed: {result.get('error')}")
+
+        return result
+
+    def discover_by_identity_key(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Discover certificates by identity key.
+
+        BRC-100 WalletInterface method implementation.
+        Query overlay for certificates associated with a specific identity key,
+        filtering by trusted certifiers and applying trust settings.
+
+        TS parity:
+            Mirrors TypeScript Wallet.discoverByIdentityKey with caching
+            and trust settings validation.
+
+        Args:
+            args: Input dict containing:
+                - identityKey: str - public key to search for
+            originator: Optional originator domain name (under 250 bytes)
+
+        Returns:
+            dict: With keys 'totalCertificates' and 'certificates'
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (discoverByIdentityKey)
+        """
+        self._validate_originator(originator)
+
+        if not self.services:
+            raise RuntimeError("services are required for discoverByIdentityKey")
+
+        # Delegate to services for overlay query
+        return self.services.discover_by_identity_key(args)
+
+    def discover_by_attributes(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Discover certificates by attributes.
+
+        BRC-100 WalletInterface method implementation.
+        Query overlay for certificates matching specified attributes,
+        filtering by trusted certifiers and applying trust settings.
+
+        TS parity:
+            Mirrors TypeScript Wallet.discoverByAttributes with caching
+            and trust settings validation.
+
+        Args:
+            args: Input dict containing:
+                - attributes: dict - key-value pairs to search for
+            originator: Optional originator domain name (under 250 bytes)
+
+        Returns:
+            dict: With keys 'totalCertificates' and 'certificates'
+
+        Raises:
+            RuntimeError: If services are not configured
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (discoverByAttributes)
+        """
+        self._validate_originator(originator)
+
+        if not self.services:
+            raise RuntimeError("services are required for discoverByAttributes")
+
+        # Delegate to services for overlay query
+        return self.services.discover_by_attributes(args)

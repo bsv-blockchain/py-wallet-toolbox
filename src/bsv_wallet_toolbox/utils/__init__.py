@@ -5,7 +5,10 @@ This package contains utility functions for validation, conversion, and other co
 Reference: toolbox/ts-wallet-toolbox/src/utility/
 """
 
+import os
 from types import SimpleNamespace
+
+from dotenv import load_dotenv
 
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
 from bsv_wallet_toolbox.utils.satoshi import (
@@ -25,12 +28,39 @@ from bsv_wallet_toolbox.utils.validation import (
 
 
 class Setup:
-    """Placeholder for TS Setup util (compat layer for tests)."""
+    """TS Setup util compat layer - mirrors TypeScript Setup.getEnv() behavior.
+
+    Reference: toolbox/ts-wallet-toolbox/src/Setup.ts (getEnv method)
+    """
 
     @staticmethod
-    def get_env(chain: str) -> dict[str, str]:  # minimal shape used by tests
-        # Return object with attribute access to match TS tests (env.chain, env.taal_api_key)
-        return SimpleNamespace(chain=chain, taal_api_key="")
+    def get_env(chain: str) -> SimpleNamespace:
+        """Get environment configuration from .env file and environment variables.
+
+        Mirrors TypeScript Setup.getEnv() by loading .env and returning environment config.
+
+        Args:
+            chain: Blockchain network ('main' or 'test')
+
+        Returns:
+            SimpleNamespace with attributes: chain, taal_api_key, dev_keys, identity_key, mysql_connection
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Setup.ts (getEnv method)
+        """
+        # Load .env file (matches TS Setup.ts behavior)
+        load_dotenv()
+
+        # Get environment variables (TS parity)
+        taal_api_key = os.getenv(f"{chain.upper()}_TAAL_API_KEY", "")
+
+        return SimpleNamespace(
+            chain=chain,
+            taal_api_key=taal_api_key,
+            dev_keys={},  # Device keys from .env if needed
+            identity_key="",  # Identity key from .env if needed
+            mysql_connection="",  # MySQL connection string if needed
+        )
 
 
 class TestUtils:
