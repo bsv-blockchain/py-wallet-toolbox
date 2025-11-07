@@ -244,33 +244,117 @@ def validate_list_certificates_args(args: dict[str, Any]) -> None:
                 raise InvalidParameterError("revocationOutpoint", "format '<txid>.<index>'")
 
 
-def validate_create_action_args(args: dict[str, Any]) -> None:
-    """Validate CreateActionArgs.
+def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate CreateActionArgs with full normalization.
 
-    - description: non-empty string
-    - outputs: non-empty list of outputs; each output requires lockingScript (even-length hex) and satoshis:int>=0
+    Reference: toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
+               function validateCreateActionArgs
+
+    Validates and normalizes CreateActionArgs with defaults:
+    - description: 5-2000 bytes UTF-8
+    - inputs: ValidCreateActionInput[] (each with outpoint, description, sequenceNumber)
+    - outputs: ValidCreateActionOutput[] (each with lockingScript, satoshis, description)
+    - lockTime: defaults to 0
+    - version: defaults to 1
+    - labels: optional string array
+    - options: ValidCreateActionOptions with defaults
+    - Computed flags: isSendWith, isRemixChange, isNewTx, isSignAction, isDelayed, isNoSend
+
+    Args:
+        args: CreateActionArgs dict
+
+    Returns:
+        Validated and normalized CreateActionArgs dict
+
+    Raises:
+        InvalidParameterError: If validation fails
     """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
+
+    # Validate description: 5-2000 bytes
     desc = args.get("description")
-    if not isinstance(desc, str) or len(desc) < 1:
-        raise InvalidParameterError("description", "a non-empty string")
-    outputs = args.get("outputs")
-    if not isinstance(outputs, list) or len(outputs) == 0:
-        raise InvalidParameterError("outputs", "a non-empty list")
+    if not isinstance(desc, str):
+        raise InvalidParameterError("description", "a string")
+    desc_bytes = desc.encode("utf-8")
+    if len(desc_bytes) < 5 or len(desc_bytes) > 2000:
+        raise InvalidParameterError("description", "5-2000 bytes UTF-8")
+
+    # Validate outputs: non-empty list
+    outputs = args.get("outputs", [])
+    if not isinstance(outputs, list):
+        raise InvalidParameterError("outputs", "a list")
+    if len(outputs) == 0:
+        raise InvalidParameterError("outputs", "at least one output required")
+
     for o in outputs:
         if not isinstance(o, dict):
             raise InvalidParameterError("outputs", "list of dicts")
+        # lockingScript: even-length hex
         ls = o.get("lockingScript")
         if not isinstance(ls, str) or (len(ls) % 2 != 0) or not _is_hex_string(ls):
             raise InvalidParameterError("lockingScript", "an even-length hexadecimal string")
+        # satoshis: integer >= 0
         sat = o.get("satoshis")
         if not isinstance(sat, int) or sat < 0:
             raise InvalidParameterError("satoshis", "an integer >= 0")
+        # outputDescription: 5-2000 bytes
+        out_desc = o.get("outputDescription", "")
+        if isinstance(out_desc, str):
+            out_desc_bytes = out_desc.encode("utf-8")
+            if len(out_desc_bytes) < 5 or len(out_desc_bytes) > 2000:
+                raise InvalidParameterError("outputDescription", "5-2000 bytes UTF-8")
+
+    # Validate inputs if present
+    inputs = args.get("inputs", [])
+    if not isinstance(inputs, list):
+        raise InvalidParameterError("inputs", "a list")
+
+    # Normalize and compute flags
+    vargs = {
+        "description": desc,
+        "inputBEEF": args.get("inputBEEF"),
+        "inputs": inputs,
+        "outputs": outputs,
+        "lockTime": args.get("lockTime", 0),
+        "version": args.get("version", 1),
+        "labels": args.get("labels", []),
+        "options": args.get("options", {}),
+        "isSendWith": False,
+        "isDelayed": False,
+        "isNoSend": False,
+        "isNewTx": False,
+        "isRemixChange": False,
+        "isSignAction": False,
+    }
+
+    # Compute flags
+    opts = vargs.get("options", {})
+    send_with = opts.get("sendWith", [])
+    vargs["isSendWith"] = len(send_with) > 0 if isinstance(send_with, list) else False
+    vargs["isRemixChange"] = not vargs["isSendWith"] and len(inputs) == 0 and len(outputs) == 0
+    vargs["isNewTx"] = vargs["isRemixChange"] or len(inputs) > 0 or len(outputs) > 0
+    vargs["isDelayed"] = opts.get("acceptDelayedBroadcast", True)
+    vargs["isNoSend"] = opts.get("noSend", False)
+
+    return vargs
 
 
-def validate_abort_action_args(args: dict[str, Any] | None) -> None:
-    """Validate AbortActionArgs with base64 reference."""
+def validate_abort_action_args(args: dict[str, Any] | None) -> dict[str, Any]:
+    """Validate AbortActionArgs.
+
+    Reference: toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
+               function validateAbortActionArgs
+
+    Args:
+        args: AbortActionArgs dict with 'reference' (base64 string)
+
+    Returns:
+        Validated AbortActionArgs dict
+
+    Raises:
+        InvalidParameterError: If validation fails
+    """
     if args is None or not isinstance(args, dict):
         raise InvalidParameterError("args", "required")
     ref = args.get("reference")
@@ -280,33 +364,67 @@ def validate_abort_action_args(args: dict[str, Any] | None) -> None:
     if len(ref) % 4 != 0 or not _is_base64_string(ref):
         raise InvalidParameterError("reference", "a valid base64 string (length divisible by 4)")
 
+    return {"reference": ref}
 
-def validate_internalize_action_args(args: dict[str, Any]) -> None:
-    """Validate InternalizeActionArgs."""
+
+def validate_internalize_action_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate InternalizeActionArgs.
+
+    Reference: toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
+               function validateInternalizeActionArgs
+
+    Args:
+        args: InternalizeActionArgs dict
+
+    Returns:
+        Validated InternalizeActionArgs dict
+
+    Raises:
+        InvalidParameterError: If validation fails
+    """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
+
+    # Validate tx: BEEF binary data
     tx = args.get("tx")
     if not isinstance(tx, (bytes, bytearray)) or len(tx) == 0:
         raise InvalidParameterError("tx", "non-empty bytes")
+
+    # Validate outputs: non-empty list
     outputs = args.get("outputs")
     if not isinstance(outputs, list) or len(outputs) == 0:
         raise InvalidParameterError("outputs", "a non-empty list")
+
+    # Validate description: 5-2000 bytes
     desc = args.get("description")
-    if not isinstance(desc, str) or len(desc) < 3:
-        raise InvalidParameterError("description", "at least 3 characters")
-    if "labels" in args and args["labels"] is not None:
-        labels = args["labels"]
+    if not isinstance(desc, str):
+        raise InvalidParameterError("description", "a string")
+    desc_bytes = desc.encode("utf-8")
+    if len(desc_bytes) < 5 or len(desc_bytes) > 2000:
+        raise InvalidParameterError("description", "5-2000 bytes UTF-8")
+
+    # Validate labels if present
+    labels = args.get("labels", [])
+    if labels is not None:
         if not isinstance(labels, list):
             raise InvalidParameterError("labels", "a list of strings")
         for label in labels:
-            if not isinstance(label, str) or len(label) > 300:
-                raise InvalidParameterError("label", "each label must be <= 300 chars")
+            if not isinstance(label, str):
+                raise InvalidParameterError("label", "a string")
+            label_bytes = label.encode("utf-8")
+            if len(label_bytes) > 300:
+                raise InvalidParameterError("label", "must be <= 300 bytes")
+
+    # Validate each output
     for o in outputs:
         if not isinstance(o, dict):
             raise InvalidParameterError("outputs", "list of dicts")
+
+        # protocol: required, must be one of the known types
         protocol = o.get("protocol")
         if not isinstance(protocol, str) or len(protocol) == 0:
             raise InvalidParameterError("protocol", "a non-empty string")
+
         if protocol == "wallet payment":
             remit = o.get("paymentRemittance")
             if not isinstance(remit, dict):
@@ -318,11 +436,34 @@ def validate_internalize_action_args(args: dict[str, Any]) -> None:
             if not isinstance(ds, str) or not _is_base64_string(ds):
                 raise InvalidParameterError("paymentRemittance", "derivationSuffix must be base64")
 
+    return {
+        "tx": tx,
+        "outputs": outputs,
+        "description": desc,
+        "labels": labels if labels else [],
+        "seekPermission": args.get("seekPermission", True),
+    }
 
-def validate_relinquish_output_args(args: dict[str, Any]) -> None:
-    """Validate RelinquishOutputArgs."""
+
+def validate_relinquish_output_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate RelinquishOutputArgs.
+
+    Reference: toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
+               function validateRelinquishOutputArgs
+
+    Args:
+        args: RelinquishOutputArgs dict
+
+    Returns:
+        Validated RelinquishOutputArgs dict
+
+    Raises:
+        InvalidParameterError: If validation fails
+    """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
+
+    # Validate outpoint format: "txid.index"
     out = args.get("output")
     if not isinstance(out, str) or len(out) == 0:
         raise InvalidParameterError("output", "required outpoint 'txid.index'")
@@ -331,27 +472,53 @@ def validate_relinquish_output_args(args: dict[str, Any]) -> None:
     txid, _, idx = out.partition(".")
     if not _is_hex_string(txid) or not idx.isdigit():
         raise InvalidParameterError("outpoint", "format '<txid>.<index>'")
+
+    # Validate basket: optional string, max 300 chars
     basket = args.get("basket", "")
     if not isinstance(basket, str):
         raise InvalidParameterError("basket", "a string")
-    if len(basket) > 300:
-        raise InvalidParameterError("basket", "must be <= 300 characters")
+    basket_bytes = basket.encode("utf-8")
+    if len(basket_bytes) > 300:
+        raise InvalidParameterError("basket", "must be <= 300 bytes")
+
+    return {
+        "basket": basket,
+        "output": f"{txid}.{idx}",
+    }
 
 
-def validate_insert_certificate_auth_args(args: dict[str, Any]) -> None:
-    """Validate insertCertificateAuth (TableCertificateX) arguments."""
+def validate_insert_certificate_auth_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate InsertCertificateAuthArgs.
+
+    Reference: TableCertificateX certificate insertion validation
+
+    Args:
+        args: InsertCertificateAuthArgs dict
+
+    Returns:
+        Validated InsertCertificateAuthArgs dict
+
+    Raises:
+        InvalidParameterError: If validation fails
+    """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
 
-    def _require_even_hex(field: str) -> None:
+    def _require_even_hex(field: str) -> str:
         v = args.get(field)
         if not isinstance(v, str) or (len(v) % 2 != 0) or not _is_hex_string(v):
             raise InvalidParameterError(field, "an even-length hexadecimal string")
+        return v
 
-    _require_even_hex("type")
+    # Validate type: even-length hex
+    cert_type = _require_even_hex("type")
+
+    # Validate serialNumber: base64
     sn = args.get("serialNumber")
     if not isinstance(sn, str) or not _is_base64_string(sn):
         raise InvalidParameterError("serialNumber", "a base64 string")
+
+    # Validate certifier: non-empty even-length hex, max 300 chars
     certifier = args.get("certifier")
     if (
         not isinstance(certifier, str)
@@ -364,10 +531,16 @@ def validate_insert_certificate_auth_args(args: dict[str, Any]) -> None:
             "certifier",
             "a non-empty even-length hexadecimal string up to 300 chars",
         )
+
+    # Validate subject: non-empty string
     subject = args.get("subject")
     if not isinstance(subject, str) or len(subject) == 0:
         raise InvalidParameterError("subject", "a non-empty string")
-    _require_even_hex("signature")
+
+    # Validate signature: even-length hex
+    signature = _require_even_hex("signature")
+
+    # Validate fields: list of dicts with masterKey (even-length hex)
     fields = args.get("fields", [])
     if not isinstance(fields, list):
         raise InvalidParameterError("fields", "a list")
@@ -377,6 +550,8 @@ def validate_insert_certificate_auth_args(args: dict[str, Any]) -> None:
         mk = f.get("masterKey")
         if not isinstance(mk, str) or (len(mk) % 2 != 0) or not _is_hex_string(mk):
             raise InvalidParameterError("masterKey", "an even-length hexadecimal string")
+
+    # Validate revocationOutpoint: format "txid.index"
     ro = args.get("revocationOutpoint")
     if not isinstance(ro, str) or "." not in ro:
         raise InvalidParameterError("revocationOutpoint", "format '<txid>.<index>'")
@@ -384,25 +559,59 @@ def validate_insert_certificate_auth_args(args: dict[str, Any]) -> None:
     if not _is_hex_string(rtxid) or not ridx.isdigit():
         raise InvalidParameterError("revocationOutpoint", "format '<txid>.<index>'")
 
+    return {
+        "type": cert_type,
+        "serialNumber": sn,
+        "certifier": certifier,
+        "subject": subject,
+        "signature": signature,
+        "fields": fields,
+        "revocationOutpoint": f"{rtxid}.{ridx}",
+    }
 
-def validate_relinquish_certificate_args(args: dict[str, Any]) -> None:
+
+def validate_relinquish_certificate_args(args: dict[str, Any]) -> dict[str, Any]:
     """Validate RelinquishCertificateArgs.
+
+    Reference: toolbox/ts-wallet-toolbox/src/sdk/validationHelpers.ts
+               function validateRelinquishCertificateArgs
 
     - type: base64
     - serialNumber: base64
     - certifier: non-empty even-length hex string
+
+    Args:
+        args: RelinquishCertificateArgs dict
+
+    Returns:
+        Validated RelinquishCertificateArgs dict
+
+    Raises:
+        InvalidParameterError: If validation fails
     """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
+
+    # Validate type: base64
     t = args.get("type")
     if not isinstance(t, str) or not _is_base64_string(t):
         raise InvalidParameterError("type", "a base64 string")
+
+    # Validate serialNumber: base64
     s = args.get("serialNumber")
     if not isinstance(s, str) or not _is_base64_string(s):
         raise InvalidParameterError("serialNumber", "a base64 string")
+
+    # Validate certifier: non-empty even-length hex
     c = args.get("certifier")
     if not isinstance(c, str) or len(c) == 0 or (len(c) % 2 != 0) or not _is_hex_string(c):
         raise InvalidParameterError("certifier", "a non-empty even-length hexadecimal string")
+
+    return {
+        "type": t,
+        "serialNumber": s,
+        "certifier": c,
+    }
 
 
 def validate_request_sync_chunk_args(args: dict[str, Any]) -> None:
