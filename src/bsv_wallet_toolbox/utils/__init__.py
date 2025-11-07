@@ -10,6 +10,11 @@ from types import SimpleNamespace
 
 from dotenv import load_dotenv
 
+from bsv_wallet_toolbox.utils.config import (
+    configure_logger,
+    create_action_tx_assembler,
+    load_config,
+)
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
 from bsv_wallet_toolbox.utils.satoshi import (
     MAX_SATOSHIS,
@@ -17,6 +22,9 @@ from bsv_wallet_toolbox.utils.satoshi import (
     satoshi_equal,
     satoshi_from,
     satoshi_multiply,
+    satoshi_must_equal,
+    satoshi_must_multiply,
+    satoshi_must_uint64,
     satoshi_subtract,
     satoshi_sum,
     satoshi_to_uint64,
@@ -156,13 +164,19 @@ __all__ = [
     "Setup",
     "TestUtils",
     "arrays_equal",
+    "configure_logger",
+    "create_action_tx_assembler",
     "generate_change_sdk",
+    "load_config",
     "max_date",
     "optional_arrays_equal",
     "satoshi_add",
     "satoshi_equal",
     "satoshi_from",
     "satoshi_multiply",
+    "satoshi_must_equal",
+    "satoshi_must_multiply",
+    "satoshi_must_uint64",
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",

@@ -100,3 +100,70 @@ def satoshi_to_uint64(value: int) -> int:
     if value > (2**64 - 1):
         raise OverflowError("value does not fit into uint64")
     return value
+
+
+def satoshi_must_equal(a: int, b: int) -> None:
+    """Verify that two Satoshi values are equal.
+
+    Reference: toolbox/ts-wallet-toolbox/src/utility/satoshiUtils.ts
+               function satoshiMustEqual
+
+    Raises InvalidParameterError if values are not equal or invalid.
+
+    Args:
+        a: First Satoshi value
+        b: Second Satoshi value
+
+    Raises:
+        InvalidParameterError: If values are not equal or out of bounds
+    """
+    _ensure_within_bounds(a)
+    _ensure_within_bounds(b)
+    if a != b:
+        raise InvalidParameterError("satoshi values", f"{a} must equal {b}")
+
+
+def satoshi_must_uint64(value: int) -> int:
+    """Verify a Satoshi value is valid for uint64 conversion and return it.
+
+    Reference: toolbox/ts-wallet-toolbox/src/utility/satoshiUtils.ts
+               function satoshiMustUInt64
+
+    Returns the validated value if it's convertible to uint64.
+
+    Args:
+        value: Satoshi value to validate
+
+    Returns:
+        The input value if valid
+
+    Raises:
+        InvalidParameterError: If value is negative or exceeds uint64 bounds
+    """
+    return satoshi_to_uint64(value)
+
+
+def satoshi_must_multiply(a: int, b: int) -> int:
+    """Multiply two Satoshi values and return the result, or raise an error.
+
+    Reference: toolbox/ts-wallet-toolbox/src/utility/satoshiUtils.ts
+               function satoshiMustMultiply
+
+    Verifies that both inputs and the result are within valid Satoshi bounds.
+
+    Args:
+        a: First Satoshi value
+        b: Second Satoshi value
+
+    Returns:
+        The product a * b
+
+    Raises:
+        InvalidParameterError: If inputs are out of bounds
+        OverflowError: If the product overflows Satoshi bounds
+    """
+    _ensure_within_bounds(a)
+    _ensure_within_bounds(b)
+    result = a * b
+    _ensure_no_overflow(result)
+    return result
