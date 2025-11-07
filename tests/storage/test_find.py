@@ -73,7 +73,7 @@ def test_find_output_baskets(storage_seeded) -> None:
     future = storage.find_output_baskets({"since": datetime.utcnow()})
     assert not future
 
-    first_created = min(basket["created_at"] for basket in baskets)
+    first_created = min(basket["createdAt"] for basket in baskets)
     exclusive = storage.find_output_baskets(
         {
             "partial": {"userId": seed["user1"]["userId"]},
@@ -148,7 +148,7 @@ def test_find_monitor_and_sync_state(storage_seeded) -> None:
 
 def test_find_output_baskets_since_filter_per_user(storage_seeded) -> None:
     storage, seed = storage_seeded
-    earliest = min(basket["created_at"] for basket in seed["output_baskets"])
+    earliest = min(basket["createdAt"] for basket in seed["output_baskets"])
     later_threshold = earliest + timedelta(minutes=2)
     filtered = storage.find_output_baskets(
         {

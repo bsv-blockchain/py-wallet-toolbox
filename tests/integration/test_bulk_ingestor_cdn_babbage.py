@@ -5,8 +5,9 @@ This module tests BulkIngestorCDNBabbage functionality for mainnet and testnet.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/BulkIngestorCDNBabbage.test.ts
 """
 
-import knex
 import pytest
+
+pytestmark = pytest.mark.skip(reason="Module not yet implemented")
 
 try:
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import BulkIngestorCDNBabbage

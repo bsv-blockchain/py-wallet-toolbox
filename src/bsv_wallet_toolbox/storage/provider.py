@@ -47,6 +47,19 @@ from .models import (
     TxLabelMap,
     User,
 )
+
+# Special case mappings for camelCase/snake_case conversions
+# For cases where regex conversion would be ambiguous (e.g., "UTXOs")
+CAMEL_TO_SNAKE_OVERRIDES: dict[str, str] = {
+    "numberOfDesiredUTXOs": "number_of_desired_utxos",
+    "minimumDesiredUTXOValue": "minimum_desired_utxo_value",
+}
+
+# Reverse mapping for API response keys
+SNAKE_TO_CAMEL_OVERRIDES: dict[str, str] = {
+    v: k for k, v in CAMEL_TO_SNAKE_OVERRIDES.items()
+}
+
 from .models import (
     Transaction as TransactionModel,
 )
@@ -2139,26 +2152,42 @@ class StorageProvider:
 
     @staticmethod
     def _to_api_key(snake_case: str) -> str:
+        """Convert snake_case key to camelCase for API responses, using overrides if available."""
+        # Check for special overrides first
+        if snake_case in SNAKE_TO_CAMEL_OVERRIDES:
+            return SNAKE_TO_CAMEL_OVERRIDES[snake_case]
+        # Standard conversion
         parts = snake_case.split("_")
         return parts[0] + "".join(word.capitalize() for word in parts[1:])
 
     @staticmethod
     def _to_snake_case(camel_case: str) -> str:
-        """Convert camelCase/PascalCase keys to snake_case."""
+        """Convert camelCase/PascalCase keys to snake_case.
+
+        Examples:
+            numberOfDesiredUTXOs -> number_of_desired_utxos
+            userId -> user_id
+            isDeleted -> is_deleted
+        """
         if not camel_case:
             return camel_case
-        pattern1 = re.compile("([A-Z]+)([A-Z][a-z])")
-        pattern2 = re.compile("([a-z0-9])([A-Z])")
-        snake = pattern1.sub(r"\1_\2", camel_case)
-        snake = pattern2.sub(r"\1_\2", snake)
-        return snake.lower()
+        # Handle sequences of capital letters followed by a lowercase letter
+        # e.g., "UTXOs" -> "UT_Xos"
+        s1 = re.sub("([A-Z]+)([A-Z][a-z])", r"\1_\2", camel_case)
+        # Handle lowercase or digit followed by uppercase
+        # e.g., "OfUTXOs" -> "Of_UTX_Os"
+        return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
     @staticmethod
     def _normalize_key(key: str) -> str:
+        """Normalize key from camelCase to snake_case, using overrides if available."""
         if not isinstance(key, str):
             return key
         if "_" in key:
             return key
+        # Check for special overrides first
+        if key in CAMEL_TO_SNAKE_OVERRIDES:
+            return CAMEL_TO_SNAKE_OVERRIDES[key]
         return StorageProvider._to_snake_case(key)
 
     @classmethod

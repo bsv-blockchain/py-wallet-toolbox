@@ -1,11 +1,181 @@
 """Wallet error classes.
 
+Pythonic error hierarchy for wallet operations.
+Designed for clear, informative error handling.
+
 Reference: ts-wallet-toolbox/src/sdk/WERR_errors.ts
 """
 
 from __future__ import annotations
 
 from typing import Any
+
+
+class WalletError(Exception):
+    """Base exception for all wallet-related errors.
+
+    This is the root exception class for the wallet toolkit.
+    Use specific subclasses for more precise error handling.
+
+    Args:
+        message: Human-readable error description
+        context: Optional dict with additional error context
+
+    Example:
+        >>> raise WalletError("Operation failed")
+        >>> raise WalletError("Invalid state", {"expected": "ready", "actual": "busy"})
+    """
+
+    def __init__(self, message: str, context: dict[str, Any] | None = None) -> None:
+        """Initialize WalletError.
+
+        Args:
+            message: Error description
+            context: Optional context dictionary with error details
+        """
+        self.message = message
+        self.context = context or {}
+        super().__init__(self._format_message())
+
+    def _format_message(self) -> str:
+        """Format error message with context if available."""
+        if self.context:
+            context_str = ", ".join(f"{k}={v!r}" for k, v in self.context.items())
+            return f"{self.message} ({context_str})"
+        return self.message
+
+
+class ValidationError(WalletError):
+    """Raised when input validation fails.
+
+    Used for parameter validation, type checking, and format validation.
+
+    Args:
+        message: Error description
+        field: Optional field name that failed validation
+        value: Optional invalid value that was provided
+
+    Example:
+        >>> raise ValidationError("Invalid satoshi amount", field="amount", value=-100)
+    """
+
+    def __init__(
+        self, message: str, field: str | None = None, value: Any = None
+    ) -> None:
+        """Initialize ValidationError."""
+        context = {}
+        if field is not None:
+            context["field"] = field
+        if value is not None:
+            context["value"] = value
+        super().__init__(message, context)
+
+
+class ConfigurationError(WalletError):
+    """Raised when required configuration is missing or invalid.
+
+    Used when wallet components, storage, or key derivers are not properly configured.
+
+    Args:
+        message: Error description
+        component: Optional component name that is misconfigured
+        required: Optional list of required items that are missing
+
+    Example:
+        >>> raise ConfigurationError("Wallet not configured", component="storage")
+    """
+
+    def __init__(
+        self, message: str, component: str | None = None, required: list[str] | None = None
+    ) -> None:
+        """Initialize ConfigurationError."""
+        context = {}
+        if component is not None:
+            context["component"] = component
+        if required is not None:
+            context["required"] = required
+        super().__init__(message, context)
+
+
+class StateError(WalletError):
+    """Raised when operation is invalid for current wallet state.
+
+    Used for invalid state transitions or operations.
+
+    Args:
+        message: Error description
+        current_state: Optional current state
+        expected_state: Optional expected state(s)
+
+    Example:
+        >>> raise StateError("Cannot sign in unlocked state", current_state="unlocked")
+    """
+
+    def __init__(
+        self,
+        message: str,
+        current_state: str | None = None,
+        expected_state: str | list[str] | None = None,
+    ) -> None:
+        """Initialize StateError."""
+        context = {}
+        if current_state is not None:
+            context["current_state"] = current_state
+        if expected_state is not None:
+            context["expected_state"] = expected_state
+        super().__init__(message, context)
+
+
+class OperationError(WalletError):
+    """Raised when a wallet operation fails.
+
+    Used for business logic failures, constraint violations, and operation-specific errors.
+
+    Args:
+        message: Error description
+        operation: Optional operation name that failed
+        reason: Optional reason for the failure
+
+    Example:
+        >>> raise OperationError("Cannot sign transaction", operation="sign_action", reason="insufficient inputs")
+    """
+
+    def __init__(
+        self, message: str, operation: str | None = None, reason: str | None = None
+    ) -> None:
+        """Initialize OperationError."""
+        context = {}
+        if operation is not None:
+            context["operation"] = operation
+        if reason is not None:
+            context["reason"] = reason
+        super().__init__(message, context)
+
+
+class FormatError(WalletError):
+    """Raised when data format is invalid or incompatible.
+
+    Used for transaction format, BEEF format, or other data structure issues.
+
+    Args:
+        message: Error description
+        data_type: Optional data type that has format issue
+        expected_format: Optional expected format description
+
+    Example:
+        >>> raise FormatError("Invalid BEEF format", data_type="tx", expected_format="atomic_beef")
+    """
+
+    def __init__(
+        self, message: str, data_type: str | None = None, expected_format: str | None = None
+    ) -> None:
+        """Initialize FormatError."""
+        context = {}
+        if data_type is not None:
+            context["data_type"] = data_type
+        if expected_format is not None:
+            context["expected_format"] = expected_format
+        super().__init__(message, context)
 
 
 class InvalidParameterError(Exception):

@@ -488,7 +488,7 @@ def seed_storage(storage: StorageProvider) -> dict[str, Any]:
         "monitor_event": monitor_event,
         "proven_tx": proven_tx,
         "proven_tx_reqs": proven_tx_reqs,
-        "since_anchor": user1["created_at"],
+        "since_anchor": user1["createdAt"],
     }
 
 
