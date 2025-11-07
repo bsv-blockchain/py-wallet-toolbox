@@ -16,6 +16,20 @@ from bsv_wallet_toolbox.utils.config import (
     load_config,
 )
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
+from bsv_wallet_toolbox.utils.identity_utils import (
+    query_overlay_certificates,
+    transform_verifiable_certificates_with_trust,
+)
+from bsv_wallet_toolbox.utils.random_utils import (
+    double_sha256_be,
+    double_sha256_le,
+    random_bytes,
+    random_bytes_base64,
+    random_bytes_hex,
+    sha256_hash,
+    validate_seconds_since_epoch,
+    wait_async,
+)
 from bsv_wallet_toolbox.utils.satoshi import (
     MAX_SATOSHIS,
     satoshi_add,
@@ -166,10 +180,16 @@ __all__ = [
     "arrays_equal",
     "configure_logger",
     "create_action_tx_assembler",
+    "double_sha256_be",
+    "double_sha256_le",
     "generate_change_sdk",
     "load_config",
     "max_date",
     "optional_arrays_equal",
+    "query_overlay_certificates",
+    "random_bytes",
+    "random_bytes_base64",
+    "random_bytes_hex",
     "satoshi_add",
     "satoshi_equal",
     "satoshi_from",
@@ -180,9 +200,12 @@ __all__ = [
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",
+    "sha256_hash",
     "to_wallet_network",
+    "transform_verifiable_certificates_with_trust",
     "validate_basket_config",
     "validate_originator",
+    "validate_seconds_since_epoch",
     "verify_hex_string",
     "verify_id",
     "verify_integer",
@@ -190,4 +213,5 @@ __all__ = [
     "verify_one",
     "verify_one_or_none",
     "verify_truthy",
+    "wait_async",
 ]

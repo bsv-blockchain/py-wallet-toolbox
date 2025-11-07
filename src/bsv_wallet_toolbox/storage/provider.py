@@ -15,6 +15,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log as util_stamp_log
 from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
@@ -313,6 +314,41 @@ class StorageProvider:
                 "dbtype": row.dbtype,
                 "maxOutputScript": row.max_output_script,
             }
+
+    def destroy(self) -> None:
+        """Destroy all resources and close database connections.
+
+        Summary:
+            Closes all database connections, disposing of connection pools
+            and releasing all database resources. After calling this, the
+            StorageProvider instance should not be used.
+
+        TS parity:
+            Mirrors TypeScript destroy() for resource cleanup.
+
+        Args:
+            None
+
+        Returns:
+            None
+
+        Raises:
+            None
+
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageKnex.ts (destroy)
+        """
+        try:
+            # Close all sessions
+            if hasattr(self, "SessionLocal") and self.SessionLocal:
+                self.SessionLocal.close_all()
+
+            # Dispose of engine connection pool
+            if hasattr(self, "engine") and self.engine:
+                self.engine.dispose()
+        except Exception:
+            # Silently fail - destruction is best effort
+            pass
 
     # ------------------------------------------------------------------
     # Users
@@ -2896,19 +2932,34 @@ class StorageProvider:
         record remains in storage for history/audit purposes but is no longer
         considered active for operations like key derivation or signing.
 
+        The certificate is identified by the combination of type, serialNumber,
+        and certifier. Once relinquished, it will not be used for key derivation,
+        signing, or other wallet operations, but remains available for audit/history.
+
         Args:
-            _auth: Auth object containing userId (validated by caller)
+            _auth: Auth object containing userId (used for authorization context)
             args: Dict containing:
                 - type: base64-encoded certificate type bytes
                 - serialNumber: base64-encoded serial number bytes
                 - certifier: hex string of certifier identity key
 
         Returns:
-            bool: Always True on successful completion (or if certificate not found)
+            bool: True on successful completion (or if certificate not found)
+
+        Raises:
+            WalletError: If required arguments are missing
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (relinquishCertificate)
+            - toolbox/ts-wallet-toolbox/src/storage/methods/relinquishCertificate.ts
         """
+        # Validate required fields
+        if not args:
+            raise WalletError("args object is required for relinquishCertificate")
+
+        if "type" not in args or "serialNumber" not in args or "certifier" not in args:
+            raise WalletError("args must contain type, serialNumber, and certifier")
+
         session = self.SessionLocal()
         try:
             cert_type = args.get("type", b"")
@@ -2925,11 +2976,15 @@ class StorageProvider:
             cert = result.scalar_one_or_none()
 
             if cert:
+                # Mark as deleted (soft delete)
                 cert.is_deleted = True
                 session.add(cert)
                 session.commit()
 
             return True
+        except Exception as e:
+            session.rollback()
+            raise WalletError(f"Failed to relinquish certificate: {e!s}")
         finally:
             session.close()
 
@@ -3001,23 +3056,55 @@ class StorageProvider:
         finally:
             session.close()
 
-    def insert_certificate_auth(self, _auth: dict[str, Any], certificate: dict[str, Any]) -> int:
-        """Insert a certificate with auth validation (wrapper for authorized certificate insertion).
+    def insert_certificate_auth(self, auth: dict[str, Any], certificate: dict[str, Any]) -> int:
+        """Insert a certificate with auth validation (authorized certificate insertion).
 
-        Wrapper that validates auth context before inserting a certificate.
-        Currently delegates to insert_certificate; auth validation happens at call site.
+        Inserts a new certificate record for the authenticated user. The certificate
+        is associated with the user_id from the auth context and includes all metadata
+        for certificate-based authentication and authorization.
 
         Args:
-            _auth: Auth object containing userId (validated at call site)
-            certificate: Certificate data dict with type, serialNumber, subject, etc.
+            auth: Auth object containing userId (required for authorization context)
+            certificate: Certificate data dict with:
+                - type: base64-encoded certificate type bytes
+                - serialNumber: base64-encoded serial number bytes
+                - subject: Certificate subject identifier
+                - certifier: Certifier identity key
+                - verifier: Verifier identity key (optional)
+                - revocationOutpoint: Revocation outpoint (if applicable)
+                - signature: Certificate signature
 
         Returns:
             int: Primary key of newly inserted certificate
 
+        Raises:
+            WalletError: If auth context is invalid or certificate data is missing
+            sqlalchemy.exc.IntegrityError: If certificate uniqueness constraint violated
+
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (insertCertificateAuth)
+            - toolbox/ts-wallet-toolbox/src/storage/methods/insertCertificateAuth.ts
         """
-        return self.insert_certificate(certificate)
+        # Validate auth context
+        if not auth or "userId" not in auth:
+            raise WalletError("auth object with userId is required for insertCertificateAuth")
+
+        user_id = auth["userId"]
+
+        # Validate certificate data
+        if not certificate:
+            raise WalletError("certificate data is required")
+
+        required_fields = ["type", "serialNumber", "subject", "certifier", "signature"]
+        for field in required_fields:
+            if field not in certificate:
+                raise WalletError(f"certificate.{field} is required")
+
+        # Delegate to base insert_certificate with user_id context
+        cert_data = certificate.copy()
+        cert_data["userId"] = user_id
+
+        return self.insert_certificate(cert_data)
 
     def get_beef_for_transaction(self, txid: str) -> bytes | None:
         """Retrieve BEEF (Binary Encoded Expression Format) for a transaction.
