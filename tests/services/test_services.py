@@ -24,6 +24,35 @@ except ImportError:
     IMPORTS_AVAILABLE = False
 
 
+class _HeaderListeners:
+    """Helper class for header listener stubs."""
+
+    @staticmethod
+    def woc_headers_bulk_listener(*_args, **_kwargs) -> bool:
+        """Stub for bulk header listening from WhatsOnChain.
+
+        Accepts: height_from, height_to, header_handler, error_handler, stop_token, chain
+        """
+        # This is a placeholder for the actual implementation
+        # The test that uses this is skipped, so it won't be called in normal testing
+        return True
+
+    @staticmethod
+    def woc_headers_live_listener(*_args, **_kwargs) -> bool:
+        """Stub for live header listening from WhatsOnChain.
+
+        Accepts: enqueue_handler, error_handler, stop_token, chain, logger
+        """
+        # This is a placeholder for the actual implementation
+        # The test that uses this is skipped, so it won't be called in normal testing
+        return True
+
+
+# Create aliases for compatibility with test code
+WocHeadersBulkListener = _HeaderListeners.woc_headers_bulk_listener
+WocHeadersLiveListener = _HeaderListeners.woc_headers_live_listener
+
+
 class TestServices:
     """Test suite for WhatsOnChain services.
 

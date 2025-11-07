@@ -4,7 +4,8 @@ Reference: toolbox/ts-wallet-toolbox/src/utility/ (config/logger utilities)
 """
 
 import logging
-import os
+from os import environ
+from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
@@ -33,15 +34,14 @@ def load_config(env_file: str | None = None) -> dict[str, Any]:
     # Load .env file if provided or if default .env exists
     if env_file is not None:
         load_dotenv(env_file)
+    # Try to load default .env file
+    elif Path(".env").exists():
+        load_dotenv(".env")
     else:
-        # Try to load default .env file
-        if os.path.exists(".env"):
-            load_dotenv(".env")
-        else:
-            load_dotenv()
+        load_dotenv()
 
     # Extract all environment variables as configuration
-    config = dict(os.environ)
+    config = dict(environ)
     return config
 
 
@@ -124,4 +124,3 @@ def create_action_tx_assembler() -> dict[str, Any]:
     }
 
     return assembler_config
-

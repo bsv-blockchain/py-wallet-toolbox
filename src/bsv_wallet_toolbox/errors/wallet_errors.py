@@ -59,9 +59,7 @@ class ValidationError(WalletError):
         >>> raise ValidationError("Invalid satoshi amount", field="amount", value=-100)
     """
 
-    def __init__(
-        self, message: str, field: str | None = None, value: Any = None
-    ) -> None:
+    def __init__(self, message: str, field: str | None = None, value: Any = None) -> None:
         """Initialize ValidationError."""
         context = {}
         if field is not None:
@@ -85,9 +83,7 @@ class ConfigurationError(WalletError):
         >>> raise ConfigurationError("Wallet not configured", component="storage")
     """
 
-    def __init__(
-        self, message: str, component: str | None = None, required: list[str] | None = None
-    ) -> None:
+    def __init__(self, message: str, component: str | None = None, required: list[str] | None = None) -> None:
         """Initialize ConfigurationError."""
         context = {}
         if component is not None:
@@ -140,9 +136,7 @@ class OperationError(WalletError):
         >>> raise OperationError("Cannot sign transaction", operation="sign_action", reason="insufficient inputs")
     """
 
-    def __init__(
-        self, message: str, operation: str | None = None, reason: str | None = None
-    ) -> None:
+    def __init__(self, message: str, operation: str | None = None, reason: str | None = None) -> None:
         """Initialize OperationError."""
         context = {}
         if operation is not None:
@@ -166,9 +160,7 @@ class FormatError(WalletError):
         >>> raise FormatError("Invalid BEEF format", data_type="tx", expected_format="atomic_beef")
     """
 
-    def __init__(
-        self, message: str, data_type: str | None = None, expected_format: str | None = None
-    ) -> None:
+    def __init__(self, message: str, data_type: str | None = None, expected_format: str | None = None) -> None:
         """Initialize FormatError."""
         context = {}
         if data_type is not None:

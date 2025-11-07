@@ -47,6 +47,9 @@ from .models import (
     TxLabelMap,
     User,
 )
+from .models import (
+    Transaction as TransactionModel,
+)
 
 # Special case mappings for camelCase/snake_case conversions
 # For cases where regex conversion would be ambiguous (e.g., "UTXOs")
@@ -56,13 +59,7 @@ CAMEL_TO_SNAKE_OVERRIDES: dict[str, str] = {
 }
 
 # Reverse mapping for API response keys
-SNAKE_TO_CAMEL_OVERRIDES: dict[str, str] = {
-    v: k for k, v in CAMEL_TO_SNAKE_OVERRIDES.items()
-}
-
-from .models import (
-    Transaction as TransactionModel,
-)
+SNAKE_TO_CAMEL_OVERRIDES: dict[str, str] = {v: k for k, v in CAMEL_TO_SNAKE_OVERRIDES.items()}
 
 
 class StorageProvider:

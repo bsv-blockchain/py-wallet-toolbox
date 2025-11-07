@@ -24,6 +24,18 @@ except ImportError:
     IMPORTS_AVAILABLE = False
 
 
+class KnexStub:
+    """Stub for knex module - used for database queries in tests."""
+
+    @staticmethod
+    def make_knex(_config: dict) -> None:
+        """Stub for knex.make_knex - creates a knex instance."""
+        # This is a placeholder - the test is skipped anyway
+        return None
+
+
+knex = KnexStub()
+
 ROOT_FOLDER = "./tests/integration/data"
 
 

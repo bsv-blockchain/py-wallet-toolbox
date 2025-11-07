@@ -27,6 +27,13 @@ except ImportError:
 SAMPLE_DATA = [3, 1, 4, 1, 5, 9]
 
 
+def xor_bytes(a: bytes | list[int], b: bytes | list[int]) -> bytes:
+    """XOR two byte arrays."""
+    a_bytes = bytes(a) if isinstance(a, (list, bytes)) else a.encode()
+    b_bytes = bytes(b) if isinstance(b, (list, bytes)) else b.encode()
+    return bytes(x ^ y for x, y in zip(a_bytes, b_bytes, strict=False))
+
+
 class TestPrivilegedKeyManager:
     """Test suite for PrivilegedKeyManager.
 
