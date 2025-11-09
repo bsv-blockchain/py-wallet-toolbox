@@ -13,9 +13,19 @@ from bsv_wallet_toolbox.manager.simple_wallet_manager import SimpleWalletManager
 from bsv_wallet_toolbox.manager.wallet_permissions_manager import (
     WalletPermissionsManager,
 )
+from bsv_wallet_toolbox.manager.wallet_settings_manager import (
+    DEFAULT_SETTINGS,
+    TESTNET_DEFAULT_SETTINGS,
+    WalletSettings,
+    WalletSettingsManager,
+)
 
 __all__ = [
+    "DEFAULT_SETTINGS",
+    "TESTNET_DEFAULT_SETTINGS",
     "CWIStyleWalletManager",
     "SimpleWalletManager",
     "WalletPermissionsManager",
+    "WalletSettings",
+    "WalletSettingsManager",
 ]
