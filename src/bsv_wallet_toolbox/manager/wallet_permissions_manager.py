@@ -700,4 +700,3 @@ class WalletPermissionsManager:
         # TODO: Phase 4 - Implement caller authorization checks
         # TODO: Phase 4 - Verify originator against admin list
         # TODO: Phase 4 - Check permission tokens from storage
-        pass

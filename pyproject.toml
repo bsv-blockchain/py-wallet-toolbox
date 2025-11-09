@@ -19,6 +19,7 @@ classifiers = [
 
 dependencies = [
     "bsv-sdk @ git+https://github.com/bsv-blockchain/py-sdk.git@develop-port",
+    "requests>=2.31",
     "SQLAlchemy>=2.0",
     "python-dotenv>=1.0",
 ]
