@@ -627,6 +627,10 @@ class WalletPermissionsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
+        # TODO: Phase 4 - Implement persistent storage (SQLite/PostgreSQL)
+        # TODO: Phase 4 - Serialize permission tokens to database
+        # TODO: Phase 4 - Handle concurrent access with transactions
+        # TODO: Phase 4 - Add backup/recovery mechanism
         # Permissions are already stored in-memory in _permissions dict
         # In production, sync to persistent storage here
 
@@ -693,3 +697,7 @@ class WalletPermissionsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
+        # TODO: Phase 4 - Implement caller authorization checks
+        # TODO: Phase 4 - Verify originator against admin list
+        # TODO: Phase 4 - Check permission tokens from storage
+        pass
