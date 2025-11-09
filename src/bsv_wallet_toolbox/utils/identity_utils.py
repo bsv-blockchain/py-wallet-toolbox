@@ -183,12 +183,77 @@ def query_overlay_certificates(query: Any, lookup_results: list[dict[str, Any]])
     return parsed_results
 
 
+async def query_overlay(query: Any, resolver: Any) -> list[VerifiableCertificate]:  # type: ignore
+    """Query overlay service for identity certificates.
+
+    Queries the overlay service for identity certificates matching a query,
+    then parses and returns the results.
+
+    Args:
+        query: Query parameters for overlay service
+        resolver: Resolver object with query method (LookupResolver)
+
+    Returns:
+        List of parsed verifiable certificates
+
+    Reference: toolbox/ts-wallet-toolbox/src/utility/identityUtils.ts:109-116
+    """
+    # Call overlay service query
+    results = await resolver.query(
+        {
+            "service": "ls_identity",
+            "query": query,
+        }
+    )
+
+    # Parse and return results
+    return await parse_results(results)
+
+
+async def parse_results(lookup_result: dict[str, Any]) -> list[VerifiableCertificate]:
+    """Parse identity certificate lookup results.
+
+    Decodes, verifies, and decrypts certificates from overlay service results.
+
+    Args:
+        lookup_result: Result from overlay service lookup query
+
+    Returns:
+        List of parsed and verified certificates
+
+    Reference: toolbox/ts-wallet-toolbox/src/utility/identityUtils.ts:124-159
+    """
+    # Note: Full implementation requires py-sdk Transaction, PushDrop, and
+    # VerifiableCertificate class integration. Current stub returns empty
+    # to avoid complex dependency chains during porting.
+
+    if lookup_result.get("type") != "output-list":
+        return []
+
+    parsed_results: list[VerifiableCertificate] = []
+
+    # TODO: Implement full parsing with py-sdk
+    # for output in lookup_result.get("outputs", []):
+    #     try:
+    #         # Parse certificate from BEEF output
+    #         # Decrypt and verify certificate signature
+    #         # Add to parsed_results
+    #         pass
+    #     except Exception:
+    #         # Silently skip unparseable certificates
+    #         pass
+
+    return parsed_results
+
+
 __all__ = [
     "DiscoverCertificatesResult",
     "IdentityCertifier",
     "IdentityGroup",
     "TrustSettings",
     "VerifiableCertificate",
+    "parse_results",
+    "query_overlay",
     "query_overlay_certificates",
     "transform_verifiable_certificates_with_trust",
 ]

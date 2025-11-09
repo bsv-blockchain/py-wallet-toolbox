@@ -10,16 +10,28 @@ from types import SimpleNamespace
 
 from dotenv import load_dotenv
 
+from bsv_wallet_toolbox.utils.aggregate_results import aggregate_action_results
+from bsv_wallet_toolbox.utils.buffer_utils import (
+    as_array,
+    as_buffer,
+    as_string,
+    as_uint8array,
+)
 from bsv_wallet_toolbox.utils.config import (
     configure_logger,
     create_action_tx_assembler,
     load_config,
 )
+from bsv_wallet_toolbox.utils.format_utils import Format
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
 from bsv_wallet_toolbox.utils.identity_utils import (
+    parse_results,
+    query_overlay,
     query_overlay_certificates,
     transform_verifiable_certificates_with_trust,
 )
+from bsv_wallet_toolbox.utils.merkle_path_utils import convert_proof_to_merkle_path
+from bsv_wallet_toolbox.utils.parse_tx_script_offsets import parse_tx_script_offsets
 from bsv_wallet_toolbox.utils.random_utils import (
     double_sha256_be,
     double_sha256_le,
@@ -30,6 +42,7 @@ from bsv_wallet_toolbox.utils.random_utils import (
     validate_seconds_since_epoch,
     wait_async,
 )
+from bsv_wallet_toolbox.utils.reader_uint8array import ReaderUint8Array
 from bsv_wallet_toolbox.utils.satoshi import (
     MAX_SATOSHIS,
     satoshi_add,
@@ -175,10 +188,18 @@ def verify_one_or_none(value: object, description: str | None = None) -> None:
 
 __all__ = [
     "MAX_SATOSHIS",
+    "Format",
+    "ReaderUint8Array",
     "Setup",
     "TestUtils",
+    "aggregate_action_results",
     "arrays_equal",
+    "as_array",
+    "as_buffer",
+    "as_string",
+    "as_uint8array",
     "configure_logger",
+    "convert_proof_to_merkle_path",
     "create_action_tx_assembler",
     "double_sha256_be",
     "double_sha256_le",
@@ -186,6 +207,9 @@ __all__ = [
     "load_config",
     "max_date",
     "optional_arrays_equal",
+    "parse_results",
+    "parse_tx_script_offsets",
+    "query_overlay",
     "query_overlay_certificates",
     "random_bytes",
     "random_bytes_base64",
