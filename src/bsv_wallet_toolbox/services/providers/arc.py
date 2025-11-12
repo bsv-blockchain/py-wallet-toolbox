@@ -15,25 +15,26 @@ Key Features:
 
 Typical Usage:
     from bsv_wallet_toolbox.services.providers.arc import ARC, ArcConfig
-    
+
     # Create an ARC broadcaster instance
     config = ArcConfig(api_key='your-api-key', deployment_id='my-app-v1')
     arc = ARC('https://api.taal.com/arc', config=config)
-    
+
     # Broadcast a raw transaction
     result = arc.post_raw_tx('01000000...')
-    
+
     # Broadcast a BEEF with multiple txids
     result = arc.post_beef(beef, ['txid1', 'txid2'])
 
 Reference Implementation: ts-wallet-toolbox/src/services/providers/ARC.ts
 """
+
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
-import uuid
+from typing import Any
 
 import requests
 
@@ -44,15 +45,15 @@ from bsv_wallet_toolbox.utils.utility_helpers import double_sha256_be
 class ArcConfig:
     """Configuration options for the ARC broadcaster."""
 
-    api_key: Optional[str] = None
+    api_key: str | None = None
     """Authentication token for the ARC API (Bearer prefix added automatically)."""
-    deployment_id: Optional[str] = None
+    deployment_id: str | None = None
     """Deployment ID for transaction tracking (randomly generated if not set)."""
-    callback_url: Optional[str] = None
+    callback_url: str | None = None
     """Webhook URL for proof and double spend notifications."""
-    callback_token: Optional[str] = None
+    callback_token: str | None = None
     """Authorization token for callback notifications."""
-    headers: Optional[dict[str, str]] = None
+    headers: dict[str, str] | None = None
     """Additional HTTP headers to attach to all requests."""
 
 
@@ -66,7 +67,7 @@ class ArcResponse:
     """Additional information about transaction status."""
     tx_status: str
     """Transaction status (SEEN_ON_NETWORK, STORED, DOUBLE_SPEND_ATTEMPTED, etc.)."""
-    competing_txs: Optional[list[str]] = None
+    competing_txs: list[str] | None = None
     """List of competing transaction IDs if double spend detected."""
 
 
@@ -78,7 +79,7 @@ class ArcMinerGetTxData:
     title: str
     block_hash: str
     block_height: int
-    competing_txs: Optional[list[str]]
+    competing_txs: list[str] | None
     extra_info: str
     merkle_path: str
     timestamp: str
@@ -90,9 +91,9 @@ class ArcMinerGetTxData:
 class PostTxResultForTxidError:
     """Error details for transaction submission."""
 
-    status: Optional[str] = None
-    detail: Optional[str] = None
-    more: Optional[dict[str, Any]] = None
+    status: str | None = None
+    detail: str | None = None
+    more: dict[str, Any] | None = None
 
 
 @dataclass
@@ -101,9 +102,9 @@ class PostTxResultForTxid:
 
     txid: str
     status: str  # 'success' or 'error'
-    data: Optional[Any] = None
+    data: Any | None = None
     double_spend: bool = False
-    competing_txs: Optional[list[str]] = None
+    competing_txs: list[str] | None = None
     service_error: bool = False
     notes: list[dict[str, Any]] = field(default_factory=list)
 
@@ -147,8 +148,8 @@ class ARC:
     def __init__(
         self,
         url: str,
-        config: Optional[ArcConfig | str] = None,
-        name: Optional[str] = None,
+        config: ArcConfig | str | None = None,
+        name: str | None = None,
     ) -> None:
         """Initialize ARC broadcaster.
 
@@ -164,9 +165,9 @@ class ARC:
             # Config as simple API key string
             self.api_key = config
             self.deployment_id = default_deployment_id()
-            self.callback_url: Optional[str] = None
-            self.callback_token: Optional[str] = None
-            self.headers: Optional[dict[str, str]] = None
+            self.callback_url: str | None = None
+            self.callback_token: str | None = None
+            self.headers: dict[str, str] | None = None
         else:
             # Config as ArcConfig object
             cfg = config or ArcConfig()
@@ -207,7 +208,7 @@ class ARC:
     def post_raw_tx(
         self,
         raw_tx: str,
-        txids: Optional[list[str]] = None,
+        txids: list[str] | None = None,
     ) -> PostTxResultForTxid:
         """Broadcast a raw transaction via ARC.
 
@@ -332,7 +333,7 @@ class ARC:
         except Exception as e:
             result.status = "error"
             result.service_error = True
-            result.data = f"ERROR: {str(e)}"
+            result.data = f"ERROR: {e!s}"
             result.notes.append(
                 {
                     **nne,
@@ -427,7 +428,7 @@ class ARC:
 
         return result
 
-    def get_tx_data(self, txid: str) -> Optional[ArcMinerGetTxData]:
+    def get_tx_data(self, txid: str) -> ArcMinerGetTxData | None:
         """Query transaction status from ARC.
 
         Retrieves detailed transaction data including block hash, height, merkle path,
@@ -465,4 +466,3 @@ class ARC:
             pass
 
         return None
-

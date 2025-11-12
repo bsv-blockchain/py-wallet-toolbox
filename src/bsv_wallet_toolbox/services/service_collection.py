@@ -13,12 +13,12 @@ Key Features:
 
 Typical Usage:
     from bsv_wallet_toolbox.services.service_collection import ServiceCollection
-    
+
     # Create a service collection
     services = ServiceCollection('getMerklePath')
     services.add({'name': 'Bitails', 'service': bitails.get_merkle_path})
     services.add({'name': 'WhatsOnChain', 'service': woc.get_merkle_path})
-    
+
     # Get current service and make a call
     stc = services.service_to_call
     try:
@@ -30,11 +30,12 @@ Typical Usage:
 
 Reference Implementation: ts-wallet-toolbox/src/services/ServiceCollection.ts
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Generic, List, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -52,9 +53,9 @@ class ServiceCall:
     """Duration of the call in milliseconds."""
     success: bool
     """True iff service provider successfully processed the request."""
-    result: Optional[str] = None
+    result: str | None = None
     """Simple text summary of result (e.g., 'valid utxo')."""
-    error: Optional[dict[str, Any]] = None
+    error: dict[str, Any] | None = None
     """Error code and message if exception was thrown."""
 
 
@@ -75,9 +76,9 @@ class ProviderCallHistory:
 
     service_name: str
     provider_name: str
-    calls: List[ServiceCall] = field(default_factory=list)
-    total_counts: Optional[ResetCount] = None
-    reset_counts: List[ResetCount] = field(default_factory=list)
+    calls: list[ServiceCall] = field(default_factory=list)
+    total_counts: ResetCount | None = None
+    reset_counts: list[ResetCount] = field(default_factory=list)
 
 
 @dataclass
@@ -87,8 +88,8 @@ class ServiceCallHistoryEntry:
     when: str
     msecs: int
     success: bool
-    result: Optional[str] = None
-    error: Optional[dict[str, Any]] = None
+    result: str | None = None
+    error: dict[str, Any] | None = None
 
 
 @dataclass
@@ -108,9 +109,9 @@ class ProviderCallHistoryEntry:
 
     service_name: str
     provider_name: str
-    calls: List[ServiceCallHistoryEntry] = field(default_factory=list)
-    total_counts: Optional[dict[str, Any]] = None
-    reset_counts: List[ResetCountEntry] = field(default_factory=list)
+    calls: list[ServiceCallHistoryEntry] = field(default_factory=list)
+    total_counts: dict[str, Any] | None = None
+    reset_counts: list[ResetCountEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -118,7 +119,7 @@ class ServiceCallHistory:
     """Complete call history for a service."""
 
     service_name: str
-    history_by_provider: Dict[str, ProviderCallHistoryEntry] = field(default_factory=dict)
+    history_by_provider: dict[str, ProviderCallHistoryEntry] = field(default_factory=dict)
 
 
 @dataclass
@@ -147,7 +148,7 @@ class ServiceCollection(Generic[T]):
     def __init__(
         self,
         service_name: str,
-        services: Optional[List[dict[str, Any]]] = None,
+        services: list[dict[str, Any]] | None = None,
     ) -> None:
         """Initialize ServiceCollection.
 
@@ -156,10 +157,10 @@ class ServiceCollection(Generic[T]):
             services: Optional list of initial services with 'name' and 'service' keys.
         """
         self.service_name = service_name
-        self.services: List[dict[str, Any]] = services or []
+        self.services: list[dict[str, Any]] = services or []
         self._index = 0
         self.since = datetime.utcnow()
-        self._history_by_provider: Dict[str, ProviderCallHistory] = {}
+        self._history_by_provider: dict[str, ProviderCallHistory] = {}
 
     def add(self, service_entry: dict[str, Any]) -> ServiceCollection[T]:
         """Add a provider to the collection.
@@ -222,7 +223,7 @@ class ServiceCollection(Generic[T]):
         return self.get_service_to_call(self._index)
 
     @property
-    def all_services_to_call(self) -> List[ServiceToCall[T]]:
+    def all_services_to_call(self) -> list[ServiceToCall[T]]:
         """Get service descriptors for all providers."""
         return [self.get_service_to_call(i) for i in range(len(self.services))]
 
@@ -238,7 +239,7 @@ class ServiceCollection(Generic[T]):
                 break
 
     @property
-    def all_services(self) -> List[T]:
+    def all_services(self) -> list[T]:
         """Get all service instances."""
         return [s.get("service") for s in self.services]
 
@@ -328,7 +329,7 @@ class ServiceCollection(Generic[T]):
     def add_service_call_success(
         self,
         stc: ServiceToCall[T],
-        result: Optional[str] = None,
+        result: str | None = None,
     ) -> None:
         """Record a successful service call.
 
@@ -351,7 +352,7 @@ class ServiceCollection(Generic[T]):
     def add_service_call_failure(
         self,
         stc: ServiceToCall[T],
-        result: Optional[str] = None,
+        result: str | None = None,
     ) -> None:
         """Record a failed service call.
 
@@ -470,4 +471,3 @@ class ServiceCollection(Generic[T]):
                     prov_history.reset_counts = prov_history.reset_counts[:MAX_CALL_HISTORY]
 
         return history
-

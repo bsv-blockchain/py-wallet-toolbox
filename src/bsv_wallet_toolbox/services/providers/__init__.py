@@ -8,8 +8,8 @@ This package provides multiple provider implementations for wallet-toolbox integ
 Reference: toolbox/ts-wallet-toolbox/src/services/providers/
 """
 
-from .whatsonchain import WhatsOnChain
-from .bitails import Bitails
 from .arc import ARC, ArcConfig
+from .bitails import Bitails
+from .whatsonchain import WhatsOnChain
 
-__all__ = ["WhatsOnChain", "Bitails", "ARC", "ArcConfig"]
+__all__ = ["ARC", "ArcConfig", "Bitails", "WhatsOnChain"]

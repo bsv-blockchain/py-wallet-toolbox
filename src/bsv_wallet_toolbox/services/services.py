@@ -19,15 +19,16 @@ Phase 4 TODO:
 # TODO: Phase 4 - Integrate with Chaintracks for advanced sync
 """
 
+from collections.abc import Callable
 from time import time
-from typing import Any, Callable
+from typing import Any
 
 from bsv.broadcasters.arc import ARC, ARCConfig
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
 
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
-from .providers.arc import ARC as ArcProvider, ArcConfig as ArcProviderConfig
+from .providers.arc import ArcConfig as ArcProviderConfig
 from .providers.bitails import Bitails
 from .providers.whatsonchain import WhatsOnChain
 from .service_collection import ServiceCollection
@@ -70,23 +71,14 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
         },
     }
 
-    # Chaintracks URL for fiat exchange rates
-    chaintracks_url = f"https://{chain}net-chaintracks.babbage.systems"
-    chaintracks_fiat_exchange_rates_url = ""  # Empty as per TS implementation
+    # Chaintracks URL for fiat exchange rates (empty as per TS implementation)
+    chaintracks_fiat_exchange_rates_url = ""
 
     # ARC TAAL default URL
-    arc_url = (
-        "https://arc.taal.com"
-        if chain == "main"
-        else "https://arc-test.taal.com"
-    )
+    arc_url = "https://arc.taal.com" if chain == "main" else "https://arc-test.taal.com"
 
     # ARC GorillaPool default URL
-    arc_gorillapool_url = (
-        "https://arc.gorillapool.io"
-        if chain == "main"
-        else None
-    )
+    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else None
 
     return WalletServicesOptions(
         chain=chain,
@@ -149,8 +141,8 @@ class Services(WalletServices):
     # Provider instances (TypeScript structure)
     options: WalletServicesOptions
     whatsonchain: WhatsOnChain
-    arc_taal: ArcProvider | None = None
-    arc_gorillapool: ArcProvider | None = None
+    arc_taal: ARC | None = None
+    arc_gorillapool: ARC | None = None
     bitails: Bitails | None = None
 
     # Service collections for multi-provider failover
@@ -212,7 +204,7 @@ class Services(WalletServices):
                 api_key=self.options.get("arcApiKey"),
                 headers=self.options.get("arcHeaders"),
             )
-            self.arc_taal = ArcProvider(arc_url, config=arc_config, name="arcTaal")
+            self.arc_taal = ARC(arc_url, config=arc_config, name="arcTaal")
 
         # Initialize ARC GorillaPool provider (optional)
         arc_gorillapool_url = self.options.get("arcGorillaPoolUrl")
@@ -221,7 +213,7 @@ class Services(WalletServices):
                 api_key=self.options.get("arcGorillaPoolApiKey"),
                 headers=self.options.get("arcGorillaPoolHeaders"),
             )
-            self.arc_gorillapool = ArcProvider(
+            self.arc_gorillapool = ARC(
                 arc_gorillapool_url,
                 config=arc_gorillapool_config,
                 name="arcGorillaPool",
@@ -242,46 +234,30 @@ class Services(WalletServices):
         """
         # getMerklePath collection
         self.get_merkle_path_services = ServiceCollection("getMerklePath")
-        self.get_merkle_path_services.add(
-            {"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path}
-        )
+        self.get_merkle_path_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path})
         if self.bitails:
-            self.get_merkle_path_services.add(
-                {"name": "Bitails", "service": self.bitails.get_merkle_path}
-            )
+            self.get_merkle_path_services.add({"name": "Bitails", "service": self.bitails.get_merkle_path})
 
         # getRawTx collection
         self.get_raw_tx_services = ServiceCollection("getRawTx")
-        self.get_raw_tx_services.add(
-            {"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx_result}
-        )
+        self.get_raw_tx_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx_result})
 
         # postBeef collection
         self.post_beef_services = ServiceCollection("postBeef")
         if self.arc_gorillapool:
-            self.post_beef_services.add(
-                {"name": "arcGorillaPool", "service": self.arc_gorillapool.post_beef}
-            )
+            self.post_beef_services.add({"name": "arcGorillaPool", "service": self.arc_gorillapool.post_beef})
         if self.arc_taal:
-            self.post_beef_services.add(
-                {"name": "arcTaal", "service": self.arc_taal.post_beef}
-            )
+            self.post_beef_services.add({"name": "arcTaal", "service": self.arc_taal.post_beef})
         if self.bitails:
-            self.post_beef_services.add(
-                {"name": "Bitails", "service": self.bitails.post_beef}
-            )
+            self.post_beef_services.add({"name": "Bitails", "service": self.bitails.post_beef})
 
         # getUtxoStatus collection
         self.get_utxo_status_services = ServiceCollection("getUtxoStatus")
-        self.get_utxo_status_services.add(
-            {"name": "WhatsOnChain", "service": self.whatsonchain.get_utxo_status}
-        )
+        self.get_utxo_status_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_utxo_status})
 
         # getScriptHistory collection
         self.get_script_history_services = ServiceCollection("getScriptHistory")
-        self.get_script_history_services.add(
-            {"name": "WhatsOnChain", "service": self.whatsonchain.get_script_history}
-        )
+        self.get_script_history_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_script_history})
 
         # getTransactionStatus collection
         self.get_transaction_status_services = ServiceCollection("getTransactionStatus")

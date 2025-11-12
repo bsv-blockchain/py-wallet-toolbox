@@ -11,25 +11,23 @@ Key Features:
 
 Typical Usage:
     from bsv_wallet_toolbox.services.providers.bitails import Bitails
-    
+
     # Create a Bitails provider instance
     bitails = Bitails(chain='main', config={'api_key': 'your-api-key'})
-    
+
     # Broadcast transactions
     result = bitails.post_raws(['tx1_hex', 'tx2_hex'], ['txid1', 'txid2'])
 
 Reference Implementation: ts-wallet-toolbox/src/services/providers/Bitails.ts
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import requests
-
-from bsv.hash import hash256
-from bsv.utils import Utils
 
 from bsv_wallet_toolbox.utils.utility_helpers import double_sha256_be
 
@@ -38,9 +36,9 @@ from bsv_wallet_toolbox.utils.utility_helpers import double_sha256_be
 class BitailsConfig:
     """Configuration options for the Bitails provider."""
 
-    api_key: Optional[str] = None
+    api_key: str | None = None
     """Authentication token for Bitails API."""
-    headers: Optional[dict[str, str]] = None
+    headers: dict[str, str] | None = None
     """Additional HTTP headers."""
 
 
@@ -48,9 +46,9 @@ class BitailsConfig:
 class BitailsPostRawsResult:
     """Response entry from Bitails broadcast endpoint."""
 
-    txid: Optional[str] = None
+    txid: str | None = None
     """Transaction ID (may be populated by response or inferred from raw)."""
-    error: Optional[dict[str, Any]] = None
+    error: dict[str, Any] | None = None
     """Error details if broadcast failed (contains 'code' and 'message')."""
 
 
@@ -75,7 +73,7 @@ class ReqHistoryNote:
     name: str
     when: str
     what: str
-    **extra: dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -85,7 +83,7 @@ class TxidResult:
     txid: str
     status: str  # 'success' or 'error'
     double_spend: bool = False
-    competing_txs: Optional[list[str]] = None
+    competing_txs: list[str] | None = None
     notes: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -105,9 +103,9 @@ class GetMerklePathResult:
 
     name: str
     notes: list[dict[str, Any]] = field(default_factory=list)
-    merkle_path: Optional[Any] = None
-    header: Optional[Any] = None
-    error: Optional[Exception] = None
+    merkle_path: Any | None = None
+    header: Any | None = None
+    error: Exception | None = None
 
 
 class Bitails:
@@ -126,7 +124,7 @@ class Bitails:
     def __init__(
         self,
         chain: str = "main",
-        config: Optional[BitailsConfig] = None,
+        config: BitailsConfig | None = None,
     ) -> None:
         """Initialize Bitails provider.
 
@@ -138,11 +136,7 @@ class Bitails:
         config = config or BitailsConfig()
 
         self.api_key = config.api_key or ""
-        self.url = (
-            "https://api.bitails.io/"
-            if chain == "main"
-            else "https://test-api.bitails.io/"
-        )
+        self.url = "https://api.bitails.io/" if chain == "main" else "https://test-api.bitails.io/"
         self._default_headers = config.headers or {}
 
     def get_http_headers(self) -> dict[str, str]:
@@ -179,6 +173,7 @@ class Bitails:
 
         Reference: Bitails.ts (postBeef)
         """
+
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
 
@@ -187,7 +182,9 @@ class Bitails:
 
         now = datetime.utcnow().isoformat()
         nn = make_note("BitailsPostBeef", now)
-        nne = make_note_extended("BitailsPostBeef", now, beef.to_hex() if hasattr(beef, "to_hex") else "", ",".join(txids))
+        beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else ""
+        txids_str = ",".join(txids)
+        nne = make_note_extended("BitailsPostBeef", now, beef_hex, txids_str)
 
         note: dict[str, Any] = {**nn, "what": "postBeef"}
 
@@ -214,7 +211,7 @@ class Bitails:
     def post_raws(
         self,
         raws: list[str],
-        txids: Optional[list[str]] = None,
+        txids: list[str] | None = None,
     ) -> PostBeefResult:
         """Broadcast raw transactions via Bitails.
 
@@ -246,9 +243,7 @@ class Bitails:
 
             # Pre-populate results for requested txids
             if not txids or txid in txids:
-                result.txid_results.append(
-                    TxidResult(txid=txid, status="success", notes=[])
-                )
+                result.txid_results.append(TxidResult(txid=txid, status="success", notes=[]))
 
         # Prepare HTTP request
         headers = self.get_http_headers()
@@ -285,9 +280,7 @@ class Bitails:
 
                 if len(btrs_data) != len(raws):
                     result.status = "error"
-                    result.notes.append(
-                        {**nne_post, "what": "postRawsErrorResultsCount"}
-                    )
+                    result.notes.append({**nne_post, "what": "postRawsErrorResultsCount"})
                 else:
                     # Check txid matching
                     for i, btr_data in enumerate(btrs_data):
@@ -370,17 +363,13 @@ class Bitails:
                                             }
                                         )
                             else:
-                                rt.notes.append(
-                                    {**nn_post, "what": "postRawsSuccess"}
-                                )
+                                rt.notes.append({**nn_post, "what": "postRawsSuccess"})
 
                             if rt.status != "success" and result.status == "success":
                                 result.status = "error"
             else:
                 result.status = "error"
-                result.notes.append(
-                    {**nne_post, "what": "postRawsError", "status": response.status_code}
-                )
+                result.notes.append({**nne_post, "what": "postRawsError", "status": response.status_code})
 
         except Exception as e:
             result.status = "error"
@@ -464,9 +453,7 @@ class Bitails:
                     result.header = header
                     result.notes.append({**nne_merkle, "what": "getMerklePathSuccess"})
                 else:
-                    result.notes.append(
-                        {**nne_merkle, "what": "getMerklePathNoHeader", "target": proof.target}
-                    )
+                    result.notes.append({**nne_merkle, "what": "getMerklePathNoHeader", "target": proof.target})
 
         except Exception as e:
             result.error = e
@@ -479,4 +466,3 @@ class Bitails:
             )
 
         return result
-
