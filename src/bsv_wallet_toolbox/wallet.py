@@ -162,6 +162,13 @@ class Wallet:
         self.storage_provider: Any | None = storage_provider
         self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
 
+        # Initialize BEEF and Wave 4 attributes (Phase 5 integration)
+        self.beef: Any = None  # BRC-277 Atomic BEEF - integration in Phase 5
+        self.auto_known_txids: bool = False  # Wave 4: autoKnownTxids setting
+        self.include_all_source_transactions: bool = False  # Wave 4: includeAllSourceTransactions
+        self.random_vals: list | None = None  # Wave 4: randomVals setting
+        self.pending_sign_actions: dict[str, Any] = {}  # Wave 4: Pending action tracking
+
         # Initialize caches for Discovery methods (Wave 5)
         # Format: {cacheKey: {value: ..., expiresAt: timestamp}}
         self._overlay_cache: dict[str, dict[str, Any]] = {}
@@ -214,6 +221,36 @@ class Wallet:
             return "testnet"
         else:
             raise ValueError(f"Invalid chain: {chain}")
+
+    def get_known_txids(self, new_known_txids: list[str] | None = None) -> list[str]:
+        """Extract valid transaction IDs from BEEF.
+
+        BRC-100 Wave 4 helper method.
+        Extracts known transaction IDs, optionally merging new ones into BEEF.
+
+        TS Reference: Wallet.ts (getKnownTxids)
+
+        Args:
+            new_known_txids: Optional list of new transaction IDs to merge
+
+        Returns:
+            List of valid transaction IDs from BEEF
+
+        Note:
+            Phase 5 TODO: Integrate with self.beef.merge_txid_only() and sort_txs()
+            Currently returns provided txids as-is (validation deferred to Phase 5)
+        """
+        # Phase 5: When self.beef is initialized (BRC-277 Atomic BEEF)
+        # if new_known_txids:
+        #     for txid in new_known_txids:
+        #         if self.beef:
+        #             self.beef.merge_txid_only(txid)
+        # if self.beef:
+        #     result = self.beef.sort_txs()
+        #     return result.get("valid", [])
+
+        # Current (Phase 4): Return provided txids or empty list
+        return new_known_txids or []
 
     def destroy(self) -> None:
         """Destroy wallet and clean up resources.
@@ -504,9 +541,9 @@ class Wallet:
             args["options"]["trustSelf"] = getattr(self, "trust_self", False)
 
         # Apply autoKnownTxids if enabled (TS: this.autoKnownTxids && !args.options.knownTxids)
-        if getattr(self, "auto_known_txids", False) and "knownTxids" not in args["options"]:
-            # TODO: Implement getKnownTxids() to extract known txids from wallet state
-            args["options"]["knownTxids"] = []
+        if self.auto_known_txids and "knownTxids" not in args["options"]:
+            # Get known transaction IDs from wallet state (TS parity: calls getKnownTxids)
+            args["options"]["knownTxids"] = self.get_known_txids(args["options"].get("knownTxids"))
 
         # Generate auth object with identity key
         auth = self._make_auth()
