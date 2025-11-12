@@ -28,6 +28,7 @@ from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
 
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
+from .cache_manager import CacheManager
 from .providers.arc import ArcConfig as ArcProviderConfig
 from .providers.bitails import Bitails
 from .providers.whatsonchain import WhatsOnChain
@@ -38,6 +39,7 @@ from .wallet_services_options import WalletServicesOptions
 # Module-level constants (PEP8 compliant)
 MAXINT: int = 0xFFFFFFFF
 BLOCK_LIMIT: int = 500_000_000
+CACHE_TTL_MSECS: int = 120000  # 2-minute TTL for service caches
 
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
@@ -153,6 +155,12 @@ class Services(WalletServices):
     get_script_history_services: ServiceCollection[Callable]
     get_transaction_status_services: ServiceCollection[Callable]
 
+    # Cache managers (TTL: 2 minutes = 120000 msecs for most operations)
+    utxo_status_cache: CacheManager[dict[str, Any]]
+    script_history_cache: CacheManager[list[dict[str, Any]]]
+    transaction_status_cache: CacheManager[dict[str, Any]]
+    merkle_path_cache: CacheManager[dict[str, Any]]
+
     @staticmethod
     def create_default_options(chain: Chain) -> WalletServicesOptions:
         return create_default_options(chain)
@@ -264,6 +272,12 @@ class Services(WalletServices):
         self.get_transaction_status_services.add(
             {"name": "WhatsOnChain", "service": self.whatsonchain.get_transaction_status}
         )
+
+        # Initialize cache managers (2-minute TTL)
+        self.utxo_status_cache = CacheManager()
+        self.script_history_cache = CacheManager()
+        self.transaction_status_cache = CacheManager()
+        self.merkle_path_cache = CacheManager()
 
     def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
@@ -509,9 +523,10 @@ class Services(WalletServices):
         return self.whatsonchain.is_valid_root_for_height(root, height)
 
     def get_merkle_path_for_transaction(self, txid: str) -> dict[str, Any]:
-        """Get the Merkle path for a transaction (TS-compatible response shape).
+        """Get the Merkle path for a transaction with 2-minute caching.
 
-        Delegates to the provider implementation (WhatsOnChain).
+        Delegates to the provider implementation (WhatsOnChain), with Bitails fallback
+        if configured. Results are cached for 2 minutes.
 
         Args:
             txid: Transaction ID (hex, big-endian)
@@ -526,7 +541,18 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getMerklePathForTransaction
         """
-        return self.whatsonchain.get_merkle_path(txid, self)
+        # Generate cache key
+        cache_key = f"merkle_path:{txid}"
+
+        # Check cache first
+        cached = self.merkle_path_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Call provider and cache result
+        result = self.whatsonchain.get_merkle_path(txid, self)
+        self.merkle_path_cache.set(cache_key, result, CACHE_TTL_MSECS)
+        return result
 
     def find_chain_tip_header(self) -> dict[str, Any]:
         """Return the active chain tip header (structured dict).
@@ -629,12 +655,13 @@ class Services(WalletServices):
         outpoint: str | None = None,
         use_next: bool | None = None,
     ) -> dict[str, Any]:
-        """Get UTXO status via provider (TS-compatible response shape).
+        """Get UTXO status via provider with 2-minute caching.
 
         Supports the same input conventions as the TS implementation:
         - output_format determines how "output" is interpreted: 'hashLE' | 'hashBE' | 'script' | 'outpoint'.
         - When output_format == 'outpoint', the optional 'outpoint' ('txid:vout') can be provided.
         - Provider selection (use_next) is accepted for parity but ignored here.
+        - Results are cached for 2 minutes to reduce provider load.
 
         Args:
             output: Locking script hex, script hash, or outpoint descriptor depending on output_format
@@ -651,14 +678,26 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
         """
-        return self.whatsonchain.get_utxo_status(output, output_format, outpoint, use_next)
+        # Generate cache key from parameters
+        cache_key = f"utxo:{output}:{output_format}:{outpoint}"
+
+        # Check cache first
+        cached = self.utxo_status_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Call provider and cache result
+        result = self.whatsonchain.get_utxo_status(output, output_format, outpoint, use_next)
+        self.utxo_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
+        return result
 
     def get_script_history(self, script_hash: str, use_next: bool | None = None) -> dict[str, Any]:
-        """Get script history via provider (TS-compatible response shape).
+        """Get script history via provider with 2-minute caching.
 
         Returns two arrays, matching TS semantics:
         - confirmed: Transactions confirmed on-chain spending/creating outputs related to the script hash
         - unconfirmed: Transactions seen but not yet confirmed
+        - Results are cached for 2 minutes to reduce provider load.
 
         Args:
             script_hash: The script hash (usually little-endian for WoC) required by the provider
@@ -673,19 +712,42 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
         """
-        return self.whatsonchain.get_script_history(script_hash, use_next)
+        # Generate cache key
+        cache_key = f"script_history:{script_hash}"
+
+        # Check cache first
+        cached = self.script_history_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Call provider and cache result
+        result = self.whatsonchain.get_script_history(script_hash, use_next)
+        self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
+        return result
 
     def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
-        """Get transaction status via provider (TS-compatible response shape).
+        """Get transaction status via provider with 2-minute caching.
 
         Args:
             txid: Transaction ID (hex, big-endian)
             use_next: Provider selection hint (ignored)
+            Results are cached for 2 minutes to reduce provider load.
 
         Returns:
             dict: Provider-specific status object (TS-compatible shape expected by tests)
         """
-        return self.whatsonchain.get_transaction_status(txid, use_next)
+        # Generate cache key
+        cache_key = f"tx_status:{txid}"
+
+        # Check cache first
+        cached = self.transaction_status_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        # Call provider and cache result
+        result = self.whatsonchain.get_transaction_status(txid, use_next)
+        self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
+        return result
 
     def get_tx_propagation(self, txid: str) -> dict[str, Any]:
         """Get transaction propagation info via provider.

@@ -6,6 +6,7 @@ mirroring the structure of TypeScript's services package.
 Reference: toolbox/ts-wallet-toolbox/src/services/
 """
 
+from .cache_manager import CacheManager
 from .chaintracker.chaintracks.api import ChaintracksClientApi
 from .service_collection import ServiceCollection
 from .services import Services, create_default_options
@@ -13,6 +14,7 @@ from .wallet_services import Chain, WalletServices
 from .wallet_services_options import WalletServicesOptions
 
 __all__ = [
+    "CacheManager",
     "Chain",
     "ChaintracksClientApi",
     "ServiceCollection",
