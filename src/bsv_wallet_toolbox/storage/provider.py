@@ -30,6 +30,7 @@ from .create_action import (
     validate_required_outputs,
 )
 from .db import create_session_factory, session_scope
+from .methods import get_sync_chunk as _get_sync_chunk
 from .models import (
     Base,
     Certificate,
@@ -2677,6 +2678,55 @@ class StorageProvider:
         partial, _ = self._split_query(query)
         return self._find_generic("sync_state", partial)
 
+    def find_or_insert_sync_state(
+        self,
+        user_id: int,
+        storage_identity_key: str,
+        storage_name: str,
+    ) -> dict[str, Any]:
+        """Find or insert a sync state record for a user's peer storage.
+
+        Looks up existing sync state by user_id and storage identity key.
+        If not found, creates a new sync state record with default values.
+
+        Args:
+            user_id: User ID for the sync state.
+            storage_identity_key: Identity key of the peer storage.
+            storage_name: Name of the peer storage.
+
+        Returns:
+            Dict with sync state including: userId, storageIdentityKey,
+            storageName, when (timestamp), syncVersion, syncMap.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+            - toolbox/go-wallet-toolbox/pkg/storage/internal/sync/find_or_insert_sync_state.go
+        """
+        # Try to find existing sync state
+        query = {"user_id": user_id, "storage_identity_key": storage_identity_key}
+        existing = self.findOne("sync_state", query)
+
+        if existing:
+            return existing
+
+        # Create new sync state if not found
+        now = datetime.utcnow().isoformat()
+
+        new_sync_state = {
+            "user_id": user_id,
+            "storage_identity_key": storage_identity_key,
+            "storage_name": storage_name,
+            "when": now,
+            "sync_version": 0,
+            "sync_map": "{}",  # Empty sync map initially
+            "created_at": now,
+            "updated_at": now,
+        }
+
+        # Insert and return
+        self.insert("sync_state", new_sync_state)
+        return new_sync_state
+
     def find_transactions(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find transactions with optional equality filters.
 
@@ -2772,6 +2822,29 @@ class StorageProvider:
 
     def update_sync_state(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("sync_state", pk_value, patch)
+
+    def get_sync_chunk(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Get synchronization chunk for wallet sync operations.
+
+        Retrieves a chunk of wallet state for synchronization with other
+        devices or backup systems. Supports incremental sync with filtering.
+
+        Args:
+            args: Sync request parameters including:
+                - userId: User ID for sync
+                - chunkSize: Number of records per chunk (default: 100)
+                - syncFrom: Timestamp/version for incremental sync (optional)
+                - chunkOffset: Offset for pagination (default: 0)
+
+        Returns:
+            Dict with sync chunk including transactions, outputs, certificates,
+            labels, baskets, and pagination info (hasMore, nextChunkId).
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/storage/methods/getSyncChunk.ts
+            - toolbox/go-wallet-toolbox/pkg/storage/internal/sync/sync_chunk_action.go
+        """
+        return _get_sync_chunk(self, args)
 
     def update_transaction(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("transaction", pk_value, patch)
