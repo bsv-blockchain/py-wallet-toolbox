@@ -2149,42 +2149,35 @@ class Wallet:
             # Request settings from services (mock for now)
             # TS: const settings = await this.settingsManager.get()
             # TODO: Integrate with WalletSettingsManager when available
-            trust_settings = {
-                "trustedCertifiers": []
-            }
+            trust_settings = {"trustedCertifiers": []}
             self._trust_settings_cache = trust_settings
             self._trust_settings_cache_expires_at = now_ms + ttl_ms
         else:
             trust_settings = self._trust_settings_cache
 
         # Extract trusted certifier keys, sorted for stable cache key
-        certifiers = sorted([
-            c.get("identityKey") or c.get("identity_key", "")
-            for c in trust_settings.get("trustedCertifiers", [])
-            if isinstance(c, dict)
-        ])
+        certifiers = sorted(
+            [
+                c.get("identityKey") or c.get("identity_key", "")
+                for c in trust_settings.get("trustedCertifiers", [])
+                if isinstance(c, dict)
+            ]
+        )
 
         # --- Check overlay cache (2 minute TTL) ---
-        cache_key = json.dumps({
-            "fn": "discoverByIdentityKey",
-            "identityKey": args["identityKey"],
-            "certifiers": certifiers
-        }, sort_keys=True)
+        cache_key = json.dumps(
+            {"fn": "discoverByIdentityKey", "identityKey": args["identityKey"], "certifiers": certifiers},
+            sort_keys=True,
+        )
 
         cached = self._overlay_cache.get(cache_key)
         if cached is not None and cached.get("expiresAt", 0) > now_ms:
             cached_value = cached["value"]
         else:
             # Query overlay service
-            query_params = {
-                "identityKey": args["identityKey"],
-                "certifiers": certifiers
-            }
+            query_params = {"identityKey": args["identityKey"], "certifiers": certifiers}
             cached_value = query_overlay(query_params)
-            self._overlay_cache[cache_key] = {
-                "value": cached_value,
-                "expiresAt": now_ms + ttl_ms
-            }
+            self._overlay_cache[cache_key] = {"value": cached_value, "expiresAt": now_ms + ttl_ms}
 
         # Return empty result if no certificates found
         if not cached_value:
@@ -2239,20 +2232,20 @@ class Wallet:
             # Request settings from services (mock for now)
             # TS: const settings = await this.settingsManager.get()
             # TODO: Integrate with WalletSettingsManager when available
-            trust_settings = {
-                "trustedCertifiers": []
-            }
+            trust_settings = {"trustedCertifiers": []}
             self._trust_settings_cache = trust_settings
             self._trust_settings_cache_expires_at = now_ms + ttl_ms
         else:
             trust_settings = self._trust_settings_cache
 
         # Extract trusted certifier keys, sorted for stable cache key
-        certifiers = sorted([
-            c.get("identityKey") or c.get("identity_key", "")
-            for c in trust_settings.get("trustedCertifiers", [])
-            if isinstance(c, dict)
-        ])
+        certifiers = sorted(
+            [
+                c.get("identityKey") or c.get("identity_key", "")
+                for c in trust_settings.get("trustedCertifiers", [])
+                if isinstance(c, dict)
+            ]
+        )
 
         # --- Normalize attributes for stable cache key ---
         # TS: if attributes is an object, sort its top-level keys
@@ -2262,26 +2255,18 @@ class Wallet:
             attributes_key = json.dumps(args["attributes"], keys=keys, sort_keys=False)
 
         # --- Check overlay cache (2 minute TTL) ---
-        cache_key = json.dumps({
-            "fn": "discoverByAttributes",
-            "attributes": attributes_key,
-            "certifiers": certifiers
-        }, sort_keys=True)
+        cache_key = json.dumps(
+            {"fn": "discoverByAttributes", "attributes": attributes_key, "certifiers": certifiers}, sort_keys=True
+        )
 
         cached = self._overlay_cache.get(cache_key)
         if cached is not None and cached.get("expiresAt", 0) > now_ms:
             cached_value = cached["value"]
         else:
             # Query overlay service
-            query_params = {
-                "attributes": args["attributes"],
-                "certifiers": certifiers
-            }
+            query_params = {"attributes": args["attributes"], "certifiers": certifiers}
             cached_value = query_overlay(query_params)
-            self._overlay_cache[cache_key] = {
-                "value": cached_value,
-                "expiresAt": now_ms + ttl_ms
-            }
+            self._overlay_cache[cache_key] = {"value": cached_value, "expiresAt": now_ms + ttl_ms}
 
         # Return empty result if no certificates found
         if not cached_value:
