@@ -5,6 +5,8 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 
 import hashlib
 import hmac
+import json
+import time
 from typing import Any, Literal
 
 from bsv.keys import PublicKey
@@ -24,13 +26,14 @@ from .sdk.privileged_key_manager import PrivilegedKeyManager
 from .sdk.types import specOpInvalidChange, specOpThrowReviewActions, specOpWalletBalance
 from .services import WalletServices
 from .signer.methods import acquire_direct_certificate, prove_certificate
+from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
 from .utils.validation import (
     validate_abort_action_args,
     validate_create_action_args,
     validate_internalize_action_args,
     validate_list_actions_args,
-    validate_process_action_args,
     validate_relinquish_certificate_args,
+    validate_sign_action_args,
 )
 
 # Type alias for chain (matches TypeScript: 'main' | 'test')
@@ -158,6 +161,13 @@ class Wallet:
         self.key_deriver: KeyDeriver | None = key_deriver
         self.storage_provider: Any | None = storage_provider
         self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
+
+        # Initialize caches for Discovery methods (Wave 5)
+        # Format: {cacheKey: {value: ..., expiresAt: timestamp}}
+        self._overlay_cache: dict[str, dict[str, Any]] = {}
+        self._trust_settings_cache: dict[str, Any] | None = None
+        self._trust_settings_cache_expires_at: float = 0
+
         # Wire services into storage for TS parity SpecOps (e.g., invalid change)
         try:
             if self.services is not None and self.storage_provider is not None:
@@ -2101,7 +2111,7 @@ class Wallet:
         filtering by trusted certifiers and applying trust settings.
 
         TS parity:
-            Mirrors TypeScript Wallet.discoverByIdentityKey with caching
+            Mirrors TypeScript Wallet.discoverByIdentityKey with 2-minute caching
             and trust settings validation.
 
         Args:
@@ -2114,17 +2124,74 @@ class Wallet:
 
         Raises:
             RuntimeError: If services are not configured
+            InvalidParameterError: If arguments are invalid
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts (discoverByIdentityKey)
+            toolbox/ts-wallet-toolbox/src/Wallet.ts (discoverByIdentityKey)
         """
         self._validate_originator(originator)
 
         if not self.services:
             raise RuntimeError("services are required for discoverByIdentityKey")
 
-        # Delegate to services for overlay query
-        return self.services.discover_by_identity_key(args)
+        # TS: validate args
+        if not isinstance(args, dict):
+            raise InvalidParameterError("args", "a dict")
+        if "identityKey" not in args or not isinstance(args["identityKey"], str):
+            raise InvalidParameterError("identityKey", "a non-empty string")
+
+        # Cache TTL: 2 minutes
+        ttl_ms = 2 * 60 * 1000
+        now_ms = int(time.time() * 1000)
+
+        # --- Fetch and cache trust settings (2 minute TTL) ---
+        if self._trust_settings_cache is None or self._trust_settings_cache_expires_at <= now_ms:
+            # Request settings from services (mock for now)
+            # TS: const settings = await this.settingsManager.get()
+            # TODO: Integrate with WalletSettingsManager when available
+            trust_settings = {
+                "trustedCertifiers": []
+            }
+            self._trust_settings_cache = trust_settings
+            self._trust_settings_cache_expires_at = now_ms + ttl_ms
+        else:
+            trust_settings = self._trust_settings_cache
+
+        # Extract trusted certifier keys, sorted for stable cache key
+        certifiers = sorted([
+            c.get("identityKey") or c.get("identity_key", "")
+            for c in trust_settings.get("trustedCertifiers", [])
+            if isinstance(c, dict)
+        ])
+
+        # --- Check overlay cache (2 minute TTL) ---
+        cache_key = json.dumps({
+            "fn": "discoverByIdentityKey",
+            "identityKey": args["identityKey"],
+            "certifiers": certifiers
+        }, sort_keys=True)
+
+        cached = self._overlay_cache.get(cache_key)
+        if cached is not None and cached.get("expiresAt", 0) > now_ms:
+            cached_value = cached["value"]
+        else:
+            # Query overlay service
+            query_params = {
+                "identityKey": args["identityKey"],
+                "certifiers": certifiers
+            }
+            cached_value = query_overlay(query_params)
+            self._overlay_cache[cache_key] = {
+                "value": cached_value,
+                "expiresAt": now_ms + ttl_ms
+            }
+
+        # Return empty result if no certificates found
+        if not cached_value:
+            return {"totalCertificates": 0, "certificates": []}
+
+        # Transform certificates with trust settings
+        return transform_verifiable_certificates_with_trust(trust_settings, cached_value)
 
     def discover_by_attributes(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Discover certificates by attributes.
@@ -2134,12 +2201,12 @@ class Wallet:
         filtering by trusted certifiers and applying trust settings.
 
         TS parity:
-            Mirrors TypeScript Wallet.discoverByAttributes with caching
-            and trust settings validation.
+            Mirrors TypeScript Wallet.discoverByAttributes with 2-minute caching
+            and trust settings validation. Normalizes attributes for stable cache keys.
 
         Args:
             args: Input dict containing:
-                - attributes: dict - key-value pairs to search for
+                - attributes: dict or list - key-value pairs to search for
             originator: Optional originator domain name (under 250 bytes)
 
         Returns:
@@ -2147,14 +2214,78 @@ class Wallet:
 
         Raises:
             RuntimeError: If services are not configured
+            InvalidParameterError: If arguments are invalid
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts (discoverByAttributes)
+            toolbox/ts-wallet-toolbox/src/Wallet.ts (discoverByAttributes)
         """
         self._validate_originator(originator)
 
         if not self.services:
             raise RuntimeError("services are required for discoverByAttributes")
 
-        # Delegate to services for overlay query
-        return self.services.discover_by_attributes(args)
+        # TS: validate args
+        if not isinstance(args, dict):
+            raise InvalidParameterError("args", "a dict")
+        if "attributes" not in args:
+            raise InvalidParameterError("attributes", "must be present")
+
+        # Cache TTL: 2 minutes
+        ttl_ms = 2 * 60 * 1000
+        now_ms = int(time.time() * 1000)
+
+        # --- Fetch and cache trust settings (2 minute TTL) ---
+        if self._trust_settings_cache is None or self._trust_settings_cache_expires_at <= now_ms:
+            # Request settings from services (mock for now)
+            # TS: const settings = await this.settingsManager.get()
+            # TODO: Integrate with WalletSettingsManager when available
+            trust_settings = {
+                "trustedCertifiers": []
+            }
+            self._trust_settings_cache = trust_settings
+            self._trust_settings_cache_expires_at = now_ms + ttl_ms
+        else:
+            trust_settings = self._trust_settings_cache
+
+        # Extract trusted certifier keys, sorted for stable cache key
+        certifiers = sorted([
+            c.get("identityKey") or c.get("identity_key", "")
+            for c in trust_settings.get("trustedCertifiers", [])
+            if isinstance(c, dict)
+        ])
+
+        # --- Normalize attributes for stable cache key ---
+        # TS: if attributes is an object, sort its top-level keys
+        attributes_key: Any = args["attributes"]
+        if isinstance(args["attributes"], dict):
+            keys = sorted(args["attributes"].keys())
+            attributes_key = json.dumps(args["attributes"], keys=keys, sort_keys=False)
+
+        # --- Check overlay cache (2 minute TTL) ---
+        cache_key = json.dumps({
+            "fn": "discoverByAttributes",
+            "attributes": attributes_key,
+            "certifiers": certifiers
+        }, sort_keys=True)
+
+        cached = self._overlay_cache.get(cache_key)
+        if cached is not None and cached.get("expiresAt", 0) > now_ms:
+            cached_value = cached["value"]
+        else:
+            # Query overlay service
+            query_params = {
+                "attributes": args["attributes"],
+                "certifiers": certifiers
+            }
+            cached_value = query_overlay(query_params)
+            self._overlay_cache[cache_key] = {
+                "value": cached_value,
+                "expiresAt": now_ms + ttl_ms
+            }
+
+        # Return empty result if no certificates found
+        if not cached_value:
+            return {"totalCertificates": 0, "certificates": []}
+
+        # Transform certificates with trust settings
+        return transform_verifiable_certificates_with_trust(trust_settings, cached_value)
