@@ -20,14 +20,17 @@ Phase 4 TODO:
 """
 
 from time import time
-from typing import Any
+from typing import Any, Callable
 
 from bsv.broadcasters.arc import ARC, ARCConfig
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
 
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
+from .providers.arc import ARC as ArcProvider, ArcConfig as ArcProviderConfig
+from .providers.bitails import Bitails
 from .providers.whatsonchain import WhatsOnChain
+from .service_collection import ServiceCollection
 from .wallet_services import Chain, WalletServices
 from .wallet_services_options import WalletServicesOptions
 
@@ -39,7 +42,7 @@ BLOCK_LIMIT: int = 500_000_000
 def create_default_options(chain: Chain) -> WalletServicesOptions:
     """Create default WalletServicesOptions for a given chain.
 
-    Equivalent to TypeScript's Services.createDefaultOptions()
+    Equivalent to TypeScript's createDefaultWalletServicesOptions()
 
     Args:
         chain: Blockchain network ('main' or 'test')
@@ -47,38 +50,98 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
     Returns:
         WalletServicesOptions with default values
 
-    Reference: toolbox/ts-wallet-toolbox/src/services/createDefaultWalletServicesOptions.ts
+    Reference: ts-wallet-toolbox/src/services/createDefaultWalletServicesOptions.ts
     """
-    return WalletServicesOptions(chain=chain)
+    # Default BSV/USD exchange rate (as of 2025-08-31)
+    bsv_exchange_rate = {
+        "timestamp": "2025-08-31T00:00:00Z",
+        "base": "USD",
+        "rate": 26.17,
+    }
+
+    # Default fiat exchange rates (USD base)
+    fiat_exchange_rates = {
+        "timestamp": "2025-08-31T00:00:00Z",
+        "base": "USD",
+        "rates": {
+            "USD": 1,
+            "GBP": 0.7528,
+            "EUR": 0.8558,
+        },
+    }
+
+    # Chaintracks URL for fiat exchange rates
+    chaintracks_url = f"https://{chain}net-chaintracks.babbage.systems"
+    chaintracks_fiat_exchange_rates_url = ""  # Empty as per TS implementation
+
+    # ARC TAAL default URL
+    arc_url = (
+        "https://arc.taal.com"
+        if chain == "main"
+        else "https://arc-test.taal.com"
+    )
+
+    # ARC GorillaPool default URL
+    arc_gorillapool_url = (
+        "https://arc.gorillapool.io"
+        if chain == "main"
+        else None
+    )
+
+    return WalletServicesOptions(
+        chain=chain,
+        taalApiKey=None,
+        bsvExchangeRate=bsv_exchange_rate,
+        bsvUpdateMsecs=1000 * 60 * 15,  # 15 minutes
+        fiatExchangeRates=fiat_exchange_rates,
+        fiatUpdateMsecs=1000 * 60 * 60 * 24,  # 24 hours
+        disableMapiCallback=True,  # MAPI callbacks are deprecated
+        exchangeratesapiKey="bd539d2ff492bcb5619d5f27726a766f",  # Default free tier API key
+        # Note: Users should obtain their own API key for production use:
+        # https://manage.exchangeratesapi.io/signup/free
+        # Free tier has low usage limits; consider using Chaintracks for higher volume.
+        chaintracksFiatExchangeRatesUrl=chaintracks_fiat_exchange_rates_url,
+        arcUrl=arc_url,
+        arcGorillaPoolUrl=arc_gorillapool_url,
+    )
 
 
 class Services(WalletServices):
-    """Production-ready WalletServices implementation.
+    """Production-ready WalletServices implementation with multi-provider support.
 
     This is the Python equivalent of TypeScript's Services class.
-    Supports multiple providers (WhatsOnChain, ARC, Bitails, etc.).
+    Supports multiple providers with round-robin failover strategy:
+    - WhatsOnChain: Blockchain data queries
+    - ARC TAAL: High-performance transaction broadcasting
+    - ARC GorillaPool: Alternative ARC broadcaster
+    - Bitails: Merkle proof provider
 
-    Current implementation status:
+    Multi-provider features:
     - ✅ WhatsOnChain: Fully implemented
-    - ❌ ARC (TAAL): Not yet implemented
-    - ❌ ARC (GorillaPool): Not yet implemented
-    - ❌ Bitails: Not yet implemented
+    - ✅ ARC (TAAL): Fully implemented
+    - ✅ ARC (GorillaPool): Fully implemented
+    - ✅ Bitails: Fully implemented
+    - ✅ ServiceCollection: Round-robin failover with call history tracking
+    - ✅ Caching: TTL-based for performance optimization (Phase 5+)
 
-    Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts
+    Reference: ts-wallet-toolbox/src/services/Services.ts
 
     Example:
         >>> # Simple usage with chain
         >>> services = Services("main")
         >>>
-        >>> # Advanced usage with options
+        >>> # Advanced usage with options and custom providers
         >>> options = WalletServicesOptions(
         ...     chain="main",
-        ...     whatsOnChainApiKey="your-api-key"
+        ...     whatsOnChainApiKey="your-api-key",
+        ...     arcUrl="https://arc.taal.com",
+        ...     arcApiKey="your-arc-key",
+        ...     bitailsApiKey="your-bitails-key"
         ... )
         >>> services = Services(options)
         >>>
-        >>> # Get blockchain height
-        >>> height = await services.get_height()
+        >>> # Get blockchain height (uses service collection for failover)
+        >>> height = services.get_height()
         >>> print(height)
         850123
     """
@@ -86,19 +149,24 @@ class Services(WalletServices):
     # Provider instances (TypeScript structure)
     options: WalletServicesOptions
     whatsonchain: WhatsOnChain
-    # Future providers (ARC/Bitails)
-    # ARC broadcaster
-    arc_url: str | None = None
-    arc_api_key: str | None = None
-    arc_headers: dict | None = None
-    # bitails: Bitails
+    arc_taal: ArcProvider | None = None
+    arc_gorillapool: ArcProvider | None = None
+    bitails: Bitails | None = None
+
+    # Service collections for multi-provider failover
+    get_merkle_path_services: ServiceCollection[Callable]
+    get_raw_tx_services: ServiceCollection[Callable]
+    post_beef_services: ServiceCollection[Callable]
+    get_utxo_status_services: ServiceCollection[Callable]
+    get_script_history_services: ServiceCollection[Callable]
+    get_transaction_status_services: ServiceCollection[Callable]
 
     @staticmethod
     def create_default_options(chain: Chain) -> WalletServicesOptions:
         return create_default_options(chain)
 
     def __init__(self, options_or_chain: Chain | WalletServicesOptions) -> None:
-        """Initialize wallet services.
+        """Initialize wallet services with multi-provider support.
 
         Equivalent to TypeScript's Services constructor which accepts either
         a Chain string or WalletServicesOptions object.
@@ -113,11 +181,12 @@ class Services(WalletServices):
             >>> # Advanced: Pass full options
             >>> options = WalletServicesOptions(
             ...     chain="main",
-            ...     whatsOnChainApiKey="your-api-key"
+            ...     whatsOnChainApiKey="your-api-key",
+            ...     arcUrl="https://api.taal.com/arc"
             ... )
             >>> services = Services(options)
 
-        Reference: toolbox/ts-wallet-toolbox/src/services/Services.ts constructor
+        Reference: ts-wallet-toolbox/src/services/Services.ts (constructor)
         """
         # Determine chain and options (matching TypeScript logic)
         if isinstance(options_or_chain, str):
@@ -132,14 +201,93 @@ class Services(WalletServices):
         # Call parent constructor
         super().__init__(chain)
 
-        # Initialize WhatsOnChain provider (currently only implemented provider)
-        api_key = self.options.get("whatsOnChainApiKey")
-        self.whatsonchain = WhatsOnChain(network=chain, api_key=api_key, http_client=None)
+        # Initialize WhatsOnChain provider
+        woc_api_key = self.options.get("whatsOnChainApiKey")
+        self.whatsonchain = WhatsOnChain(network=chain, api_key=woc_api_key, http_client=None)
 
-        # ARC config (optional)
-        self.arc_url = self.options.get("arcUrl")
-        self.arc_api_key = self.options.get("arcApiKey")
-        self.arc_headers = self.options.get("arcHeaders")
+        # Initialize ARC TAAL provider (optional)
+        arc_url = self.options.get("arcUrl")
+        if arc_url:
+            arc_config = ArcProviderConfig(
+                api_key=self.options.get("arcApiKey"),
+                headers=self.options.get("arcHeaders"),
+            )
+            self.arc_taal = ArcProvider(arc_url, config=arc_config, name="arcTaal")
+
+        # Initialize ARC GorillaPool provider (optional)
+        arc_gorillapool_url = self.options.get("arcGorillaPoolUrl")
+        if arc_gorillapool_url:
+            arc_gorillapool_config = ArcProviderConfig(
+                api_key=self.options.get("arcGorillaPoolApiKey"),
+                headers=self.options.get("arcGorillaPoolHeaders"),
+            )
+            self.arc_gorillapool = ArcProvider(
+                arc_gorillapool_url,
+                config=arc_gorillapool_config,
+                name="arcGorillaPool",
+            )
+
+        # Initialize Bitails provider (optional)
+        bitails_api_key = self.options.get("bitailsApiKey")
+        self.bitails = Bitails(chain=chain, config={"api_key": bitails_api_key})
+
+        # Initialize ServiceCollections for multi-provider failover
+        self._init_service_collections()
+
+    def _init_service_collections(self) -> None:
+        """Initialize ServiceCollections for multi-provider failover.
+
+        Sets up round-robin failover collections for each service type,
+        with providers prioritized by configured availability.
+        """
+        # getMerklePath collection
+        self.get_merkle_path_services = ServiceCollection("getMerklePath")
+        self.get_merkle_path_services.add(
+            {"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path}
+        )
+        if self.bitails:
+            self.get_merkle_path_services.add(
+                {"name": "Bitails", "service": self.bitails.get_merkle_path}
+            )
+
+        # getRawTx collection
+        self.get_raw_tx_services = ServiceCollection("getRawTx")
+        self.get_raw_tx_services.add(
+            {"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx_result}
+        )
+
+        # postBeef collection
+        self.post_beef_services = ServiceCollection("postBeef")
+        if self.arc_gorillapool:
+            self.post_beef_services.add(
+                {"name": "arcGorillaPool", "service": self.arc_gorillapool.post_beef}
+            )
+        if self.arc_taal:
+            self.post_beef_services.add(
+                {"name": "arcTaal", "service": self.arc_taal.post_beef}
+            )
+        if self.bitails:
+            self.post_beef_services.add(
+                {"name": "Bitails", "service": self.bitails.post_beef}
+            )
+
+        # getUtxoStatus collection
+        self.get_utxo_status_services = ServiceCollection("getUtxoStatus")
+        self.get_utxo_status_services.add(
+            {"name": "WhatsOnChain", "service": self.whatsonchain.get_utxo_status}
+        )
+
+        # getScriptHistory collection
+        self.get_script_history_services = ServiceCollection("getScriptHistory")
+        self.get_script_history_services.add(
+            {"name": "WhatsOnChain", "service": self.whatsonchain.get_script_history}
+        )
+
+        # getTransactionStatus collection
+        self.get_transaction_status_services = ServiceCollection("getTransactionStatus")
+        self.get_transaction_status_services.add(
+            {"name": "WhatsOnChain", "service": self.whatsonchain.get_transaction_status}
+        )
 
     def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
