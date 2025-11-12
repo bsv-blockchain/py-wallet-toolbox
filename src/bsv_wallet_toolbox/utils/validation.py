@@ -691,3 +691,38 @@ def validate_no_send_change_outputs(outputs: list[dict[str, Any]]) -> None:
         basket_name = o.get("basketName")
         if basket_name is None or basket_name != "change basket":
             raise InvalidParameterError("basketName", "must equal 'change basket'")
+
+
+def validate_sign_action_args(args: dict[str, Any]) -> None:
+    """Validate SignActionArgs for Wave 4 Transaction Operations.
+
+    Required parameters:
+        - reference: non-empty string (unique action reference from createAction)
+        - rawTx: non-empty string (signed raw transaction in hex or binary)
+
+    Optional parameters:
+        - isNewTx: bool - whether transaction is new
+        - isSendWith: bool - whether to send with other transactions
+        - isNoSend: bool - whether to suppress network broadcast
+        - isDelayed: bool - whether to accept delayed broadcast
+        - sendWith: list of strings - transaction IDs to send with
+
+    Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (signAction)
+    """
+    if not isinstance(args, dict):
+        raise InvalidParameterError("args", "a dict")
+
+    # Validate reference (required, non-empty string)
+    reference = args.get("reference")
+    if not isinstance(reference, str) or len(reference) == 0:
+        raise InvalidParameterError("reference", "a non-empty string")
+
+    # Validate rawTx (required, non-empty string)
+    raw_tx = args.get("rawTx")
+    if not isinstance(raw_tx, str) or len(raw_tx) == 0:
+        raise InvalidParameterError("rawTx", "a non-empty string")
+
+    # Optional boolean fields
+    for key in ("isNewTx", "isSendWith", "isNoSend", "isDelayed"):
+        if key in args and not isinstance(args[key], bool):
+            raise InvalidParameterError(key, "a boolean value")

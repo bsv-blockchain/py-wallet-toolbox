@@ -454,72 +454,83 @@ class Wallet:
     def create_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Create a new transaction action.
 
-        BRC-100 WalletInterface method implementation.
+        BRC-100 WalletInterface method.
         Begin construction of a new transaction with inputs and outputs.
-
-        TS parity:
-            Mirrors TypeScript Wallet.createAction behavior by delegating to storage
-            with validated arguments, initialized options, and auth object.
 
         Args:
             args: Input dict containing transaction construction parameters:
                 - inputs: list - transaction inputs
                 - outputs: list - transaction outputs
                 - labels: list - action labels (optional)
-                - options: dict - transaction options (optional, auto-initialized)
+                - options: dict - transaction options (optional):
+                    - trustSelf: bool - trust wallet's own outputs
+                    - knownTxids: list - pre-known transaction IDs
+                    - isDelayed: bool - allow delayed results
             originator: Optional originator domain name (under 250 bytes)
 
         Returns:
-            dict: With keys reference, version, lockTime, inputs, outputs, derivationPrefix
+            dict: CreateActionResult
 
         Raises:
             InvalidParameterError: If originator or args are invalid
-            RuntimeError: If storage_provider or keyDeriver is not configured
+            RuntimeError: If storage_provider is not configured
 
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts (createAction method)
-            - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts (createAction function)
-            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateCreateActionArgs)
-
-        Note:
-            TODO: Full TypeScript createAction validation may require additional checks:
-            - UTXO selection and change address derivation
-            - Fee estimation
-            - Output descriptor validation
-            See: toolbox/ts-wallet-toolbox/src/signer/methods/createAction.ts for full impl
+        Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (createAction)
         """
         self._validate_originator(originator)
 
         if not self.storage_provider:
-            raise RuntimeError("storage provider is not configured")
+            raise RuntimeError("storage_provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
         validate_create_action_args(args)
 
-        # Initialize options if not provided (TypeScript parity)
+        # Initialize options if not provided (TS parity: args.options ||= {})
         if "options" not in args or args["options"] is None:
             args["options"] = {}
+
+        # Apply wallet-level trustSelf setting (TS: args.options.trustSelf ||= this.trustSelf)
+        if "trustSelf" not in args["options"]:
+            args["options"]["trustSelf"] = getattr(self, "trust_self", False)
+
+        # Apply autoKnownTxids if enabled (TS: this.autoKnownTxids && !args.options.knownTxids)
+        if getattr(self, "auto_known_txids", False) and "knownTxids" not in args["options"]:
+            # TODO: Implement getKnownTxids() to extract known txids from wallet state
+            args["options"]["knownTxids"] = []
 
         # Generate auth object with identity key
         auth = self._make_auth()
 
-        # Delegate to storage provider (TypeScript parity)
-        return self.storage_provider.create_action(auth, args)
+        # Apply wallet-level configuration for complete transaction handling
+        # TS: vargs.includeAllSourceTransactions = this.includeAllSourceTransactions
+        if "includeAllSourceTransactions" not in args:
+            args["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", False)
 
-    def process_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """Process a transaction action (finalize & sign).
+        # Apply random values if configured (TS: if (this.randomVals && this.randomVals.length > 1))
+        random_vals = getattr(self, "random_vals", None)
+        if random_vals and len(random_vals) > 1 and "randomVals" not in args:
+            args["randomVals"] = random_vals[:]
 
-        BRC-100 WalletInterface method implementation.
-        Finalize a transaction by committing it to storage with a signed rawTx.
+        # Delegate to storage provider (TS: await createAction(this, auth, vargs))
+        result = self.storage_provider.create_action(auth, args)
 
-        TS parity:
-            Mirrors TypeScript Wallet.signAction behavior for storage layer processing.
-            Delegates to storage with validated arguments and generated auth object.
+        # TODO: Wave 4 Enhancement - BEEF integration
+        # TS parity requires:
+        # 1. BEEF merge from transaction (if r.tx): this.beef.mergeBeefFromParty(this.storageParty, r.tx)
+        # 2. Atomic BEEF verification (if r.tx): r.tx = this.verifyReturnedTxidOnlyAtomicBEEF(...)
+        # 3. Error handling (unless isDelayed): throwIfAnyUnsuccessfulCreateActions(r)
+
+        return result
+
+    def sign_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Sign and finalize a transaction action.
+
+        BRC-100 WalletInterface method.
+        Complete a transaction by adding signatures and committing to storage.
 
         Args:
             args: Input dict containing signed transaction details:
-                - reference: str - action reference
-                - txid: str - transaction ID (hex)
+                - reference: str - unique reference from createAction result
                 - rawTx: str - signed raw transaction (hex or binary)
                 - isNewTx: bool - whether this is a new transaction
                 - isSendWith: bool - whether to send with other txids
@@ -529,49 +540,52 @@ class Wallet:
             originator: Optional originator domain name (under 250 bytes)
 
         Returns:
-            dict: With keys sendWithResults and notDelayedResults
+            dict: SignActionResult
 
         Raises:
             InvalidParameterError: If originator or args are invalid
-            RuntimeError: If storage_provider or keyDeriver is not configured
+            RuntimeError: If storage_provider is not configured
 
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/signer/methods/signAction.ts (signAction function)
-            - toolbox/ts-wallet-toolbox/src/storage/methods/processAction.ts (processAction function)
-            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateProcessActionArgs)
-
-        Note:
-            TODO: This is a PARTIAL IMPLEMENTATION serving as sign_action proxy.
-            Full TypeScript signAction (Wallet.ts:793-809) requires:
-            - Transaction completion with unlock scripts
-            - BEEF construction and verification
-            - Pending sign action management (this.pendingSignActions)
-            - Error handling with throwIfAnyUnsuccessfulSignActions
-            See: toolbox/ts-wallet-toolbox/src/signer/methods/signAction.ts for full impl
+        Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (signAction)
         """
         self._validate_originator(originator)
 
         if not self.storage_provider:
-            raise RuntimeError("storage provider is not configured")
+            raise RuntimeError("storage_provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
-        validate_process_action_args(args)
+        validate_sign_action_args(args)
 
         # Generate auth object with identity key
         auth = self._make_auth()
 
-        # Delegate to storage provider (TypeScript parity)
-        return self.storage_provider.process_action(auth, args)
+        # Delegate to storage provider for signing and finalization
+        # TS: const { auth, vargs } = this.validateAuthAndArgs(args, validateSignActionArgs)
+        # TS: const r = await signAction(this, auth, args)
+        result = self.storage_provider.process_action(auth, args)
+
+        # TODO: Wave 4 Enhancement - Pending action tracking & BEEF integration
+        # TS parity requires:
+        # 1. Pending sign action lookup (if this.pendingSignActions[args.reference])
+        # 2. BEEF merge and verification
+        # 3. Error handling: throwIfAnyUnsuccessfulSignActions(r)
+
+        return result
+
+    def process_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
+        """Process a transaction action (legacy alias for sign_action).
+
+        Deprecated: Use sign_action() instead. This method is maintained for backward compatibility.
+
+        Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (signAction method)
+        """
+        return self.sign_action(args, originator)
 
     def internalize_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """Internalize a transaction action (take ownership of outputs).
+        """Internalize a transaction action.
 
-        BRC-100 WalletInterface method implementation.
+        BRC-100 WalletInterface method.
         Allow a wallet to take ownership of outputs in a pre-existing transaction.
-
-        TS parity:
-            Mirrors TypeScript Wallet.internalizeAction behavior by delegating to storage
-            with validated arguments and generated auth object.
 
         Args:
             args: Input dict containing transaction internalization parameters:
@@ -581,33 +595,22 @@ class Wallet:
                     - protocol: str - 'wallet payment' or 'basket insertion'
                     - paymentRemittance: dict - for wallet payment outputs
                     - basketName: str - for basket insertion outputs
+                - labels: list - action labels (optional)
             originator: Optional originator domain name (under 250 bytes)
 
         Returns:
-            dict: With keys accepted (bool), isMerge (bool), txid (str), satoshis (int)
+            dict: InternalizeActionResult
 
         Raises:
             InvalidParameterError: If originator or args are invalid
-            RuntimeError: If storage_provider or keyDeriver is not configured
+            RuntimeError: If storage_provider is not configured
 
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts (internalizeAction method)
-            - toolbox/ts-wallet-toolbox/src/signer/methods/internalizeAction.ts (internalizeAction function)
-            - toolbox/ts-wallet-toolbox/src/storage/methods/internalizeAction.ts (storage internalizeAction)
-            - toolbox/ts-wallet-toolbox/src/validation/validation.ts (validateInternalizeActionArgs)
-
-        Note:
-            TODO: Full TypeScript internalizeAction requires:
-            - BEEF parsing and transaction extraction
-            - Output ownership verification
-            - Key derivation and script validation
-            - Merge detection with existing transactions
-            See: toolbox/ts-wallet-toolbox/src/signer/methods/internalizeAction.ts for full impl
+        Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (internalizeAction)
         """
         self._validate_originator(originator)
 
         if not self.storage_provider:
-            raise RuntimeError("storage provider is not configured")
+            raise RuntimeError("storage_provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
         validate_internalize_action_args(args)
@@ -615,9 +618,24 @@ class Wallet:
         # Generate auth object with identity key
         auth = self._make_auth()
 
-        # Delegate to storage provider (TypeScript parity)
-        # Note: Storage layer implementation (internalizeAction) is required
-        return self.storage_provider.internalize_action(auth, args)
+        # Apply error handling for throwReviewActions label if present
+        # TS: if (vargs.labels.indexOf(specOpThrowReviewActions) >= 0) throwDummyReviewActions()
+        labels = args.get("labels", [])
+        if "throwReviewActions" in labels:
+            # TODO: Implement throwDummyReviewActions() to fail if pending review actions exist
+            pass
+
+        # Delegate to storage provider for internalization logic
+        # TS: const r = await internalizeAction(this, auth, args)
+        result = self.storage_provider.internalize_action(auth, args)
+
+        # TODO: Wave 4 Enhancement - Error handling & validation
+        # TS parity requires:
+        # 1. Error validation: throwIfUnsuccessfulInternalizeAction(r)
+        # 2. BEEF merge verification
+        # 3. Output ownership verification
+
+        return result
 
     def get_network(
         self,
