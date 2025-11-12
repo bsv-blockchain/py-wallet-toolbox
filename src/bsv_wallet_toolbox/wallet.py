@@ -20,8 +20,10 @@ from bsv.wallet.wallet_interface import (
 )
 
 from .errors import InvalidParameterError
+from .sdk.privileged_key_manager import PrivilegedKeyManager
 from .sdk.types import specOpInvalidChange, specOpThrowReviewActions, specOpWalletBalance
 from .services import WalletServices
+from .signer.methods import acquire_direct_certificate, prove_certificate
 from .utils.validation import (
     validate_abort_action_args,
     validate_create_action_args,
@@ -129,6 +131,7 @@ class Wallet:
         services: WalletServices | None = None,
         key_deriver: KeyDeriver | None = None,
         storage_provider: Any | None = None,
+        privileged_key_manager: PrivilegedKeyManager | None = None,
     ) -> None:
         """Initialize wallet.
 
@@ -142,6 +145,9 @@ class Wallet:
                 services and storage_provider are provided, the storage will be
                 wired with services (set_services) for SpecOps that require
                 network checks.
+            privileged_key_manager: Optional PrivilegedKeyManager for secure key operations.
+                                   If provided and args contain "privilegedReason", uses
+                                   this manager's methods instead of key_deriver.
 
         Note:
             Version is not configurable, it's a class constant.
@@ -151,6 +157,7 @@ class Wallet:
         self.services: WalletServices | None = services
         self.key_deriver: KeyDeriver | None = key_deriver
         self.storage_provider: Any | None = storage_provider
+        self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
         # Wire services into storage for TS parity SpecOps (e.g., invalid change)
         try:
             if self.services is not None and self.storage_provider is not None:
@@ -187,8 +194,16 @@ class Wallet:
 
         Returns:
             Wallet network name ('mainnet' or 'testnet')
+
+        Raises:
+            ValueError: If chain is invalid
         """
-        return "mainnet" if chain == "main" else "testnet"
+        if chain == "main":
+            return "mainnet"
+        elif chain == "test":
+            return "testnet"
+        else:
+            raise ValueError(f"Invalid chain: {chain}")
 
     def destroy(self) -> None:
         """Destroy wallet and clean up resources.
@@ -1238,116 +1253,199 @@ class Wallet:
     # ---------------------------------------------------------------------
     # Certificates / Proof-related (stubs; Storage/Services dependent)
     # ---------------------------------------------------------------------
-    def acquire_certificate(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """Acquire a certificate (stub).
+    def acquire_certificate(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Acquire a certificate from an issuer.
 
-        Summary:
-            Placeholder for certificate issuance/acquisition flows. In the TS
-            implementation, this operation depends on Storage + Services
-            (issuer validation, persistence, and proof generation). The
-            dependencies are not yet available in this codebase.
+        Initiates the certificate acquisition process from an issuer.
+        This is a high-level orchestration method that coordinates with
+        Storage, Services, and Signer layers to request and obtain a certificate.
 
         TS parity:
-            - High-level API involving signing, verification, and persistence.
-            - Will expose the same I/O shape as TS once dependencies are ready.
+            - Delegates to signer/methods/acquireDirectCertificate
+            - Coordinates issuer validation, key management, and storage
+            - Returns certificate with proof of issuance
 
         Args:
-            args: Parameters required for certificate acquisition (TBD; TS parity later)
-            originator: Optional caller identity (under 250 bytes)
+            args: Arguments dict containing:
+                - issuer (str): Issuer public key (hex)
+                - protocol (tuple): [security_level, protocol_name]
+                - subject (str, optional): Certificate subject
+                - keyID (str, optional): Key identifier for derivation
+            originator: Optional caller identity
 
         Returns:
-            dict: TS-compatible certificate object (not implemented)
+            dict: Certificate object with metadata
 
         Raises:
-            NotImplementedError: Storage/Services are not implemented yet
+            InvalidParameterError: If args are invalid
+            RuntimeError: If required components not configured
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts#acquireCertificate
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts
             - toolbox/ts-wallet-toolbox/src/signer/methods/acquireDirectCertificate.ts
         """
         self._validate_originator(originator)
-        raise NotImplementedError("acquire_certificate is not implemented yet (Storage/Services required)")
 
-    def prove_certificate(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """Prove a certificate (stub).
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
 
-        Summary:
-            High-level API for generating and verifying proofs
-            (Merkle/signing/on-chain checks). In TS it spans Storage/Services/Signer;
-            not available here yet.
+        if self.storage_provider is None:
+            raise RuntimeError("storage provider is not configured")
+
+        if self.services is None:
+            raise RuntimeError("services are not configured")
+
+        # Delegate to signer layer for certificate acquisition
+        # (coordinate with Storage and Services through signer)
+        return acquire_direct_certificate(self, args)
+
+    def prove_certificate(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Prove ownership or validity of a certificate.
+
+        Generates a proof of certificate validity, typically involving:
+        - Merkle path verification from blockchain
+        - Signature verification by issuer
+        - Optional on-chain checks via Services
 
         TS parity:
-            - Includes subject/protocol (BRC), verification strategy, persistence.
-            - Will match TS I/O once dependencies are ready.
+            - Delegates to signer/methods/proveCertificate
+            - Coordinates with Storage to retrieve certificate
+            - Coordinates with Services for blockchain verification
 
         Args:
-            args: Parameters for proof generation/verification (TBD; TS parity later)
-            originator: Optional caller identity (under 250 bytes)
+            args: Arguments dict containing:
+                - certificate (dict): Certificate object to prove
+                - strategy (str, optional): Proof strategy ('merkle', 'signature', 'on-chain')
+                - forVerifier (str, optional): Verifier public key
+            originator: Optional caller identity
 
         Returns:
-            dict: TS-compatible verification result/proof object (not implemented)
+            dict: Proof object with verification results
 
         Raises:
-            NotImplementedError: Storage/Services are not implemented yet
+            InvalidParameterError: If args are invalid
+            RuntimeError: If required components not configured
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts#proveCertificate
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts
             - toolbox/ts-wallet-toolbox/src/signer/methods/proveCertificate.ts
         """
         self._validate_originator(originator)
-        raise NotImplementedError("prove_certificate is not implemented yet (Storage/Services required)")
 
-    def reveal_counterparty_key_linkage(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """Reveal counterparty key linkage (stub).
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
 
-        Summary:
-            API to reveal counterparty key linkage. Depends on history/persistence
-            and signing; not implemented here yet.
+        if self.storage_provider is None:
+            raise RuntimeError("storage provider is not configured")
+
+        if self.services is None:
+            raise RuntimeError("services are not configured")
+
+        # Delegate to signer layer for certificate proof
+        # (coordinate with Storage and Services through signer)
+        return prove_certificate(self, args)
+
+    def reveal_counterparty_key_linkage(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Reveal counterparty key linkage.
+
+        Reveals the linkage between this wallet's key and a counterparty's key,
+        encrypted for a verifier's inspection. Uses key derivation and encryption.
 
         TS parity:
-            - Arguments/return shape will follow TS later.
+            - Delegates to ProtoWallet or PrivilegedKeyManager
+            - Validates privileged mode via args.privileged flag
 
         Args:
-            args: Parameters required to reveal linkage (TBD)
+            args: Arguments dict containing:
+                - counterparty (str): Counterparty public key (hex)
+                - verifier (str): Verifier public key (hex) for encryption
+                - protocolID (tuple[int, str]): Security level and protocol name
+                - keyID (str): Key identifier
+                - privileged (bool, optional): Whether to use privileged key
+                - privilegedReason (str, optional): Reason for privileged access
             originator: Optional caller identity
 
         Returns:
-            dict: Linkage reveal result (not implemented)
+            dict: {'encryptedLinkage': bytes} - encrypted linkage for verifier
 
         Raises:
-            NotImplementedError: Storage/Services are not implemented yet
+            InvalidParameterError: If args are invalid
+            RuntimeError: If key_deriver or privileged_key_manager not configured
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts#revealCounterpartyKeyLinkage
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - ts-sdk ProtoWallet.revealCounterpartyKeyLinkage
         """
         self._validate_originator(originator)
-        raise NotImplementedError("reveal_counterparty_key_linkage is not implemented yet (Storage/Services required)")
 
-    def reveal_specific_key_linkage(self, _args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """Reveal specific key linkage (stub).
+        # Check if privileged mode is requested
+        if args.get("privileged") and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.reveal_counterparty_key_linkage(args)
 
-        Summary:
-            Reveal linkage for a specific key. Depends on history/persistence
-            and verification; not implemented here yet.
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        # Delegate to key_deriver for standard (non-privileged) operation
+        return self.key_deriver.reveal_counterparty_key_linkage(args)
+
+    def reveal_specific_key_linkage(
+        self,
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Reveal specific key linkage.
+
+        Reveals linkage for a specific derived key with a counterparty,
+        encrypted for a verifier. More fine-grained than counterparty linkage.
 
         TS parity:
-            - Arguments/return shape will follow TS later.
+            - Delegates to ProtoWallet or PrivilegedKeyManager
+            - Validates privileged mode via args.privileged flag
 
         Args:
-            args: Parameters required to reveal linkage (TBD)
+            args: Arguments dict containing:
+                - counterparty (str): Counterparty public key (hex)
+                - verifier (str): Verifier public key (hex) for encryption
+                - protocolID (tuple[int, str]): Security level and protocol name
+                - keyID (str): Specific key identifier
+                - privileged (bool, optional): Whether to use privileged key
+                - privilegedReason (str, optional): Reason for privileged access
             originator: Optional caller identity
 
         Returns:
-            dict: Linkage reveal result (not implemented)
+            dict: {'encryptedLinkage': bytes} - encrypted linkage for verifier
 
         Raises:
-            NotImplementedError: Storage/Services are not implemented yet
+            InvalidParameterError: If args are invalid
+            RuntimeError: If key_deriver or privileged_key_manager not configured
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts#revealSpecificKeyLinkage
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts
+            - ts-sdk ProtoWallet.revealSpecificKeyLinkage
         """
         self._validate_originator(originator)
-        raise NotImplementedError("reveal_specific_key_linkage is not implemented yet (Storage/Services required)")
+
+        # Check if privileged mode is requested
+        if args.get("privileged") and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.reveal_specific_key_linkage(args)
+
+        if self.key_deriver is None:
+            raise RuntimeError("keyDeriver is not configured")
+
+        # Delegate to key_deriver for standard (non-privileged) operation
+        return self.key_deriver.reveal_specific_key_linkage(args)
 
     def get_public_key(
         self,
@@ -1396,8 +1494,14 @@ class Wallet:
         Note:
             Requires key_deriver to be configured. If key_deriver is None, raises RuntimeError.
             TypeScript's ProtoWallet.getPublicKey validates protocolID and keyID when identityKey is false.
+            If privilegedReason is provided in args and privileged_key_manager is configured,
+            uses privileged_key_manager instead of key_deriver.
         """
         self._validate_originator(originator)
+
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.get_public_key(args)
 
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
@@ -1481,6 +1585,10 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.create_signature(args)
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -1552,6 +1660,10 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.verify_signature(args)
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -1621,6 +1733,11 @@ class Wallet:
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (encrypt)
         """
         self._validate_originator(originator)
+
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.encrypt(args)
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -1673,6 +1790,11 @@ class Wallet:
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (decrypt)
         """
         self._validate_originator(originator)
+
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.decrypt(args)
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -1726,6 +1848,11 @@ class Wallet:
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (create_hmac)
         """
         self._validate_originator(originator)
+
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.create_hmac(args)
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -1774,6 +1901,11 @@ class Wallet:
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (verify_hmac)
         """
         self._validate_originator(originator)
+
+        # Check if privileged mode is requested
+        if "privilegedReason" in args and self.privileged_key_manager is not None:
+            return self.privileged_key_manager.verify_hmac(args)
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
