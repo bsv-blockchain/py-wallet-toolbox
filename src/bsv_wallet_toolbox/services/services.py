@@ -23,14 +23,13 @@ from collections.abc import Callable
 from time import time
 from typing import Any
 
-from bsv.broadcasters.arc import ARC, ARCConfig
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
 
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
-from .providers.arc import ArcConfig as ArcProviderConfig
-from .providers.bitails import Bitails
+from .providers.arc import ARC, ArcConfig
+from .providers.bitails import Bitails, BitailsConfig
 from .providers.whatsonchain import WhatsOnChain
 from .service_collection import ServiceCollection
 from .wallet_services import Chain, WalletServices
@@ -208,7 +207,7 @@ class Services(WalletServices):
         # Initialize ARC TAAL provider (optional)
         arc_url = self.options.get("arcUrl")
         if arc_url:
-            arc_config = ArcProviderConfig(
+            arc_config = ArcConfig(
                 api_key=self.options.get("arcApiKey"),
                 headers=self.options.get("arcHeaders"),
             )
@@ -217,7 +216,7 @@ class Services(WalletServices):
         # Initialize ARC GorillaPool provider (optional)
         arc_gorillapool_url = self.options.get("arcGorillaPoolUrl")
         if arc_gorillapool_url:
-            arc_gorillapool_config = ArcProviderConfig(
+            arc_gorillapool_config = ArcConfig(
                 api_key=self.options.get("arcGorillaPoolApiKey"),
                 headers=self.options.get("arcGorillaPoolHeaders"),
             )
@@ -229,7 +228,8 @@ class Services(WalletServices):
 
         # Initialize Bitails provider (optional)
         bitails_api_key = self.options.get("bitailsApiKey")
-        self.bitails = Bitails(chain=chain, config={"api_key": bitails_api_key})
+        bitails_config = BitailsConfig(api_key=bitails_api_key)
+        self.bitails = Bitails(chain=chain, config=bitails_config)
 
         # Initialize ServiceCollections for multi-provider failover
         self._init_service_collections()
@@ -248,7 +248,7 @@ class Services(WalletServices):
 
         # getRawTx collection
         self.get_raw_tx_services = ServiceCollection("getRawTx")
-        self.get_raw_tx_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx_result})
+        self.get_raw_tx_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx})
 
         # postBeef collection
         self.post_beef_services = ServiceCollection("postBeef")
@@ -789,7 +789,7 @@ class Services(WalletServices):
         # TODO: Phase 4 - Add transaction tracking/monitoring
         # If ARC URL configured, delegate to py-sdk ARC broadcaster
         if self.arc_url:
-            cfg = ARCConfig(api_key=self.arc_api_key, headers=self.arc_headers)
+            cfg = ArcConfig(api_key=self.arc_api_key, headers=self.arc_headers)
             arc = ARC(self.arc_url, cfg)
             # In TS, postBeef accepts BEEF; here we expect a raw transaction BEEF already prepared.
             # For parity and tests without real network, leave actual BEEF → Transaction conversion to callers.

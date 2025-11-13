@@ -14,8 +14,6 @@ from collections.abc import Callable
 
 import pytest
 
-from bsv_wallet_toolbox import Wallet
-
 
 class TestUniversalVectorsAcquireCertificate:
     """Tests using Universal Test Vectors for acquireCertificate.
@@ -24,9 +22,9 @@ class TestUniversalVectorsAcquireCertificate:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for acquire_certificate implementation")
+    @pytest.mark.xfail(reason="Test vector incomplete: missing required 'subject' field in simple variant")
     def test_acquirecertificate_simple_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
         """Given: Universal Test Vector input for acquireCertificate (simple)
         When: Call acquireCertificate
@@ -34,7 +32,7 @@ class TestUniversalVectorsAcquireCertificate:
         """
         # Given
         args_data, result_data = load_test_vectors("acquireCertificate-simple")
-        wallet = Wallet(chain="main")
+        wallet = wallet_with_services
 
         # When
         result = wallet.acquire_certificate(args_data["json"], originator=None)
@@ -48,9 +46,9 @@ class TestUniversalVectorsAcquireCertificate:
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
 
-    @pytest.mark.skip(reason="Waiting for acquire_certificate implementation")
+    @pytest.mark.xfail(reason="Test vector incomplete: missing required 'serialNumber' field in issuance variant")
     def test_acquirecertificate_issuance_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
         """Given: Universal Test Vector input for acquireCertificate (issuance)
         When: Call acquireCertificate for issuance
@@ -58,7 +56,7 @@ class TestUniversalVectorsAcquireCertificate:
         """
         # Given
         args_data, result_data = load_test_vectors("acquireCertificate-issuance")
-        wallet = Wallet(chain="main")
+        wallet = wallet_with_services
 
         # When
         result = wallet.acquire_certificate(args_data["json"], originator=None)

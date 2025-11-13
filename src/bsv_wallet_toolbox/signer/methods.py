@@ -563,31 +563,34 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
     now = datetime.utcnow()
     user_id = auth.get("user_id") if isinstance(auth, dict) else getattr(auth, "user_id", "")
 
-    # Create certificate record
+    # Create certificate record (Python stores fields separately)
+    # Note: vargs uses camelCase keys (from JSON), convert to snake_case for Python
     new_cert = {
-        "certificate_id": 0,  # Will be replaced by storage insert
         "created_at": now,
         "updated_at": now,
         "user_id": user_id,
         "type": vargs.get("type"),
         "subject": vargs.get("subject"),
         "verifier": (
-            vargs.get("certifier") if vargs.get("keyring_revealer") == "certifier" else vargs.get("keyring_revealer")
+            vargs.get("certifier") if vargs.get("keyringRevealer") == "certifier" else vargs.get("keyringRevealer")
         ),
-        "serial_number": vargs.get("serial_number"),
+        "serial_number": vargs.get("serialNumber"),
         "certifier": vargs.get("certifier"),
-        "revocation_outpoint": vargs.get("revocation_outpoint"),
+        "revocation_outpoint": vargs.get("revocationOutpoint"),
         "signature": vargs.get("signature"),
-        "fields": [],
         "is_deleted": False,
     }
 
-    # Add certificate fields
-    keyring_for_subject = vargs.get("keyring_for_subject", {})
-    for field_name, field_value in vargs.get("fields", {}).items():
-        new_cert["fields"].append(
-            {
-                "certificate_id": 0,  # Will be replaced by storage insert
+    # Insert certificate into storage
+    cert_result = wallet.storage.insert_certificate(new_cert)
+
+    # Add certificate fields separately (Python API requires separate insert)
+    keyring_for_subject = vargs.get("keyringForSubject", {})
+    if cert_result:
+        cert_id = cert_result if isinstance(cert_result, int) else cert_result.get("certificate_id", 0)
+        for field_name, field_value in vargs.get("fields", {}).items():
+            field_data = {
+                "certificate_id": cert_id,
                 "created_at": now,
                 "updated_at": now,
                 "user_id": user_id,
@@ -595,10 +598,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
                 "field_value": field_value,
                 "master_key": keyring_for_subject.get(field_name, ""),
             }
-        )
-
-    # Insert certificate into storage
-    wallet.storage.insert_certificate(new_cert)
+            wallet.storage.insert_certificate_field(field_data)
 
     # Return result
     result = {

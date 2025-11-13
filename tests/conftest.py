@@ -30,12 +30,11 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import pytest
-from bsv.chaintracker import ChainTracker
 from bsv.keys import PrivateKey
 from bsv.wallet import KeyDeriver
 
 from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.services import WalletServices
+from bsv_wallet_toolbox.services import Services, create_default_options
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import Base
 from bsv_wallet_toolbox.storage.provider import StorageProvider
@@ -113,15 +112,18 @@ def testnet_wallet() -> Wallet:
 # ========================================================================
 
 
-class MockWalletServices(WalletServices):
-    """Mock implementation of WalletServices for testing.
+class MockWalletServices(Services):
+    """Mock implementation of WalletServices for testing (extends Services).
 
     This mock allows tests to verify Wallet interface behavior without
-    requiring actual blockchain API calls.
+    requiring actual blockchain API calls. It extends Services but can
+    override specific methods if needed for testing.
 
     Attributes:
         height: Mock blockchain height (default: 850000)
         header: Mock block header bytes (default: genesis block)
+
+    TS Reference: Services.ts - WalletServices interface implementation
     """
 
     def __init__(
@@ -130,14 +132,15 @@ class MockWalletServices(WalletServices):
         height: int = 850000,
         header: bytes | None = None,
     ) -> None:
-        """Initialize mock services.
+        """Initialize mock services extending Services.
 
         Args:
             chain: Blockchain network ('main' or 'test')
-            height: Mock blockchain height
+            height: Mock blockchain height (used by get_height())
             header: Mock block header (80 bytes). If None, uses genesis block header.
         """
-        super().__init__(chain)
+        # Initialize parent Services with default options
+        super().__init__(create_default_options(chain))  # type: ignore
         self._height = height
 
         # Default to genesis block header if not provided
@@ -151,27 +154,19 @@ class MockWalletServices(WalletServices):
         else:
             self._header = header
 
-    def get_chain_tracker(self) -> ChainTracker:
-        """Get mock ChainTracker (not implemented for basic tests).
-
-        Raises:
-            NotImplementedError: ChainTracker not needed for basic Wallet interface tests
-        """
-        raise NotImplementedError("MockWalletServices does not provide ChainTracker")
-
     def get_height(self) -> int:
-        """Get mock blockchain height.
+        """Get mock blockchain height (overrides Services.get_height).
 
         Returns:
-            Mock height value
+            Mock height value (fixed at initialization time)
         """
         return self._height
 
     def get_header_for_height(self, height: int) -> bytes:  # noqa: ARG002
-        """Get mock block header.
+        """Get mock block header (overrides Services.get_header_for_height).
 
         Args:
-            height: Block height (ignored in mock)
+            height: Block height (ignored in mock - always returns same header)
 
         Returns:
             Mock header bytes (80 bytes)
@@ -195,13 +190,35 @@ def mock_services() -> MockWalletServices:
 
 
 @pytest.fixture
-def wallet_with_services(mock_services: MockWalletServices) -> Wallet:
-    """Create a test wallet instance with mock services.
+def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
+    """Create a test wallet instance with full setup: KeyDeriver, StorageProvider, and Services.
+
+    This is the top-level fixture that includes all required components:
+    - KeyDeriver: For key derivation operations
+    - StorageProvider: For wallet data persistence
+    - WalletServices: For blockchain data access (production implementation with mocked HTTP)
 
     Returns:
-        Wallet instance configured with MockWalletServices
+        Wallet instance configured with KeyDeriver, in-memory storage, and production Services
     """
-    return Wallet(chain="main", services=mock_services)
+    # Create in-memory SQLite database
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    # Create storage provider
+    storage = StorageProvider(engine=engine, chain="main", storage_identity_key="test_wallet_full")
+
+    # Create production Services instance with default options
+    # HTTP calls are mocked via mock_whatsonchain_default_http fixture (autouse)
+    services = Services(create_default_options("main"))
+
+    # Create wallet with all components
+    return Wallet(
+        chain="main",
+        key_deriver=test_key_deriver,
+        storage_provider=storage,
+        services=services,
+    )
 
 
 @pytest.fixture

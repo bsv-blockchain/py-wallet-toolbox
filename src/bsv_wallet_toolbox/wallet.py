@@ -159,7 +159,8 @@ class Wallet:
         self.chain: Chain = chain
         self.services: WalletServices | None = services
         self.key_deriver: KeyDeriver | None = key_deriver
-        self.storage_provider: Any | None = storage_provider
+        # TS parity: TypeScript uses 'storage' instead of 'storage_provider'
+        self.storage: Any | None = storage_provider
         self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
 
         # Initialize BEEF and Wave 4 attributes (Phase 5 integration)
@@ -177,9 +178,9 @@ class Wallet:
 
         # Wire services into storage for TS parity SpecOps (e.g., invalid change)
         try:
-            if self.services is not None and self.storage_provider is not None:
+            if self.services is not None and self.storage is not None:
                 # set_services exists on our StorageProvider implementation
-                self.storage_provider.set_services(self.services)
+                self.storage.set_services(self.services)
         except Exception:
             # Best-effort wiring; storage providers without set_services are tolerated
             pass
@@ -268,9 +269,9 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (destroy)
         """
         # Destroy storage provider if available
-        if self.storage_provider is not None:
+        if self.storage is not None:
             try:
-                self.storage_provider.destroy()
+                self.storage.destroy()
             except Exception:
                 # Best-effort cleanup; allow exceptions to propagate if needed
                 raise
@@ -317,23 +318,23 @@ class Wallet:
             toolbox/ts-wallet-toolbox/src/Wallet.ts
         """
         self._validate_originator(originator)
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth") or {}
-        return self.storage_provider.list_outputs(auth, args)
+        return self.storage.list_outputs(auth, args)
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List certificates with optional filters."""
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # Generate auth object with identity key
         auth = self._make_auth()
 
         # Delegate to storage provider (TS parity)
-        return self.storage_provider.list_certificates(auth, args)
+        return self.storage.list_certificates(auth, args)
 
     def relinquish_output(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Mark an output as relinquished (soft-delete).
@@ -352,12 +353,12 @@ class Wallet:
         """
 
         self._validate_originator(originator)
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # For now, simple stub that returns success
         # Full implementation would parse output identifier and update storage
-        result = self.storage_provider.relinquish_output(args)
+        result = self.storage.relinquish_output(args)
 
         return {"relinquished": bool(result)}
 
@@ -399,7 +400,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
@@ -409,7 +410,7 @@ class Wallet:
         auth = self._make_auth()
 
         # Delegate to storage provider (TS parity)
-        return self.storage_provider.list_actions(auth, args)
+        return self.storage.list_actions(auth, args)
 
     def abort_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Abort an action.
@@ -440,7 +441,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
@@ -448,7 +449,7 @@ class Wallet:
 
         # Extract reference and call storage provider
         reference = args.get("reference", "")
-        result = self.storage_provider.abort_action(reference)
+        result = self.storage.abort_action(reference)
 
         return {"aborted": bool(result)}
 
@@ -483,7 +484,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
@@ -493,7 +494,7 @@ class Wallet:
         auth = self._make_auth()
 
         # Call storage provider with auth (TypeScript parity)
-        self.storage_provider.relinquish_certificate(auth, args)
+        self.storage.relinquish_certificate(auth, args)
 
         # Always return success (TypeScript parity)
         return {"relinquished": True}
@@ -526,7 +527,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
@@ -559,7 +560,7 @@ class Wallet:
             args["randomVals"] = random_vals[:]
 
         # Delegate to storage provider (TS: await createAction(this, auth, vargs))
-        result = self.storage_provider.create_action(auth, args)
+        result = self.storage.create_action(auth, args)
 
         # TODO: Wave 4 Enhancement - BEEF integration
         # TS parity requires:
@@ -597,7 +598,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
@@ -609,7 +610,7 @@ class Wallet:
         # Delegate to storage provider for signing and finalization
         # TS: const { auth, vargs } = this.validateAuthAndArgs(args, validateSignActionArgs)
         # TS: const r = await signAction(this, auth, args)
-        result = self.storage_provider.process_action(auth, args)
+        result = self.storage.process_action(auth, args)
 
         # TODO: Wave 4 Enhancement - Pending action tracking & BEEF integration
         # TS parity requires:
@@ -656,7 +657,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
         # Validate input arguments (raises InvalidParameterError on failure)
@@ -674,7 +675,7 @@ class Wallet:
 
         # Delegate to storage provider for internalization logic
         # TS: const r = await internalizeAction(this, auth, args)
-        result = self.storage_provider.internalize_action(auth, args)
+        result = self.storage.internalize_action(auth, args)
 
         # TODO: Wave 4 Enhancement - Error handling & validation
         # TS parity requires:
@@ -775,7 +776,7 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (validateAuthAndArgs pattern)
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        if self.storage_provider is None:
+        if self.storage is None:
             raise RuntimeError("storage_provider is not configured")
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
@@ -784,7 +785,7 @@ class Wallet:
         identity_key_hex = self.key_deriver._root_public_key.hex()
 
         # Get or create user by identity key
-        user_id = self.storage_provider.get_or_create_user_id(identity_key_hex)
+        user_id = self.storage.get_or_create_user_id(identity_key_hex)
 
         return {"userId": user_id}
 
@@ -1358,7 +1359,7 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        if self.storage_provider is None:
+        if self.storage is None:
             raise RuntimeError("storage provider is not configured")
 
         if self.services is None:
@@ -1366,7 +1367,9 @@ class Wallet:
 
         # Delegate to signer layer for certificate acquisition
         # (coordinate with Storage and Services through signer)
-        return acquire_direct_certificate(self, args)
+        # Note: acquire_direct_certificate expects (wallet, auth, vargs)
+        # where auth is authentication context and vargs is validated args
+        return acquire_direct_certificate(self, None, args)
 
     def prove_certificate(
         self,
@@ -1408,7 +1411,7 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
-        if self.storage_provider is None:
+        if self.storage is None:
             raise RuntimeError("storage provider is not configured")
 
         if self.services is None:
@@ -2016,7 +2019,7 @@ class Wallet:
         Reference:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (balanceAndUtxos)
         """
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
         result: dict[str, Any] = {"total": 0, "utxos": []}
@@ -2060,7 +2063,7 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (balance)
             - toolbox/ts-wallet-toolbox/src/storage/methods/ListOutputsSpecOp.ts
         """
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
         # Use special operation for efficient balance calculation
@@ -2105,7 +2108,7 @@ class Wallet:
         Reference:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (reviewSpendableOutputs)
         """
-        if not self.storage_provider:
+        if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
         if not self.services:
