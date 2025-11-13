@@ -23,9 +23,17 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from bsv import Beef, Transaction
+from bsv.transaction import Transaction
 
 from bsv_wallet_toolbox.errors import WalletError
+
+# TODO: Beef import blocked on py-sdk enhancement
+# Beef class needs to be exported from bsv module for BEEF construction/merging
+# Reference: https://github.com/bitcoin-sv/py-sdk/issues/???
+try:
+    from bsv import Beef  # type: ignore
+except ImportError:
+    Beef = None  # type: ignore
 
 try:
     import requests

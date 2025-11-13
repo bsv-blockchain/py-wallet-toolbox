@@ -8,6 +8,7 @@ import base64
 from typing import Any
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.utils.satoshi import satoshi_from
 
 
 def validate_originator(originator: str | None) -> None:
@@ -726,3 +727,28 @@ def validate_sign_action_args(args: dict[str, Any]) -> None:
     for key in ("isNewTx", "isSendWith", "isNoSend", "isDelayed"):
         if key in args and not isinstance(args[key], bool):
             raise InvalidParameterError(key, "a boolean value")
+
+
+def validate_satoshis(value: Any, field_name: str = "satoshis") -> int:
+    """Validate and return a Satoshi value.
+
+    Validates that the value is an integer and within valid Satoshi bounds.
+    Returns the validated value if valid.
+
+    Args:
+        value: The value to validate (should be an integer)
+        field_name: The name of the field for error messages
+
+    Returns:
+        The validated Satoshi value
+
+    Raises:
+        InvalidParameterError: If value is not an integer or exceeds bounds
+
+    Reference:
+        - toolbox/ts-wallet-toolbox/src/utility/satoshiUtils.ts
+        - toolbox/go-wallet-toolbox/pkg/internal/satoshi/
+    """
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise InvalidParameterError(field_name, "an integer")
+    return satoshi_from(value)

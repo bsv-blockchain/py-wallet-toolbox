@@ -29,7 +29,7 @@ from typing import Any
 
 import requests
 
-from bsv_wallet_toolbox.utils.utility_helpers import double_sha256_be
+from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 
 
 @dataclass
