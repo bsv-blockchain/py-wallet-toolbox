@@ -22,6 +22,7 @@ from typing import Any
 from bsv.auth.master_certificate import MasterCertificate
 from bsv.script import P2PKH, Script
 from bsv.transaction import Beef, Transaction, TransactionInput, TransactionOutput
+from bsv.transaction.beef import parse_beef
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
@@ -100,9 +101,10 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
         prior.tx = complete_signed_transaction(prior, {}, wallet)
 
         result.txid = prior.tx.id("hex")
-        beef = Beef()
+        beef = Beef(version=1)
         if prior.dcr.get("input_beef"):
-            beef.merge_beef(Beef.from_binary(prior.dcr["input_beef"]))
+            input_beef = parse_beef(prior.dcr["input_beef"])
+            beef.merge_beef(input_beef)
         beef.merge_transaction(prior.tx)
 
         _verify_unlock_scripts(result.txid, beef)
@@ -140,7 +142,7 @@ def build_signable_transaction(
     """
     change_keys = wallet.get_client_change_key_pair()
 
-    input_beef = Beef.from_binary(args["input_beef"]) if args.get("input_beef") else None
+    input_beef = parse_beef(args["input_beef"]) if args.get("input_beef") else None
 
     storage_inputs = dctr.get("inputs", [])
     storage_outputs = dctr.get("outputs", [])
@@ -466,7 +468,7 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     # Build result
     txid = prior.tx.id("hex")
-    beef = Beef.from_binary(prior.dcr.get("input_beef", b""))
+    beef = parse_beef(prior.dcr.get("input_beef", b"")) if prior.dcr.get("input_beef") else Beef(version=1)
     beef.merge_transaction(prior.tx)
 
     _verify_unlock_scripts(txid, beef)
@@ -503,7 +505,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     vargs = args
 
     # Validate and extract atomic BEEF
-    ab = Beef.from_binary(vargs.get("tx", b""))
+    ab = parse_beef(vargs.get("tx", b"")) if vargs.get("tx") else Beef(version=1)
 
     # Note: Known txids (BRC-95 SpecOp support) are available in vargs.get("knownTxids", [])
     # They can be used for proof validation if needed

@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from bsv.keys import PublicKey
 from bsv.transaction import Beef
+from bsv.transaction.beef import parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
@@ -190,6 +191,7 @@ class Wallet:
         self.include_all_source_transactions: bool = False  # Wave 4: includeAllSourceTransactions
         self.random_vals: list | None = None  # Wave 4: randomVals setting
         self.pending_sign_actions: dict[str, Any] = {}  # Wave 4: Pending action tracking
+        self.return_txid_only: bool = False  # Wave 4: returnTxidOnly setting for BEEF verification
 
         # Initialize caches for Discovery methods (Wave 5)
         # Format: {cacheKey: {value: ..., expiresAt: timestamp}}
@@ -268,41 +270,104 @@ class Wallet:
 
         return "storage unknown"
 
-    def verify_returned_txid_only_atomic_beef(
-        self, beef_data: bytes | None, _known_txids: list[str] | None = None
-    ) -> bytes | None:
-        """Verify and process returned BEEF data with txid-only verification.
+    def verify_returned_txid_only(self, beef: Beef, known_txids: list[str] | None = None) -> Beef:
+        """Verify and complete txid-only transactions in BEEF.
 
-        TS: verifyReturnedTxidOnlyAtomicBEEF(beef: BEEF): BEEF
+        TS: verifyReturnedTxidOnly(beef: Beef, knownTxids?: string[]): Beef
+
+        When returnTxidOnly is False, ensures all txid-only transactions in BEEF
+        are merged with full transaction data from self.beef or known_txids.
 
         Args:
-            beef_data: Binary BEEF data returned from transaction creation
-            _known_txids: Optional list of known transaction IDs for verification (Phase 5)
+            beef: Beef object to verify
+            known_txids: Optional list of known transaction IDs (can skip verification for these)
 
         Returns:
-            Verified BEEF data or None if beef_data is None
+            Verified Beef object with txid-only transactions completed
+
+        Raises:
+            Exception: WERR_INTERNAL if unable to merge a txid-only transaction
+        """
+        if self.return_txid_only:
+            return beef
+
+        # Extract txid-only transactions and merge them with full data
+        for btx in beef.txs.values():
+            # Check if this is a txid-only transaction (data_format == 2)
+            if btx.data_format == 2:  # TxIDOnly
+                txid = btx.txid
+                # Skip if known_txids contains this txid
+                if known_txids and txid in known_txids:
+                    continue
+
+                # Find the full transaction in self.beef
+                if self.beef and hasattr(self.beef, "find_atomic_transaction"):
+                    tx = self.beef.find_atomic_transaction(txid)
+                    if tx:
+                        # Merge the full transaction
+                        beef.merge_transaction(tx)
+                    else:
+                        msg = f"unable to merge txid {txid} into beef"
+                        raise Exception(msg)
+                else:
+                    msg = f"unable to merge txid {txid} into beef"
+                    raise Exception(msg)
+
+        # Verify no remaining txid-only transactions (unless known)
+        for btx in beef.txs.values():
+            if btx.data_format == 2:  # TxIDOnly
+                if known_txids and btx.txid in known_txids:
+                    continue
+                msg = f"remaining txidOnly {btx.txid} is not known"
+                raise Exception(msg)
+
+        return beef
+
+    def verify_returned_txid_only_atomic_beef(
+        self, beef_data: bytes | None, known_txids: list[str] | None = None
+    ) -> bytes | None:
+        """Verify and process returned AtomicBEEF data with txid-only verification.
+
+        TS: verifyReturnedTxidOnlyAtomicBEEF(beef: AtomicBEEF, knownTxids?: string[]): AtomicBEEF
+
+        Args:
+            beef_data: Binary AtomicBEEF data (bytes) returned from transaction creation
+            known_txids: Optional list of known transaction IDs for verification
+
+        Returns:
+            Verified AtomicBEEF data (bytes) or None if beef_data is None
+
+        Raises:
+            Exception: WERR_INTERNAL if unable to verify or reconstruct BEEF
 
         Note:
-            Phase 5: Full verification including known_txids parameter
+            The method:
+            1. Parses the AtomicBEEF binary to extract the subject txid
+            2. Calls verify_returned_txid_only to complete txid-only transactions
+            3. Reconstructs the AtomicBEEF with to_binary_atomic()
         """
         if beef_data is None:
             return None
 
-        try:
-            # Parse BEEF from binary
-            if self.beef is not None and hasattr(self.beef, "from_binary"):
-                # Attempt to parse and verify
-                if isinstance(beef_data, (bytes, bytearray)):
-                    # Parse BEEF data (Phase 5: use for full verification)
-                    Beef.from_binary(beef_data)
+        if not isinstance(beef_data, (bytes, bytearray)):
+            return beef_data
 
-                # TS: verify returns to_binary() of verified result
-                # Phase 5: Full verification including _known_txids
-                return beef_data  # Return as-is for now; full verification in Phase 5
-            else:
-                return beef_data
+        try:
+            # Parse AtomicBEEF to get subject txid
+            beef, subject_txid, _ = parse_beef_ex(beef_data)
+
+            if not subject_txid:
+                msg = "unable to extract subject txid from atomic beef"
+                raise Exception(msg)
+
+            # Verify and complete txid-only transactions
+            verified_beef = self.verify_returned_txid_only(beef, known_txids)
+
+            # Reconstruct AtomicBEEF with verified data
+            return verified_beef.to_binary_atomic(subject_txid)
+
         except Exception:
-            # If verification fails, return original data
+            # If verification fails, return original data as fallback
             return beef_data
 
     def get_known_txids(self, new_known_txids: list[str] | None = None) -> list[str]:
@@ -320,19 +385,30 @@ class Wallet:
             List of valid transaction IDs from BEEF
 
         Note:
-            Phase 5 TODO: Integrate with self.beef.merge_txid_only() and sort_txs()
-            Currently returns provided txids as-is (validation deferred to Phase 5)
+            Merges new txids into self.beef as txid-only transactions and returns
+            all valid txids from the BEEF. Uses py-sdk Beef.merge_txid_only() and
+            get_valid_txids() methods.
         """
-        # Phase 5: When self.beef is initialized (BRC-277 Atomic BEEF)
-        # if new_known_txids:
-        #     for txid in new_known_txids:
-        #         if self.beef:
-        #             self.beef.merge_txid_only(txid)
-        # if self.beef:
-        #     result = self.beef.sort_txs()
-        #     return result.get("valid", [])
+        if not self.beef:
+            return new_known_txids or []
 
-        # Current (Phase 4): Return provided txids or empty list
+        try:
+            # Merge new txids into BEEF as txid-only transactions
+            if new_known_txids:
+                for txid in new_known_txids:
+                    if hasattr(self.beef, "merge_txid_only"):
+                        self.beef.merge_txid_only(txid)
+
+            # Get all valid txids from BEEF
+            # TS: result = this.beef.sort_txs(); return result.get("valid", [])
+            # py-sdk equivalent: beef.get_valid_txids()
+            if hasattr(self.beef, "get_valid_txids"):
+                return self.beef.get_valid_txids()
+
+        except Exception:
+            # Best-effort: if any error occurs, return provided txids
+            pass
+
         return new_known_txids or []
 
     def destroy(self) -> None:
@@ -730,12 +806,12 @@ class Wallet:
                 # Try to reconstruct BEEF from signed transaction
                 if isinstance(beef_data, (bytes, bytearray)):
                     # Attempt to parse BEEF and merge
-                    if hasattr(self.beef, "from_binary"):
-                        parsed_beef = Beef.from_binary(beef_data)
-                        if hasattr(self.beef, "merge_beef"):
-                            self.beef.merge_beef(parsed_beef)
-                        elif hasattr(self.beef, "merge"):
-                            self.beef.merge(parsed_beef)
+                    try:
+                        parsed_beef = parse_beef(beef_data)
+                        self.beef.merge_beef(parsed_beef)
+                    except Exception:
+                        # BEEF parsing or merge failed, skip
+                        pass
             except Exception:
                 # Best-effort BEEF processing
                 pass
@@ -2350,10 +2426,9 @@ class Wallet:
 
         # --- Fetch and cache trust settings (2 minute TTL) ---
         if self._trust_settings_cache is None or self._trust_settings_cache_expires_at <= now_ms:
-            # Request settings from services (mock for now)
+            # Request settings from WalletSettingsManager
             # TS: const settings = await this.settingsManager.get()
-            # TODO: Integrate with WalletSettingsManager when available
-            trust_settings = {"trustedCertifiers": []}
+            trust_settings = _get_trust_settings_from_manager()
             self._trust_settings_cache = trust_settings
             self._trust_settings_cache_expires_at = now_ms + ttl_ms
         else:
@@ -2433,10 +2508,9 @@ class Wallet:
 
         # --- Fetch and cache trust settings (2 minute TTL) ---
         if self._trust_settings_cache is None or self._trust_settings_cache_expires_at <= now_ms:
-            # Request settings from services (mock for now)
+            # Request settings from WalletSettingsManager
             # TS: const settings = await this.settingsManager.get()
-            # TODO: Integrate with WalletSettingsManager when available
-            trust_settings = {"trustedCertifiers": []}
+            trust_settings = _get_trust_settings_from_manager()
             self._trust_settings_cache = trust_settings
             self._trust_settings_cache_expires_at = now_ms + ttl_ms
         else:
