@@ -27,11 +27,9 @@ from bsv.transaction import Transaction
 
 from bsv_wallet_toolbox.errors import WalletError
 
-# TODO: Beef import blocked on py-sdk enhancement
-# Beef class needs to be exported from bsv module for BEEF construction/merging
-# Reference: https://github.com/bitcoin-sv/py-sdk/issues/???
+# Beef class for BEEF construction/merging (py-sdk now exports it)
 try:
-    from bsv import Beef  # type: ignore
+    from bsv.transaction import Beef  # type: ignore
 except ImportError:
     Beef = None  # type: ignore
 
@@ -1022,19 +1020,23 @@ def get_beef_for_transaction(
         # 2. Merkle path (bump)
         # 3. Recursive input proofs
         # 4. Serialize to binary/hex
-        try:
-            beef = Beef()
-            beef.merge_raw_tx(raw_tx)
-            if merkle_path:
-                beef.merge_bump(merkle_path)
-            beef_hex = beef.to_hex()
-        except (ImportError, AttributeError):
+        if Beef is not None:
+            try:
+                beef = Beef()
+                beef.merge_raw_tx(raw_tx)
+                if merkle_path:
+                    beef.merge_bump(merkle_path)
+                beef_hex = beef.to_hex()
+            except (AttributeError, Exception):
+                # Fallback if Beef operations fail
+                beef_hex = raw_tx
+        else:
             # Fallback if py-sdk Beef not available
             beef_hex = raw_tx
 
     # Step 5: Handle BEEF merging if requested
     merge_to_beef = options.get("mergeToBeef")
-    if merge_to_beef:
+    if merge_to_beef and Beef is not None:
         # Merge provided BEEF with computed BEEF
         try:
             existing_beef = Beef.from_hex(merge_to_beef)
@@ -1042,7 +1044,7 @@ def get_beef_for_transaction(
             # Merge the BEEFs
             existing_beef.merge(new_beef)
             beef_hex = existing_beef.to_hex()
-        except (ImportError, AttributeError, Exception):
+        except (AttributeError, Exception):
             # If merging fails, keep computed BEEF
             pass
 
@@ -1099,7 +1101,7 @@ def get_beef_for_transaction(
 
                     for inp in inputs:
                         prev_txid = inp.get("prevTxid") if hasattr(inp, "get") else getattr(inp, "prevTxid", "")
-                        if prev_txid and prev_txid not in known_txids:
+                        if prev_txid and prev_txid not in known_txids and Beef is not None:
                             try:
                                 # Query services for proof
                                 proof = services.getRawTx(prev_txid)
