@@ -243,7 +243,7 @@ def build_signable_transaction(
             )
 
             source_tx_binary = storage_input.get("source_transaction")
-            source_tx = Transaction.from_binary(source_tx_binary) if source_tx_binary else None
+            source_tx = Transaction.from_hex(source_tx_binary) if source_tx_binary else None
 
             tx.add_input(
                 TransactionInput(
