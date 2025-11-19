@@ -151,7 +151,7 @@ class Wallet:
                 wired with services (set_services) for SpecOps that require
                 network checks.
             privileged_key_manager: Optional PrivilegedKeyManager for secure key operations.
-                                   If provided and args contain "privilegedReason", uses
+                                   If provided and args contain "privileged", uses
                                    this manager's methods instead of key_deriver.
 
         Note:
@@ -1802,13 +1802,13 @@ class Wallet:
         Note:
             Requires key_deriver to be configured. If key_deriver is None, raises RuntimeError.
             TypeScript's ProtoWallet.getPublicKey validates protocolID and keyID when identityKey is false.
-            If privilegedReason is provided in args and privileged_key_manager is configured,
+            If privileged is provided in args and privileged_key_manager is configured,
             uses privileged_key_manager instead of key_deriver.
         """
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.get_public_key(args)
 
         if self.key_deriver is None:
@@ -1894,7 +1894,7 @@ class Wallet:
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_signature(args)
 
         if self.key_deriver is None:
@@ -1969,7 +1969,7 @@ class Wallet:
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_signature(args)
 
         if self.key_deriver is None:
@@ -2043,7 +2043,7 @@ class Wallet:
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.encrypt(args)
 
         if self.key_deriver is None:
@@ -2100,7 +2100,7 @@ class Wallet:
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.decrypt(args)
 
         if self.key_deriver is None:
@@ -2158,7 +2158,7 @@ class Wallet:
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_hmac(args)
 
         if self.key_deriver is None:
@@ -2211,7 +2211,7 @@ class Wallet:
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
-        if "privilegedReason" in args and self.privileged_key_manager is not None:
+        if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_hmac(args)
 
         if self.key_deriver is None:
