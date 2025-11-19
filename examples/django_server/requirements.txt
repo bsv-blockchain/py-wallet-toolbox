@@ -4,4 +4,6 @@
 # Core dependencies
 Django>=4.2.0
 djangorestframework>=3.14.0
-git+https://github.com/bsv-blockchain/py-wallet-toolbox.git@master
+
+# Local py-wallet-toolbox (with PushDrop fix)
+-e ../..
