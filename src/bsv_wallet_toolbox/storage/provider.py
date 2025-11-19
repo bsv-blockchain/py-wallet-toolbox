@@ -1784,7 +1784,7 @@ class StorageProvider:
             txid = deterministic_txid(reference, vargs.outputs)
             self.update_transaction(transaction_id, {"txid": txid})
             result["txid"] = txid
-        else:
+        elif not vargs.options.return_txid_only:
             signable_tx = {
                 "reference": reference,
                 "tx": list(storage_beef_bytes) if storage_beef_bytes else [],
@@ -2260,7 +2260,13 @@ class StorageProvider:
         with session_scope(self.SessionLocal) as s:
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
-            query = select(model).where(getattr(model, pk_col.name) == pk_value)
+            # Get the Python attribute name for the primary key (not the DB column name)
+            pk_attr_name = pk_col.name
+            for prop in mapper.attrs:
+                if hasattr(prop, "columns") and pk_col in prop.columns:
+                    pk_attr_name = prop.key
+                    break
+            query = select(model).where(getattr(model, pk_attr_name) == pk_value)
             obj = s.execute(query).scalar_one_or_none()
             if not obj:
                 return 0

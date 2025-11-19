@@ -19,15 +19,16 @@ class TestWalletCreateHmac:
         Note: Based on BRC-100 specification for HMAC creation.
         """
         # Given
-        args = {"data": b"Test data for HMAC", "protocolID": [0, "test protocol"], "keyID": "hmac_key_1"}
+        args = {"data": b"Test data for HMAC", "protocolID": [0, "test"], "keyID": "hmac_key_1"}
 
         # When
         result = wallet_with_storage.create_hmac(args)
 
         # Then
         assert "hmac" in result
-        assert isinstance(result["hmac"], bytes)
+        assert isinstance(result["hmac"], list)
         assert len(result["hmac"]) == 32  # HMAC-SHA256 produces 32 bytes
+        assert all(isinstance(b, int) and 0 <= b <= 255 for b in result["hmac"])
 
 
 class TestWalletVerifyHmac:
@@ -41,13 +42,13 @@ class TestWalletVerifyHmac:
         Note: Based on BRC-100 specification for HMAC verification.
         """
         # Given - First create an HMAC
-        create_args = {"data": b"Test data for HMAC", "protocolID": [0, "test protocol"], "keyID": "hmac_key_1"}
+        create_args = {"data": b"Test data for HMAC", "protocolID": [0, "test"], "keyID": "hmac_key_1"}
         create_result = wallet_with_storage.create_hmac(create_args)
 
         verify_args = {
             "data": b"Test data for HMAC",
             "hmac": create_result["hmac"],
-            "protocolID": [0, "test protocol"],
+            "protocolID": [0, "test"],
             "keyID": "hmac_key_1",
         }
 
@@ -69,7 +70,7 @@ class TestWalletVerifyHmac:
         verify_args = {
             "data": b"Test data for HMAC",
             "hmac": b"incorrect_hmac_value_32bytes!!",  # Wrong HMAC
-            "protocolID": [0, "test protocol"],
+            "protocolID": [0, "test"],
             "keyID": "hmac_key_1",
         }
 
@@ -92,14 +93,15 @@ class TestWalletCreateSignature:
         Note: Based on BRC-100 specification for signature creation.
         """
         # Given
-        args = {"data": b"Data to sign", "protocolID": [0, "test protocol"], "keyID": "signing_key_1"}
+        args = {"data": b"Data to sign", "protocolID": [0, "test"], "keyID": "signing_key_1"}
 
         # When
         result = wallet_with_storage.create_signature(args)
 
         # Then
         assert "signature" in result
-        assert isinstance(result["signature"], bytes)
+        assert isinstance(result["signature"], list)
+        assert all(isinstance(b, int) and 0 <= b <= 255 for b in result["signature"])
         assert len(result["signature"]) >= 70  # DER signatures are typically 70-72 bytes
 
 
@@ -114,18 +116,20 @@ class TestWalletVerifySignature:
         Note: Based on BRC-100 specification for signature verification.
         """
         # Given - First create a signature
-        create_args = {"data": b"Data to sign", "protocolID": [0, "test protocol"], "keyID": "signing_key_1"}
+        create_args = {"data": b"Data to sign", "protocolID": [0, "test"], "keyID": "signing_key_1"}
         create_result = wallet_with_storage.create_signature(create_args)
 
         # Get public key for verification
         pubkey_result = wallet_with_storage.get_public_key(
-            {"protocolID": [0, "test protocol"], "keyID": "signing_key_1"}
+            {"protocolID": [0, "test"], "keyID": "signing_key_1"}
         )
 
         verify_args = {
             "data": b"Data to sign",
             "signature": create_result["signature"],
             "publicKey": pubkey_result["publicKey"],
+            "protocolID": [0, "test"],
+            "keyID": "signing_key_1",
         }
 
         # When
@@ -142,11 +146,22 @@ class TestWalletVerifySignature:
 
         Note: Based on BRC-100 specification for signature verification.
         """
-        # Given
+        # Create a signature for different data
+        create_args = {"data": b"Different data", "protocolID": [0, "test"], "keyID": "signing_key_1"}
+        create_result = wallet_with_storage.create_signature(create_args)
+
+        # Get public key for verification
+        pubkey_result = wallet_with_storage.get_public_key(
+            {"protocolID": [0, "test"], "keyID": "signing_key_1"}
+        )
+
+        # Try to verify the signature against different data
         verify_args = {
-            "data": b"Data to sign",
-            "signature": b"invalid_signature_bytes" + b"\x00" * 50,  # Wrong signature
-            "publicKey": "02" + "00" * 32,  # Some public key
+            "data": b"Data to sign",  # Different from what was signed
+            "signature": create_result["signature"],
+            "publicKey": pubkey_result["publicKey"],
+            "protocolID": [0, "test"],
+            "keyID": "signing_key_1",
         }
 
         # When

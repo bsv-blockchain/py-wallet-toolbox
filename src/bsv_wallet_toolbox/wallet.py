@@ -521,9 +521,16 @@ class Wallet:
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
-        # For now, simple stub that returns success
-        # Full implementation would parse output identifier and update storage
-        result = self.storage.relinquish_output(args)
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Extract outpoint from args
+        outpoint = args.get("output")
+        if not outpoint:
+            raise InvalidParameterError("output", "required")
+
+        # Delegate to storage provider
+        result = self.storage.relinquish_output(auth, outpoint)
 
         return {"relinquished": bool(result)}
 
@@ -1149,6 +1156,27 @@ class Wallet:
         height = self.services.get_height()
         return {"height": height}
 
+    def get_header(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
+        """Get block header at specified height (alias for get_header_for_height).
+
+        BRC-100 WalletInterface method implementation.
+        Returns the block header at the specified height as a hex string.
+
+        This is an alias for get_header_for_height to match BRC-100 interface.
+
+        Args:
+            args: Dictionary with 'height' key (non-negative integer)
+            originator: Optional originator domain name (must be string under 250 bytes)
+
+        Returns:
+            Dictionary with 'header' key containing block header as hex string
+
+        Raises:
+            InvalidParameterError: If originator parameter is invalid or height is invalid
+            RuntimeError: If services are not configured
+        """
+        return self.get_header_for_height(args, originator)
+
     def get_header_for_height(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
         """Get block header at specified height.
 
@@ -1185,10 +1213,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if self.services is None:
-            raise RuntimeError("Services must be configured to use getHeaderForHeight")
-
-        # Validate height parameter
+        # Validate height parameter first (before services check for better error messages)
         if "height" not in args:
             raise InvalidParameterError("height", "required")
 
@@ -1199,6 +1224,9 @@ class Wallet:
 
         if height < 0:
             raise InvalidParameterError("height", f"a non-negative integer (got {height})")
+
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use getHeaderForHeight")
 
         # Get header from services (returns bytes)
         header_bytes = self.services.get_header_for_height(height)

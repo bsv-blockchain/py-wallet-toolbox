@@ -189,7 +189,6 @@ def test_create_action_randomizes_outputs(storage_seeded: tuple[StorageProvider,
     assert order not in ([0, 1, 2], [2, 1, 0])
 
 
-@pytest.mark.xfail(reason="TODO: parity with TS returnTXIDOnly", strict=True)
 def test_create_action_known_txids_return_txid_only(storage_seeded: tuple[StorageProvider, dict[str, Any]]) -> None:
     """When returnTXIDOnly is true, signable transaction bytes should be omitted (TS createAction2 test)."""
 

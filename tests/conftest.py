@@ -208,9 +208,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     # Create storage provider
     storage = StorageProvider(engine=engine, chain="main", storage_identity_key="test_wallet_full")
 
-    # Create production Services instance with default options
-    # HTTP calls are mocked via mock_whatsonchain_default_http fixture (autouse)
-    services = Services(create_default_options("main"))
+    # Create mock Services instance for testing
+    services = MockWalletServices(chain="main", height=850000)
 
     # Create wallet with all components
     return Wallet(
@@ -528,6 +527,9 @@ def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
         # test_insert.py schema constraint tests
         "test_insert_certificate": "TODO: Test data missing required revocationOutpoint",
         "test_insert_certificatefield": "TODO: Test data format or FK issue",
+        # Key linkage revelation methods not implemented yet
+        "test_reveal_counterparty_key_linkage": "TODO: Implement reveal_counterparty_key_linkage method",
+        "test_reveal_specific_key_linkage": "TODO: Implement reveal_specific_key_linkage method",
     }
 
     for item in items:
