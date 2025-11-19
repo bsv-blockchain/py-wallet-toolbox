@@ -6,7 +6,13 @@ including trust-based filtering and certificate discovery.
 Reference: toolbox/ts-wallet-toolbox/src/utility/identityUtils.ts
 """
 
+import json
 from typing import Any, TypedDict
+
+from bsv.auth.verifiable_certificate import VerifiableCertificate as BsvVerifiableCertificate
+from bsv.script.push_drop import PushDrop
+from bsv.transaction.transaction import Transaction
+from bsv.utils import Utils
 
 
 class IdentityCertifier(TypedDict, total=False):
@@ -223,25 +229,59 @@ async def parse_results(lookup_result: dict[str, Any]) -> list[VerifiableCertifi
 
     Reference: toolbox/ts-wallet-toolbox/src/utility/identityUtils.ts:124-159
     """
-    # Note: Full implementation requires py-sdk Transaction, PushDrop, and
-    # VerifiableCertificate class integration. Current stub returns empty
-    # to avoid complex dependency chains during porting.
-
     if lookup_result.get("type") != "output-list":
         return []
 
     parsed_results: list[VerifiableCertificate] = []
 
-    # TODO: Implement full parsing with py-sdk
-    # for output in lookup_result.get("outputs", []):
-    #     try:
-    #         # Parse certificate from BEEF output
-    #         # Decrypt and verify certificate signature
-    #         # Add to parsed_results
-    #         pass
-    #     except Exception:
-    #         # Silently skip unparseable certificates
-    #         pass
+    for output in lookup_result.get("outputs", []):
+        try:
+            # Parse transaction from BEEF
+            beef_data = output.get("beef")
+            if not beef_data:
+                continue
+
+            tx = Transaction.from_beef(beef_data)
+
+            # Extract output script and decode with PushDrop
+            output_index = output.get("outputIndex", 0)
+            if output_index >= len(tx.outputs):
+                continue
+
+            locking_script = tx.outputs[output_index].lockingScript
+            decoded_output = PushDrop.decode(locking_script)
+
+            # Parse certificate JSON from first field
+            cert_json_str = Utils.to_utf8(decoded_output.fields[0])
+            certificate_data = json.loads(cert_json_str)
+
+            # Create BsvVerifiableCertificate instance using py-sdk
+            # Note: This uses py-sdk's auth.verifiable_certificate module
+            keyring_data = certificate_data.get("keyring", {})
+            verifiable_cert = BsvVerifiableCertificate(
+                cert=certificate_data,  # py-sdk Certificate
+                keyring=keyring_data if isinstance(keyring_data, dict) else {},
+            )
+
+            # Convert to VerifiableCertificate TypedDict for return
+            result_cert: VerifiableCertificate = {
+                "type": certificate_data.get("type"),
+                "serialNumber": certificate_data.get("serialNumber"),
+                "subject": certificate_data.get("subject"),
+                "certifier": certificate_data.get("certifier"),
+                "revocationOutpoint": certificate_data.get("revocationOutpoint"),
+                "fields": certificate_data.get("fields"),
+                "keyring": keyring_data,
+                "signature": certificate_data.get("signature"),
+            }
+            # Store the underlying BsvVerifiableCertificate for later use if needed
+            if not hasattr(result_cert, "_bsv_cert"):
+                result_cert["_bsv_cert"] = verifiable_cert  # type: ignore
+
+            parsed_results.append(result_cert)
+        except Exception:
+            # Silently skip unparseable certificates (as per TS implementation)
+            pass
 
     return parsed_results
 

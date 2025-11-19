@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypedDict
 
+from bsv.transaction.beef import Beef
+
 if TYPE_CHECKING:
     from bsv_wallet_toolbox.storage import StorageProvider
 
@@ -80,11 +82,22 @@ async def aggregate_action_results(
             ar["status"] = "failed"
             ar_ndr["status"] = "doubleSpend"
             if detail.get("competingTxs") and storage:
-                # TODO: Implement BEEF merging for competing transactions
-                # ar_ndr["competingBeef"] = await create_merged_beef_of_txids(
-                #     detail.get("competingTxs"), storage
-                # )
-                pass
+                # Merge competing transactions into BEEF
+                competing_txs = detail.get("competingTxs", [])
+                if competing_txs:
+                    try:
+                        beef = Beef()
+                        for competing_txid in competing_txs:
+                            # Find and merge competing transaction
+                            competing_tx = storage.find_transaction(competing_txid)
+                            if competing_tx:
+                                tx_data = competing_tx.get("rawtx") or competing_tx.get("rawTx")
+                                if tx_data:
+                                    beef.merge_raw_tx(bytes.fromhex(tx_data) if isinstance(tx_data, str) else tx_data)
+                        ar_ndr["competingBeef"] = beef.to_binary()
+                    except Exception:
+                        # Skip BEEF merging if unsuccessful
+                        pass
         elif status == "serviceError":
             # Services might improve
             ar["status"] = "sending"
