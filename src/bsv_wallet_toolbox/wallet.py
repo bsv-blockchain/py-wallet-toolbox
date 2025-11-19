@@ -2336,14 +2336,6 @@ class Wallet:
 
         Raises:
             RuntimeError: If storage_provider or services are not configured
-            NotImplementedError: If SpecOp infrastructure is not available
-
-        Note:
-            TODO: Full implementation requires:
-            - specOpInvalidChange SpecOp in storage layer
-            - Services.isUtxo() for verification
-            - Output script validation
-            See: toolbox/ts-wallet-toolbox/src/storage/methods/ListOutputsSpecOp.ts
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (reviewSpendableOutputs)
