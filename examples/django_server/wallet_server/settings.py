@@ -25,7 +25,8 @@ SECRET_KEY = 'django-insecure-yavde1#iud62ylvl=-twwg4!(2fyyfpkbea142bbg2ml67vs8l
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Allow localhost for development
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -37,6 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Project apps
+    'wallet_app',
+    # Third-party apps
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -75,7 +80,7 @@ WSGI_APPLICATION = 'wallet_server.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'NAME': BASE_DIR / 'django_admin.sqlite3',
     }
 }
 
@@ -120,3 +125,20 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# REST Framework configuration
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+}
+
+# CORS configuration for JSON-RPC API
+# Install django-cors-headers if needed: pip install django-cors-headers
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",  # React dev server
+#     "http://127.0.0.1:3000",
+# ]

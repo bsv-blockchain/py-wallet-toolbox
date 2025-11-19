@@ -16,7 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from wallet_app import views
 
 urlpatterns = [
+    # JSON-RPC endpoint at root (TypeScript StorageServer parity)
+    path('', views.json_rpc_endpoint, name='json_rpc'),
+    # Admin interface
     path('admin/', admin.site.urls),
 ]
