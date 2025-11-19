@@ -10,7 +10,7 @@ import json
 from typing import Any, TypedDict
 
 from bsv.auth.verifiable_certificate import VerifiableCertificate as BsvVerifiableCertificate
-from bsv.script.push_drop import PushDrop
+from bsv.transaction.pushdrop import PushDrop
 from bsv.transaction.transaction import Transaction
 from bsv.utils import Utils
 
@@ -252,7 +252,7 @@ async def parse_results(lookup_result: dict[str, Any]) -> list[VerifiableCertifi
             decoded_output = PushDrop.decode(locking_script)
 
             # Parse certificate JSON from first field
-            cert_json_str = Utils.to_utf8(decoded_output.fields[0])
+            cert_json_str = Utils.to_utf8(decoded_output["fields"][0])
             certificate_data = json.loads(cert_json_str)
 
             # Create BsvVerifiableCertificate instance using py-sdk
