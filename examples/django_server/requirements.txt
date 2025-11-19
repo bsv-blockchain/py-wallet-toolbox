@@ -1,0 +1,7 @@
+# Django JSON-RPC HTTP Server for py-wallet-toolbox
+# Requirements for Django project providing JSON-RPC endpoints for BRC-100 wallet operations
+
+# Core dependencies
+Django>=4.2.0
+djangorestframework>=3.14.0
+git+https://github.com/bsv-blockchain/py-wallet-toolbox.git@master
