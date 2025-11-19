@@ -24,6 +24,7 @@ from bsv.wallet.wallet_interface import (
 )
 
 from .errors import InvalidParameterError, ReviewActionsError
+from .manager.wallet_settings_manager import WalletSettingsManager
 from .sdk.privileged_key_manager import PrivilegedKeyManager
 from .sdk.types import specOpInvalidChange, specOpThrowReviewActions, specOpWalletBalance
 from .services import WalletServices
@@ -128,15 +129,16 @@ class Wallet:
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.6.0"  # Will become "1.0.0" when all 28 methods are complete (7/28 done)
+    VERSION = "0.28.0"  # Will become "1.0.0" when project manager approved our implementation
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         chain: Chain,
         services: WalletServices | None = None,
         key_deriver: KeyDeriver | None = None,
         storage_provider: Any | None = None,
         privileged_key_manager: PrivilegedKeyManager | None = None,
+        settings_manager: WalletSettingsManager | None = None,
     ) -> None:
         """Initialize wallet.
 
@@ -153,6 +155,8 @@ class Wallet:
             privileged_key_manager: Optional PrivilegedKeyManager for secure key operations.
                                    If provided and args contain "privileged", uses
                                    this manager's methods instead of key_deriver.
+            settings_manager: Optional WalletSettingsManager for wallet configuration.
+                           If None, a default WalletSettingsManager will be created.
 
         Note:
             Version is not configurable, it's a class constant.
@@ -164,6 +168,9 @@ class Wallet:
         # TS parity: TypeScript uses 'storage' instead of 'storage_provider'
         self.storage: Any | None = storage_provider
         self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
+
+        # Initialize settings manager (TS parity)
+        self.settings_manager: WalletSettingsManager = settings_manager or WalletSettingsManager(self)
 
         # Initialize BEEF and Wave 4 attributes
         # TS: this.beef = new BeefParty([this.userParty])
@@ -2420,7 +2427,8 @@ class Wallet:
         if self._trust_settings_cache is None or self._trust_settings_cache_expires_at <= now_ms:
             # Request settings from WalletSettingsManager
             # TS: const settings = await this.settingsManager.get()
-            trust_settings = _get_trust_settings_from_manager()
+            wallet_settings = self.settings_manager.get()
+            trust_settings = wallet_settings.get("trustSettings", {"trustedCertifiers": []})
             self._trust_settings_cache = trust_settings
             self._trust_settings_cache_expires_at = now_ms + ttl_ms
         else:
@@ -2502,7 +2510,8 @@ class Wallet:
         if self._trust_settings_cache is None or self._trust_settings_cache_expires_at <= now_ms:
             # Request settings from WalletSettingsManager
             # TS: const settings = await this.settingsManager.get()
-            trust_settings = _get_trust_settings_from_manager()
+            wallet_settings = self.settings_manager.get()
+            trust_settings = wallet_settings.get("trustSettings", {"trustedCertifiers": []})
             self._trust_settings_cache = trust_settings
             self._trust_settings_cache_expires_at = now_ms + ttl_ms
         else:
@@ -2689,18 +2698,3 @@ def _throw_dummy_review_actions() -> None:
         tx=None,  # Would be beef.toBinaryAtomic(txid)
         no_send_change=[f"{txid}.0"],
     )
-
-
-def _get_trust_settings_from_manager() -> dict[str, Any]:
-    """Helper to get trust settings from WalletSettingsManager.
-
-    TS: const settings = await this.settingsManager.get()
-
-    Returns default empty settings if manager is not available.
-    """
-    # Default settings
-    default_settings = {"trustedCertifiers": []}
-
-    # Phase 5: Integrate with actual WalletSettingsManager
-    # For now, return default settings
-    return default_settings

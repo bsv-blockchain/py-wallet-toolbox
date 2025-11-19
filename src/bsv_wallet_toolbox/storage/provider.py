@@ -107,6 +107,8 @@ class StorageProvider:
         self.max_output_script_length = max_output_script_length
         # Optional Services handle (wired by Wallet). Needed by some SpecOps.
         self._services: Any | None = None
+        # Settings cache (populated by make_available)
+        self.settings: dict[str, Any] | None = None
 
     def set_services(self, services: Any) -> None:
         """Attach a Services instance for network-backed checks.
@@ -239,6 +241,24 @@ class StorageProvider:
         with self.engine.begin() as conn:
             Base.metadata.create_all(bind=conn)
 
+    def is_storage_provider(self) -> bool:
+        """Check if this is a StorageProvider (not StorageClient).
+
+        Returns False for StorageProvider instances.
+        StorageClient returns false, StorageProvider returns false.
+
+        Returns:
+            bool: Always False for StorageProvider
+
+        Raises:
+            N/A
+
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
+            toolbox/ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
+        """
+        return False
+
     def is_available(self) -> bool:
         """Return True if storage is initialized.
 
@@ -308,13 +328,35 @@ class StorageProvider:
                     # Race insert: re-read
                     _exec_result = s.execute(q)
                     row = _exec_result.scalar_one()
-            return {
+            settings = {
                 "storageIdentityKey": row.storage_identity_key,
                 "storageName": row.storage_name,
                 "chain": row.chain,
                 "dbtype": row.dbtype,
                 "maxOutputScript": row.max_output_script,
             }
+            # Cache settings for get_settings method
+            self.settings = settings
+            return settings
+
+    def get_settings(self) -> dict[str, Any]:
+        """Get storage settings.
+
+        Returns cached settings from make_available call.
+        Must call make_available at least once before get_settings.
+
+        Returns:
+            dict: Storage settings
+
+        Raises:
+            RuntimeError: If make_available has not been called
+
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
+        """
+        if self.settings is None:
+            raise RuntimeError("call make_available at least once before get_settings")
+        return self.settings
 
     def destroy(self) -> None:
         """Destroy all resources and close database connections.
@@ -384,6 +426,79 @@ class StorageProvider:
                     _exec_result = s.execute(q)
                     u = _exec_result.scalar_one()
             return {"userId": u.user_id, "identityKey": u.identity_key}
+
+    def find_or_insert_sync_state_auth(
+        self, auth: dict[str, Any], storage_identity_key: str, storage_name: str
+    ) -> dict[str, Any]:
+        """Find or insert sync state record for authenticated user.
+
+        Summary:
+            Idempotent upsert of sync state by auth identity and storage identity.
+        TS parity:
+            Mirrors TS findOrInsertSyncStateAuth implementation.
+        Args:
+            auth: Auth dict with identityKey
+            storage_identity_key: Storage identity key
+            storage_name: Storage name
+        Returns:
+            Dict with keys: syncState, isNew
+        Raises:
+            sqlalchemy.exc.SQLAlchemyError: On database errors.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        with session_scope(self.SessionLocal) as s:
+            # Find user by identity key
+            identity_key = auth["identityKey"]
+            user_q = select(User).where(User.identity_key == identity_key)
+            user_result = s.execute(user_q)
+            user = user_result.scalar_one()
+
+            # Find or create sync state
+            sync_q = select(SyncState).where(
+                SyncState.user_id == user.user_id, SyncState.storage_identity_key == storage_identity_key
+            )
+            sync_result = s.execute(sync_q)
+            sync_state = sync_result.scalar_one_or_none()
+
+            is_new = False
+            if sync_state is None:
+                # Create new sync state
+                sync_state = SyncState(
+                    user_id=user.user_id,
+                    storage_identity_key=storage_identity_key,
+                    storage_name=storage_name,
+                    status="unknown",
+                    init=False,
+                    ref_num=f"{user.user_id}_{storage_identity_key}",
+                    sync_map="{}",
+                )
+                s.add(sync_state)
+                try:
+                    s.flush()
+                    is_new = True
+                except IntegrityError:
+                    s.rollback()
+                    sync_result = s.execute(sync_q)
+                    sync_state = sync_result.scalar_one()
+
+            return {
+                "syncState": {
+                    "syncStateId": sync_state.sync_state_id,
+                    "userId": sync_state.user_id,
+                    "storageIdentityKey": sync_state.storage_identity_key,
+                    "storageName": sync_state.storage_name,
+                    "status": sync_state.status,
+                    "init": sync_state.init,
+                    "refNum": sync_state.ref_num,
+                    "syncMap": sync_state.sync_map,
+                    "when": sync_state.when,
+                    "satoshis": sync_state.satoshis,
+                    "errorLocal": sync_state.error_local,
+                    "errorOther": sync_state.error_other,
+                },
+                "isNew": is_new,
+            }
 
     # ------------------------------------------------------------------
     # listOutputs (minimal subset)
@@ -3890,3 +4005,31 @@ class InternalizeActionContext:
                 )
                 session.add(output_tag_map)
                 session.flush()
+
+    def set_active(self, auth: dict[str, Any], new_active_storage_identity_key: str) -> int:
+        """Set active storage identity key for authenticated user.
+
+        Summary:
+            Updates the user's active storage identity key.
+        TS parity:
+            Mirrors TS setActive implementation.
+        Args:
+            auth: Auth dict with identityKey
+            new_active_storage_identity_key: New active storage identity key
+        Returns:
+            Number of updated records (0 or 1)
+        Raises:
+            sqlalchemy.exc.SQLAlchemyError: On database errors.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        with session_scope(self.SessionLocal) as s:
+            # Find user by identity key
+            identity_key = auth["identityKey"]
+            user_q = select(User).where(User.identity_key == identity_key)
+            user_result = s.execute(user_q)
+            user = user_result.scalar_one()
+
+            # Update user's active storage identity key
+            user.active_storage = new_active_storage_identity_key
+            return 1

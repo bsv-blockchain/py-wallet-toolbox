@@ -12,12 +12,27 @@ Features:
     - Thread-safe method registry
 
 Usage example:
+
+    **Basic usage (manual method registration):**
     >>> from bsv_wallet_toolbox.rpc import JsonRpcServer
     >>> server = JsonRpcServer()
     >>>
     >>> @server.register_method("wallet_create_action")
     >>> def handle_create_action(auth: dict, args: dict) -> dict:
     ...     return {"success": True}
+    >>>
+    >>> @app.route('/wallet', methods=['POST'])
+    >>> def handle_request():
+    ...     return server.handle_json_rpc_request(request.json)
+
+    **TS parity usage (auto-register StorageProvider methods):**
+    >>> from bsv_wallet_toolbox.rpc import JsonRpcServer
+    >>> from bsv_wallet_toolbox.storage import StorageProvider
+    >>> storage = StorageProvider(...)  # Initialize StorageProvider
+    >>> server = JsonRpcServer(storage_provider=storage)  # Auto-register all methods
+    >>>
+    >>> # Now camelCase JSON-RPC methods are available:
+    >>> # createAction, findCertificatesAuth, setActive, etc.
     >>>
     >>> @app.route('/wallet', methods=['POST'])
     >>> def handle_request():
@@ -41,7 +56,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from functools import partial
 from typing import Any
+
+from ..storage.provider import StorageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -183,13 +201,26 @@ class JsonRpcServer:
             return response
     ```
 
+    Args:
+        storage_provider: Optional StorageProvider to auto-register all methods as JSON-RPC endpoints.
+                         If provided, all StorageProvider methods are automatically registered,
+                         matching TypeScript StorageServer.ts behavior.
+
     Attributes:
         _methods: Dictionary of registered methods
     """
 
-    def __init__(self) -> None:
-        """Initialize the server with empty method registry."""
+    def __init__(self, storage_provider: StorageProvider | None = None) -> None:
+        """Initialize the server with empty method registry.
+
+        Args:
+            storage_provider: Optional StorageProvider to auto-register all methods as JSON-RPC endpoints.
+                             When provided, automatically registers all StorageProvider methods matching
+                             TypeScript StorageServer.ts behavior.
+        """
         self._methods: dict[str, Callable[..., Any]] = {}
+        if storage_provider:
+            self.register_storage_provider_methods(storage_provider)
 
     def register_method(
         self,
@@ -236,6 +267,111 @@ class JsonRpcServer:
             Sorted list of method names
         """
         return sorted(self._methods.keys())
+
+    def register_storage_provider_methods(self, storage_provider: StorageProvider) -> None:
+        """Auto-register all StorageProvider methods as JSON-RPC methods.
+
+        TS parity: Mirrors StorageServer.ts automatic method registration.
+        Maps camelCase JSON-RPC method names to snake_case Python method names.
+
+        JSON-RPC methods (camelCase):
+            createAction, findCertificatesAuth, setActive, etc.
+
+        Python methods (snake_case):
+            create_action, find_certificates, set_active, etc.
+
+        Args:
+            storage_provider: StorageProvider instance to register methods from
+
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/remoting/StorageServer.ts
+        """
+        # JSON-RPC method names (camelCase) mapped to Python method names (snake_case)
+        # TS parity: JSON-RPC method names must match TypeScript StorageClient interface
+        json_rpc_to_python_methods = {
+            # Core StorageProvider methods
+            "isStorageProvider": "is_storage_provider",
+            "isAvailable": "is_available",
+            "makeAvailable": "make_available",
+            "migrate": "migrate",
+            "destroy": "destroy",
+            "setServices": "set_services",
+            "getServices": "get_services",
+            "getSettings": "get_settings",
+            "findOrInsertUser": "find_or_insert_user",
+            "abortAction": "abort_action",
+            "createAction": "create_action",
+            "processAction": "process_action",
+            "internalizeAction": "internalize_action",
+            "findCertificatesAuth": "find_certificates",  # Note: TS has Auth suffix
+            "findOutputBasketsAuth": "find_output_baskets",  # Note: TS has Auth suffix
+            "findOutputsAuth": "find_outputs",  # Note: TS has Auth suffix
+            "findProvenTxReqs": "find_proven_tx_reqs",
+            "listActions": "list_actions",
+            "listCertificates": "list_certificates",
+            "listOutputs": "list_outputs",
+            "insertCertificateAuth": "insert_certificate",  # Note: TS has Auth suffix
+            "relinquishCertificate": "relinquish_certificate",
+            "relinquishOutput": "relinquish_output",
+            "findOrInsertSyncStateAuth": "find_or_insert_sync_state_auth",
+            "setActive": "set_active",
+            "getSyncChunk": "get_sync_chunk",
+            "processSyncChunk": "process_sync_chunk",
+            "updateProvenTxReqWithNewProvenTx": "update_proven_tx_req_with_new_proven_tx",
+        }
+
+        for json_rpc_method, python_method in json_rpc_to_python_methods.items():
+            if hasattr(storage_provider, python_method):
+                method = getattr(storage_provider, python_method)
+                if callable(method):
+                    # Create wrapper that handles auth and args parameters
+                    # Use partial to avoid closure issues with loop variables
+                    def create_method_wrapper(
+                        storage_method: Callable[..., Any],
+                        python_method: str,
+                        auth: dict[str, Any],
+                        args: dict[str, Any],
+                    ) -> Any:
+                        try:
+                            # TS parity: Call storage method based on parameter requirements
+                            if python_method in ["destroy"]:
+                                # Methods that take no parameters or just auth
+                                return storage_method()
+                            elif python_method in [
+                                "is_storage_provider",
+                                "is_available",
+                                "get_services",
+                                "get_settings",
+                            ]:
+                                # Methods that take only auth
+                                return storage_method(auth)
+                            elif python_method in ["make_available", "migrate", "set_services"]:
+                                # Methods that take auth + config
+                                return storage_method(auth, args)
+                            elif python_method in [
+                                "find_or_insert_user",
+                                "find_or_insert_sync_state_auth",
+                                "set_active",
+                            ]:
+                                # Methods that take auth + specific args
+                                return storage_method(auth, **args)
+                            else:
+                                # Default: auth + args
+                                return storage_method(auth, args)
+                        except Exception as e:
+                            logger.error(f"Error in storage method ({python_method}): {e}")
+                            raise
+
+                    # Use partial to bind the method and python_method name
+                    wrapper = partial(create_method_wrapper, method, python_method)
+                    self._methods[json_rpc_method] = wrapper
+                    logger.debug(f"Auto-registered JSON-RPC method: {json_rpc_method} -> {python_method}")
+                else:
+                    logger.warning(f"StorageProvider.{python_method} is not callable")
+            else:
+                logger.warning(f"StorageProvider missing method: {python_method} (for JSON-RPC: {json_rpc_method})")
+
+        logger.info(f"Registered {len(self._methods)} StorageProvider methods as JSON-RPC endpoints")
 
     def _validate_json_rpc_request(
         self,
