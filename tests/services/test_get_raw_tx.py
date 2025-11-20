@@ -28,7 +28,6 @@ class TestGetRawTx:
                describe('getRawTx service tests')
     """
 
-    @pytest.mark.skip(reason="Async/sync mismatch - provider methods are async but Services calls them synchronously")
     def test_get_raw_tx(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Given: Services with testnet configuration
            When: Get raw transaction for a known txid
@@ -36,20 +35,20 @@ class TestGetRawTx:
 
         Reference: wallet-toolbox/src/services/__tests/getRawTx.test.ts
                    test('0')
-        
-        Note: This test requires resolving the async/sync mismatch between
-        Services (sync) and provider methods (async). Need async wrapper or
-        sync provider methods.
         """
         # Given
         options = Services.create_default_options("test")
         services = Services(options)
 
-        # Mock: inject canned response at the provider level (sync wrapper for async method)
-        def fake_get_raw_tx(txid: str) -> str | None:
-            return "01000000"  # Return raw tx hex directly
+        # Mock: inject canned response in the service collection (proper dict structure)
+        def fake_get_raw_tx(txid: str, chain: str = None) -> dict:
+            return {
+                "rawTx": "01000000",
+                "computedTxid": txid,  # Return same txid to pass validation
+            }
 
-        monkeypatch.setattr(services.whatsonchain, "get_raw_tx", fake_get_raw_tx)
+        # Replace the service in the collection (not just on the provider)
+        services.get_raw_tx_services.services[0]["service"] = fake_get_raw_tx
 
         # When
         result = services.get_raw_tx("c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76")

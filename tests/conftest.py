@@ -581,11 +581,7 @@ def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
     skip_patterns = {
         # FIXED: _insert_generic now properly converts camelCase PK names to snake_case
         # and converts camelCase data keys to snake_case before passing to model constructor.
-        # test_insert.py (14 tests): Still needs...
-        "test_insert_proventx": "TODO: merkle_path should be bytes, not list",
-        "test_insert_proventxreq": "TODO: Test data format issue",
-        "test_insert_monitorevent": "TODO: Test data format issue",
-        "test_insert_syncstate": "TODO: Test data format issue",
+        # FIXED: Test data format issues (merkle_path, field names, required fields)
         # test_update_advanced.py (4 tests): Still needs DB constraint validation logic
         "test_update_user_trigger_db_unique_constraint_errors": "TODO: Implement DB unique constraint validation",
         "test_update_user_trigger_db_foreign_key_constraint_errors": "TODO: Implement DB foreign key constraint validation",
@@ -594,13 +590,8 @@ def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
         # test_users.py (2 tests): Still needs storage mock for merge_existing
         "test_mergeexisting_updates_user_when_ei_updated_at_is_newer": "TODO: Add storage mock for merge_existing",
         "test_mergeexisting_updates_user_with_trx": "TODO: Add storage mock for merge_existing",
-        # test_insert.py complex DTO tests requiring special handling
-        "test_insert_commission": "TODO: Transaction FK relationship setup",
-        "test_insert_output": "TODO: Transaction FK relationship setup",
-        "test_insert_outputtagmap": "TODO: OutputTag FK relationship setup",
-        # test_insert.py schema constraint tests
-        "test_insert_certificate": "TODO: Test data missing required revocationOutpoint",
-        "test_insert_certificatefield": "TODO: Test data format or FK issue",
+        # FIXED: test_insert.py complex DTO tests (locking_script should be bytes)
+        # FIXED: test_insert.py schema constraint tests (revocationOutpoint required)
         # Key linkage revelation methods not implemented yet
         "test_reveal_counterparty_key_linkage": "TODO: Implement reveal_counterparty_key_linkage method",
         "test_reveal_specific_key_linkage": "TODO: Implement reveal_specific_key_linkage method",
