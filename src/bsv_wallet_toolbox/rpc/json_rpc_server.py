@@ -324,42 +324,19 @@ class JsonRpcServer:
             if hasattr(storage_provider, python_method):
                 method = getattr(storage_provider, python_method)
                 if callable(method):
-                    # Create wrapper that handles auth and args parameters
-                    # JSON-RPC params are passed as **kwargs to the wrapper
+                    # Create wrapper that passes params directly to storage method
+                    # TS parity: Mirrors StorageServer.ts behavior: (this.storage as any)[method](...(params || []))
+                    # JSON-RPC params are passed as *args array, matching TypeScript spread operator
                     def create_method_wrapper(
                         storage_method: Callable[..., Any],
                         python_method: str,
-                        **params: dict[str, Any],
+                        *params: Any,
                     ) -> Any:
                         try:
-                            # Extract auth and args from params if present
-                            auth = params.get("auth", {})
-                            args = params.get("args", {})
-
-                            # TS parity: Call storage method based on parameter requirements
-                            if python_method in ["destroy", "is_storage_provider"]:
-                                # Methods that take no parameters
-                                return storage_method()
-                            elif python_method in [
-                                "is_available",
-                                "get_services",
-                                "get_settings",
-                            ]:
-                                # Methods that take only auth
-                                return storage_method(auth)
-                            elif python_method in ["make_available", "migrate", "set_services"]:
-                                # Methods that take auth + config
-                                return storage_method(auth, args)
-                            elif python_method in [
-                                "find_or_insert_user",
-                                "find_or_insert_sync_state_auth",
-                                "set_active",
-                            ]:
-                                # Methods that take auth + specific args
-                                return storage_method(auth, **args)
-                            else:
-                                # Default: auth + args
-                                return storage_method(auth, args)
+                            # TS parity: Pass params directly to storage method (same as TS spread operator)
+                            # TypeScript: (this.storage as any)[method](...(params || []))
+                            # Python: storage_method(*params)
+                            return storage_method(*params)
                         except Exception as e:
                             logger.error(f"Error in storage method ({python_method}): {e}")
                             raise
