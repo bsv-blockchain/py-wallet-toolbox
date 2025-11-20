@@ -22,7 +22,6 @@ class TestChaintracksChainTracker:
                describe('ChaintracksChaintracker tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksChainTracker implementation")
     def test_test(self) -> None:
         """Given: ChainTracker for testnet
            When: Get current height and verify merkle roots
@@ -41,7 +40,6 @@ class TestChaintracksChainTracker:
         # Given/When/Then
         self._test_chaintracks_chaintracker("test")
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksChainTracker implementation")
     def test_main(self) -> None:
         """Given: ChainTracker for mainnet
            When: Get current height and verify merkle roots

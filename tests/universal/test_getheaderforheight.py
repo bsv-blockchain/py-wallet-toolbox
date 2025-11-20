@@ -40,7 +40,6 @@ class TestUniversalVectorsGetHeaderForHeight:
         # Verify it's a valid 80-byte header (160 hex chars)
         assert len(result["header"]) == BLOCK_HEADER_HEX_LENGTH
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_getheaderforheight_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

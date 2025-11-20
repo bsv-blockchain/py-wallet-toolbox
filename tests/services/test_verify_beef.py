@@ -30,7 +30,6 @@ class TestVerifyBeef:
                describe('verifyBeef tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_verify_beef_from_hex(self) -> None:
         """Given: BEEF hex string and mainnet services
            When: Parse BEEF and verify with chaintracker
@@ -49,7 +48,6 @@ class TestVerifyBeef:
         # Then
         assert ok is True
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_verify_beef_from_storage(self) -> None:
         """Given: Wallet storage with mainnet setup
            When: Get BEEF for txid from services and storage, then verify both

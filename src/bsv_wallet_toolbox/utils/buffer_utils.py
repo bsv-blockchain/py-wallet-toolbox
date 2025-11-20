@@ -37,33 +37,58 @@ def as_buffer(value: bytes | str | list[int], encoding: Literal["hex", "utf8", "
     raise TypeError(f"Cannot convert {type(value)} to buffer")
 
 
-def as_string(value: bytes | str | list[int], encoding: Literal["hex", "utf8", "base64"] = "hex") -> str:
+def as_string(
+    value: bytes | str | list[int],
+    enc: Literal["hex", "utf8", "base64"] = "hex",
+    return_enc: Literal["hex", "utf8", "base64"] | None = None,
+) -> str:
     """Convert value to string in specified encoding.
 
     Args:
         value: Value to convert (bytes, hex string, utf8 string, or list of ints)
-        encoding: Output encoding ('hex', 'utf8', or 'base64')
+        enc: Input encoding if value is string ('hex', 'utf8', or 'base64'), defaults to 'hex'
+        return_enc: Output encoding ('hex', 'utf8', or 'base64'), defaults to enc
 
     Returns:
         string object
 
-    Reference: toolbox/ts-wallet-toolbox/src/utility/utilityHelpers.buffer.ts:23-27
+    Reference: toolbox/ts-wallet-toolbox/src/utility/utilityHelpers.noBuffer.ts:11-30
     """
-    if isinstance(value, str):
+    # Default return encoding to input encoding
+    if return_enc is None:
+        return_enc = enc
+    
+    # If already a string and encodings match, return as-is
+    if isinstance(value, str) and enc == return_enc:
         return value
-    if isinstance(value, bytes):
-        buf = value
-    elif isinstance(value, list):
-        buf = bytes(value)
-    else:
+    
+    # Convert string to bytes using input encoding
+    if isinstance(value, str):
+        if enc == "hex":
+            value = bytes.fromhex(value)
+        elif enc == "utf8":
+            value = value.encode("utf-8")
+        elif enc == "base64":
+            value = base64.b64decode(value)
+        else:
+            msg = f"Unsupported input encoding: {enc}"
+            raise ValueError(msg)
+    
+    # Convert list to bytes
+    if isinstance(value, list):
+        value = bytes(value)
+    
+    # Now value is bytes
+    if not isinstance(value, bytes):
         raise TypeError(f"Cannot convert {type(value)} to string")
 
-    if encoding == "hex":
-        return buf.hex()
-    elif encoding == "base64":
-        return base64.b64encode(buf).decode("ascii")
+    # Encode as requested
+    if return_enc == "hex":
+        return value.hex()
+    elif return_enc == "base64":
+        return base64.b64encode(value).decode("ascii")
     else:  # utf8
-        return buf.decode("utf-8")
+        return value.decode("utf-8")
 
 
 def as_array(value: bytes | str | list[int], encoding: Literal["hex", "utf8", "base64"] = "hex") -> list[int]:

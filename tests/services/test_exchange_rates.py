@@ -24,7 +24,6 @@ class TestExchangeRates:
                describe('exchangeRates tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for exchangeRates implementation")
     def test_update_exchange_rates_for_multiple_currencies(self) -> None:
         """Given: Default wallet services options for mainnet
            When: Call updateExchangeratesapi with ['EUR', 'GBP', 'USD']

@@ -195,8 +195,14 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
 
     This is the top-level fixture that includes all required components:
     - KeyDeriver: For key derivation operations
-    - StorageProvider: For wallet data persistence
+    - StorageProvider: For wallet data persistence (with seeded UTXO for testing)
     - WalletServices: For blockchain data access (production implementation with mocked HTTP)
+
+    The fixture seeds a UTXO matching universal test vector expectations:
+    - txid: 03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c
+    - vout: 0
+    - satoshis: 2000 (enough to fund 999 sat output + fees)
+    - spendable: True
 
     Returns:
         Wallet instance configured with KeyDeriver, in-memory storage, and production Services
@@ -207,6 +213,69 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
 
     # Create storage provider
     storage = StorageProvider(engine=engine, chain="main", storage_identity_key="test_wallet_full")
+    storage.make_available()
+
+    # Get or create user for seeding
+    from datetime import datetime
+    user_id = storage.insert_user({
+        "identityKey": test_key_deriver._root_private_key.public_key().hex(),
+        "activeStorage": "test",
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    })
+
+    # Create default basket
+    basket_id = storage.insert_output_basket({
+        "userId": user_id,
+        "name": "default",
+        "numberOfDesiredUTXOs": 10,
+        "minimumDesiredUTXOValue": 1000,
+        "isDeleted": False,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    })
+
+    # Seed transaction that will provide the UTXO
+    # This txid matches what the universal test vector expects as input
+    source_txid = "03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c"
+    tx_id = storage.insert_transaction({
+        "userId": user_id,
+        "txid": source_txid,
+        "status": "completed",
+        "reference": "test-seed-tx",
+        "isOutgoing": False,
+        "satoshis": 2000,
+        "description": "Seeded UTXO for testing",
+        "version": 1,
+        "lockTime": 0,
+        "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    })
+
+    # Seed spendable UTXO (output at vout 0)
+    # Use a simple P2PKH locking script (OP_DUP OP_HASH160 <pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG)
+    pub_key = test_key_deriver._root_private_key.public_key()
+    pub_key_hash = pub_key.hash160()
+    # P2PKH: 76 a9 14 <20 bytes pubkey hash> 88 ac
+    locking_script = bytes([0x76, 0xa9, 0x14]) + pub_key_hash + bytes([0x88, 0xac])
+    
+    storage.insert_output({
+        "transactionId": tx_id,
+        "userId": user_id,
+        "basketId": basket_id,
+        "spendable": True,
+        "change": True,  # Change outputs are spendable
+        "vout": 0,
+        "satoshis": 2000,  # Enough for 999 sat output + fees
+        "providedBy": "test",
+        "purpose": "change",
+        "type": "change",
+        "txid": source_txid,
+        "lockingScript": locking_script,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+    })
 
     # Create mock Services instance for testing
     services = MockWalletServices(chain="main", height=850000)
@@ -257,6 +326,7 @@ def wallet_with_storage(test_key_deriver: KeyDeriver) -> Wallet:
     - In-memory SQLite database for isolated testing
     - Universal Test Vectors key deriver
     - Storage provider for storage operations
+    - Initialized user with userId
 
     Returns:
         Wallet instance with storage provider ready for testing
@@ -267,6 +337,10 @@ def wallet_with_storage(test_key_deriver: KeyDeriver) -> Wallet:
 
     # Create storage provider
     storage = StorageProvider(engine=engine, chain="main", storage_identity_key="test_wallet")
+
+    # Initialize user in database (required for list operations)
+    identity_key = test_key_deriver.identity_key().hex()
+    user_id = storage.get_or_create_user_id(identity_key)
 
     # Create wallet with storage provider and key deriver
     wallet = Wallet(chain="main", key_deriver=test_key_deriver, storage_provider=storage)

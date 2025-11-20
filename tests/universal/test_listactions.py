@@ -22,9 +22,8 @@ class TestUniversalVectorsListActions:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Storage provider not available in Wallet tests")
     def test_listactions_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services: Wallet
     ) -> None:
         """Given: Universal Test Vector input for listActions
         When: Call listActions
@@ -32,15 +31,13 @@ class TestUniversalVectorsListActions:
         """
         # Given
         args_data, result_data = load_test_vectors("listActions-simple")
-        wallet = Wallet(chain="main")
 
         # When
-        result = wallet.list_actions(args_data["json"], originator=None)
+        result = wallet_with_services.list_actions(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_listactions_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

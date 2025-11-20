@@ -174,7 +174,6 @@ class TestPushdrop:
                 describe('pushdrop example tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PushDrop implementation")
     def test_pushdrop_transfer_example(self) -> None:
         """Given: Two wallets (sender and receiver)
            When: Transfer satoshis using BRC29 PushDrop template

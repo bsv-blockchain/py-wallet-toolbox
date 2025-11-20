@@ -28,7 +28,6 @@ class TestBRC29AddressByRecipientCreation:
                TestBRC29AddressByRecipientCreation
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_with_hex_string_as_sender_public_key_source(self) -> None:
         """Given: Sender public key as hex string, key ID, recipient private key as hex
            When: Call address_for_self
@@ -50,7 +49,6 @@ class TestBRC29AddressByRecipientCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_with_ec_publickey_as_sender_public_key_source(self) -> None:
         """Given: Sender public key as ec.PublicKey object, key ID, recipient private key
            When: Call address_for_self
@@ -76,7 +74,6 @@ class TestBRC29AddressByRecipientCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_with_sender_key_deriver_as_sender_public_key_source(self) -> None:
         """Given: Sender key deriver, key ID, recipient private key
            When: Call address_for_self
@@ -104,7 +101,6 @@ class TestBRC29AddressByRecipientCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_with_ec_privatekey_as_recipient_private_key_source(self) -> None:
         """Given: Sender public key, key ID, recipient private key as ec.PrivateKey object
            When: Call address_for_self
@@ -130,7 +126,6 @@ class TestBRC29AddressByRecipientCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_testnet_address_created_with_brc29_by_recipient(self) -> None:
         """Given: Sender public key, key ID, recipient private key, testnet option
            When: Call address_for_self with testnet=True
@@ -161,7 +156,6 @@ class TestBRC29AddressByRecipientErrors:
                TestBRC29AddressByRecipientErrors
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call address_for_self
@@ -182,7 +176,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call address_for_self
@@ -203,7 +196,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call address_for_self
@@ -224,7 +216,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call address_for_self
@@ -245,7 +236,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call address_for_self
@@ -266,7 +256,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_public_key_deriver(self) -> None:
         """Given: None as sender public key deriver
            When: Call address_for_self
@@ -287,7 +276,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_public_key(self) -> None:
         """Given: None as sender public key
            When: Call address_for_self
@@ -308,7 +296,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_private_key_deriver(self) -> None:
         """Given: None as recipient private key deriver
            When: Call address_for_self
@@ -329,7 +316,6 @@ class TestBRC29AddressByRecipientErrors:
         #         recipient_priv_key=None  # KeyDeriver
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_private_key(self) -> None:
         """Given: None as recipient private key
            When: Call address_for_self
@@ -358,7 +344,6 @@ class TestBRC29AddressCreation:
                TestBRC29AddressCreation
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_created_with_brc28_with_hex_string_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as hex string, key ID, recipient public key
            When: Call address_for_counterparty
@@ -380,7 +365,6 @@ class TestBRC29AddressCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_created_with_brc28_with_wif_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as WIF string, key ID, recipient public key
            When: Call address_for_counterparty
@@ -402,7 +386,6 @@ class TestBRC29AddressCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_created_with_brc28_with_ec_privatekey_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as ec.PrivateKey object, key ID, recipient public key
            When: Call address_for_counterparty
@@ -428,7 +411,6 @@ class TestBRC29AddressCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_created_with_brc28_with_key_deriver_as_sender_private_key_source(self) -> None:
         """Given: Sender key deriver, key ID, recipient public key
            When: Call address_for_counterparty
@@ -456,7 +438,6 @@ class TestBRC29AddressCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_valid_address_created_with_brc28_with_ec_publickey_as_receiver_public_key_source(self) -> None:
         """Given: Sender private key, key ID, recipient public key as ec.PublicKey object
            When: Call address_for_counterparty
@@ -482,7 +463,6 @@ class TestBRC29AddressCreation:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_testnet_address_created_with_brc29(self) -> None:
         """Given: Sender private key, key ID, recipient public key, testnet option
            When: Call address_for_counterparty with testnet=True
@@ -517,7 +497,6 @@ class TestBRC29AddressErrors:
                TestBRC29AddressErrors
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call address_for_counterparty
@@ -538,7 +517,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call address_for_counterparty
@@ -559,7 +537,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call address_for_counterparty
@@ -580,7 +557,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call address_for_counterparty
@@ -601,7 +577,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call address_for_counterparty
@@ -622,7 +597,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_private_key_deriver(self) -> None:
         """Given: None as sender private key deriver
            When: Call address_for_counterparty
@@ -643,7 +617,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_private_key(self) -> None:
         """Given: None as sender private key
            When: Call address_for_counterparty
@@ -664,7 +637,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_public_key_deriver(self) -> None:
         """Given: None as recipient public key deriver
            When: Call address_for_counterparty
@@ -685,7 +657,6 @@ class TestBRC29AddressErrors:
         #         recipient_pub_key=None  # KeyDeriver
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_public_key(self) -> None:
         """Given: None as recipient public key
            When: Call address_for_counterparty

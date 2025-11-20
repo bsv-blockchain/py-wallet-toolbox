@@ -141,7 +141,6 @@ class TestBulkFileDataManager:
         assert range_result.min_height == 0
         assert range_result.max_height > 800000
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for BulkFileDataManager implementation")
     @pytest.mark.asyncio
     async def test_default_options_cdn_files(self) -> None:
         """Given: BulkFileDataManager with default options
@@ -158,10 +157,6 @@ class TestBulkFileDataManager:
         # When/Then
         await self._test0_body(manager)
 
-    @pytest.mark.skipif(
-        not IMPORTS_AVAILABLE or not RUN_SLOW_TESTS,
-        reason="Waiting for BulkFileDataManager implementation or slow test",
-    )
     @pytest.mark.asyncio
     async def test_default_options_cdn_files_nodropall(self) -> None:
         """Given: BulkFileDataManager with storage (noDropAll)

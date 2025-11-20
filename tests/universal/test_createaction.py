@@ -24,9 +24,8 @@ class TestUniversalVectorsCreateAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Storage provider not available in Wallet tests")
     def test_createaction_1out_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services: Wallet
     ) -> None:
         """Given: Universal Test Vector input for createAction (1 output)
         When: Call createAction with 1 output
@@ -34,23 +33,20 @@ class TestUniversalVectorsCreateAction:
         """
         # Given
         args_data, result_data = load_test_vectors("createAction-1-out")
-        wallet = Wallet(chain="main")
 
         # When
-        result = wallet.create_action(args_data["json"], originator=None)
+        result = wallet_with_services.create_action(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_createaction_1out_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
 
-    @pytest.mark.skip(reason="Waiting for create_action implementation")
     def test_createaction_nosignandprocess_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services: Wallet
     ) -> None:
         """Given: Universal Test Vector input for createAction (no signAndProcess)
         When: Call createAction without signAndProcess
@@ -58,15 +54,13 @@ class TestUniversalVectorsCreateAction:
         """
         # Given
         args_data, result_data = load_test_vectors("createAction-no-signAndProcess")
-        wallet = Wallet(chain="main")
 
         # When
-        result = wallet.create_action(args_data["json"], originator=None)
+        result = wallet_with_services.create_action(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_createaction_nosignandprocess_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

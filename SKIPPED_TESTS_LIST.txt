@@ -1,0 +1,515 @@
+# Skipped Tests List
+# Generated from test suite analysis
+# Format: pytest-compatible test paths
+#
+# Usage:
+#   Run all skipped tests:
+#     pytest -v $(cat SKIPPED_TESTS_LIST.txt | grep -v '^#')
+#
+#   Run tests from a specific category:
+#     grep 'category_name' SKIPPED_TESTS_LIST.txt | xargs pytest -v
+#
+#   Run a single test:
+#     pytest -v tests/path/to/test.py::test_name
+
+# ============================================================================
+# TESTS READY TO UNSKIP (14 tests)
+# These tests are for IMPLEMENTED methods and should be reviewed
+# ============================================================================
+tests/universal/test_createsignature.py::test_createsignature_json_matches_universal_vectors  # Waiting for create_signature implementation
+tests/universal/test_decrypt.py::test_decrypt_json_matches_universal_vectors  # Waiting for decrypt implementation
+tests/universal/test_discoverbyattributes.py::test_discoverbyattributes_json_matches_universal_vectors  # Waiting for discover_by_attributes implementation
+tests/universal/test_discoverbyidentitykey.py::test_discoverbyidentitykey_json_matches_universal_vectors  # Waiting for discover_by_identity_key implementation
+tests/universal/test_internalizeaction.py::test_internalizeaction_json_matches_universal_vectors  # Waiting for internalize_action implementation
+tests/universal/test_listcertificates.py::test_listcertificates_full_json_matches_universal_vectors  # Waiting for list_certificates implementation
+tests/universal/test_listcertificates.py::test_listcertificates_simple_json_matches_universal_vectors  # Waiting for list_certificates implementation
+tests/universal/test_listoutputs.py::test_listoutputs_json_matches_universal_vectors  # Waiting for list_outputs implementation
+tests/universal/test_provecertificate.py::test_provecertificate_json_matches_universal_vectors  # Waiting for prove_certificate implementation
+tests/universal/test_relinquishoutput.py::test_relinquishoutput_json_matches_universal_vectors  # Waiting for relinquish_output implementation
+tests/universal/test_revealcounterpartykeylinkage.py::test_revealcounterpartykeylinkage_json_matches_universal_vectors  # Waiting for reveal_counterparty_key_linkage implementation
+tests/universal/test_revealspecifickeylinkage.py::test_revealspecifickeylinkage_json_matches_universal_vectors  # Waiting for reveal_specific_key_linkage implementation
+tests/universal/test_signaction.py::test_signaction_json_matches_universal_vectors  # Waiting for sign_action implementation
+tests/universal/test_verifysignature.py::test_verifysignature_json_matches_universal_vectors  # Waiting for verify_signature implementation
+
+# ============================================================================
+# ABI WIRE FORMAT TESTS (31 tests)
+# Intentionally skipped for TypeScript parity
+# ============================================================================
+tests/universal/test_abortaction.py::test_abortaction_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_acquirecertificate.py::test_acquirecertificate_issuance_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_acquirecertificate.py::test_acquirecertificate_simple_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_createaction.py::test_createaction_1out_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_createaction.py::test_createaction_nosignandprocess_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_createhmac.py::test_createhmac_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_createsignature.py::test_createsignature_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_decrypt.py::test_decrypt_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_discoverbyattributes.py::test_discoverbyattributes_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_discoverbyidentitykey.py::test_discoverbyidentitykey_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_encrypt.py::test_encrypt_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_getheaderforheight.py::test_getheaderforheight_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_getheight.py::test_getheight_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_getnetwork.py::test_getnetwork_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_getpublickey.py::test_getpublickey_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_getversion.py::test_getversion_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_internalizeaction.py::test_internalizeaction_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_isauthenticated.py::test_isauthenticated_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_listactions.py::test_listactions_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_listcertificates.py::test_listcertificates_full_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_listcertificates.py::test_listcertificates_simple_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_listoutputs.py::test_listoutputs_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_provecertificate.py::test_provecertificate_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_relinquishcertificate.py::test_relinquishcertificate_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_relinquishoutput.py::test_relinquishoutput_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_revealcounterpartykeylinkage.py::test_revealcounterpartykeylinkage_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_revealspecifickeylinkage.py::test_revealspecifickeylinkage_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_signaction.py::test_signaction_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_verifyhmac.py::test_verifyhmac_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_verifysignature.py::test_verifysignature_wire_matches_universal_vectors  # ABI wire format
+tests/universal/test_waitforauthentication.py::test_waitforauthentication_wire_matches_universal_vectors  # ABI wire format
+
+# ============================================================================
+# DATABASE/STORAGE SETUP REQUIRED (18 tests)
+# Need pre-populated test database fixtures
+# ============================================================================
+tests/universal/test_createaction.py::test_createaction_1out_json_matches_universal_vectors  # Database setup
+tests/universal/test_listactions.py::test_listactions_json_matches_universal_vectors  # Database setup
+tests/universal/test_relinquishcertificate.py::test_relinquishcertificate_json_matches_universal_vectors  # Database setup
+tests/wallet/test_abort_action.py::test_abort_specific_reference  # Database setup
+tests/wallet/test_list_actions.py::test_specific_label_filter  # Database setup
+tests/wallet/test_list_certificates.py::test_filter_by_certifier_lowercase  # Database setup
+tests/wallet/test_list_certificates.py::test_filter_by_certifier_uppercase  # Database setup
+tests/wallet/test_list_certificates.py::test_filter_by_multiple_certifiers  # Database setup
+tests/wallet/test_list_certificates.py::test_filter_by_type  # Database setup
+tests/wallet/test_list_certificates.py::test_invalid_params_invalid_certifier  # Database setup
+tests/wallet/test_list_outputs.py::test_invalid_originator_too_long  # Database setup
+tests/wallet/test_list_outputs.py::test_invalid_params_empty_basket  # Database setup
+tests/wallet/test_list_outputs.py::test_invalid_params_empty_tag  # Database setup
+tests/wallet/test_list_outputs.py::test_invalid_params_limit_exceeds_max  # Database setup
+tests/wallet/test_list_outputs.py::test_invalid_params_limit_zero  # Database setup
+tests/wallet/test_list_outputs.py::test_invalid_params_negative_offset  # Database setup
+tests/wallet/test_list_outputs.py::test_valid_params_with_originator  # Database setup
+tests/wallet/test_relinquish_output.py::test_relinquish_specific_output  # Database setup
+
+# ============================================================================
+# NON-DETERMINISTIC/TEST INFRASTRUCTURE (18 tests)
+# Test infrastructure or non-deterministic behavior issues
+# ============================================================================
+tests/chaintracks/test_service_client.py::test_mainnet_findheaderforheight  # Test infrastructure
+tests/services/test_get_merkle_path.py::test_get_merkle_path  # Test infrastructure
+tests/services/test_get_raw_tx.py::test_get_raw_tx  # Test infrastructure
+tests/services/test_local_services_hash_and_locktime.py::test_final_when_all_sequences_are_maxint  # Test infrastructure
+tests/services/test_whats_on_chain.py::test_getrawtx_testnet  # Test infrastructure
+tests/universal/test_createhmac.py::test_createhmac_json_matches_universal_vectors  # Test infrastructure
+tests/universal/test_encrypt.py::test_encrypt_json_matches_universal_vectors  # Test infrastructure
+tests/universal/test_getpublickey.py::test_getpublickey_json_matches_universal_vectors  # Test infrastructure
+tests/universal/test_getversion.py::test_getversion_json_matches_universal_vectors  # Test infrastructure
+tests/universal/test_verifyhmac.py::test_verifyhmac_json_matches_universal_vectors  # Test infrastructure
+tests/wallet/test_certificates.py::test_invalid_params  # Test infrastructure
+tests/wallet/test_internalize_action.py::test_internalize_custom_output_basket_insertion  # Test infrastructure
+tests/wallet/test_misc_methods.py::test_wallet_constructor_with_invalid_chain  # Test infrastructure
+tests/wallet/test_sign_process_action.py::test_process_action_new_transaction  # Test infrastructure
+tests/wallet/test_sign_process_action.py::test_process_action_with_send_with  # Test infrastructure
+tests/wallet/test_sign_process_action.py::test_sign_action_with_spend_authorizations  # Test infrastructure
+tests/wallet/test_sign_process_action.py::test_sign_action_with_valid_reference  # Test infrastructure
+tests/wallet/test_wallet_create_action.py::test_repeatable_txid  # Test infrastructure
+
+# ============================================================================
+# NOT IMPLEMENTED - BRC29 (56 tests)
+# BRC-29 address and template functionality
+# ============================================================================
+tests/brc29/test_brc29_address.py::test_return_error_when_keyid_is_invalid  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_keyid_is_invalid  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_recipient_private_key  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_recipient_private_key_deriver  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_recipient_public_key  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_recipient_public_key_deriver  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_sender_private_key  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_sender_private_key_deriver  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_sender_public_key  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_nil_is_passed_as_sender_public_key_deriver  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_recipient_key_is_empty  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_recipient_key_is_empty  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_recipient_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_recipient_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_sender_key_is_empty  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_sender_key_is_empty  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_sender_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_address.py::test_return_error_when_sender_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_address.py::test_return_testnet_address_created_with_brc29  # BRC29
+tests/brc29/test_brc29_address.py::test_return_testnet_address_created_with_brc29_by_recipient  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_created_with_brc28_with_ec_privatekey_as_sender_private_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_created_with_brc28_with_ec_publickey_as_receiver_public_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_created_with_brc28_with_hex_string_as_sender_private_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_created_with_brc28_with_key_deriver_as_sender_private_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_created_with_brc28_with_wif_as_sender_private_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_with_ec_privatekey_as_recipient_private_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_with_ec_publickey_as_sender_public_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_with_hex_string_as_sender_public_key_source  # BRC29
+tests/brc29/test_brc29_address.py::test_return_valid_address_with_sender_key_deriver_as_sender_public_key_source  # BRC29
+tests/brc29/test_brc29_template.py::test_estimate_unlocking_script_length  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_keyid_is_invalid  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_keyid_is_invalid  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_keyid_is_invalid  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_recipient_private_key  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_recipient_private_key_deriver  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_recipient_public_key  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_recipient_public_key_deriver  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_sender_private_key  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_sender_private_key_deriver  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_sender_public_key  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_nil_is_passed_as_sender_public_key_deriver  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_recipient_key_is_empty  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_recipient_key_is_empty  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_recipient_key_is_empty  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_recipient_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_recipient_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_recipient_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_sender_key_is_empty  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_sender_key_is_empty  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_sender_key_is_empty  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_sender_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_sender_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_template.py::test_return_error_when_sender_key_parsing_fails  # BRC29
+tests/brc29/test_brc29_template.py::test_should_lock_with_p2pkh_and_brc29_calculated_address  # BRC29
+tests/brc29/test_brc29_template.py::test_should_lock_with_p2pkh_and_brc29_calculated_address_self  # BRC29
+tests/brc29/test_brc29_template.py::test_unlock_the_output_locked_with_brc29_locker  # BRC29
+
+# ============================================================================
+# NOT IMPLEMENTED - MONITOR (8 tests)
+# Blockchain monitoring functionality
+# ============================================================================
+tests/monitor/test_monitor.py::test_processbroadcastedtransactions  # Monitor
+tests/monitor/test_monitor.py::test_processproventransaction  # Monitor
+tests/monitor/test_monitor.py::test_taskcheckforproofs_fail  # Monitor
+tests/monitor/test_monitor.py::test_taskcheckforproofs_success  # Monitor
+tests/monitor/test_monitor.py::test_taskclock  # Monitor
+tests/monitor/test_monitor.py::test_tasknewheader  # Monitor
+tests/monitor/test_monitor.py::test_taskreviewstatus  # Monitor
+tests/monitor/test_monitor.py::test_tasksendwaiting_success  # Monitor
+
+# ============================================================================
+# NOT IMPLEMENTED - WALLET MANAGERS (127 tests)
+# Advanced wallet management features
+# ============================================================================
+tests/integration/test_cwi_style_wallet_manager.py::test_all_proxied_methods_call_underlying_with_correct_arguments  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_decryption_of_primary_key_and_building_the_wallet  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_destroy_callback_clears_sensitive_data  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_isauthenticated_rejects_if_originator_is_admin_resolves_otherwise  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_passes_if_user_is_authenticated_and_originator_is_not_admin  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_password_retriever_callback_the_test_function_is_passed_and_returns_a_boolean  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_privileged_key_expiry_each_call_to_decrypt_via_the_privileged_manager_invokes_passwordretriever  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_prompts_to_save_the_new_key_updates_the_token  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_requires_authentication_and_updates_the_ump_token_on_chain  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_requires_authentication_re_publishes_the_token_old_token_consumed  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_saves_a_snapshot_and_can_load_it_into_a_fresh_manager_instance  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_serializeumptoken_and_deserializeumptoken_correctly_round_trip_a_ump_token  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_successfully_creates_a_new_token_and_calls_buildandsend  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_successfully_decrypts_with_presentation_plus_recovery  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_error_if_saving_snapshot_while_no_primary_key_or_token_set  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_no_token_found_by_recovery_key_hash  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_not_authenticated  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_not_authenticated_527  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_originator_is_adminoriginator  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_presentation_key_not_provided_first  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_snapshot_is_corrupt_or_cannot_be_decrypted  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_user_is_not_authenticated  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_throws_if_user_tries_to_provide_recovery_key_during_new_user_flow  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_waitforauthentication_eventually_resolves  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_works_with_correct_keys_sets_mode_as_existing_user  # Wallet managers
+tests/integration/test_cwi_style_wallet_manager.py::test_xor_function_verifies_correctness  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_a_failing_callback_throwing_an_error_does_not_block_subsequent_callbacks  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_bindcallback_should_register_multiple_callbacks_for_the_same_event_which_are_called_in_sequence  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_multiple_pending_requests_for_different_resources_should_trigger_separate_onxxxrequested_callbacks  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_multiple_pending_requests_for_the_same_resource_should_trigger_only_one_onxxxrequested_callback  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_should_reject_the_original_caller_promise_when_permission_is_denied  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_should_resolve_the_original_caller_promise_when_requests_are_granted  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_should_trigger_onprotocolpermissionrequested_with_correct_params_when_a_non_admin_domain_requests_a_protocol_operation  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_unbindcallback_by_function_reference_should_remove_the_callback  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_callbacks.py::test_unbindcallback_by_numeric_id_should_prevent_the_callback_from_being_called_again  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_also_prompt_for_listing_actions_by_label_if_seekpermissionwhenlistingactionsbylabel_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_check_monthly_limit_usage_and_prompt_renewal_if_insufficient  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_check_that_requested_fields_are_a_subset_of_the_tokens_fields  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_deny_protocol_usage_if_user_denies_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_enforce_privileged_token_if_differentiateprivilegedoperations_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_fail_if_label_starts_with_admin  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_fail_if_protocol_name_is_admin_reserved_and_caller_is_not_admin  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_fail_immediately_if_using_an_admin_only_basket_as_non_admin  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_fail_immediately_if_using_the_reserved_basket_default_as_non_admin  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_ignore_privileged_true_if_differentiateprivilegedoperations_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_pass_if_usage_plus_new_spend_is_within_the_monthly_limit  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_prompt_for_insertion_permission_if_seekbasketinsertionpermissions_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_prompt_for_label_usage_if_seekpermissionwhenapplyingactionlabels_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_prompt_for_protocol_usage_if_securitylevel_1_and_no_existing_token  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_prompt_for_removal_permission_if_seekbasketremovalpermissions_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_prompt_for_renewal_if_token_is_expired_cert  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_prompt_for_renewal_if_token_is_found_but_expired  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_require_listing_permission_if_seekbasketlistingpermissions_true_and_no_token  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_require_permission_if_seekcertificatedisclosurepermissions_true_no_valid_token  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_require_spending_token_if_netspent_gt_0_and_seekspendingpermissions_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_skip_certificate_disclosure_permission_if_config_seekcertificatedisclosurepermissions_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_skip_if_seekspendingpermissions_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_skip_insertion_permission_if_seekbasketinsertionpermissions_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_skip_label_permission_if_seekpermissionwhenapplyingactionlabels_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_checks.py::test_should_skip_permission_prompt_if_seclevel_0_open_usage  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_call_underlying_decrypt_with_correct_protocol_and_key_returning_plaintext_on_success  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_call_underlying_encrypt_with_correct_protocol_and_key_when_encryptwalletmetadata_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_decrypt_custominstructions_in_listoutputs_if_encryptwalletmetadata_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_encrypt_metadata_fields_in_createaction_when_encryptwalletmetadata_true_then_decrypt_them_in_listactions  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_fallback_to_original_string_if_underlying_decrypt_fails  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_fallback_to_the_original_ciphertext_if_decrypt_fails_in_listoutputs  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_not_call_underlying_encrypt_if_encryptwalletmetadata_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_encryption.py::test_should_not_encrypt_metadata_if_encryptwalletmetadata_false_storing_and_retrieving_plaintext  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_coalesce_parallel_requests_for_the_same_resource_into_a_single_user_prompt  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_create_a_token_if_ephemeral_false_so_subsequent_calls_do_not_re_trigger_if_unexpired  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_generate_two_distinct_user_prompts_for_two_different_permission_requests  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_handle_renewal_if_the_found_token_is_expired_passing_previoustoken_in_the_request  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_not_create_a_token_if_ephemeral_true_so_subsequent_calls_re_trigger_the_request  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_reject_only_the_matching_request_queue_on_deny_if_requestid_is_specified  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_flows.py::test_should_resolve_all_parallel_requests_when_permission_is_granted_referencing_the_same_requestid  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_consider_calls_from_the_adminoriginator_as_admin_bypassing_checks  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_initialize_with_all_config_flags_set_to_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_initialize_with_default_config_if_none_is_provided  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_initialize_with_partial_config_overrides_merging_with_defaults  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_skip_basket_insertion_permission_checks_if_seekbasketinsertionpermissions_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_skip_metadata_encryption_if_encryptwalletmetadata_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_initialization.py::test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_abort_the_action_if_spending_permission_is_denied  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_acquirecertificate_verifying_permission_if_config_seekcertificateacquisitionpermissions_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_discoverbyattributes_after_ensuring_identity_resolution_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_discoverbyidentitykey_after_ensuring_identity_resolution_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_getpublickey_on_underlying_after_ensuring_protocol_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_listactions_on_the_underlying_wallet_and_decrypt_metadata_fields_if_encryptwalletmetadata_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_listcertificates_verifying_permission_if_config_seekcertificatelistingpermissions_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_provecertificate_after_ensuring_certificate_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_relinquishcertificate_if_config_seekcertificaterelinquishmentpermissions_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_revealcounterpartykeylinkage_with_permission_check_pass_result  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_call_revealspecifickeylinkage_with_permission_check_pass_result  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_ensure_basket_listing_permission_then_call_listoutputs_decrypting_custominstructions  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_ensure_basket_removal_permission_then_call_relinquishoutput  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_pass_createaction_calls_through_label_them_handle_metadata_encryption_and_check_spending_authorization  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_pass_internalizeaction_calls_to_underlying_after_ensuring_basket_permissions_and_encrypting_custominstructions_if_config_on  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_propagate_errors_from_the_underlying_wallet_calls  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_abortaction_calls_directly  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_createhmac_calls  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_createsignature_calls_already_tested_the_netspent_logic_in_createaction_but_lets_double_check  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_decrypt_calls_after_checking_protocol_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_encrypt_calls_after_checking_protocol_permission  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_getheaderforheight  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_getheight  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_getnetwork  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_getversion  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_isauthenticated_without_any_special_permission_checks  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_signaction_calls_directly_if_invoked_by_the_user  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_verifyhmac_calls  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_verifysignature_calls  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_proxy_waitforauthentication_without_any_special_permission_checks  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_proxying.py::test_should_throw_an_error_if_a_non_admin_tries_signandprocess_true  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_allow_updating_the_authorizedamount_in_dsap_renewal  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_build_correct_fields_for_a_basket_token_dbap  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_build_correct_fields_for_a_certificate_token_dcap  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_build_correct_fields_for_a_protocol_token_dpacp  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_build_correct_fields_for_a_spending_token_dsap  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_create_a_new_basket_token_dbap  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_create_a_new_certificate_token_dcap  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_create_a_new_protocol_token_with_the_correct_basket_script_and_tags  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_create_a_new_spending_authorization_token_dsap  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_create_a_transaction_that_consumes_spends_the_old_token_with_no_new_outputs  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_remove_the_old_token_from_listing_after_revocation  # Wallet managers
+tests/permissions/test_wallet_permissions_manager_tokens.py::test_should_spend_the_old_token_input_and_create_a_new_protocol_token_output_with_updated_expiry  # Wallet managers
+
+# ============================================================================
+# NOT IMPLEMENTED - CHAINTRACKS (20 tests)
+# Chaintracks service integration
+# ============================================================================
+tests/chaintracks/test_chain_tracker.py::test_main  # Chaintracks
+tests/chaintracks/test_chain_tracker.py::test_test  # Chaintracks
+tests/chaintracks/test_chaintracks.py::test_nodb_mainnet  # Chaintracks
+tests/chaintracks/test_chaintracks.py::test_nodb_testnet  # Chaintracks
+tests/chaintracks/test_client_api.py::test_addheader  # Chaintracks
+tests/chaintracks/test_client_api.py::test_findchaintiphash  # Chaintracks
+tests/chaintracks/test_client_api.py::test_findchaintipheader  # Chaintracks
+tests/chaintracks/test_client_api.py::test_findheaderforheight  # Chaintracks
+tests/chaintracks/test_client_api.py::test_getchain  # Chaintracks
+tests/chaintracks/test_client_api.py::test_getheaders  # Chaintracks
+tests/chaintracks/test_client_api.py::test_getinfo  # Chaintracks
+tests/chaintracks/test_client_api.py::test_getpresentheight  # Chaintracks
+tests/chaintracks/test_client_api.py::test_subscribeheaders  # Chaintracks
+tests/chaintracks/test_client_api.py::test_subscribereorgs  # Chaintracks
+tests/chaintracks/test_fetch.py::test_download  # Chaintracks
+tests/chaintracks/test_fetch.py::test_download_716  # Chaintracks
+tests/chaintracks/test_fetch.py::test_download_717  # Chaintracks
+tests/chaintracks/test_fetch.py::test_fetchjson  # Chaintracks
+tests/chaintracks/test_service_client.py::test_mainnet_findheaderforheight  # Chaintracks
+tests/chaintracks/test_service_client.py::test_testnet_findheaderforheight  # Chaintracks
+
+# ============================================================================
+# NOT IMPLEMENTED - SERVICES (33 tests)
+# External service integrations
+# ============================================================================
+tests/integration/test_bulk_file_data_manager.py::test_default_options_cdn_files  # Services
+tests/integration/test_bulk_ingestor_cdn_babbage.py::test_mainnet  # Services
+tests/integration/test_bulk_ingestor_cdn_babbage.py::test_testnet  # Services
+tests/integration/test_local_kv_store.py::test_get_non_existent  # Services
+tests/integration/test_local_kv_store.py::test_set_get  # Services
+tests/integration/test_local_kv_store.py::test_set_x_4_get  # Services
+tests/integration/test_local_kv_store.py::test_set_x_4_get_set_x_4_get  # Services
+tests/integration/test_single_writer_multi_reader_lock.py::test_concurrent_reads_and_writes_execute_in_correct_order  # Services
+tests/monitor/test_live_ingestor_whats_on_chain_poll.py::test_listen_for_first_new_header  # Services
+tests/services/test_arc_services.py::test_arc_services_placeholder  # Services
+tests/services/test_get_merkle_path.py::test_get_merkle_path  # Services
+tests/services/test_get_raw_tx.py::test_get_raw_tx  # Services
+tests/services/test_post_beef.py::test_postbeef_mainnet  # Services
+tests/services/test_post_beef.py::test_postbeef_testnet  # Services
+tests/services/test_services.py::test_get_header_byte_file_links  # Services
+tests/services/test_services.py::test_get_headers  # Services
+tests/services/test_services.py::test_get_latest_header_bytes  # Services
+tests/services/test_services.py::test_getchaintipheight  # Services
+tests/services/test_services.py::test_getheaderbyhash  # Services
+tests/services/test_services.py::test_listen_for_new_block_headers  # Services
+tests/services/test_services.py::test_listen_for_old_block_headers  # Services
+tests/services/test_verify_beef.py::test_verify_beef_from_hex  # Services
+tests/services/test_verify_beef.py::test_verify_beef_from_storage  # Services
+tests/services/test_whats_on_chain.py::test_getmerklepath_mainnet  # Services
+tests/services/test_whats_on_chain.py::test_getmerklepath_testnet  # Services
+tests/services/test_whats_on_chain.py::test_getrawtx_mainnet  # Services
+tests/services/test_whats_on_chain.py::test_getrawtx_testnet  # Services
+tests/services/test_whats_on_chain.py::test_gettxpropagation_mainnet  # Services
+tests/services/test_whats_on_chain.py::test_gettxpropagation_testnet  # Services
+tests/services/test_whats_on_chain.py::test_placeholder  # Services
+tests/services/test_whats_on_chain.py::test_updatebsvexchangerate  # Services
+tests/utils/test_bitrails.py::test_bitails_get_merkle_path  # Services
+tests/utils/test_bitrails.py::test_verify_merkle_proof_to_merkle_path  # Services
+
+# ============================================================================
+# NOT IMPLEMENTED - UTILS (104 tests)
+# Various utility functions
+# ============================================================================
+tests/errors/test_action_error.py::test_error_without_cause  # Utils
+tests/errors/test_action_error.py::test_error_without_cause  # Utils
+tests/errors/test_action_error.py::test_nil_cause_and_no_results  # Utils
+tests/errors/test_action_error.py::test_success  # Utils
+tests/errors/test_action_error.py::test_success  # Utils
+tests/errors/test_action_error.py::test_with_review_results_and_cause  # Utils
+tests/errors/test_action_error.py::test_with_success_and_failed_txs  # Utils
+tests/integration/test_privileged_key_manager.py::test_calls_keygetter_only_once_if_getprivilegedkey_is_invoked_multiple_times_within_retention_period  # Utils
+tests/integration/test_privileged_key_manager.py::test_computes_hmac_over_messages_verifiable_by_the_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_correctly_derives_keys_for_a_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_destroys_key_after_retention_period_elapses  # Utils
+tests/integration/test_privileged_key_manager.py::test_directly_signs_hash_of_message_verifiable_by_the_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_encrypts_messages_decryptable_by_the_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_ensures_chunk_splitting_logic_is_correct_for_a_32_byte_key  # Utils
+tests/integration/test_privileged_key_manager.py::test_explicitly_calls_destroykey_and_removes_all_chunk_properties  # Utils
+tests/integration/test_privileged_key_manager.py::test_fails_to_decryupt_messages_for_the_wrong_protocol_key_and_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_fails_to_verify_hmac_for_the_wrong_data_protocol_key_and_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_fails_to_verify_signature_for_the_wrong_data_protocol_key_and_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_generates_random_property_names  # Utils
+tests/integration/test_privileged_key_manager.py::test_new_decoy_properties_are_created_on_each_key_fetch_and_destroyed_on_destroy  # Utils
+tests/integration/test_privileged_key_manager.py::test_reuses_in_memory_obfuscated_key_if_data_is_valid_otherwise_fetches_a_new_key  # Utils
+tests/integration/test_privileged_key_manager.py::test_sets_up_initial_decoy_properties_in_the_constructor  # Utils
+tests/integration/test_privileged_key_manager.py::test_signs_messages_verifiable_by_the_counterparty  # Utils
+tests/integration/test_privileged_key_manager.py::test_uses_anyone_for_creating_signatures_and_self_for_other_operations_if_no_counterparty_is_provided  # Utils
+tests/integration/test_privileged_key_manager.py::test_validates_the_brc_2_encryption_compliance_vector  # Utils
+tests/integration/test_privileged_key_manager.py::test_validates_the_brc_2_hmac_compliance_vector  # Utils
+tests/integration/test_privileged_key_manager.py::test_validates_the_brc_3_compliance_vector  # Utils
+tests/integration/test_privileged_key_manager.py::test_validates_the_revealcounterpartykeylinkage_function  # Utils
+tests/integration/test_privileged_key_manager.py::test_validates_the_revealspecifickeylinkage_function  # Utils
+tests/integration/test_privileged_key_manager.py::test_xor_function_works_as_expected  # Utils
+tests/services/test_exchange_rates.py::test_update_exchange_rates_for_multiple_currencies  # Utils
+tests/unit/test_utility_arrays_dates.py::test_compares_arrays_when_both_exist  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_earlier_date_when_later_is_first  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_false_for_different_lengths  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_false_for_different_values  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_false_when_one_is_none  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_first_date_when_only_first_provided  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_later_date_when_both_provided  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_none_when_both_none  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_second_date_when_only_second_provided  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_true_for_empty_arrays  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_true_for_equal_arrays  # Utils
+tests/unit/test_utility_arrays_dates.py::test_returns_true_when_both_none  # Utils
+tests/unit/test_utility_helpers.py::test_converts_main_to_mainnet  # Utils
+tests/unit/test_utility_helpers.py::test_converts_test_to_testnet  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_empty_list  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_empty_string  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_float  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_float  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_multiple_items  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_multiple_items  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_negative  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_non_number  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_non_string  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_none  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_none  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_none  # Utils
+tests/unit/test_utility_helpers.py::test_raises_error_for_zero  # Utils
+tests/unit/test_utility_helpers.py::test_returns_element_for_single_item  # Utils
+tests/unit/test_utility_helpers.py::test_returns_first_element_for_single_item  # Utils
+tests/unit/test_utility_helpers.py::test_returns_none_for_empty_list  # Utils
+tests/unit/test_utility_helpers.py::test_returns_truthy_value  # Utils
+tests/unit/test_utility_helpers.py::test_returns_valid_id  # Utils
+tests/unit/test_utility_helpers.py::test_returns_valid_integer  # Utils
+tests/unit/test_utility_helpers.py::test_returns_valid_number  # Utils
+tests/unit/test_utility_helpers.py::test_trims_and_lowercases_hex_string  # Utils
+tests/unit/test_utility_helpers.py::test_uses_custom_description  # Utils
+tests/unit/test_utility_helpers.py::test_uses_custom_error_description  # Utils
+tests/unit/test_wallet_constructor.py::test_constructor_creates_wallet_with_default_labels_and_baskets  # Utils
+tests/unit/test_wallet_getknowntxids.py::test_adds_new_known_txids  # Utils
+tests/unit/test_wallet_getknowntxids.py::test_avoids_duplicating_txids  # Utils
+tests/unit/test_wallet_getknowntxids.py::test_handles_invalid_txids_gracefully  # Utils
+tests/unit/test_wallet_getknowntxids.py::test_returns_empty_array_when_no_txids_provided  # Utils
+tests/unit/test_wallet_getknowntxids.py::test_returns_sorted_txids  # Utils
+tests/universal/test_createaction.py::test_createaction_nosignandprocess_json_matches_universal_vectors  # Utils
+tests/utils/test_change_distribution.py::test_change_distribution_panics_on_invalid_inputs  # Utils
+tests/utils/test_change_distribution.py::test_change_distribution_with_real_randomizer  # Utils
+tests/utils/test_change_distribution.py::test_change_distribution_with_various_scenarios  # Utils
+tests/utils/test_contains_utxo.py::test_contains_utxo_checks_presence_correctly  # Utils
+tests/utils/test_height_range.py::test_copy  # Utils
+tests/utils/test_height_range.py::test_intersect  # Utils
+tests/utils/test_height_range.py::test_length  # Utils
+tests/utils/test_height_range.py::test_subtract  # Utils
+tests/utils/test_height_range.py::test_union  # Utils
+tests/utils/test_proof_for_merkle_path.py::test_convert_tsc_proof_to_merkle_path_with_various_inputs  # Utils
+tests/utils/test_pushdrop.py::test_pushdrop_transfer_example  # Utils
+tests/utils/test_script_hash.py::test_hash_output_script_error_cases  # Utils
+tests/utils/test_script_hash.py::test_hash_output_script_success_cases  # Utils
+tests/utils/test_tx_size.py::test_input_size  # Utils
+tests/utils/test_tx_size.py::test_output_size  # Utils
+tests/utils/test_tx_size.py::test_transaction_size  # Utils
+tests/utils/test_tx_size.py::test_transaction_size_with_error_on_inputs  # Utils
+tests/utils/test_tx_size.py::test_transaction_size_with_error_on_outputs  # Utils
+tests/utils/test_utility_helpers_no_buffer.py::test_convert_from_hex_string  # Utils
+tests/utils/test_utility_helpers_no_buffer.py::test_convert_from_number_array  # Utils
+tests/utils/test_utility_helpers_no_buffer.py::test_convert_from_uint8array  # Utils
+tests/utils/test_utility_helpers_no_buffer.py::test_convert_from_utf8_string  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_basket_name_mismatch  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_basket_name_none  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_empty_outputs  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_multiple_valid_outputs  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_provided_by_mismatch  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_purpose_mismatch  # Utils
+tests/utils/validation/test_validate_no_send_change_outputs.py::test_validate_no_send_change_outputs_single_valid_output  # Utils
+
+# ============================================================================
+# NOT IMPLEMENTED - CERTIFICATE LIFECYCLE (6 tests)
+# Complete certificate lifecycle management
+# ============================================================================
+tests/certificates/test_certificate_life_cycle.py::test_complete_flow_mastercertificate_and_verifiablecertificate  # Certificate lifecycle
+tests/wallet/test_certificates.py::test_acquirecertificate_listcertificate_provecertificate  # Certificate lifecycle
+tests/wallet/test_certificates.py::test_discover_by_attributes  # Certificate lifecycle
+tests/wallet/test_certificates.py::test_discover_by_identity_key  # Certificate lifecycle
+tests/wallet/test_certificates.py::test_privileged_acquirecertificate_listcertificate_provecertificate  # Certificate lifecycle
+tests/wallet/test_certificates.py::test_prove_certificate  # Certificate lifecycle
+
+# ============================================================================
+# OTHER ISSUES (7 tests)
+# Various specific issues
+# ============================================================================
+tests/services/test_get_chain_tracker.py::test_get_chain_tracker_placeholder  # Other
+tests/services/test_post_beef.py::test_post_beef_array_placeholder  # Other
+tests/services/test_post_beef.py::test_post_beef_placeholder  # Other
+tests/services/test_transaction_status.py::test_get_transaction_status_placeholder  # Other
+tests/wallet/test_sync.py::test_set_active_to_backup_and_back_with_backup_first  # Other
+tests/wallet/test_sync.py::test_set_active_to_backup_and_back_without_backup_first  # Other
+tests/wallet/test_sync.py::test_sync_initial_then_no_changes_then_one_change  # Other

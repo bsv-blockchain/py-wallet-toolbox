@@ -22,7 +22,6 @@ class TestUniversalVectorsCreateHmac:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="KeyDeriver parity with TS/Go required for byte-perfect HMAC; skipping JSON vector")
     def test_createhmac_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
@@ -40,7 +39,6 @@ class TestUniversalVectorsCreateHmac:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_createhmac_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

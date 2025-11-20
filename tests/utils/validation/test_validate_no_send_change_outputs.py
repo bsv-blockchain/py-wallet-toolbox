@@ -18,7 +18,6 @@ class TestValidateNoSendChangeOutputs:
     - basketName: must not be None and must match "change basket"
     """
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_single_valid_output(self) -> None:
         """Given: Single valid output with correct fields
            When: Call validate_no_send_change_outputs
@@ -34,7 +33,6 @@ class TestValidateNoSendChangeOutputs:
         # When / Then
         validate_no_send_change_outputs(valid_outputs)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_multiple_valid_outputs(self) -> None:
         """Given: Multiple valid outputs with correct fields
            When: Call validate_no_send_change_outputs
@@ -53,7 +51,6 @@ class TestValidateNoSendChangeOutputs:
         # When / Then
         validate_no_send_change_outputs(valid_outputs)  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_empty_outputs(self) -> None:
         """Given: Empty outputs list
            When: Call validate_no_send_change_outputs
@@ -67,7 +64,6 @@ class TestValidateNoSendChangeOutputs:
         # When / Then
         validate_no_send_change_outputs([])  # Should not raise
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_provided_by_mismatch(self) -> None:
         """Given: Output with providedBy not matching 'storage'
            When: Call validate_no_send_change_outputs
@@ -87,7 +83,6 @@ class TestValidateNoSendChangeOutputs:
             validate_no_send_change_outputs(invalid_outputs)
         assert "provided" in str(exc_info.value).lower() or "match" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_purpose_mismatch(self) -> None:
         """Given: Output with purpose not matching 'change'
            When: Call validate_no_send_change_outputs
@@ -112,7 +107,6 @@ class TestValidateNoSendChangeOutputs:
             validate_no_send_change_outputs(invalid_outputs)
         assert "purpose" in str(exc_info.value).lower() or "match" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_basket_name_none(self) -> None:
         """Given: Output with basketName set to None
            When: Call validate_no_send_change_outputs
@@ -132,7 +126,6 @@ class TestValidateNoSendChangeOutputs:
             validate_no_send_change_outputs(invalid_outputs)
         assert "basket" in str(exc_info.value).lower() or "nil" in str(exc_info.value).lower()
 
-    @pytest.mark.skip(reason="Waiting for validate_no_send_change_outputs implementation")
     def test_validate_no_send_change_outputs_basket_name_mismatch(self) -> None:
         """Given: Output with basketName not matching 'change basket'
            When: Call validate_no_send_change_outputs

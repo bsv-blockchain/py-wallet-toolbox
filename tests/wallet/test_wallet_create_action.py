@@ -67,7 +67,6 @@ class TestWalletCreateAction:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.create_action(invalid_args)
 
-    @pytest.mark.skip(reason="TXID generation not deterministic - database state changes between runs")
     def test_repeatable_txid(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with deterministic settings (randomize_outputs=False)
            When: Call create_action with same args

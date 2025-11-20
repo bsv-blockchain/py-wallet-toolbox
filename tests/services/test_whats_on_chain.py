@@ -27,7 +27,6 @@ class TestWhatsOnChain:
                describe('whatsonchain tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     def test_placeholder(self) -> None:
         """Given: WhatsOnChain service
            When: Placeholder test
@@ -40,8 +39,6 @@ class TestWhatsOnChain:
               This is kept as a placeholder to match TypeScript's test structure.
         """
 
-    @pytest.mark.skip(reason="Async WhatsOnChain methods require complex mocking - basic functionality verified")
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     @pytest.mark.asyncio
     async def test_getrawtx_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet and a known txid
@@ -68,7 +65,6 @@ class TestWhatsOnChain:
         # Then
         assert raw_tx_invalid is None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     @pytest.mark.asyncio
     async def test_getrawtx_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet and a known txid
@@ -95,7 +91,6 @@ class TestWhatsOnChain:
         # Then
         assert raw_tx_invalid is None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     @pytest.mark.asyncio
     async def test_getmerklepath_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet, Services instance, and a known txid
@@ -129,7 +124,6 @@ class TestWhatsOnChain:
         )
         assert s_invalid == expected_json_invalid
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     @pytest.mark.asyncio
     async def test_getmerklepath_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet, Services instance, and a known txid
@@ -165,7 +159,6 @@ class TestWhatsOnChain:
         )
         assert s_invalid == expected_json_invalid
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     @pytest.mark.asyncio
     async def test_updatebsvexchangerate(self) -> None:
         """Given: WhatsOnChain service for mainnet
@@ -187,7 +180,6 @@ class TestWhatsOnChain:
         assert r["rate"] > 0
         assert r["timestamp"] is not None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     def test_gettxpropagation_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet and a known txid
            When: Call getTxPropagation
@@ -202,7 +194,6 @@ class TestWhatsOnChain:
         # - count == 0 for invalid txid '1' * 64
         return
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WhatsOnChain implementation")
     def test_gettxpropagation_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet
            When: Call getTxPropagation

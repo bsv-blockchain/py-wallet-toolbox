@@ -22,7 +22,6 @@ class TestUniversalVectorsEncrypt:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Non-deterministic ECIES output; enable after deterministic RNG or TS parity")
     def test_encrypt_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
@@ -40,7 +39,6 @@ class TestUniversalVectorsEncrypt:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_encrypt_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

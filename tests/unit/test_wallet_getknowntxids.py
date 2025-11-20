@@ -19,7 +19,6 @@ class TestGetKnownTxids:
                getKnownTxids Tests
     """
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
     def test_returns_empty_array_when_no_txids_provided(self) -> None:
         """Given: Wallet with no txids registered
            When: Call get_known_txids with no arguments
@@ -37,7 +36,6 @@ class TestGetKnownTxids:
         # Then
         assert result == []
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
     def test_adds_new_known_txids(self) -> None:
         """Given: Wallet with no txids registered
            When: Add txids and retrieve them
@@ -60,7 +58,6 @@ class TestGetKnownTxids:
         # Then
         assert result_after == txids
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
     def test_avoids_duplicating_txids(self) -> None:
         """Given: Wallet with some txids already registered
            When: Add a duplicate txid
@@ -87,7 +84,6 @@ class TestGetKnownTxids:
         # Then - Ensure no duplicates are added
         assert result_after == txids
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
     def test_returns_sorted_txids(self) -> None:
         """Given: Wallet with unsorted txids added
            When: Retrieve known txids
@@ -110,7 +106,6 @@ class TestGetKnownTxids:
         # Then - Ensure txids are sorted
         assert result == ["txid1", "txid2", "txid3"]
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
     def test_handles_invalid_txids_gracefully(self) -> None:
         """Given: Mix of valid and invalid txids
            When: Add them to wallet

@@ -42,7 +42,6 @@ class TestUniversalVectorsIsAuthenticated:
         assert result == result_data["json"]
         assert result["authenticated"] is True
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_isauthenticated_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

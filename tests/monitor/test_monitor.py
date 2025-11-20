@@ -177,7 +177,6 @@ MOCK_MERKLE_PATH_RESULTS = [
 class TestMonitor:
     """Test suite for Monitor tasks."""
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value
@@ -211,7 +210,6 @@ class TestMonitor:
         start_tasks_promise
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_tasknewheader(self) -> None:
         """Given: Monitor with new header task running for 10+ seconds
            When: Check header and checkNow flag
@@ -243,7 +241,6 @@ class TestMonitor:
         start_tasks_promise
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_tasksendwaiting_success(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and mocked successful postBeef
            When: Execute TaskSendWaiting
@@ -309,7 +306,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_taskcheckforproofs_success(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning valid proofs
            When: Execute TaskCheckForProofs
@@ -382,7 +378,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_taskcheckforproofs_fail(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning empty results
            When: Execute TaskCheckForProofs
@@ -441,7 +436,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_taskreviewstatus(self) -> None:
         """Given: Storage with various transaction statuses including invalid ProvenTxReq
            When: Execute TaskReviewStatus
@@ -473,7 +467,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_processproventransaction(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and onTransactionProven callback
            When: Execute TaskCheckForProofs to create ProvenTxs
@@ -560,7 +553,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Waiting for Monitor implementation")
     def test_processbroadcastedtransactions(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and onTransactionBroadcasted callback
            When: Execute TaskSendWaiting to broadcast transactions

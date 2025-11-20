@@ -49,7 +49,6 @@ class TestBitrails:
                describe('bitrails tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_verify_merkle_proof_to_merkle_path(self) -> None:
         """Given: TSC merkle proof for a txid
            When: Convert proof to merkle path and compute root
@@ -68,7 +67,6 @@ class TestBitrails:
         # Then
         assert root == PROOF2_MERKLE_ROOT
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_bitails_get_merkle_path(self) -> None:
         """Given: Bitails service and services for mainnet
            When: Get merkle path for recent txids

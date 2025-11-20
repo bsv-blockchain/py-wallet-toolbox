@@ -42,7 +42,6 @@ class TestUniversalVectorsGetNetwork:
         assert result == result_data["json"]
         assert result["network"] == "mainnet"
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_getnetwork_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

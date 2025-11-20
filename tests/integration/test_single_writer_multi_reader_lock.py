@@ -100,7 +100,6 @@ class TestSingleWriterMultiReaderLock:
                describe('SingleWriterMultiReaderLock tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for SingleWriterMultiReaderLock implementation")
     @pytest.mark.asyncio
     async def test_concurrent_reads_and_writes_execute_in_correct_order(self) -> None:
         """Given: TestLock instance with concurrent read/write operations

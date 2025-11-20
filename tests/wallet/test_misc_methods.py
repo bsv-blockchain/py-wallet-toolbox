@@ -140,7 +140,6 @@ class TestWalletConstructor:
             key_deriver = KeyDeriver(root_key)
             Wallet(chain="main", key_deriver=key_deriver)
 
-    @pytest.mark.skip(reason="Chain validation not implemented in Wallet constructor")
     def test_wallet_constructor_with_invalid_chain(self) -> None:
         """Given: Invalid chain value (not 'main' or 'test')
            When: Create Wallet instance

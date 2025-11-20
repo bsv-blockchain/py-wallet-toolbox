@@ -19,7 +19,6 @@ except (ImportError, AttributeError):
     IMPORTS_AVAILABLE = False
 
 
-@pytest.mark.skip(reason="Merkle path services require complex implementation - basic functionality verified")
 class TestGetMerklePath:
     """Test suite for getMerklePath service.
 
@@ -27,7 +26,6 @@ class TestGetMerklePath:
                describe('getRawTx service tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_get_merkle_path(self) -> None:
         """Given: Services with mainnet configuration
            When: Get merkle path for a known txid

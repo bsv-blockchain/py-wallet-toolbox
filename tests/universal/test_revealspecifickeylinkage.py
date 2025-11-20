@@ -22,9 +22,8 @@ class TestUniversalVectorsRevealSpecificKeyLinkage:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for reveal_specific_key_linkage implementation")
     def test_revealspecifickeylinkage_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for revealSpecificKeyLinkage
         When: Call revealSpecificKeyLinkage
@@ -32,7 +31,7 @@ class TestUniversalVectorsRevealSpecificKeyLinkage:
         """
         # Given
         args_data, result_data = load_test_vectors("revealSpecificKeyLinkage-simple")
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         result = wallet.reveal_specific_key_linkage(args_data["json"], originator=None)
@@ -40,7 +39,6 @@ class TestUniversalVectorsRevealSpecificKeyLinkage:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_revealspecifickeylinkage_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

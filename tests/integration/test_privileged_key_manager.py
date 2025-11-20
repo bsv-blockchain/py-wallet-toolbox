@@ -41,7 +41,6 @@ class TestPrivilegedKeyManager:
                describe('PrivilegedKeyManager')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_brc_3_compliance_vector(self) -> None:
         """Given: BRC-3 compliance test vector with fixed signature
@@ -140,7 +139,6 @@ class TestPrivilegedKeyManager:
         assert result["valid"] is True
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_brc_2_hmac_compliance_vector(self) -> None:
         """Given: BRC-2 HMAC compliance test vector
@@ -203,7 +201,6 @@ class TestPrivilegedKeyManager:
         assert result["valid"] is True
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_brc_2_encryption_compliance_vector(self) -> None:
         """Given: BRC-2 encryption compliance test vector
@@ -319,7 +316,6 @@ class TestPrivilegedKeyManager:
         assert to_utf8(result["plaintext"]) == "BRC-2 Encryption Compliance Validated!"
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_encrypts_messages_decryptable_by_the_counterparty(self) -> None:
         """Given: Two wallets (user and counterparty)
@@ -359,7 +355,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_fails_to_decryupt_messages_for_the_wrong_protocol_key_and_counterparty(self) -> None:
         """Given: Encrypted message
@@ -419,7 +414,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_correctly_derives_keys_for_a_counterparty(self) -> None:
         """Given: Two wallets with protocol/keyID/counterparty parameters
@@ -455,7 +449,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_signs_messages_verifiable_by_the_counterparty(self) -> None:
         """Given: User and counterparty wallets
@@ -496,7 +489,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_directly_signs_hash_of_message_verifiable_by_the_counterparty(self) -> None:
         """Given: User and counterparty wallets
@@ -546,7 +538,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_fails_to_verify_signature_for_the_wrong_data_protocol_key_and_counterparty(self) -> None:
         """Given: Signed message
@@ -616,7 +607,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_computes_hmac_over_messages_verifiable_by_the_counterparty(self) -> None:
         """Given: User and counterparty wallets
@@ -657,7 +647,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_fails_to_verify_hmac_for_the_wrong_data_protocol_key_and_counterparty(self) -> None:
         """Given: HMAC for message
@@ -707,7 +696,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_uses_anyone_for_creating_signatures_and_self_for_other_operations_if_no_counterparty_is_provided(
         self,
@@ -730,7 +718,6 @@ class TestPrivilegedKeyManager:
         assert len(signed["signature"]) > 0
         await user.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_revealcounterpartykeylinkage_function(self) -> None:
         """Given: Wallet with key derivation
@@ -759,7 +746,6 @@ class TestPrivilegedKeyManager:
         assert "revealedBy" in linkage
         await user.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_revealspecifickeylinkage_function(self) -> None:
         """Given: Wallet with specific key
@@ -789,7 +775,6 @@ class TestPrivilegedKeyManager:
         assert "verifier" in linkage
         await user.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_calls_keygetter_only_once_if_getprivilegedkey_is_invoked_multiple_times_within_retention_period(
         self,
@@ -819,7 +804,6 @@ class TestPrivilegedKeyManager:
         assert call_count["count"] == 1
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_destroys_key_after_retention_period_elapses(self) -> None:
         """Given: Wallet with short retention period
@@ -849,7 +833,6 @@ class TestPrivilegedKeyManager:
         assert call_count["count"] == 2
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_explicitly_calls_destroykey_and_removes_all_chunk_properties(self) -> None:
         """Given: Wallet with obfuscated key chunks
@@ -871,7 +854,6 @@ class TestPrivilegedKeyManager:
         assert not hasattr(wallet, "_key")
         assert not hasattr(wallet, "_chunks")
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_reuses_in_memory_obfuscated_key_if_data_is_valid_otherwise_fetches_a_new_key(self) -> None:
         """Given: Wallet with obfuscated key
@@ -898,7 +880,6 @@ class TestPrivilegedKeyManager:
         assert call_count["count"] == 1
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_ensures_chunk_splitting_logic_is_correct_for_a_32_byte_key(self) -> None:
         """Given: 32-byte private key
@@ -919,7 +900,6 @@ class TestPrivilegedKeyManager:
         # (Internal chunk logic should XOR back to original key)
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_xor_function_works_as_expected(self) -> None:
         """Given: Two byte arrays
@@ -941,7 +921,6 @@ class TestPrivilegedKeyManager:
         # Then
         assert xor_ab_b == a
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_generates_random_property_names(self) -> None:
         """Given: PrivilegedKeyManager
@@ -964,7 +943,6 @@ class TestPrivilegedKeyManager:
         assert len(name2) > 0
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_sets_up_initial_decoy_properties_in_the_constructor(self) -> None:
         """Given: New PrivilegedKeyManager instance
@@ -982,7 +960,6 @@ class TestPrivilegedKeyManager:
         assert hasattr(wallet, "_decoys")
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_new_decoy_properties_are_created_on_each_key_fetch_and_destroyed_on_destroy(self) -> None:
         """Given: Wallet

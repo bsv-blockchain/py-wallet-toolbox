@@ -16,6 +16,37 @@ from collections.abc import Callable
 from typing import Any, Literal, TypedDict
 
 
+class PermissionsManagerConfig(TypedDict, total=False):
+    """Configuration for WalletPermissionsManager permission checking.
+
+    All flags default to True for maximum security.
+    Set to False to skip specific permission checks.
+
+    Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
+    """
+
+    seekProtocolPermissionsForSigning: bool
+    seekProtocolPermissionsForEncrypting: bool
+    seekProtocolPermissionsForHMAC: bool
+    seekPermissionsForKeyLinkageRevelation: bool
+    seekPermissionsForPublicKeyRevelation: bool
+    seekPermissionsForIdentityKeyRevelation: bool
+    seekPermissionsForIdentityResolution: bool
+    seekBasketInsertionPermissions: bool
+    seekBasketRemovalPermissions: bool
+    seekBasketListingPermissions: bool
+    seekPermissionWhenApplyingActionLabels: bool
+    seekPermissionWhenListingActionsByLabel: bool
+    seekCertificateDisclosurePermissions: bool
+    seekCertificateAcquisitionPermissions: bool
+    seekCertificateRelinquishmentPermissions: bool
+    seekCertificateListingPermissions: bool
+    encryptWalletMetadata: bool
+    seekSpendingPermissions: bool
+    seekGroupedPermission: bool
+    differentiatePrivilegedOperations: bool
+
+
 class PermissionToken(TypedDict, total=False):
     """On-chain permission token data structure.
 
@@ -65,6 +96,10 @@ class PermissionRequest(TypedDict, total=False):
     previousToken: PermissionToken
 
 
+# Type alias for permission event callbacks
+PermissionCallback = Callable[[PermissionRequest], Any]
+
+
 class WalletPermissionsManager:
     """Permission and token management for wallet operations.
 
@@ -77,19 +112,45 @@ class WalletPermissionsManager:
     def __init__(
         self,
         underlying_wallet: Any,
-        _permission_event_handler: Callable[[PermissionRequest], Any] | None = None,
-        _grouped_permission_event_handler: Callable[[dict[str, Any]], Any] | None = None,
+        admin_originator: str,
+        config: PermissionsManagerConfig | None = None,
     ) -> None:
         """Initialize WalletPermissionsManager.
 
         Args:
             underlying_wallet: The underlying WalletInterface instance
-            _permission_event_handler: Callback for permission requests
-            _grouped_permission_event_handler: Callback for grouped permission requests
+            admin_originator: The domain/FQDN that is automatically allowed everything
+            config: Configuration flags controlling permission checks (all default to True)
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
         self._underlying_wallet: Any = underlying_wallet
+        self._admin_originator: str = admin_originator
+
+        # Default all config options to True unless specified
+        default_config: PermissionsManagerConfig = {
+            "seekProtocolPermissionsForSigning": True,
+            "seekProtocolPermissionsForEncrypting": True,
+            "seekProtocolPermissionsForHMAC": True,
+            "seekPermissionsForKeyLinkageRevelation": True,
+            "seekPermissionsForPublicKeyRevelation": True,
+            "seekPermissionsForIdentityKeyRevelation": True,
+            "seekPermissionsForIdentityResolution": True,
+            "seekBasketInsertionPermissions": True,
+            "seekBasketRemovalPermissions": True,
+            "seekBasketListingPermissions": True,
+            "seekPermissionWhenApplyingActionLabels": True,
+            "seekPermissionWhenListingActionsByLabel": True,
+            "seekCertificateDisclosurePermissions": True,
+            "seekCertificateAcquisitionPermissions": True,
+            "seekCertificateRelinquishmentPermissions": True,
+            "seekCertificateListingPermissions": True,
+            "encryptWalletMetadata": True,
+            "seekSpendingPermissions": True,
+            "seekGroupedPermission": True,
+            "differentiatePrivilegedOperations": True,
+        }
+        self._config: PermissionsManagerConfig = {**default_config, **(config or {})}
 
         # Permission token cache
         self._permissions: dict[str, list[PermissionToken]] = {}
