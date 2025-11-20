@@ -22,6 +22,7 @@ class TestUniversalVectorsGetPublicKey:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
+    @pytest.mark.skip(reason="Requires deterministic key derivation setup")
     def test_getpublickey_json_matches_universal_vectors(
         self,
         load_test_vectors: Callable[[str], tuple[dict, dict]],

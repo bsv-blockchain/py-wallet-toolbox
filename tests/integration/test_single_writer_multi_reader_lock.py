@@ -10,7 +10,7 @@ import asyncio
 import pytest
 
 try:
-    from bsv_wallet_toolbox.chaintracks.util import SingleWriterMultiReaderLock
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.util import SingleWriterMultiReaderLock
 
     IMPORTS_AVAILABLE = True
 except ImportError:

@@ -377,6 +377,8 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     vargs["isNewTx"] = vargs["isRemixChange"] or len(inputs) > 0 or len(outputs) > 0
     vargs["isDelayed"] = opts.get("acceptDelayedBroadcast", True)
     vargs["isNoSend"] = opts.get("noSend", False)
+    # isSignAction is True when signAndProcess is explicitly False
+    vargs["isSignAction"] = opts.get("signAndProcess") is False
 
     return vargs
 

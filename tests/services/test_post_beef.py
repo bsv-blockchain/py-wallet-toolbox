@@ -20,6 +20,7 @@ import pytest
 # Section B: Minimal (enabled)
 # =============================
 from bsv_wallet_toolbox.services import Services
+from tests.test_utils import Setup
 
 
 async def test_post_beef_arc_minimal_enabled() -> None:

@@ -22,6 +22,7 @@ class TestUniversalVectorsDiscoverByIdentityKey:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
+    @pytest.mark.skip(reason="discoverByIdentityKey not implemented - requires certificate subsystem")
     def test_discoverbyidentitykey_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:

@@ -51,7 +51,7 @@ class TestNLockTimeIsFinal:
         # Given: height branch (nLockTime < 500_000_000), strict < comparison
         services = Services("main")
 
-        async def fake_get_height() -> int:
+        def fake_get_height() -> int:
             return 800_000
 
         monkeypatch.setattr(services, "get_height", fake_get_height)

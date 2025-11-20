@@ -238,6 +238,43 @@ class Wallet:
             # Best-effort wiring; storage providers without set_services are tolerated
             pass
 
+        # Initialize default labels and baskets if storage is available
+        # TS parity: TypeScript wallet ensures defaults exist on initialization
+        if self.storage is not None:
+            self._ensure_defaults()
+
+    def _ensure_defaults(self) -> None:
+        """Ensure default labels and baskets exist in storage.
+
+        Creates default label and default basket for the wallet user if they don't exist.
+        This matches TypeScript behavior where wallet initialization ensures defaults.
+
+        Reference: ts-wallet-toolbox/src/Wallet.ts (constructor initialization)
+        """
+        if not self.storage:
+            return
+
+        try:
+            # Ensure storage is available
+            self.storage.make_available()
+            
+            # Get or create user
+            auth = self._make_auth()
+            user_id = auth.get("userId")
+            
+            if not user_id:
+                return
+
+            # Ensure default label and basket exist using find_or_insert methods
+            # These methods handle checking if the record already exists
+            self.storage.find_or_insert_tx_label(user_id, "default")
+            self.storage.find_or_insert_output_basket(user_id, "default")
+
+        except Exception:
+            # Best-effort: If defaults can't be created, continue anyway
+            # Storage might not be fully initialized yet
+            pass
+
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.
 

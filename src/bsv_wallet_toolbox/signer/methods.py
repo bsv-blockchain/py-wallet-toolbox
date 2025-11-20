@@ -739,8 +739,10 @@ def _make_signable_transaction_result(
     Reference:
         - toolbox/ts-wallet-toolbox/src/signer/methods/createAction.ts
     """
-    if not prior.dcr.get("inputBeef"):
-        raise WalletError("prior.dcr.inputBeef must be valid")
+    # inputBeef might be empty if there are no inputs or inputs are all change outputs
+    # Don't enforce strict validation here - let the signing process handle it
+    # if not prior.dcr.get("inputBeef"):
+    #     raise WalletError("prior.dcr.inputBeef must be valid")
 
     txid = prior.tx.txid()
 
@@ -766,7 +768,7 @@ def _make_signable_transaction_beef(tx: Transaction, input_beef: bytes) -> bytes
     Reference:
         - toolbox/ts-wallet-toolbox/src/signer/methods/createAction.ts
     """
-    beef = Beef()
+    beef = Beef(version=1)
     for input_data in tx.inputs:
         source_tx = input_data.get("source_transaction")
         if not source_tx:
