@@ -22,18 +22,16 @@ except ImportError:
     PermissionsManagerConfig = None
 
 
-@pytest.mark.skip(reason="Needs Permissions Manager subsystem implementation (token system, callbacks, encryption)")
 class TestWalletPermissionsManagerProxying:
     """Test suite for WalletPermissionsManager proxying behavior.
 
     Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                describe('WalletPermissionsManager - Regression & Integration with Underlying Wallet')
     
-    Note: This test class requires full Permissions Manager implementation including:
-    - Token system (D PACP, DSAP, DBAP, DCAP)
-    - Permission callback mechanism
-    - Metadata encryption/decryption  
-    - Proxy method implementations for all wallet operations
+    Note: Some tests may still fail or be skipped due to missing:
+    - Full token system implementation (DPACP, DSAP, DBAP, DCAP)
+    - Complete permission callback mechanism
+    - Advanced permission checks
     """
 
     def test_should_pass_createaction_calls_through_label_them_handle_metadata_encryption_and_check_spending_authorization(
@@ -50,6 +48,10 @@ class TestWalletPermissionsManagerProxying:
         mock_underlying_wallet = Mock(spec=WalletInterface)
         mock_underlying_wallet.create_action = AsyncMock(
             return_value={"signableTransaction": {"tx": [0xDE, 0xAD], "reference": "test-ref"}}
+        )
+        # Mock encrypt for metadata encryption
+        mock_underlying_wallet.encrypt = AsyncMock(
+            return_value={"ciphertext": [0xAB, 0xCD, 0xEF]}
         )
 
         manager = WalletPermissionsManager(
@@ -228,11 +230,18 @@ class TestWalletPermissionsManagerProxying:
                    test('should call listActions on the underlying wallet and decrypt metadata fields if encryptWalletMetadata=true')
         """
         # Given
+        import base64
+        
         mock_underlying_wallet = Mock(spec=WalletInterface)
+        # Use valid base64 for encrypted_data
+        encrypted_desc = base64.b64encode(b"encrypted_data").decode()
         mock_underlying_wallet.list_actions = AsyncMock(
-            return_value={"actions": [{"txid": "tx1", "description": "encrypted_data"}]}
+            return_value={"actions": [{"txid": "tx1", "description": encrypted_desc}]}
         )
-        mock_underlying_wallet.decrypt = AsyncMock(return_value="decrypted_data")
+        # decrypt should return proper structure with plaintext as bytes
+        mock_underlying_wallet.decrypt = AsyncMock(
+            return_value={"plaintext": [ord(c) for c in "decrypted_data"]}
+        )
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -241,7 +250,7 @@ class TestWalletPermissionsManagerProxying:
         )
 
         # When
-        manager.list_actions({}, "user.com")
+        result = manager.list_actions({}, "user.com")
 
         # Then
         assert mock_underlying_wallet.list_actions.call_count == 1
