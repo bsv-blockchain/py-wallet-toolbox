@@ -64,41 +64,6 @@ from ..storage.provider import StorageProvider
 logger = logging.getLogger(__name__)
 
 
-class JsonRpcParseError(Exception):
-    """JSON parse error (-32700)."""
-
-    code = -32700
-    message = "Parse error"
-
-
-class JsonRpcInvalidRequestError(Exception):
-    """Invalid JSON-RPC request (-32600)."""
-
-    code = -32600
-    message = "Invalid Request"
-
-
-class JsonRpcMethodNotFoundError(Exception):
-    """Method not found in registry (-32601)."""
-
-    code = -32601
-    message = "Method not found"
-
-
-class JsonRpcInvalidParamsError(Exception):
-    """Invalid JSON-RPC parameters (-32602)."""
-
-    code = -32602
-    message = "Invalid params"
-
-
-class JsonRpcInternalError(Exception):
-    """Internal server error (-32603)."""
-
-    code = -32603
-    message = "Internal error"
-
-
 class JsonRpcError(Exception):
     """Base class for JSON-RPC protocol errors.
 
@@ -130,6 +95,41 @@ class JsonRpcError(Exception):
             "code": self.code,
             "message": self.message,
         }
+
+
+class JsonRpcParseError(JsonRpcError):
+    """JSON parse error (-32700)."""
+
+    code = -32700
+    message = "Parse error"
+
+
+class JsonRpcInvalidRequestError(JsonRpcError):
+    """Invalid JSON-RPC request (-32600)."""
+
+    code = -32600
+    message = "Invalid Request"
+
+
+class JsonRpcMethodNotFoundError(JsonRpcError):
+    """Method not found in registry (-32601)."""
+
+    code = -32601
+    message = "Method not found"
+
+
+class JsonRpcInvalidParamsError(JsonRpcError):
+    """Invalid JSON-RPC parameters (-32602)."""
+
+    code = -32602
+    message = "Invalid params"
+
+
+class JsonRpcInternalError(JsonRpcError):
+    """Internal server error (-32603)."""
+
+    code = -32603
+    message = "Internal error"
 
 
 class JsonRpcServer:
@@ -325,20 +325,22 @@ class JsonRpcServer:
                 method = getattr(storage_provider, python_method)
                 if callable(method):
                     # Create wrapper that handles auth and args parameters
-                    # Use partial to avoid closure issues with loop variables
+                    # JSON-RPC params are passed as **kwargs to the wrapper
                     def create_method_wrapper(
                         storage_method: Callable[..., Any],
                         python_method: str,
-                        auth: dict[str, Any],
-                        args: dict[str, Any],
+                        **params: dict[str, Any],
                     ) -> Any:
                         try:
+                            # Extract auth and args from params if present
+                            auth = params.get("auth", {})
+                            args = params.get("args", {})
+
                             # TS parity: Call storage method based on parameter requirements
-                            if python_method in ["destroy"]:
-                                # Methods that take no parameters or just auth
+                            if python_method in ["destroy", "is_storage_provider"]:
+                                # Methods that take no parameters
                                 return storage_method()
                             elif python_method in [
-                                "is_storage_provider",
                                 "is_available",
                                 "get_services",
                                 "get_settings",
