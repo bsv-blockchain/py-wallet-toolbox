@@ -30,7 +30,6 @@ class TestWalletPermissionsManagerInitialization:
                describe('WalletPermissionsManager - Initialization & Configuration')
     """
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_initialize_with_default_config_if_none_is_provided(self) -> None:
         """Given: No config provided to constructor
            When: Create WalletPermissionsManager
@@ -58,7 +57,6 @@ class TestWalletPermissionsManagerInitialization:
         admin = getattr(manager, "_admin_originator", None)
         assert admin == "admin.domain.com"
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_initialize_with_partial_config_overrides_merging_with_defaults(self) -> None:
         """Given: Partial config provided (some flags overridden)
            When: Create WalletPermissionsManager
@@ -89,7 +87,6 @@ class TestWalletPermissionsManagerInitialization:
         assert internal_config.get("seekBasketInsertionPermissions") is True
         assert internal_config.get("seekSpendingPermissions") is True
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_initialize_with_all_config_flags_set_to_false(self) -> None:
         """Given: All config flags set to False
            When: Create WalletPermissionsManager
@@ -132,7 +129,6 @@ class TestWalletPermissionsManagerInitialization:
         for key, value in all_false.items():
             assert internal_config.get(key) == value
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_consider_calls_from_the_adminoriginator_as_admin_bypassing_checks(self) -> None:
         """Given: Manager with admin originator set
            When: Call method with admin originator
@@ -172,7 +168,6 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(
         self,
     ) -> None:
@@ -205,7 +200,7 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
+    @pytest.mark.skip(reason="Complex async permission queueing not yet implemented")
     def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(
         self,
     ) -> None:
@@ -215,6 +210,9 @@ class TestWalletPermissionsManagerInitialization:
 
         Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should enforce protocol permission checks for signing if seekProtocolPermissionsForSigning=true')
+        
+        Note: This test requires permission request queueing and async grant/deny
+              which is not yet implemented in the Python version.
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
@@ -248,7 +246,6 @@ class TestWalletPermissionsManagerInitialization:
         with pytest.raises(ValueError, match="Permission denied"):
             create_sig_promise
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_skip_basket_insertion_permission_checks_if_seekbasketinsertionpermissions_false(self) -> None:
         """Given: Manager with seekBasketInsertionPermissions=False
            When: Non-admin creates action with basket
@@ -268,11 +265,8 @@ class TestWalletPermissionsManagerInitialization:
 
         # Spending authorization is still required, grant it
         def auto_grant_spending(request) -> None:
-
-            _task = asyncio.create_task(
-                manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
-            )
-            _task.add_done_callback(lambda _fut: None)
+            # grant_permission is synchronous, no need for create_task
+            manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onSpendingAuthorizationRequested", auto_grant_spending)
 
@@ -296,7 +290,6 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(
         self,
     ) -> None:
@@ -326,7 +319,6 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    @pytest.mark.skip(reason="Requires full WalletPermissionsManager implementation")
     def test_should_skip_metadata_encryption_if_encryptwalletmetadata_false(self) -> None:
         """Given: Manager with encryptWalletMetadata=False
            When: Create action with metadata
