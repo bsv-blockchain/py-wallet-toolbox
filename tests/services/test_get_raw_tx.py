@@ -28,8 +28,6 @@ class TestGetRawTx:
                describe('getRawTx service tests')
     """
 
-    @pytest.mark.skip(reason="Services layer requires complex mocking and implementation - basic functionality verified")
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_get_raw_tx(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Given: Services with testnet configuration
            When: Get raw transaction for a known txid

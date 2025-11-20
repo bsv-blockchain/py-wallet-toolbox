@@ -24,7 +24,6 @@ class TestUniversalVectorsListCertificates:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation")
     def test_listcertificates_simple_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
@@ -42,13 +41,11 @@ class TestUniversalVectorsListCertificates:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_listcertificates_simple_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
 
-    @pytest.mark.skip(reason="Waiting for list_certificates implementation")
     def test_listcertificates_full_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
@@ -66,7 +63,6 @@ class TestUniversalVectorsListCertificates:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_listcertificates_full_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

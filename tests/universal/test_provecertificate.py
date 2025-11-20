@@ -22,7 +22,6 @@ class TestUniversalVectorsProveCertificate:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for prove_certificate implementation")
     def test_provecertificate_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
@@ -40,7 +39,6 @@ class TestUniversalVectorsProveCertificate:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_provecertificate_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

@@ -114,18 +114,58 @@ def validate_list_outputs_args(args: dict[str, Any]) -> None:
     """Validate ListOutputsArgs structure.
 
     Rules based on BRC-100 behavior and TS/Go toolboxes tests:
-    - limit: optional; if present must be int and > 0
+    - basket: optional; if present must be non-empty string (1-300 chars)
+    - tags: optional; if present must be list of non-empty strings (each 1-300 chars)
+    - limit: optional; if present must be int 1-10000, default 10
+    - offset: optional; can be any integer (negative = newest first)
     - knownTxids: optional; if present must be a list of hex strings
     - tagQueryMode: optional; if present must be one of {"any", "all"}
+    
+    Reference: wallet-toolbox/src/sdk/validationHelpers.ts - validateListOutputsArgs
     """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
 
-    # limit
+    # basket - must be non-empty if present
+    if "basket" in args:
+        basket = args["basket"]
+        if not isinstance(basket, str):
+            raise InvalidParameterError("basket", "a string")
+        if len(basket) == 0:
+            raise InvalidParameterError("basket", "a non-empty string (1-300 characters)")
+        if len(basket) > 300:
+            raise InvalidParameterError("basket", "at most 300 characters")
+
+    # tags - each must be non-empty if present
+    if "tags" in args:
+        tags = args["tags"]
+        if not isinstance(tags, list):
+            raise InvalidParameterError("tags", "a list of strings")
+        for i, tag in enumerate(tags):
+            if not isinstance(tag, str):
+                raise InvalidParameterError(f"tags[{i}]", "a string")
+            if len(tag) == 0:
+                raise InvalidParameterError(f"tags[{i}]", "a non-empty string (1-300 characters)")
+            if len(tag) > 300:
+                raise InvalidParameterError(f"tags[{i}]", "at most 300 characters")
+
+    # limit - must be 1-10000 if present
     if "limit" in args:
         limit = args["limit"]
-        if not isinstance(limit, int) or limit <= 0:
-            raise InvalidParameterError("limit", "an integer greater than 0")
+        if not isinstance(limit, int) or isinstance(limit, bool):
+            raise InvalidParameterError("limit", "an integer")
+        if limit <= 0:
+            raise InvalidParameterError("limit", "greater than 0")
+        if limit > 10000:
+            raise InvalidParameterError("limit", "at most 10000")
+
+    # offset - must be non-negative integer
+    if "offset" in args:
+        offset = args["offset"]
+        if not isinstance(offset, int) or isinstance(offset, bool):
+            raise InvalidParameterError("offset", "an integer")
+        if offset < 0:
+            raise InvalidParameterError("offset", "a non-negative integer")
 
     # knownTxids
     if "knownTxids" in args:
@@ -386,10 +426,18 @@ def validate_internalize_action_args(args: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
 
-    # Validate tx: BEEF binary data
+    # Validate tx: BEEF binary data (can be bytes or list[int] from JSON)
     tx = args.get("tx")
+    if isinstance(tx, list):
+        # Convert list[int] to bytes (from JSON representation)
+        try:
+            args["tx"] = bytes(tx)
+            tx = args["tx"]
+        except (ValueError, TypeError):
+            raise InvalidParameterError("tx", "valid byte array (list of integers 0-255)")
+    
     if not isinstance(tx, (bytes, bytearray)) or len(tx) == 0:
-        raise InvalidParameterError("tx", "non-empty bytes")
+        raise InvalidParameterError("tx", "non-empty bytes or list of integers")
 
     # Validate outputs: non-empty list
     outputs = args.get("outputs")
@@ -695,20 +743,16 @@ def validate_no_send_change_outputs(outputs: list[dict[str, Any]]) -> None:
 
 
 def validate_sign_action_args(args: dict[str, Any]) -> None:
-    """Validate SignActionArgs for Wave 4 Transaction Operations.
+    """Validate SignActionArgs for BRC-100 Transaction Operations.
 
     Required parameters:
         - reference: non-empty string (unique action reference from createAction)
-        - rawTx: non-empty string (signed raw transaction in hex or binary)
 
     Optional parameters:
-        - isNewTx: bool - whether transaction is new
-        - isSendWith: bool - whether to send with other transactions
-        - isNoSend: bool - whether to suppress network broadcast
-        - isDelayed: bool - whether to accept delayed broadcast
-        - sendWith: list of strings - transaction IDs to send with
+        - spends: dict mapping input index (str) to spend data with unlockingScript
+        - options: dict with signAndProcess options
 
-    Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (signAction)
+    Reference: BRC-100 SignActionArgs specification
     """
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
@@ -718,15 +762,11 @@ def validate_sign_action_args(args: dict[str, Any]) -> None:
     if not isinstance(reference, str) or len(reference) == 0:
         raise InvalidParameterError("reference", "a non-empty string")
 
-    # Validate rawTx (required, non-empty string)
-    raw_tx = args.get("rawTx")
-    if not isinstance(raw_tx, str) or len(raw_tx) == 0:
-        raise InvalidParameterError("rawTx", "a non-empty string")
-
-    # Optional boolean fields
-    for key in ("isNewTx", "isSendWith", "isNoSend", "isDelayed"):
-        if key in args and not isinstance(args[key], bool):
-            raise InvalidParameterError(key, "a boolean value")
+    # Validate spends if present (dict of input index -> spend data)
+    if "spends" in args:
+        spends = args["spends"]
+        if not isinstance(spends, dict):
+            raise InvalidParameterError("spends", "a dict mapping input index to spend data")
 
 
 def validate_satoshis(value: Any, field_name: str = "satoshis") -> int:

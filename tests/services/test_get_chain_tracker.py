@@ -17,6 +17,5 @@ Reference:
 import pytest
 
 
-@pytest.mark.skip(reason="No corresponding TS/So test exists yet; placeholder only.")
 def test_get_chain_tracker_placeholder() -> None:
     """Placeholder for `getChainTracker` until TS/So test is available."""

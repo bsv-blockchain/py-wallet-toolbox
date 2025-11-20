@@ -22,7 +22,6 @@ class TestUniversalVectorsDecrypt:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for decrypt implementation")
     def test_decrypt_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
@@ -40,7 +39,6 @@ class TestUniversalVectorsDecrypt:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_decrypt_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

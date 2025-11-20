@@ -46,7 +46,6 @@ class TestBulkIngestorCDNBabbage:
                describe('BulkIngestorCDNBabbage tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for BulkIngestorCDNBabbage implementation")
     @pytest.mark.asyncio
     async def test_mainnet(self) -> None:
         """Given: BulkIngestorCDNBabbage for mainnet with local SQLite storage
@@ -68,7 +67,6 @@ class TestBulkIngestorCDNBabbage:
         assert r["reader"].range.min_height == 0
         assert r["reader"].range.max_height > 800000
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for BulkIngestorCDNBabbage implementation")
     @pytest.mark.asyncio
     async def test_testnet(self) -> None:
         """Given: BulkIngestorCDNBabbage for testnet with local SQLite storage

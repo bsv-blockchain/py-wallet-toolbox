@@ -15,7 +15,6 @@ except ImportError:
     IMPORTS_AVAILABLE = False
 
 
-@pytest.mark.skip(reason="Chaintracks service client requires complex implementation - basic functionality verified")
 class TestChaintracksServiceClient:
     """Test suite for ChaintracksServiceClient.
 
@@ -23,7 +22,6 @@ class TestChaintracksServiceClient:
                describe('ChaintracksServiceClient tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksServiceClient implementation")
     def test_mainnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for mainnet
            When: Find header for height 877595 and invalid height 999999999
@@ -48,7 +46,6 @@ class TestChaintracksServiceClient:
         # Then
         assert r_invalid is None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksServiceClient implementation")
     def test_testnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for testnet
            When: Find header for height 1651723 and invalid height 999999999

@@ -14,7 +14,7 @@ import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
-    from bsv_wallet_toolbox.wallet_permissions_manager import PermissionCallback, WalletPermissionsManager
+    from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionCallback, WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -30,7 +30,6 @@ class TestWalletPermissionsManagerCallbacks:
     Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.callbacks.test.ts
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_bindcallback_should_register_multiple_callbacks_for_the_same_event_which_are_called_in_sequence(
         self,
     ) -> None:
@@ -71,7 +70,6 @@ class TestWalletPermissionsManagerCallbacks:
         # Then
         assert call_order == ["callback1", "callback2", "callback3"]
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_unbindcallback_by_numeric_id_should_prevent_the_callback_from_being_called_again(self) -> None:
         """Given: Permission manager with registered callback
            When: Unbind by numeric ID
@@ -101,7 +99,6 @@ class TestWalletPermissionsManagerCallbacks:
         # Then
         assert call_count == 0  # Callback was not called
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_unbindcallback_by_function_reference_should_remove_the_callback(self) -> None:
         """Given: Permission manager with registered callback
            When: Unbind by function reference
@@ -131,7 +128,6 @@ class TestWalletPermissionsManagerCallbacks:
         # Then
         assert call_count == 0
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_a_failing_callback_throwing_an_error_does_not_block_subsequent_callbacks(self) -> None:
         """Given: Multiple callbacks, one throws error
            When: Trigger event
@@ -168,7 +164,6 @@ class TestWalletPermissionsManagerCallbacks:
         assert "callback2" in call_order
         assert "callback3" in call_order
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_should_trigger_onprotocolpermissionrequested_with_correct_params_when_a_non_admin_domain_requests_a_protocol_operation(
         self,
     ) -> None:
@@ -210,7 +205,6 @@ class TestWalletPermissionsManagerCallbacks:
         assert captured_params["protocolID"] == [1, "test-protocol"]
         assert "requestID" in captured_params
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_should_resolve_the_original_caller_promise_when_requests_are_granted(self) -> None:
         """Given: Permission manager with pending request
            When: Permission is granted
@@ -244,7 +238,6 @@ class TestWalletPermissionsManagerCallbacks:
         assert result == {"publicKey": "test-key"}
         mock_underlying_wallet.get_public_key.assert_called_once()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_should_reject_the_original_caller_promise_when_permission_is_denied(self) -> None:
         """Given: Permission manager with pending request
            When: Permission is denied
@@ -275,7 +268,6 @@ class TestWalletPermissionsManagerCallbacks:
                 {"identityKey": True, "protocolID": [1, "test"], "keyID": "1"}, originator="example.com"
             )
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_multiple_pending_requests_for_the_same_resource_should_trigger_only_one_onxxxrequested_callback(
         self,
     ) -> None:
@@ -324,7 +316,6 @@ class TestWalletPermissionsManagerCallbacks:
         assert len(results) == 3
         assert all(r == {"publicKey": "test-key"} for r in results)
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for WalletPermissionsManager implementation")
     def test_multiple_pending_requests_for_different_resources_should_trigger_separate_onxxxrequested_callbacks(
         self,
     ) -> None:

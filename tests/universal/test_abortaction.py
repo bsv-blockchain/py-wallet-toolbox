@@ -40,7 +40,6 @@ class TestUniversalVectorsAbortAction:
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_abortaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

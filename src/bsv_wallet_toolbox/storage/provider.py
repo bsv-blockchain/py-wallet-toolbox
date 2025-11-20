@@ -1891,13 +1891,13 @@ class StorageProvider:
             except Exception as e:
                 raise InvalidParameterError("rawTx", f"valid transaction: {e!s}")
 
-            if txid != tx_obj.id():
+            if txid != tx_obj.txid():
                 raise InvalidParameterError("txid", "does not match hash of serialized transaction")
 
             # Verify transaction is final (TS line 234)
             # Note: Simplified - full implementation requires chain tracker
             # For now, we validate nLockTime is 0 or within valid range
-            if tx_obj.lock_time and tx_obj.lock_time > 500_000_000:
+            if tx_obj.locktime and tx_obj.locktime > 500_000_000:
                 raise InvalidParameterError("rawTx", "transaction is not final (nLockTime too far in future)")
 
             # Find transaction record (TS lines 240-244)
@@ -3695,7 +3695,7 @@ class InternalizeActionContext:
 
             # Parse BEEF (simplified - full BEEF verification skipped for now)
             tx_obj = BsvTransaction.from_hex(beef_bytes)
-            txid = tx_obj.id()
+            txid = tx_obj.txid()
 
             return txid, tx_obj
         except Exception as e:

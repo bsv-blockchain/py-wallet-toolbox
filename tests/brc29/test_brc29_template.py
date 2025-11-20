@@ -26,7 +26,6 @@ class TestBRC29TemplateLock:
                TestBRC29TemplateLock
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_should_lock_with_p2pkh_and_brc29_calculated_address(self) -> None:
         """Given: Sender private key, key ID, recipient public key
            When: Call lock_for_counterparty
@@ -50,7 +49,6 @@ class TestBRC29TemplateLock:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_private_key_deriver(self) -> None:
         """Given: None as sender private key deriver
            When: Call lock_for_counterparty
@@ -71,7 +69,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_private_key(self) -> None:
         """Given: None as sender private key
            When: Call lock_for_counterparty
@@ -92,7 +89,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_public_key_deriver(self) -> None:
         """Given: None as recipient public key deriver
            When: Call lock_for_counterparty
@@ -113,7 +109,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=None  # KeyDeriver
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_public_key(self) -> None:
         """Given: None as recipient public key
            When: Call lock_for_counterparty
@@ -134,7 +129,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=None  # PublicKey
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call lock_for_counterparty
@@ -155,7 +149,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call lock_for_counterparty
@@ -176,7 +169,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call lock_for_counterparty
@@ -197,7 +189,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call lock_for_counterparty
@@ -218,7 +209,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call lock_for_counterparty
@@ -247,7 +237,6 @@ class TestBRC29TemplateLockForSelf:
                TestBRC29TemplateLockForSelf
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_should_lock_with_p2pkh_and_brc29_calculated_address_self(self) -> None:
         """Given: Sender public key, key ID, recipient private key
            When: Call lock_for_self
@@ -271,7 +260,6 @@ class TestBRC29TemplateLockForSelf:
         # assert address is not None
         # assert address["address_string"] == EXPECTED_ADDRESS
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_public_key_deriver(self) -> None:
         """Given: None as sender public key deriver
            When: Call lock_for_self
@@ -292,7 +280,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_public_key(self) -> None:
         """Given: None as sender public key
            When: Call lock_for_self
@@ -313,7 +300,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_private_key_deriver(self) -> None:
         """Given: None as recipient private key deriver
            When: Call lock_for_self
@@ -334,7 +320,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=None  # KeyDeriver
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_private_key(self) -> None:
         """Given: None as recipient private key
            When: Call lock_for_self
@@ -355,7 +340,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=None  # PrivateKey
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call lock_for_self
@@ -376,7 +360,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call lock_for_self
@@ -397,7 +380,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call lock_for_self
@@ -418,7 +400,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call lock_for_self
@@ -439,7 +420,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call lock_for_self
@@ -468,7 +448,6 @@ class TestBRC29TemplateUnlock:
                TestBRC29TemplateUnlock
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_unlock_the_output_locked_with_brc29_locker(self) -> None:
         """Given: Transaction with BRC29 locked output
            When: Create unlocker and sign transaction
@@ -515,7 +494,6 @@ class TestBRC29TemplateUnlock:
         # interpreter.execute(tx, 0, after_genesis=True, fork_id=True)
         # No error should be raised
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_estimate_unlocking_script_length(self) -> None:
         """Given: BRC29 unlocker template
            When: Call estimate_length
@@ -542,7 +520,6 @@ class TestBRC29TemplateUnlock:
         # Then
         # assert length == 106
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call unlock
@@ -563,7 +540,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call unlock
@@ -584,7 +560,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call unlock
@@ -605,7 +580,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call unlock
@@ -626,7 +600,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call unlock

@@ -22,9 +22,8 @@ class TestUniversalVectorsInternalizeAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Waiting for internalize_action implementation")
     def test_internalizeaction_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services: Wallet
     ) -> None:
         """Given: Universal Test Vector input for internalizeAction
         When: Call internalizeAction
@@ -32,15 +31,13 @@ class TestUniversalVectorsInternalizeAction:
         """
         # Given
         args_data, result_data = load_test_vectors("internalizeAction-simple")
-        wallet = Wallet(chain="main")
 
         # When
-        result = wallet.internalize_action(args_data["json"], originator=None)
+        result = wallet_with_services.internalize_action(args_data["json"], originator=None)
 
         # Then
         assert result == result_data["json"]
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_internalizeaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

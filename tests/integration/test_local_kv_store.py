@@ -26,7 +26,6 @@ class TestLocalKVStore:
                 describe('LocalKVStore tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_get_non_existent(self) -> None:
         """Given: LocalKVStore with empty storage
@@ -47,7 +46,6 @@ class TestLocalKVStore:
         # Then
         assert value is None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_set_get(self) -> None:
         """Given: LocalKVStore instance
@@ -72,7 +70,6 @@ class TestLocalKVStore:
         # Then
         assert value == "value1"
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_set_x_4_get(self) -> None:
         """Given: LocalKVStore instance
@@ -106,7 +103,6 @@ class TestLocalKVStore:
     #       It tests Jest's fake timers, not LocalKVStore functionality.
     #       Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_set_x_4_get_set_x_4_get(self) -> None:
         """Given: LocalKVStore instance

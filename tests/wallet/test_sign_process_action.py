@@ -34,7 +34,6 @@ class TestWalletSignAction:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.sign_action(invalid_args)
 
-    @pytest.mark.skip(reason="create_action does not generate actual transaction bytes - signableTransaction.tx is empty")
     def test_sign_action_with_valid_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with valid reference from createAction
            When: Call sign_action
@@ -72,7 +71,6 @@ class TestWalletSignAction:
         assert result["txid"] is not None
         assert result["tx"] is not None
 
-    @pytest.mark.skip(reason="Missing rawTx parameter - sign_action requires raw transaction bytes")
     def test_sign_action_with_spend_authorizations(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with specific spend authorizations
            When: Call sign_action
@@ -143,7 +141,6 @@ class TestWalletProcessAction:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.process_action(invalid_args)
 
-    @pytest.mark.skip(reason="Transaction parsing and validation not fully implemented - BsvTransaction.from_hex returns None")
     def test_process_action_new_transaction(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs for a new signed transaction
            When: Call process_action
@@ -170,7 +167,6 @@ class TestWalletProcessAction:
         assert "txid" in result
         assert result["txid"] == process_args["txid"]
 
-    @pytest.mark.skip(reason="Transaction parsing and validation not fully implemented - same issue as process_action_new_transaction")
     def test_process_action_with_send_with(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with isSendWith=True and sendWith data
            When: Call process_action

@@ -29,7 +29,6 @@ class TestWalletAcquireCertificate:
         """
         # Given/When/Then
 
-    @pytest.mark.skip(reason="Certificate parameter validation not implemented - method attempts database insertion instead of validation")
     def test_invalid_params(self, wallet_with_services: Wallet) -> None:
         """Given: Wallet with test storage and invalid certificate arguments
            When: Call acquireCertificate with invalid params (empty type, empty certifier)
@@ -47,7 +46,6 @@ class TestWalletAcquireCertificate:
         with pytest.raises(InvalidParameterError):
             wallet_with_services.acquire_certificate(invalid_args)
 
-    @pytest.mark.skip(reason="Certificate functionality not fully implemented - requires issuer integration and key management")
     def test_acquirecertificate_listcertificate_provecertificate(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with test database and sample certificate from certifier
            When: acquireCertificate, listCertificates, proveCertificate, and relinquishCertificate
@@ -124,7 +122,6 @@ class TestWalletAcquireCertificate:
             )
             assert relinquish_result["relinquished"] is True
 
-    @pytest.mark.skip(reason="Certificate functionality not fully implemented - requires issuer integration and key management")
     def test_privileged_acquirecertificate_listcertificate_provecertificate(self, wallet_with_storage: Wallet) -> None:
         """Given: Wallet with privilegedKeyManager and certificate issued to privileged key
            When: acquireCertificate with privileged=True, proveCertificate with privileged=True
@@ -252,7 +249,6 @@ def _decrypt_fields(cert, wallet, privileged: bool = False, privileged_reason: s
 class TestWalletProveCertificate:
     """Test suite for Wallet.prove_certificate method."""
 
-    @pytest.mark.skip(reason="Certificate functionality not fully implemented - requires issuer integration and key management")
     def test_prove_certificate(self, wallet_with_storage: Wallet) -> None:
         """Given: ProveCertificateArgs with certificate and verifier
            When: Call prove_certificate
@@ -301,7 +297,6 @@ class TestWalletRelinquishCertificate:
 class TestWalletDiscoverByIdentityKey:
     """Test suite for Wallet.discover_by_identity_key method."""
 
-    @pytest.mark.skip(reason="Certificate functionality not fully implemented - requires issuer integration and key management")
     def test_discover_by_identity_key(self, wallet_with_storage: Wallet) -> None:
         """Given: DiscoverByIdentityKeyArgs with identity key
            When: Call discover_by_identity_key
@@ -323,7 +318,6 @@ class TestWalletDiscoverByIdentityKey:
 class TestWalletDiscoverByAttributes:
     """Test suite for Wallet.discover_by_attributes method."""
 
-    @pytest.mark.skip(reason="Certificate functionality not fully implemented - requires issuer integration and key management")
     def test_discover_by_attributes(self, wallet_with_storage: Wallet) -> None:
         """Given: DiscoverByAttributesArgs with search attributes
            When: Call discover_by_attributes

@@ -12,7 +12,6 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 class TestWalletListOutputs:
     """Test suite for Wallet.list_outputs method."""
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_invalid_params_empty_basket(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with empty basket
            When: Call list_outputs
@@ -28,7 +27,6 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_invalid_params_empty_tag(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with empty tag in tags list
            When: Call list_outputs
@@ -44,7 +42,6 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_invalid_params_limit_zero(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with limit=0
            When: Call list_outputs
@@ -60,7 +57,6 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_invalid_params_limit_exceeds_max(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with limit exceeding 10000
            When: Call list_outputs
@@ -76,7 +72,6 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_invalid_params_negative_offset(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with negative offset
            When: Call list_outputs
@@ -92,7 +87,6 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(invalid_args)
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_invalid_originator_too_long(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid args but originator exceeding 250 characters
            When: Call list_outputs
@@ -109,7 +103,6 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(valid_args, originator=too_long_originator)
 
-    @pytest.mark.skip(reason="Requires populated test database with outputs - not implemented in test setup")
     def test_valid_params_with_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid ListOutputsArgs and valid originator
            When: Call list_outputs

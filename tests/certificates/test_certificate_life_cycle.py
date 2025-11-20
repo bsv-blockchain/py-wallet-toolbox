@@ -49,7 +49,6 @@ class TestCertificateLifeCycle:
                describe('CertificateLifeCycle tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Certificate implementation")
     def test_complete_flow_mastercertificate_and_verifiablecertificate(self) -> None:
         """Given: Certifier, subject, and verifier wallets with sample certificate
            When: Certifier encrypts fields, signs certificate, subject decrypts, creates keyring for verifier
