@@ -58,7 +58,6 @@ class TestWalletAbortAction:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.abort_action(invalid_args)
 
-    @pytest.mark.skip(reason="SQLAlchemy session conflicts - need scoped_session or transaction rollback pattern")
     def test_abort_specific_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid AbortActionArgs with existing action reference
            When: Call abort_action
@@ -66,10 +65,6 @@ class TestWalletAbortAction:
 
         Reference: wallet-toolbox/test/wallet/action/abortAction.test.ts
                    test('1_abort reference 49f878d8405589')
-        
-        Note: SQLAlchemy session management issue - insert_transaction returns instance
-              attached to one session, abort_action queries in another session.
-              Need proper scoped_session configuration or transaction rollback pattern.
         """
         # Given - Seed an abortable transaction
         reference = "Sfh42EBViQ=="

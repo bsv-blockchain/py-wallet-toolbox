@@ -31,6 +31,8 @@ Phase 4 Implementation Status:
 # TODO: Phase 5 - ChainTracks integration for advanced sync
 """
 
+import asyncio
+import inspect
 from collections.abc import Callable
 from time import time
 from typing import Any
@@ -315,6 +317,21 @@ class Services(WalletServices):
             "getTransactionStatus": self.get_transaction_status_services.get_service_call_history(reset),
         }
 
+    @staticmethod
+    def _run_async(coro_or_result: Any) -> Any:
+        """Helper to run async coroutines or return sync results.
+
+        Args:
+            coro_or_result: Either a coroutine or a direct result
+
+        Returns:
+            The result, running the coroutine if needed
+        """
+        if inspect.iscoroutine(coro_or_result):
+            # Run the coroutine using asyncio.run (creates new event loop)
+            return asyncio.run(coro_or_result)
+        return coro_or_result
+
     def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
 
@@ -559,8 +576,8 @@ class Services(WalletServices):
         for _tries in range(services.count):
             stc = services.service_to_call
             try:
-                # Call service
-                r = stc.service(txid, self.chain)
+                # Call service (handle async if needed)
+                r = self._run_async(stc.service(txid, self.chain))
 
                 if isinstance(r, dict) and r.get("rawTx"):
                     # Validate transaction hash matches
