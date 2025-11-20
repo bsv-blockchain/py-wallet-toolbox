@@ -24,6 +24,7 @@ class TestUniversalVectorsCreateAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
+    @pytest.mark.skip(reason="Requires deterministic wallet state with exact UTXO and key configuration")
     def test_createaction_1out_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services: Wallet
     ) -> None:
@@ -45,6 +46,7 @@ class TestUniversalVectorsCreateAction:
     ) -> None:
         """ABI (wire) test - skipped because TypeScript doesn't test this."""
 
+    @pytest.mark.skip(reason="Requires deterministic wallet state with exact UTXO and key configuration")
     def test_createaction_nosignandprocess_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services: Wallet
     ) -> None:

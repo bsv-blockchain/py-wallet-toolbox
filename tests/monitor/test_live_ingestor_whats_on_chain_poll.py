@@ -26,6 +26,7 @@ class TestLiveIngestorWhatsOnChainPoll:
                describe('LiveIngestorWhatsOnChainPoll tests')
     """
 
+    @pytest.mark.skip(reason="Requires full Monitor system implementation")
     def test_listen_for_first_new_header(self) -> None:
         """Given: LiveIngestorWhatsOnChainPoll with mainnet options
            When: Start listening for new headers

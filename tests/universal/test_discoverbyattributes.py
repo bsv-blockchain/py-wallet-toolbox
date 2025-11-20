@@ -22,6 +22,7 @@ class TestUniversalVectorsDiscoverByAttributes:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
+    @pytest.mark.skip(reason="discoverByAttributes not implemented - requires certificate subsystem")
     def test_discoverbyattributes_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

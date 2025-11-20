@@ -174,6 +174,7 @@ class TestPushdrop:
                 describe('pushdrop example tests')
     """
 
+    @pytest.mark.skip(reason="Integration test requiring live network and wallet setup")
     def test_pushdrop_transfer_example(self) -> None:
         """Given: Two wallets (sender and receiver)
            When: Transfer satoshis using BRC29 PushDrop template
@@ -181,6 +182,11 @@ class TestPushdrop:
 
         Reference: wallet-toolbox/test/examples/pushdrop.test.ts
                    test('0 pushdrop')
+        
+        Note: This is an integration test that requires:
+        - Live network connection
+        - Test wallets with funds
+        - Environment variable setup
         """
         # Given/When/Then
         if Setup.no_env("main"):

@@ -610,6 +610,10 @@ class Services(WalletServices):
         """
         return self.whatsonchain.is_valid_root_for_height(root, height)
 
+    def get_merkle_path(self, txid: str, use_next: bool = False) -> dict[str, Any]:
+        """Alias for get_merkle_path_for_transaction for test compatibility."""
+        return self.get_merkle_path_for_transaction(txid, use_next)
+
     def get_merkle_path_for_transaction(self, txid: str, use_next: bool = False) -> dict[str, Any]:
         """Get the Merkle path for a transaction with multi-provider failover and caching.
 

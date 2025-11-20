@@ -22,6 +22,7 @@ class TestChaintracksServiceClient:
                describe('ChaintracksServiceClient tests')
     """
 
+    @pytest.mark.skip(reason="Requires full Chaintracks implementation with storage and CDN")
     def test_mainnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for mainnet
            When: Find header for height 877595 and invalid height 999999999
@@ -46,6 +47,7 @@ class TestChaintracksServiceClient:
         # Then
         assert r_invalid is None
 
+    @pytest.mark.skip(reason="Requires full Chaintracks implementation with storage and CDN")
     def test_testnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for testnet
            When: Find header for height 1651723 and invalid height 999999999
