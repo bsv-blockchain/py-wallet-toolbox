@@ -244,11 +244,11 @@ class StorageProvider:
     def is_storage_provider(self) -> bool:
         """Check if this is a StorageProvider (not StorageClient).
 
-        Returns False for StorageProvider instances.
-        StorageClient returns false, StorageProvider returns false.
+        Returns True for StorageProvider instances.
+        StorageClient returns false, StorageProvider returns true.
 
         Returns:
-            bool: Always False for StorageProvider
+            bool: Always True for StorageProvider
 
         Raises:
             N/A
@@ -257,7 +257,7 @@ class StorageProvider:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
             toolbox/ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
         """
-        return False
+        return True
 
     def is_available(self) -> bool:
         """Return True if storage is initialized.
