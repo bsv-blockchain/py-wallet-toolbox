@@ -81,7 +81,7 @@ class TestBulkFileDataManager:
     server402: ClassVar[Any] = None
     server499: ClassVar[Any] = None
 
-    @pytest.fixture(scope="class", autouse=True)
+    @pytest.fixture(scope="function", autouse=True)
     async def setup_servers(self):
         """Setup local CDN servers for testing.
 

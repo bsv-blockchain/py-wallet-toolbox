@@ -7,7 +7,7 @@
 from bsv_wallet_toolbox.services import Services
 
 
-async def test_get_script_history_minimal_normal() -> None:
+def test_get_script_history_minimal_normal() -> None:
     """Normal case should return dict with confirmed/unconfirmed arrays."""
     services = Services(Services.create_default_options("main"))
 
@@ -18,7 +18,7 @@ async def test_get_script_history_minimal_normal() -> None:
     assert isinstance(res["unconfirmed"], list)
 
 
-async def test_get_script_history_minimal_empty() -> None:
+def test_get_script_history_minimal_empty() -> None:
     """Sentinel hash should yield empty confirmed/unconfirmed arrays."""
     services = Services(Services.create_default_options("main"))
 

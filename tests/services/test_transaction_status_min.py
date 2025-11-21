@@ -7,7 +7,7 @@ TypeScript implementation, without asserting provider-specific semantics.
 from bsv_wallet_toolbox.services import Services
 
 
-async def test_get_transaction_status_minimal() -> None:
+def test_get_transaction_status_minimal() -> None:
     """Ensure minimal TS-like shape from get_transaction_status.
 
     - With conftest's FakeClient, a normal 64-hex txid returns

@@ -28,8 +28,8 @@ class TestVerifyBeef:
                describe('verifyBeef tests')
     """
 
-    @pytest.mark.skip(reason="Beef.from_string not available, needs parse_beef integration")
-    def test_verify_beef_from_hex(self) -> None:
+    @pytest.mark.skip(reason="Integration test: requires working chaintracker with network access for merkle path verification")
+    async def test_verify_beef_from_hex(self) -> None:
         """Given: BEEF hex string and mainnet services
            When: Parse BEEF and verify with chaintracker
            Then: BEEF verifies successfully
@@ -37,8 +37,8 @@ class TestVerifyBeef:
         Reference: wallet-toolbox/src/services/__tests/verifyBeef.test.ts
                    test('0_')
         
-        Note: bsv.transaction.Beef doesn't have from_string method.
-              Need to use parse_beef from bsv.transaction.beef module.
+        Note: Using parse_beef from bsv.transaction.beef module.
+        This test requires a functioning chaintracker with network access to verify merkle paths.
         """
         # Given
         from bsv.transaction.beef import parse_beef
@@ -46,7 +46,7 @@ class TestVerifyBeef:
         chaintracker = Services("main").get_chain_tracker()
 
         # When
-        ok = beef.verify(chaintracker, True)
+        ok = await beef.verify(chaintracker, True)
 
         # Then
         assert ok is True

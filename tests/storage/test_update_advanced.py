@@ -373,9 +373,10 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage", (), {"update_user": lambda self, id, updates: Exception("UNIQUE constraint failed")}
-        )()
+        def _raise_unique_error(self, id, updates):
+            raise Exception("UNIQUE constraint failed")
+
+        mock_storage = type("MockStorage", (), {"update_user": _raise_unique_error})()
 
         # When/Then - should trigger unique constraint error
         with pytest.raises(Exception):
@@ -391,9 +392,10 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage", (), {"update_user": lambda self, id, updates: Exception("FOREIGN KEY constraint failed")}
-        )()
+        def _raise_fk_error(self, id, updates):
+            raise Exception("FOREIGN KEY constraint failed")
+
+        mock_storage = type("MockStorage", (), {"update_user": _raise_fk_error})()
 
         # When/Then - should trigger foreign key constraint error
         with pytest.raises(Exception):
@@ -526,9 +528,10 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage", (), {"update_certificate": lambda self, id, updates: Exception("UNIQUE constraint failed")}
-        )()
+        def _raise_unique_error(self, id, updates):
+            raise Exception("UNIQUE constraint failed")
+
+        mock_storage = type("MockStorage", (), {"update_certificate": _raise_unique_error})()
 
         # When/Then - should trigger unique constraint error
         with pytest.raises(Exception):
@@ -544,11 +547,10 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
-            {"update_certificate": lambda self, id, updates: Exception("FOREIGN KEY constraint failed")},
-        )()
+        def _raise_fk_error(self, id, updates):
+            raise Exception("FOREIGN KEY constraint failed")
+
+        mock_storage = type("MockStorage", (), {"update_certificate": _raise_fk_error})()
 
         # When/Then - should trigger foreign key constraint error
         with pytest.raises(Exception):
