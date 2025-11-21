@@ -23,7 +23,7 @@ from bsv_wallet_toolbox.services import Services
 from tests.test_utils import Setup
 
 
-async def test_post_beef_arc_minimal_enabled() -> None:
+def test_post_beef_arc_minimal_enabled() -> None:
     """Ensure ARC path returns TS-like shape for single BEEF (mocked).
 
     - Uses conftest's FakeClient to avoid network.
@@ -40,7 +40,7 @@ async def test_post_beef_arc_minimal_enabled() -> None:
     assert res["accepted"] in (True, False)
 
 
-async def test_post_beef_array_arc_minimal_enabled() -> None:
+def test_post_beef_array_arc_minimal_enabled() -> None:
     """Ensure ARC path returns TS-like shape for multiple BEEFs (mocked).
 
     - Uses conftest's FakeClient to avoid network.

@@ -34,7 +34,7 @@ class TestWalletSignAction:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.sign_action(invalid_args)
 
-    @pytest.mark.skip(reason="Requires proper pending sign action setup with inputBeef")
+    @pytest.mark.skip(reason="Requires transaction building infrastructure (input selection, BEEF generation)")
     def test_sign_action_with_valid_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with valid reference from createAction
            When: Call sign_action
