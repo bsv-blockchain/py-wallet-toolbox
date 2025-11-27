@@ -29,6 +29,7 @@ from src import (
     # 設定
     get_key_deriver,
     get_network,
+    get_storage_provider,
     print_network_info,
     # ウォレット管理
     display_wallet_info,
@@ -72,6 +73,8 @@ class WalletDemo:
         self.wallet: Wallet | None = None
         self.network = get_network()
         self.key_deriver = get_key_deriver()
+        self.storage_provider = get_storage_provider(self.network)
+        self.storage_provider = get_storage_provider(self.network)
 
     def init_wallet(self) -> None:
         """ウォレットを初期化します。"""
@@ -84,7 +87,11 @@ class WalletDemo:
         print()
 
         try:
-            self.wallet = Wallet(chain=self.network, key_deriver=self.key_deriver)
+            self.wallet = Wallet(
+                chain=self.network,
+                key_deriver=self.key_deriver,
+                storage_provider=self.storage_provider,
+            )
             print("✅ ウォレットが初期化されました！")
             print()
 

@@ -32,7 +32,10 @@ Thumbs.db
 # ウォレットデータ（セキュリティ上重要）
 *.wallet
 *.key
+wallet_test.db
+wallet_main.db
 wallet.db
+wallet_*.db
 *.sqlite
 
 # Python eggs

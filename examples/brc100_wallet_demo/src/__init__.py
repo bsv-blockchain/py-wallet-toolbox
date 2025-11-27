@@ -5,7 +5,7 @@ from .key_management import demo_get_public_key, demo_sign_data
 from .action_management import demo_create_action, demo_list_actions
 from .certificate_management import demo_acquire_certificate, demo_list_certificates
 from .identity_discovery import demo_discover_by_identity_key, demo_discover_by_attributes
-from .config import get_key_deriver, get_network, print_network_info
+from .config import get_key_deriver, get_network, get_storage_provider, print_network_info
 from .crypto_operations import (
     demo_create_hmac,
     demo_verify_hmac,
@@ -49,6 +49,7 @@ __all__ = [
     # 設定
     "get_key_deriver",
     "get_network",
+    "get_storage_provider",
     "print_network_info",
     # 暗号化機能
     "demo_create_hmac",

@@ -9,7 +9,9 @@ from typing import Literal
 from bsv.hd.bip32 import bip32_derive_xprv_from_mnemonic
 from bsv.hd.bip39 import mnemonic_from_entropy
 from bsv.wallet import KeyDeriver
+from bsv_wallet_toolbox.storage import StorageProvider
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
 # .env ファイルから環境変数を読み込む
 load_dotenv()
@@ -120,4 +122,43 @@ def print_network_info(chain: Chain) -> None:
     
     if chain == "main":
         print("⚠️  警告: メインネットを使用しています。実際の資金が使用されます！")
+
+
+def get_storage_provider(network: Chain) -> StorageProvider:
+    """StorageProvider を作成します（SQLite ファイルベース）。
+    
+    ネットワークに応じて異なるデータベースファイルを使用します：
+    - testnet: wallet_test.db
+    - mainnet: wallet_main.db
+    
+    Args:
+        network: 'test' または 'main'
+        
+    Returns:
+        StorageProvider インスタンス
+    """
+    # ネットワークに応じたデータベースファイル名
+    db_file = f"wallet_{network}.db"
+    
+    print(f"💾 データベース: {db_file}")
+    
+    # SQLite エンジンを作成
+    engine = create_engine(f"sqlite:///{db_file}")
+    
+    # StorageProvider を作成
+    storage = StorageProvider(
+        engine=engine,
+        chain=network,
+        storage_identity_key=f"{network}-wallet",
+    )
+    
+    # データベーステーブルを初期化（存在しない場合は作成）
+    try:
+        storage.make_available()
+        print(f"✅ データベースが初期化されました")
+    except Exception as e:
+        print(f"⚠️  データベース初期化エラー: {e}")
+        # エラーが発生しても続行（既存のDBの場合など）
+    
+    return storage
 

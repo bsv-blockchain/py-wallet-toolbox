@@ -214,6 +214,29 @@ wallet_demo/
    BSV_MNEMONIC=coffee primary dumb soon two ski ship add burst fly pigeon spare
 ```
 
+## 💾 データの保存について
+
+### デフォルト設定（SQLite ファイル）
+
+**このデモアプリは StorageProvider をデフォルトで有効化**しており、以下の SQLite ファイルに自動保存されます：
+
+- Testnet: `wallet_test.db`
+- Mainnet: `wallet_main.db`
+
+そのため、すべての StorageProvider 依存メソッドがすぐに利用できます（アクション、出力、証明書、internalizeAction など）。
+
+> これらのファイルは `.gitignore` 済みです。必要に応じてバックアップしてください。
+
+### 他のデータベースを使用したい場合
+
+`src/config.py` の `get_storage_provider()` を書き換えることで、任意のデータベースに切り替えることができます。
+
+例：
+- **SQLite（インメモリ）**: `sqlite:///:memory:`（終了時に消える）
+- **PostgreSQL**: `postgresql://user:pass@localhost/wallet_db`（本番環境に最適）
+
+詳細は [`STORAGE_GUIDE.md`](STORAGE_GUIDE.md) を参照してください。
+
 ## 🧪 テストネットでの実行
 
 デフォルトでは **testnet** で動作します。実際の資金を使わずに安全にテストできます。
@@ -223,7 +246,7 @@ wallet_demo/
 1. `wallet_demo.py` を実行
 2. メニューから「4. ウォレット情報を表示」を選択
 3. 表示されたアドレスをコピー
-4. Testnet Faucet: https://faucet.bitcoincloud.net/
+4. Testnet Faucet: https://scrypt.io/faucet/
 5. エクスプローラーで確認: https://test.whatsonchain.com/
 
 ## 💰 メインネットでの実行
@@ -280,6 +303,7 @@ wallet_demo/
 - [BRC-100 仕様](https://github.com/bitcoin-sv/BRCs/blob/master/transactions/0100.md)
 - [BSV Wallet Toolbox ドキュメント](../../README.md)
 - [メインネット送受金ガイド](MAINNET_GUIDE.md)
+- [ストレージ・データ保存ガイド](STORAGE_GUIDE.md) - **データ保存の仕組みについて**
 - [BSV SDK ドキュメント](https://github.com/bitcoin-sv/py-sdk)
 - [BSV Block Explorer](https://whatsonchain.com/)
 
