@@ -485,7 +485,12 @@ class Wallet:
         self._validate_originator(originator)
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
-        auth = args.get("auth") or {}
+        auth = args.get("auth")
+        if not auth:
+            auth = self._make_auth()
+            # Avoid mutating caller's dict
+            args = {**args, "auth": auth}
+
         return self.storage.list_outputs(auth, args)
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
