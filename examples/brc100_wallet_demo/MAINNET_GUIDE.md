@@ -1,182 +1,117 @@
-# メインネットでの送受金テストガイド
+# Mainnet Send/Receive Guide
 
-このガイドでは、Python wallet-toolbox を使って実際に BSV の送受金をテストする方法を説明します。
-
-## ⚠️ 重要な注意事項
-
-**メインネットでは実際の資金が使用されます！**
-
-- テスト目的であれば、少額（0.001 BSV 程度）から始めてください
-- ニーモニックフレーズを**絶対に**安全に保管してください
-- 失っても問題ない金額でテストしてください
-
-## 📋 準備
-
-### 1. ニーモニックの生成と保管
-
-```bash
-cd toolbox/py-wallet-toolbox/examples/simple_wallet
-source .venv/bin/activate
-
-# 新しいウォレットを生成（testnet）
-python3 wallet_address.py
-```
-
-生成されたニーモニックを**安全な場所**に保管してください：
-```
-📋 ニーモニックフレーズ（12単語）:
-   word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12
-```
-
-### 2. .env ファイルの作成
-
-```bash
-# .env ファイルを作成
-cp env.example .env
-
-# エディタで編集
-nano .env
-```
-
-`.env` ファイルの内容:
-```bash
-# メインネットを使用
-BSV_NETWORK=main
-
-# 先ほど生成したニーモニックを追加
-BSV_MNEMONIC=word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12
-```
-
-保存して閉じます（nano の場合: Ctrl+X → Y → Enter）
-
-## 💰 ステップ 1: ウォレットアドレスの確認
-
-```bash
-# メインネットでウォレットアドレスを表示
-python3 wallet_address.py
-```
-
-出力例:
-```
-🔴 ネットワーク: メインネット（本番環境）
-⚠️  警告: メインネットを使用しています。実際の資金が使用されます！
-
-📍 受信用アドレス:
-   1YourMainnetAddressHere...
-
-🔍 Mainnet Explorer:
-   https://whatsonchain.com/address/1YourMainnetAddressHere...
-```
-
-アドレスをコピーしてください。
-
-## 💸 ステップ 2: BSV を送金
-
-以下のいずれかの方法で、ウォレットアドレスに BSV を送金します：
-
-### オプション A: 取引所から送金
-
-1. 取引所（Binance, OKX など）にログイン
-2. BSV の出金ページに移動
-3. 出金先アドレスに、先ほどコピーしたアドレスを入力
-4. 少額（0.001 BSV など）を送金
-
-### オプション B: 他のウォレットから送金
-
-既に BSV ウォレットをお持ちの場合、そこから送金できます。
-
-### オプション C: BSV を購入
-
-取引所で BSV を購入してから送金します。
-
-## 🔍 ステップ 3: 送金の確認
-
-### 方法 1: ブロックチェーンエクスプローラー
-
-ブラウザで以下の URL を開きます：
-```
-https://whatsonchain.com/address/1YourMainnetAddressHere...
-```
-
-- トランザクション履歴が表示されます
-- 送金後、通常 10 分程度で確認されます
-- 1 confirmation 以上あれば安全です
-
-### 方法 2: スクリプトで確認
-
-```bash
-python3 wallet_address.py
-```
-
-エクスプローラーのリンクが表示されるので、クリックして確認できます。
-
-## 🎉 ステップ 4: 受信完了
-
-エクスプローラーで送金が確認されたら、受信完了です！
-
-```
-Balance: 0.001 BSV
-Transactions: 1
-```
-
-## 🚀 ステップ 5: 送金のテスト（オプション）
-
-### 他のアドレスに送金する場合
-
-現在、送金機能は開発中です。以下の方法で送金できます：
-
-1. **他のウォレットを使用**: HandCash, RelayX などの既存ウォレット
-2. **カスタムスクリプト**: `create_action.py` を参考に送金スクリプトを作成
-
-## ❓ よくある質問
-
-### Q: 送金が届かない
-
-A: 以下を確認してください：
-- アドレスが正しいか
-- ブロックチェーンエクスプローラーでトランザクションが確認できるか
-- 十分な confirmation があるか（通常 1 以上）
-
-### Q: ニーモニックを忘れた
-
-A: ニーモニックを紛失すると**資金を永久に失います**。バックアップを必ず取ってください。
-
-### Q: テストネットに戻したい
-
-A: `.env` ファイルを編集:
-```bash
-BSV_NETWORK=test
-```
-
-## 🔒 セキュリティのベストプラクティス
-
-1. **ニーモニックの保管**
-   - 紙に書いて金庫に保管
-   - パスワードマネージャーで暗号化
-   - 複数の場所にバックアップ
-
-2. **絶対にしないこと**
-   - ニーモニックをスクリーンショット
-   - ニーモニックをクラウドに保存
-   - ニーモニックを他人に教える
-   - ニーモニックをメールで送信
-
-3. **推奨事項**
-   - テスト用と本番用で別のウォレットを使用
-   - 少額でテストしてから大きな金額を扱う
-   - 定期的にバックアップを確認
-
-## 📚 参考リンク
-
-- BSV Block Explorer: https://whatsonchain.com/
-- BSV 公式サイト: https://bitcoinsv.com/
-- Wallet Toolbox ドキュメント: ../../README.md
-
-## 🆘 サポート
-
-問題が発生した場合は、GitHub Issues で報告してください。
+Use this guide when you want to move **real BSV** with the Python wallet-toolbox demo. Every mistake can cost money—slow down and verify each step.
 
 ---
 
-**免責事項**: このガイドは教育目的です。暗号通貨の取り扱いには十分注意し、自己責任で行ってください。
+## ⚠️ Before You Start
+
+- Real funds are involved. Begin with **0.001 BSV or less**.
+- Back up your mnemonic phrase before touching mainnet.
+- Never test with money you cannot afford to lose.
+
+---
+
+## 📋 Prep Checklist
+
+1. **Copy `.env` from the example and edit it:**
+
+   ```bash
+   cd toolbox/py-wallet-toolbox/examples/brc100_wallet_demo
+   cp env.example .env
+   nano .env
+   ```
+
+   ```
+   BSV_NETWORK=main
+   BSV_MNEMONIC=word1 word2 ... word12
+   ```
+
+2. **Ensure dependencies are installed and the venv is active:**
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
+
+3. **Protect the mnemonic.** Write it down, store it offline, and test that you can read it later.
+
+---
+
+## 💰 Step 1 – Show Your Mainnet Address
+
+Run `python wallet_demo.py`, initialize the wallet (menu **1**), then pick menu **4** to display:
+
+- Network warning (should say mainnet).
+- Receive address (should start with `1`).
+- Explorer link (`https://whatsonchain.com/address/...`).
+
+Copy the address exactly.
+
+---
+
+## 💸 Step 2 – Fund the Wallet
+
+Send a tiny amount of BSV to the copied address via one of the following:
+
+- **Exchange withdrawal** (Binance, OKX, etc.).
+- **Another wallet** you own.
+- **Peer-to-peer** transfer from a friend.
+
+Always double-check the address before confirming.
+
+---
+
+## 🔍 Step 3 – Confirm Arrival
+
+1. Open `https://whatsonchain.com/address/<your address>` and monitor the transaction.
+2. Wait for at least **one confirmation** (≈10 minutes).
+3. Re-run menu **4** in the demo to view the updated balance when the confirmation lands.
+
+---
+
+## 🚀 Optional Step – Outbound Test
+
+Outbound transfers require scripting with `create_action` + `internalize_action` (still under construction). If you need to send funds immediately:
+
+1. Export the mnemonic and use a production wallet, or
+2. Build a custom script mirroring the TypeScript implementation (advanced).
+
+---
+
+## ❓ FAQ
+
+- **Nothing shows up on the explorer.**  
+  Confirm the withdrawal succeeded, ensure the address is correct, and wait longer.
+- **Mnemonic lost.**  
+  Funds are unrecoverable. Always have multiple offline backups.
+- **Switch back to testnet.**  
+  Edit `.env` and set `BSV_NETWORK=test`, then restart the demo.
+
+---
+
+## 🔒 Security Best Practices
+
+1. **Safeguard the mnemonic:** paper backup, safe storage, redundant copies.
+2. **Never:** screenshot the phrase, sync it to cloud storage, or share it with anyone.
+3. **Do:** keep separate wallets for testing vs. production, rehearse with small amounts, and periodically verify backups.
+
+---
+
+## 📚 Helpful Links
+
+- Mainnet explorer: <https://whatsonchain.com/>
+- BSV info: <https://bitcoinsv.com/>
+- Wallet toolbox README: `../../README.md`
+
+---
+
+## 🆘 Support
+
+Open an issue at <https://github.com/bitcoin-sv/py-wallet-toolbox/issues> if you get stuck.
+
+---
+
+**Disclaimer:** This guide is educational. You are solely responsible for your funds and compliance with local laws.
 

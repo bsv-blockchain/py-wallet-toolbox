@@ -1,17 +1,15 @@
-"""暗号化機能（HMAC、暗号化、復号化、署名検証）"""
+"""Crypto demos: HMAC, encryption/decryption, signature verification."""
 
 from bsv_wallet_toolbox import Wallet
 
 
 def demo_create_hmac(wallet: Wallet) -> None:
-    """HMAC 生成のデモを実行します。"""
-    print("\n🔐 HMAC を生成します")
-    print()
+    """Generate an HMAC using wallet-managed keys."""
+    print("\n🔐 Creating HMAC\n")
 
-    # ユーザー入力を取得
-    message = input("HMAC を生成するメッセージ [Enter=デフォルト]: ").strip() or "Hello, HMAC!"
-    protocol_name = input("プロトコル名 [Enter=デフォルト]: ").strip() or "test protocol"
-    key_id = input("キー ID [Enter=デフォルト]: ").strip() or "1"
+    message = input("Message [Enter=Hello, HMAC!]: ").strip() or "Hello, HMAC!"
+    protocol_name = input("Protocol name [Enter=test protocol]: ").strip() or "test protocol"
+    key_id = input("Key ID [Enter=1]: ").strip() or "1"
 
     try:
         data = list(message.encode())
@@ -21,29 +19,26 @@ def demo_create_hmac(wallet: Wallet) -> None:
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "HMAC の生成",
+                "reason": "Demo create HMAC",
             }
         )
-        print(f"\n✅ HMAC が生成されました！")
-        print(f"   メッセージ: {message}")
-        print(f"   HMAC: {result['hmac']}")
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+        print("\n✅ HMAC generated")
+        print(f"   Message: {message}")
+        print(f"   HMAC   : {result['hmac']}")
+    except Exception as err:
+        print(f"❌ Failed to create HMAC: {err}")
 
 
 def demo_verify_hmac(wallet: Wallet) -> None:
-    """HMAC 検証のデモを実行します。"""
-    print("\n🔍 HMAC を検証します")
-    print()
-    print("まず HMAC を生成してから検証します...")
-    print()
+    """Create + verify an HMAC in one flow."""
+    print("\n🔍 Verifying HMAC")
+    print("Creating an HMAC first, then verifying it...\n")
 
     message = "Test HMAC Verification"
     protocol_name = "test protocol"
     key_id = "1"
 
     try:
-        # HMAC を生成
         data = list(message.encode())
         create_result = wallet.create_hmac(
             {
@@ -51,15 +46,13 @@ def demo_verify_hmac(wallet: Wallet) -> None:
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "HMAC 検証テスト",
+                "reason": "HMAC verification demo",
             }
         )
-        
-        hmac_value = create_result["hmac"]
-        print(f"生成された HMAC: {hmac_value[:32]}...")
-        print()
 
-        # HMAC を検証
+        hmac_value = create_result["hmac"]
+        print(f"Generated HMAC preview: {hmac_value[:32]}...\n")
+
         verify_result = wallet.verify_hmac(
             {
                 "data": data,
@@ -67,28 +60,25 @@ def demo_verify_hmac(wallet: Wallet) -> None:
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "HMAC の検証",
+                "reason": "Verify HMAC demo",
             }
         )
-        
-        print(f"✅ HMAC 検証結果: {verify_result['valid']}")
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+
+        print(f"✅ Verification result: {verify_result['valid']}")
+    except Exception as err:
+        print(f"❌ Failed to verify HMAC: {err}")
 
 
 def demo_verify_signature(wallet: Wallet) -> None:
-    """署名検証のデモを実行します。"""
-    print("\n🔍 署名を検証します")
-    print()
-    print("まず署名を生成してから検証します...")
-    print()
+    """Sign data and verify the signature."""
+    print("\n🔍 Verifying signature")
+    print("Creating a signature first, then verifying...\n")
 
     message = "Test Signature Verification"
     protocol_name = "test protocol"
     key_id = "1"
 
     try:
-        # 署名を生成
         data = list(message.encode())
         create_result = wallet.create_signature(
             {
@@ -96,17 +86,15 @@ def demo_verify_signature(wallet: Wallet) -> None:
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "署名検証テスト",
+                "reason": "Signature verification demo",
             }
         )
-        
+
         signature = create_result["signature"]
         public_key = create_result["publicKey"]
-        print(f"生成された署名: {signature[:32]}...")
-        print(f"公開鍵: {public_key[:32]}...")
-        print()
+        print(f"Signature preview : {signature[:32]}...")
+        print(f"Public key preview: {public_key[:32]}...\n")
 
-        # 署名を検証
         verify_result = wallet.verify_signature(
             {
                 "data": data,
@@ -114,27 +102,24 @@ def demo_verify_signature(wallet: Wallet) -> None:
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "署名の検証",
+                "reason": "Verify signature demo",
             }
         )
-        
-        print(f"✅ 署名検証結果: {verify_result['valid']}")
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+
+        print(f"✅ Signature valid: {verify_result['valid']}")
+    except Exception as err:
+        print(f"❌ Failed to verify signature: {err}")
 
 
 def demo_encrypt_decrypt(wallet: Wallet) -> None:
-    """暗号化・復号化のデモを実行します。"""
-    print("\n🔐 データを暗号化・復号化します")
-    print()
+    """Encrypt and decrypt a short message."""
+    print("\n🔐 Encrypting and decrypting data\n")
 
-    # ユーザー入力を取得
-    message = input("暗号化するメッセージ [Enter=デフォルト]: ").strip() or "Secret Message!"
-    protocol_name = input("プロトコル名 [Enter=デフォルト]: ").strip() or "encryption protocol"
-    key_id = input("キー ID [Enter=デフォルト]: ").strip() or "1"
+    message = input("Plaintext [Enter=Secret Message!]: ").strip() or "Secret Message!"
+    protocol_name = input("Protocol name [Enter=encryption protocol]: ").strip() or "encryption protocol"
+    key_id = input("Key ID [Enter=1]: ").strip() or "1"
 
     try:
-        # 暗号化
         plaintext = list(message.encode())
         encrypt_result = wallet.encrypt(
             {
@@ -142,34 +127,34 @@ def demo_encrypt_decrypt(wallet: Wallet) -> None:
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "データの暗号化",
+                "reason": "Encrypt demo data",
             }
         )
-        
-        ciphertext = encrypt_result["ciphertext"]
-        print(f"\n✅ データが暗号化されました！")
-        print(f"   元のメッセージ: {message}")
-        print(f"   暗号化データ: {ciphertext[:64] if isinstance(ciphertext, str) else ciphertext[:32]}...")
-        print()
 
-        # 復号化
+        ciphertext = encrypt_result["ciphertext"]
+        preview = ciphertext[:64] if isinstance(ciphertext, str) else ciphertext[:32]
+        print("\n✅ Data encrypted")
+        print(f"   Plaintext : {message}")
+        print(f"   Ciphertext: {preview}...")
+
         decrypt_result = wallet.decrypt(
             {
                 "ciphertext": ciphertext,
                 "protocolID": [0, protocol_name],
                 "keyID": key_id,
                 "counterparty": "self",
-                "reason": "データの復号化",
+                "reason": "Decrypt demo data",
             }
         )
-        
+
         decrypted = bytes(decrypt_result["plaintext"]).decode()
-        print(f"✅ データが復号化されました！")
-        print(f"   復号化メッセージ: {decrypted}")
-        print(f"   元のメッセージと一致: {decrypted == message}")
-        
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+        print("\n✅ Data decrypted")
+        print(f"   Decrypted message: {decrypted}")
+        print(f"   Matches original : {decrypted == message}")
+
+    except Exception as err:
+        print(f"❌ Encryption demo failed: {err}")
         import traceback
+
         traceback.print_exc()
 

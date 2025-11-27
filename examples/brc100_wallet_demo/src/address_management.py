@@ -1,4 +1,4 @@
-"""ウォレットアドレスと残高管理"""
+"""Utilities for showing wallet address and balance."""
 
 from bsv.constants import Network
 from bsv.keys import PublicKey
@@ -6,103 +6,79 @@ from bsv_wallet_toolbox import Wallet
 
 
 def get_wallet_address(wallet: Wallet, network: str) -> str:
-    """ウォレットの受信用アドレスを取得します。
-    
-    Args:
-        wallet: Wallet インスタンス
-        network: 'main' または 'test'
-        
-    Returns:
-        BSV アドレス（文字列）
-    """
-    # Identity Key から公開鍵を取得
+    """Return the receive address for the current wallet."""
     result = wallet.get_public_key(
         {
             "identityKey": True,
-            "reason": "ウォレットアドレスの取得",
+            "reason": "Display receive address",
         }
     )
-    
-    # 公開鍵から BSV アドレスを生成
+
     public_key = PublicKey(result["publicKey"])
-    if network == "test":
-        network_enum = Network.TESTNET
-    else:
-        network_enum = Network.MAINNET
-    address = public_key.address(network=network_enum)
-    
-    return address
+    network_enum = Network.TESTNET if network == "test" else Network.MAINNET
+    return public_key.address(network=network_enum)
 
 
 def display_wallet_info(wallet: Wallet, network: str) -> None:
-    """ウォレットの情報を表示します。
-    
-    Args:
-        wallet: Wallet インスタンス
-        network: ネットワーク名
-    """
+    """Print receive address, balance, and explorer links."""
     print("\n" + "=" * 70)
-    print("💰 ウォレット情報")
+    print("💰 Wallet information")
     print("=" * 70)
     print()
-    
+
     try:
-        # アドレスを取得
         address = get_wallet_address(wallet, network)
-        
-        print(f"📍 受信用アドレス:")
+
+        print("📍 Receive address:")
         print(f"   {address}")
         print()
-        
-        # 残高を取得
+
         try:
             balance_result = wallet.balance()
             balance_sats = balance_result.get("total", 0)
             balance_bsv = balance_sats / 100_000_000
-            print("💰 現在の残高:")
+            print("💰 Current balance:")
             print(f"   {balance_sats:,} sats ({balance_bsv:.8f} BSV)")
             print()
-        except KeyError as balance_error:
-            message = str(balance_error)
-            print(f"⚠️  残高の取得に失敗しました: {message}")
-            print("   まだストレージにユーザー情報が作成されていない可能性があります。")
-            print("   例: 「5. 公開鍵を取得」や「13. アクションを作成」などを一度実行すると")
-            print("       ユーザーが初期化され、残高が参照できるようになります。")
+        except KeyError as err:
+            print(f"⚠️  Failed to fetch balance: {err}")
+            print("   The storage layer has not created a user record yet.")
+            print("   Run any operation (e.g. menu 5: Get public key, or menu 13: Create action)")
+            print("   once so the user is initialized, then retry this menu.")
             print()
-        except Exception as balance_error:
-            print(f"⚠️  残高の取得に失敗しました: {balance_error}")
+        except Exception as err:
+            print(f"⚠️  Failed to fetch balance: {err}")
             print()
 
-        # QR コード用の URI
-        amount = 0.001  # デフォルト金額（BSV）
+        amount = 0.001  # default request amount
         uri = f"bitcoin:{address}?amount={amount}"
-        
-        print(f"💳 支払いURI（0.001 BSV）:")
+        print("💳 Payment URI (0.001 BSV):")
         print(f"   {uri}")
         print()
-        
+
         print("=" * 70)
-        print("📋 ブロックチェーンエクスプローラー")
+        print("📋 Explorer")
         print("=" * 70)
         print()
-        
+
         if network == "test":
-            print(f"🔍 Testnet Explorer:")
+            print("🔍 Testnet explorer:")
             print(f"   https://test.whatsonchain.com/address/{address}")
             print()
-            print("💡 Testnet Faucet から BSV を取得:")
+            print("💡 Need testnet coins? Use this faucet:")
             print("   https://scrypt.io/faucet/")
         else:
-            print(f"🔍 Mainnet Explorer:")
+            print("🔍 Mainnet explorer:")
             print(f"   https://whatsonchain.com/address/{address}")
             print()
-            print("⚠️  実際の BSV を使用します！")
-        
+            print("⚠️  You are dealing with real BSV funds.")
+
         print()
         print("=" * 70)
-        
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+
+    except Exception as err:
+        print(f"❌ Unexpected error while showing wallet info: {err}")
         import traceback
+
         traceback.print_exc()
 

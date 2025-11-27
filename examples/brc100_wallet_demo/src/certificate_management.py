@@ -1,17 +1,15 @@
-"""証明書管理機能（取得、一覧表示）"""
+"""Certificate acquisition and listing demos."""
 
 from bsv_wallet_toolbox import Wallet
 
 
 def demo_acquire_certificate(wallet: Wallet) -> None:
-    """証明書取得のデモを実行します。"""
-    print("\n📜 証明書を取得します")
-    print()
+    """Acquire a demo certificate using direct acquisition."""
+    print("\n📜 Acquiring certificate\n")
 
-    # ユーザー入力を取得
-    cert_type = input("証明書タイプ（例: 'test-certificate'）[Enter=デフォルト]: ").strip() or "test-certificate"
-    name = input("名前（例: 'Test User'）[Enter=デフォルト]: ").strip() or "Test User"
-    email = input("メール（例: 'test@example.com'）[Enter=デフォルト]: ").strip() or "test@example.com"
+    cert_type = input("Certificate type (e.g. test-certificate) [Enter=default]: ").strip() or "test-certificate"
+    name = input("Name [Enter=Test User]: ").strip() or "Test User"
+    email = input("Email [Enter=test@example.com]: ").strip() or "test@example.com"
 
     try:
         result = wallet.acquire_certificate(
@@ -19,27 +17,26 @@ def demo_acquire_certificate(wallet: Wallet) -> None:
                 "type": cert_type,
                 "certifier": "self",
                 "acquisitionProtocol": "direct",
-                "fields": {
-                    "name": name,
-                    "email": email,
-                },
-                "privilegedReason": "証明書の取得",
+                "fields": {"name": name, "email": email},
+                "privilegedReason": "Demo acquisition",
             }
         )
-        print(f"\n✅ 証明書が取得されました！")
-        print(f"   タイプ: {result['type']}")
-        cert_str = result['serializedCertificate']
-        print(f"   シリアライズ: {cert_str[:64] if len(cert_str) > 64 else cert_str}...")
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+        print("\n✅ Certificate acquired")
+        print(f"   Type   : {result['type']}")
+        cert_str = result["serializedCertificate"]
+        preview = cert_str[:64] + "..." if len(cert_str) > 64 else cert_str
+        print(f"   Payload: {preview}")
+    except Exception as err:
+        print(f"❌ Failed to acquire certificate: {err}")
         import traceback
+
         traceback.print_exc()
 
 
 def demo_list_certificates(wallet: Wallet) -> None:
-    """保有している証明書を一覧表示します。"""
-    print("\n📜 証明書のリストを取得しています...")
-    
+    """List stored certificates."""
+    print("\n📜 Listing certificates...\n")
+
     try:
         certs = wallet.list_certificates(
             {
@@ -48,21 +45,20 @@ def demo_list_certificates(wallet: Wallet) -> None:
                 "limit": 10,
                 "offset": 0,
                 "privileged": False,
-                "privilegedReason": "証明書一覧の取得",
+                "privilegedReason": "List certificates",
             }
         )
-        print(f"\n✅ 証明書数: {len(certs['certificates'])}")
-        print()
+        print(f"✅ Count: {len(certs['certificates'])}\n")
 
         if not certs["certificates"]:
-            print("   （証明書がありません）")
+            print("   (no certificates yet)")
         else:
             for i, cert in enumerate(certs["certificates"], 1):
                 print(f"   {i}. {cert['type']}")
-                print(f"      証明書 ID: {cert.get('certificateId', 'N/A')}")
+                print(f"      Certificate ID: {cert.get('certificateId', 'N/A')}")
                 if "subject" in cert:
-                    print(f"      主体: {cert['subject']}")
+                    print(f"      Subject       : {cert['subject']}")
                 print()
-    except Exception as e:
-        print(f"❌ エラー: {e}")
+    except Exception as err:
+        print(f"❌ Failed to list certificates: {err}")
 
