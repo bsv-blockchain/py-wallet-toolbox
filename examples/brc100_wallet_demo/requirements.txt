@@ -1,0 +1,19 @@
+# BSV Wallet Toolbox Demo - 依存パッケージ
+#
+# このファイルは brc100_wallet_demo を独立した venv プロジェクトとして
+# セットアップするために使用します。
+#
+# インストール方法:
+#   pip install -r requirements.txt
+
+# ローカルの BSV Wallet Toolbox（開発モード）
+-e ../../
+
+# 環境変数管理
+python-dotenv>=1.0.0
+
+# 以下は bsv-wallet-toolbox の依存関係として自動的にインストールされます:
+# - bsv-sdk (from git)
+# - requests>=2.31
+# - sqlalchemy>=2.0
+
