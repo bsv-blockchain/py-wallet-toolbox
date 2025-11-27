@@ -256,7 +256,7 @@ class TestWalletPermissionsManagerProxying:
         assert mock_underlying_wallet.list_actions.call_count == 1
         assert mock_underlying_wallet.decrypt.call_count > 0
 
-    def test_should_pass_internalizeaction_calls_to_underlying_after_ensuring_basket_permissions_and_encrypting_custominstructions_if_config_on(
+    async def test_should_pass_internalizeaction_calls_to_underlying_after_ensuring_basket_permissions_and_encrypting_custominstructions_if_config_on(
         self,
     ) -> None:
         """Given: Manager with basket permissions and metadata encryption
@@ -281,7 +281,7 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onBasketAccessRequested", auto_grant)
 
         # When
-        manager.internalize_action(
+        await manager.internalize_action(
             {
                 "tx": "rawTx",
                 "outputs": [{"basket": "my-basket", "customInstructions": "instructions"}],
@@ -323,7 +323,7 @@ class TestWalletPermissionsManagerProxying:
         # Then
         assert mock_underlying_wallet.list_outputs.call_count == 1
 
-    def test_should_ensure_basket_removal_permission_then_call_relinquishoutput(self) -> None:
+    async def test_should_ensure_basket_removal_permission_then_call_relinquishoutput(self) -> None:
         """Given: Manager with basket removal permissions
            When: relinquishOutput is called
            Then: Checks permissions, calls underlying
@@ -346,12 +346,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onBasketAccessRequested", auto_grant)
 
         # When
-        manager.relinquish_output({"basket": "my-basket", "output": "tx.0"}, "user.com")
+        await manager.relinquish_output({"basket": "my-basket", "output": "tx.0"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.relinquish_output.call_count == 1
 
-    def test_should_call_getpublickey_on_underlying_after_ensuring_protocol_permission(self) -> None:
+    async def test_should_call_getpublickey_on_underlying_after_ensuring_protocol_permission(self) -> None:
         """Given: Manager with protocol permissions
            When: getPublicKey is called with protocolID
            Then: Checks permissions, calls underlying
@@ -374,12 +374,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.get_public_key({"protocolID": [1, "my-protocol"], "keyID": "1"}, "user.com")
+        await manager.get_public_key({"protocolID": [1, "my-protocol"], "keyID": "1"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.get_public_key.call_count == 1
 
-    def test_should_call_revealcounterpartykeylinkage_with_permission_check_pass_result(self) -> None:
+    async def test_should_call_revealcounterpartykeylinkage_with_permission_check_pass_result(self) -> None:
         """Given: Manager with key linkage permissions
            When: revealCounterpartyKeyLinkage is called
            Then: Checks permissions, calls underlying
@@ -402,12 +402,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.reveal_counterparty_key_linkage({"protocolID": [1, "proto"], "counterparty": "user"}, "user.com")
+        await manager.reveal_counterparty_key_linkage({"protocolID": [1, "proto"], "counterparty": "user"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.reveal_counterparty_key_linkage.call_count == 1
 
-    def test_should_call_revealspecifickeylinkage_with_permission_check_pass_result(self) -> None:
+    async def test_should_call_revealspecifickeylinkage_with_permission_check_pass_result(self) -> None:
         """Given: Manager with key linkage permissions
            When: revealSpecificKeyLinkage is called
            Then: Checks permissions, calls underlying
@@ -430,14 +430,14 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.reveal_specific_key_linkage(
+        await manager.reveal_specific_key_linkage(
             {"protocolID": [1, "proto"], "counterparty": "user", "verifier": "v"}, "user.com"
         )
 
         # Then
         assert mock_underlying_wallet.reveal_specific_key_linkage.call_count == 1
 
-    def test_should_proxy_encrypt_calls_after_checking_protocol_permission(self) -> None:
+    async def test_should_proxy_encrypt_calls_after_checking_protocol_permission(self) -> None:
         """Given: Manager with protocol permissions
            When: encrypt is called
            Then: Checks permissions, calls underlying
@@ -460,12 +460,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.encrypt({"protocolID": [1, "proto"], "plaintext": "data"}, "user.com")
+        await manager.encrypt({"protocolID": [1, "proto"], "plaintext": "data"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.encrypt.call_count == 1
 
-    def test_should_proxy_decrypt_calls_after_checking_protocol_permission(self) -> None:
+    async def test_should_proxy_decrypt_calls_after_checking_protocol_permission(self) -> None:
         """Given: Manager with protocol permissions
            When: decrypt is called
            Then: Checks permissions, calls underlying
@@ -488,12 +488,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.decrypt({"protocolID": [1, "proto"], "ciphertext": "encrypted"}, "user.com")
+        await manager.decrypt({"protocolID": [1, "proto"], "ciphertext": "encrypted"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.decrypt.call_count == 1
 
-    def test_should_proxy_createhmac_calls(self) -> None:
+    async def test_should_proxy_createhmac_calls(self) -> None:
         """Given: Manager with underlying wallet
            When: createHmac is called
            Then: Checks permissions, proxies to underlying
@@ -516,12 +516,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.create_hmac({"protocolID": [1, "proto"], "data": "data"}, "user.com")
+        await manager.create_hmac({"protocolID": [1, "proto"], "data": "data"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.create_hmac.call_count == 1
 
-    def test_should_proxy_verifyhmac_calls(self) -> None:
+    async def test_should_proxy_verifyhmac_calls(self) -> None:
         """Given: Manager with underlying wallet
            When: verifyHmac is called
            Then: Proxies to underlying
@@ -535,12 +535,12 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
 
         # When
-        manager.verify_hmac({"protocolID": [1, "proto"], "data": "data", "hmac": "mac"}, "user.com")
+        await manager.verify_hmac({"protocolID": [1, "proto"], "data": "data", "hmac": "mac"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.verify_hmac.call_count == 1
 
-    def test_should_proxy_createsignature_calls_already_tested_the_netspent_logic_in_createaction_but_lets_double_check(
+    async def test_should_proxy_createsignature_calls_already_tested_the_netspent_logic_in_createaction_but_lets_double_check(
         self,
     ) -> None:
         """Given: Manager with underlying wallet
@@ -565,12 +565,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.create_signature({"protocolID": [1, "proto"], "data": [1, 2, 3]}, "user.com")
+        await manager.create_signature({"protocolID": [1, "proto"], "data": [1, 2, 3]}, "user.com")
 
         # Then
         assert mock_underlying_wallet.create_signature.call_count == 1
 
-    def test_should_proxy_verifysignature_calls(self) -> None:
+    async def test_should_proxy_verifysignature_calls(self) -> None:
         """Given: Manager with underlying wallet
            When: verifySignature is called
            Then: Proxies to underlying
@@ -584,12 +584,12 @@ class TestWalletPermissionsManagerProxying:
         manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test")
 
         # When
-        manager.verify_signature({"protocolID": [1, "proto"], "data": [1, 2, 3], "signature": "sig"}, "user.com")
+        await manager.verify_signature({"protocolID": [1, "proto"], "data": [1, 2, 3], "signature": "sig"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.verify_signature.call_count == 1
 
-    def test_should_call_acquirecertificate_verifying_permission_if_config_seekcertificateacquisitionpermissions_true(
+    async def test_should_call_acquirecertificate_verifying_permission_if_config_seekcertificateacquisitionpermissions_true(
         self,
     ) -> None:
         """Given: Manager with certificate acquisition permissions
@@ -614,14 +614,14 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
 
         # When
-        manager.acquire_certificate(
+        await manager.acquire_certificate(
             {"type": "type", "certifier": "certifier", "acquisitionProtocol": "proto"}, "user.com"
         )
 
         # Then
         assert mock_underlying_wallet.acquire_certificate.call_count == 1
 
-    def test_should_call_listcertificates_verifying_permission_if_config_seekcertificatelistingpermissions_true(
+    async def test_should_call_listcertificates_verifying_permission_if_config_seekcertificatelistingpermissions_true(
         self,
     ) -> None:
         """Given: Manager with certificate listing permissions
@@ -646,12 +646,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
 
         # When
-        manager.list_certificates({"certifiers": ["certifier"], "types": ["type"]}, "user.com")
+        await manager.list_certificates({"certifiers": ["certifier"], "types": ["type"]}, "user.com")
 
         # Then
         assert mock_underlying_wallet.list_certificates.call_count == 1
 
-    def test_should_call_provecertificate_after_ensuring_certificate_permission(self) -> None:
+    async def test_should_call_provecertificate_after_ensuring_certificate_permission(self) -> None:
         """Given: Manager with certificate disclosure permissions
            When: proveCertificate is called
            Then: Checks permissions, calls underlying
@@ -674,12 +674,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
 
         # When
-        manager.prove_certificate({"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com")
+        await manager.prove_certificate({"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.prove_certificate.call_count == 1
 
-    def test_should_call_relinquishcertificate_if_config_seekcertificaterelinquishmentpermissions_true(
+    async def test_should_call_relinquishcertificate_if_config_seekcertificaterelinquishmentpermissions_true(
         self,
     ) -> None:
         """Given: Manager with certificate relinquishment permissions
@@ -704,12 +704,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onCertificateAccessRequested", auto_grant)
 
         # When
-        manager.relinquish_certificate({"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com")
+        await manager.relinquish_certificate({"type": "type", "certifier": "certifier", "serialNumber": "123"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.relinquish_certificate.call_count == 1
 
-    def test_should_call_discoverbyidentitykey_after_ensuring_identity_resolution_permission(self) -> None:
+    async def test_should_call_discoverbyidentitykey_after_ensuring_identity_resolution_permission(self) -> None:
         """Given: Manager with identity resolution permissions
            When: discoverByIdentityKey is called
            Then: Checks permissions, calls underlying
@@ -732,12 +732,12 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.discover_by_identity_key({"identityKey": "key"}, "user.com")
+        await manager.discover_by_identity_key({"identityKey": "key"}, "user.com")
 
         # Then
         assert mock_underlying_wallet.discover_by_identity_key.call_count == 1
 
-    def test_should_call_discoverbyattributes_after_ensuring_identity_resolution_permission(self) -> None:
+    async def test_should_call_discoverbyattributes_after_ensuring_identity_resolution_permission(self) -> None:
         """Given: Manager with identity resolution permissions
            When: discoverByAttributes is called
            Then: Checks permissions, calls underlying
@@ -760,7 +760,7 @@ class TestWalletPermissionsManagerProxying:
         manager.bind_callback("onProtocolPermissionRequested", auto_grant)
 
         # When
-        manager.discover_by_attributes({"attributes": {"key": "value"}}, "user.com")
+        await manager.discover_by_attributes({"attributes": {"key": "value"}}, "user.com")
 
         # Then
         assert mock_underlying_wallet.discover_by_attributes.call_count == 1

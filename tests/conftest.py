@@ -216,12 +216,12 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     storage.make_available()
 
     # Get or create user for seeding
-    from datetime import datetime
+    from datetime import datetime, timezone
     user_id = storage.insert_user({
         "identityKey": test_key_deriver._root_private_key.public_key().hex(),
         "activeStorage": "test",
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     })
 
     # Create default basket
@@ -231,8 +231,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "numberOfDesiredUTXOs": 10,
         "minimumDesiredUTXOValue": 1000,
         "isDeleted": False,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     })
 
     # Seed transaction that will provide the UTXO
@@ -249,8 +249,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "version": 1,
         "lockTime": 0,
         "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     })
 
     # Seed spendable UTXO (output at vout 0)
@@ -273,8 +273,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "type": "change",
         "txid": source_txid,
         "lockingScript": locking_script,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
     })
 
     # Create mock Services instance for testing

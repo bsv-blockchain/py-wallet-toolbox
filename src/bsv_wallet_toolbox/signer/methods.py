@@ -16,7 +16,7 @@ Reference:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from bsv.auth.master_certificate import MasterCertificate
@@ -568,7 +568,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
     Returns:
         Certificate result dict
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     user_id = auth.get("user_id") if isinstance(auth, dict) else getattr(auth, "user_id", "")
 
     # Create certificate record (Python stores fields separately)
