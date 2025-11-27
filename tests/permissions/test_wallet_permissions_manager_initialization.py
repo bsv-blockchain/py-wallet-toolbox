@@ -168,7 +168,7 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(
+    async def test_should_skip_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_false(
         self,
     ) -> None:
         """Given: Manager with seekProtocolPermissionsForSigning=False
@@ -188,7 +188,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # When - non-admin origin attempts createSignature
-        manager.create_signature(
+        await manager.create_signature(
             {"protocolID": [1, "some-protocol"], "privileged": False, "data": [0x01, 0x02], "keyID": "1"},
             "app.nonadmin.com",
         )
@@ -290,7 +290,7 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(
+    async def test_should_skip_certificate_disclosure_permission_checks_if_seekcertificatedisclosurepermissions_false(
         self,
     ) -> None:
         """Given: Manager with seekCertificateDisclosurePermissions=False
@@ -310,7 +310,7 @@ class TestWalletPermissionsManagerInitialization:
         )
 
         # When
-        manager.disclose_certificate(
+        await manager.disclose_certificate(
             {"certifier": "some-certifier", "type": "some-type", "serialNumber": "123"}, "nonadmin.com"
         )
 

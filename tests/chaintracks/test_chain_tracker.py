@@ -15,6 +15,7 @@ except ImportError:
     IMPORTS_AVAILABLE = False
 
 
+@pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="ChaintracksChainTracker not available")
 class TestChaintracksChainTracker:
     """Test suite for ChainTracker.
 
@@ -22,7 +23,7 @@ class TestChaintracksChainTracker:
                describe('ChaintracksChaintracker tests')
     """
 
-    def test_test(self) -> None:
+    async def test_test(self) -> None:
         """Given: ChainTracker for testnet
            When: Get current height and verify merkle roots
            Then: Height > 877598, and validates testnet root correctly
@@ -38,9 +39,9 @@ class TestChaintracksChainTracker:
         #       All assertions are in the helper function _test_chaintracks_chaintracker().
 
         # Given/When/Then
-        self._test_chaintracks_chaintracker("test")
+        await self._test_chaintracks_chaintracker("test")
 
-    def test_main(self) -> None:
+    async def test_main(self) -> None:
         """Given: ChainTracker for mainnet
            When: Get current height and verify merkle roots
            Then: Height > 877598, and validates mainnet root correctly
@@ -53,7 +54,7 @@ class TestChaintracksChainTracker:
         #       All assertions are in the helper function _test_chaintracks_chaintracker().
 
         # Given/When/Then
-        self._test_chaintracks_chaintracker("main")
+        await self._test_chaintracks_chaintracker("main")
 
     async def _test_chaintracks_chaintracker(self, chain: str) -> None:
         """Test ChainTracker for given chain.
