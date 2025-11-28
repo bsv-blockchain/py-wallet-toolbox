@@ -1851,7 +1851,8 @@ class Wallet:
 
         # Delegate to signer layer for certificate proof
         # (coordinate with Storage and Services through signer)
-        return prove_certificate(self, args)
+        auth = args.get("auth") if "auth" in args else self._make_auth()
+        return prove_certificate(self, auth, args)
 
     def reveal_counterparty_key_linkage(
         self,
@@ -2715,8 +2716,9 @@ class Wallet:
         # TS: if attributes is an object, sort its top-level keys
         attributes_key: Any = args["attributes"]
         if isinstance(args["attributes"], dict):
-            keys = sorted(args["attributes"].keys())
-            attributes_key = json.dumps(args["attributes"], keys=keys, sort_keys=False)
+            # Create sorted dict for stable cache key
+            sorted_attributes = {k: args["attributes"][k] for k in sorted(args["attributes"].keys())}
+            attributes_key = json.dumps(sorted_attributes, sort_keys=True)
 
         # --- Check overlay cache (2 minute TTL) ---
         cache_key = json.dumps(
