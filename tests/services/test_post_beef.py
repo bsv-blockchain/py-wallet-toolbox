@@ -20,9 +20,10 @@ import pytest
 # Section B: Minimal (enabled)
 # =============================
 from bsv_wallet_toolbox.services import Services
+from tests.test_utils import Setup
 
 
-async def test_post_beef_arc_minimal_enabled() -> None:
+def test_post_beef_arc_minimal_enabled() -> None:
     """Ensure ARC path returns TS-like shape for single BEEF (mocked).
 
     - Uses conftest's FakeClient to avoid network.
@@ -39,7 +40,7 @@ async def test_post_beef_arc_minimal_enabled() -> None:
     assert res["accepted"] in (True, False)
 
 
-async def test_post_beef_array_arc_minimal_enabled() -> None:
+def test_post_beef_array_arc_minimal_enabled() -> None:
     """Ensure ARC path returns TS-like shape for multiple BEEFs (mocked).
 
     - Uses conftest's FakeClient to avoid network.
@@ -59,12 +60,10 @@ async def test_post_beef_array_arc_minimal_enabled() -> None:
         assert res["accepted"] in (True, False)
 
 
-@pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
 def test_post_beef_placeholder() -> None:
     """Placeholder for `postBeef` until TS/So test is available."""
 
 
-@pytest.mark.skip(reason="No corresponding TS/So tests yet; placeholder only.")
 def test_post_beef_array_placeholder() -> None:
     """Placeholder for `postBeefArray` until TS/So test is available."""
 
@@ -95,7 +94,6 @@ class TestPostBeef:
                describe.skip('postBeef service tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_postbeef_mainnet(self) -> None:
         """Given: Services with mainnet configuration
            When: Post BEEF with valid transactions and then with double spend
@@ -113,7 +111,6 @@ class TestPostBeef:
         # When/Then
         self._post_beef_test(services)
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_postbeef_testnet(self) -> None:
         """Given: Services with testnet configuration
            When: Post BEEF with valid transactions and then with double spend

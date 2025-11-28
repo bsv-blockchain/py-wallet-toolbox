@@ -386,7 +386,7 @@ class StorageProvider:
         try:
             # Close all sessions
             if hasattr(self, "SessionLocal") and self.SessionLocal:
-                self.SessionLocal.close_all()
+                self.SessionLocal.close_all_sessions()
 
             # Dispose of engine connection pool
             if hasattr(self, "engine") and self.engine:
@@ -1119,7 +1119,16 @@ class StorageProvider:
         except Exception:
             return 0
         with session_scope(self.SessionLocal) as s:
-            q = select(Output).where((Output.user_id == user_id) & (Output.txid == txid) & (Output.vout == vout))
+            # Join with Transaction to filter by txid
+            q = (
+                select(Output)
+                .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+                .where(
+                    (Output.user_id == user_id)
+                    & (TransactionModel.txid == txid)
+                    & (Output.vout == vout)
+                )
+            )
             _exec_result = s.execute(q)
             o = _exec_result.scalar_one_or_none()
             if not o:
@@ -1757,6 +1766,14 @@ class StorageProvider:
                 }
             )
 
+            # Persist output tags and create mappings (TS/Go parity)
+            for tag_name in xo.tags:
+                # Find or create the output tag
+                tag_record = self.find_or_insert_output_tag(user_id, tag_name)
+                tag_id = int(tag_record["outputTagId"])
+                # Create the output-to-tag mapping
+                self.find_or_insert_output_tag_map(output_id, tag_id)
+
             outputs_payload.append(
                 {
                     "vout": xo.vout,
@@ -1786,7 +1803,7 @@ class StorageProvider:
             txid = deterministic_txid(reference, vargs.outputs)
             self.update_transaction(transaction_id, {"txid": txid})
             result["txid"] = txid
-        else:
+        elif not vargs.options.return_txid_only:
             signable_tx = {
                 "reference": reference,
                 "tx": list(storage_beef_bytes) if storage_beef_bytes else [],
@@ -1891,13 +1908,13 @@ class StorageProvider:
             except Exception as e:
                 raise InvalidParameterError("rawTx", f"valid transaction: {e!s}")
 
-            if txid != tx_obj.id():
+            if txid != tx_obj.txid():
                 raise InvalidParameterError("txid", "does not match hash of serialized transaction")
 
             # Verify transaction is final (TS line 234)
             # Note: Simplified - full implementation requires chain tracker
             # For now, we validate nLockTime is 0 or within valid range
-            if tx_obj.lock_time and tx_obj.lock_time > 500_000_000:
+            if tx_obj.locktime and tx_obj.locktime > 500_000_000:
                 raise InvalidParameterError("rawTx", "transaction is not final (nLockTime too far in future)")
 
             # Find transaction record (TS lines 240-244)
@@ -2150,6 +2167,8 @@ class StorageProvider:
             # Convert camelCase column name to snake_case Python attribute
             pk_attr_name = StorageProvider._to_snake_case(pk_col.name)
             pk_value = getattr(obj, pk_attr_name)
+            # Expunge object to prevent session conflicts when querying in other sessions
+            session.expunge(obj)
             if not trx:
                 session.commit()
             return pk_value
@@ -2262,7 +2281,13 @@ class StorageProvider:
         with session_scope(self.SessionLocal) as s:
             mapper = inspect(model)
             pk_col = mapper.primary_key[0]
-            query = select(model).where(getattr(model, pk_col.name) == pk_value)
+            # Get the Python attribute name for the primary key (not the DB column name)
+            pk_attr_name = pk_col.name
+            for prop in mapper.attrs:
+                if hasattr(prop, "columns") and pk_col in prop.columns:
+                    pk_attr_name = prop.key
+                    break
+            query = select(model).where(getattr(model, pk_attr_name) == pk_value)
             obj = s.execute(query).scalar_one_or_none()
             if not obj:
                 return 0
@@ -3011,14 +3036,10 @@ class StorageProvider:
                     "reference", "an inprocess, outgoing action that has not been signed and shared to the network."
                 )
 
-            session = self.SessionLocal()
-            try:
-                tx.status = "failed"
-                session.add(tx)
-                session.flush()
-                session.commit()
-            finally:
-                session.close()
+            # Update status (tx is already attached to this session)
+            tx.status = "failed"
+            session.flush()
+            session.commit()
 
             return True
         finally:
@@ -3689,7 +3710,7 @@ class InternalizeActionContext:
 
             # Parse BEEF (simplified - full BEEF verification skipped for now)
             tx_obj = BsvTransaction.from_hex(beef_bytes)
-            txid = tx_obj.id()
+            txid = tx_obj.txid()
 
             return txid, tx_obj
         except Exception as e:

@@ -1,474 +1,389 @@
-# Python Wallet Toolbox - Implementation Roadmap
+# Implementation Roadmap - Remaining 65 Tests
 
-**Last Updated**: 2025-10-22  
-**Current Version**: 0.6.0  
-**Implementation Status**: Phase 0 Complete (100%), Phase 1 Ready to Start
-
----
-
-## 🎯 Development Strategy
-
-This Python implementation follows a **list-based, test-driven approach** porting from TypeScript.
-
-### Core Principles
-
-1. **TypeScript Implementation as Source of Truth**
-   - Port all functionality from `toolbox/ts-wallet-toolbox/`
-   - Maintain 100% API compatibility with TypeScript implementation
-   - Follow TypeScript's architecture and module structure
-
-2. **List-Based Development**
-   - All APIs, features, and tests are inventoried in comprehensive lists
-   - Implementation proceeds in dependency order (least dependent first)
-   - Progress tracked in `doc/implementation_progress.md` (separate repository)
-
-3. **Test-First Approach**
-   - 856 test cases identified (TypeScript: 794, Go unique: 62)
-   - Tests created before implementation (mock level acceptable)
-   - Universal Test Vectors validated for BRC-100 compliance
-
-4. **Speed Over Perfection**
-   - Get working implementation first
-   - Detailed code review and refactoring comes later
-   - Focus on interface correctness and test coverage
+**Current Status:** 604/809 passing (75%), 65 failing  
+**All 65 Tests Documented:** Root causes identified, effort estimated
 
 ---
 
-## 📊 Current Implementation Status
+## 🎯 PRIORITY MATRIX
 
-### Summary
+### Priority 1: High Value, Medium Effort (22-30 calls)
+**ROI:** Fixes 15+ tests with moderate effort
 
-| Category | Total | Completed | In Progress | Not Started | On Hold |
-|----------|-------|-----------|-------------|-------------|---------|
-| WalletInterface | 28 | 0 | 6 | 22 | 0 |
-| WalletStorageProvider | 22 | 0 | 0 | 19 | 3 |
-| WalletServices | 15 | 0 | 0 | 15 | 0 |
-| Storage Layer (Tables) | 16 | 0 | 0 | 16 | 0 |
-| Storage Layer (CRUD) | 30 | 0 | 0 | 30 | 0 |
-| Monitor | 6 | 0 | 0 | 3 | 3 |
-| Internal Utilities | 38 | 0 | 0 | 38 | 0 |
-| **Total** | **130** | **0** | **6** | **118** | **6** |
+1. **Wallet Test Data Fixtures** (7 tests, 15-25 calls)
+   - Create reusable transaction/output seeding utilities
+   - Implement proper SQLAlchemy session management
+   - Benefits: Unblocks wallet integration tests
 
-**Overall Progress**: 4.6% (6/130 APIs implemented, tests pending)
+2. **Integration Utilities** (7 tests, 20-30 calls)
+   - LocalKVStore implementation
+   - BulkFileDataManager basics
+   - Lock implementations
+   - Benefits: Core infrastructure tests pass
 
-### Test Infrastructure
+### Priority 2: High Value, High Effort (90-120 calls)
+**ROI:** Major feature completion
 
-- ✅ **MockWalletServices**: Implemented for interface testing without real API calls
-- ✅ **Test Fixtures**: pytest fixtures for common test scenarios
-- ✅ **Universal Test Vectors**: Integrated from official BRC-100 test data
-- ✅ **Test Standards**: Documented (no doc/ references, no sequential IDs)
+3. **Universal Vector Fixtures** (22 tests, 40-60 calls)
+   - Deterministic key derivation matching TS/Go
+   - UTXO seeding matching vector expectations
+   - Transaction building for exact txid matches
+   - Benefits: Full BRC-100 spec compliance proven
 
-**Test Progress**:
-- Total test cases: 856 (TypeScript: 794, Go adopted: 62)
-- Skipped tests: 10 (8 ABI wire format tests intentionally skipped, 2 pending implementation)
-- Passing tests: 17/28 currently executable
+4. **Chaintracks Client** (8 tests, 20-30 calls)
+   - JSON-RPC client implementation
+   - Header fetching and caching
+   - Benefits: Background blockchain tracking
 
----
+5. **Permissions Proxy Methods** (10 tests, 30-40 calls)
+   - Implement proxy methods (create_action, create_signature, etc.)
+   - Metadata encryption integration
+   - Benefits: Core permissions functionality
 
-## 🏗️ Architecture Overview
+### Priority 3: Full Subsystems (130-200 calls)
+**ROI:** Enterprise features
 
-### Layer Structure
+6. **Certificate System** (10 tests, 50-80 calls)
+   - Certificate creation/storage/retrieval
+   - Proving and verification mechanisms
+   - Discovery system implementation
+   - Benefits: Complete certificate support
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Application Layer                        │
-│                  (User's wallet app)                        │
-└─────────────────────────────────────────────────────────────┘
-                            │
-                            ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   WalletInterface (BRC-100)                 │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Wallet Class (28 methods)                          │   │
-│  │  - getVersion, getNetwork                           │   │
-│  │  - createAction, signAction                         │   │
-│  │  - listOutputs, listCertificates                    │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-          │                           │
-          │                           │
-          ▼                           ▼
-┌──────────────────────┐   ┌─────────────────────────────────┐
-│   WalletServices     │   │  WalletStorageProvider          │
-│                      │   │                                 │
-│  - get_height()      │   │  - Database operations          │
-│  - get_header()      │   │  - Transaction management       │
-│  - get_chain_tracker│   │  - Output/Certificate CRUD      │
-│                      │   │                                 │
-│  Providers:          │   │  Backend: SQLAlchemy            │
-│  ✅ WhatsOnChain     │   │  ✅ SQLite                      │
-│  ❌ ARC (planned)    │   │  ✅ PostgreSQL                  │
-│  ❌ Bitails (planned)│   │  ✅ MySQL                       │
-└──────────────────────┘   └─────────────────────────────────┘
-```
-
-### Module Organization (TypeScript-aligned)
-
-```
-src/bsv_wallet_toolbox/
-├── wallet.py                 # Wallet class (WalletInterface implementation)
-├── errors/                   # Error classes (WERR_* errors)
-│   ├── __init__.py
-│   ├── invalid_parameter.py
-│   └── internal_error.py
-├── services/                 # Blockchain data services
-│   ├── __init__.py
-│   ├── wallet_services.py   # WalletServices ABC
-│   ├── services.py          # Services implementation
-│   └── providers/
-│       ├── __init__.py
-│       └── whatsonchain.py  # WhatsOnChain provider
-├── storage/                  # Database persistence (not yet implemented)
-│   ├── __init__.py
-│   ├── provider.py          # WalletStorageProvider ABC
-│   └── models/              # SQLAlchemy models
-└── utils/                    # Internal utilities (not yet implemented)
-    ├── __init__.py
-    ├── validation.py
-    └── transaction.py
-```
-
-**TypeScript Reference**: `toolbox/ts-wallet-toolbox/src/`
+7. **Monitor Live Ingestor** (1 test, 5-10 calls)
+   - Live header polling implementation
+   - Benefits: Real-time chain monitoring
 
 ---
 
-## 🚀 Implementation Phases
+## 📋 DETAILED IMPLEMENTATION PLANS
 
-### ✅ Phase 0: Foundation (Week 1) - COMPLETE
+### 1. Wallet Test Data Fixtures (15-25 calls)
 
-**Goal**: Establish development infrastructure and documentation
-
-**Deliverables**:
-- ✅ Development strategy document
-- ✅ Complete API inventory (130 APIs)
-- ✅ Complete test inventory (856 test cases)
-- ✅ Implementation progress tracker
-- ✅ Test infrastructure (MockWalletServices, fixtures)
-- ✅ Updated development rules and standards
-
-**Status**: 100% Complete (11/11 tasks)
-
-### 🎯 Phase 1: Core WalletInterface (Week 2-3) - READY TO START
-
-**Goal**: Implement P0 priority WalletInterface methods
-
-**Target APIs** (4 methods):
-- `getVersion()` - Return wallet version
-- `getNetwork()` - Return blockchain network
-- `isAuthenticated()` - Check authentication status
-- `waitForAuthentication()` - Wait for authentication
-
-**Current Status**:
-- ✅ Implementation: 4/4 complete
-- ❌ Tests: 0/4 complete (needs proper test coverage)
-- ❌ Documentation: Docstrings complete, examples needed
-
-**Next Steps**:
-1. Create comprehensive test suites for 4 P0 methods
-2. Validate against Universal Test Vectors
-3. Add usage examples to README
-
-### 🔄 Phase 2: WalletServices + Height/Header (Week 4-5)
-
-**Goal**: Complete blockchain data access layer
-
-**Target APIs** (2 WalletInterface methods + 3 Services methods):
-- WalletInterface:
-  - `getHeight()` - Get current blockchain height
-  - `getHeaderForHeight()` - Get block header at height
-- WalletServices:
-  - `get_height()` - Internal services method
-  - `get_header_for_height()` - Internal services method
-  - `get_chain_tracker()` - Get ChainTracker instance
-
-**Dependencies**:
-- WhatsOnChain provider (✅ implemented)
-- MockWalletServices for testing (✅ implemented)
-
-**Status**: 2/5 APIs implemented (Services complete, Wallet methods pending tests)
-
-### 📦 Phase 3: Storage Layer (Week 6-8)
-
-**Goal**: Implement database persistence
-
-**Target Components**:
-- Database schema (16 tables)
-- CRUD operations (30 methods)
-- WalletStorageProvider interface (22 methods)
-
-**Status**: Not started (0/68 components)
-
-### 🔐 Phase 4: Transaction Operations (Week 9-12)
-
-**Goal**: Core transaction functionality
-
-**Target APIs** (8 WalletInterface methods):
-- `createAction()` - Create new transaction
-- `signAction()` - Sign transaction
-- `abortAction()` - Cancel transaction
-- `processAction()` - Submit transaction
-- `internalizeAction()` - Import external transaction
-- `listActions()` - List transactions
-- `getTransaction()` - Get transaction details
-- `sendTransaction()` - Broadcast transaction
-
-**Status**: Not started (0/8 methods)
-
-### 📜 Phase 5: Outputs & Certificates (Week 13-15)
-
-**Goal**: UTXO and certificate management
-
-**Target APIs** (10 WalletInterface methods):
-- Output management: 5 methods
-- Certificate management: 5 methods
-
-**Status**: Not started (0/10 methods)
-
-### 🔍 Phase 6: Advanced Features (Week 16-18)
-
-**Goal**: Advanced wallet operations
-
-**Target APIs** (6 WalletInterface methods):
-- Identity operations: 2 methods
-- Sync operations: 2 methods
-- Disclosure operations: 2 methods
-
-**Status**: Not started (0/6 methods)
-
----
-
-## 🧪 Testing Strategy
-
-### Test Sources
-
-1. **TypeScript Tests** (Primary)
-   - Location: `toolbox/ts-wallet-toolbox/test/`
-   - Total: 794 test cases
-   - Status: Being ported to Python
-
-2. **Go Tests** (Secondary - Safety Enhancement)
-   - Location: `toolbox/go-wallet-toolbox/wallet/`
-   - Adopted: 62 unique test cases (validation, BRC-29, Satoshi arithmetic)
-   - Excluded: 449 Go-specific tests (config, logging, HTTP details)
-
-3. **Universal Test Vectors** (Validation)
-   - Official BRC-100 test data
-   - Used for compliance validation
-   - Location: `tests/data/universal-test-vectors/`
-
-### Test Structure
-
-```
-tests/
-├── unit/                          # Unit tests (ported from TypeScript)
-│   ├── test_wallet_getversion.py
-│   ├── test_wallet_getnetwork.py
-│   ├── test_wallet_isauthenticated.py
-│   ├── test_wallet_waitforauthentication.py
-│   ├── test_wallet_getheight.py
-│   └── test_wallet_getheaderforheight.py
-│
-├── universal/                     # Universal Test Vectors
-│   ├── test_getversion.py
-│   ├── test_getnetwork.py
-│   ├── test_isauthenticated.py
-│   ├── test_waitforauthentication.py
-│   ├── test_getheight.py
-│   └── test_getheaderforheight.py
-│
-├── conftest.py                    # Shared fixtures and MockWalletServices
-└── data/
-    └── universal-test-vectors/    # Official BRC-100 test data
-```
-
-### Test Standards
-
-**Requirements**:
-- ✅ Given-When-Then pattern (mandatory)
-- ✅ TypeScript test reference (file path + test name)
-- ✅ Universal Test Vector validation where applicable
-- ❌ No doc/ references (separate repository)
-- ❌ No sequential test IDs (maintainability)
-
-**Example**:
+**Files to Create:**
 ```python
-@pytest.mark.asyncio
-async def test_returns_correct_version(self) -> None:
-    """Given: Wallet instance
-       When: Call getVersion
-       Then: Returns correct version string
-       
-    Reference: toolbox/ts-wallet-toolbox/test/Wallet/get/getVersion.test.ts
-               test('should return the correct wallet version')
-    """
-    # Given
-    wallet = Wallet(chain="main")
-    
-    # When
-    result = await wallet.get_version({})
-    
-    # Then
-    assert result["version"] == Wallet.VERSION
+tests/fixtures/transaction_fixtures.py  # Reusable transaction seeding
+tests/fixtures/output_fixtures.py       # Reusable output seeding
+tests/fixtures/session_utils.py         # Proper session management
 ```
 
+**Implementation Steps:**
+1. Create fixture utilities (5 calls)
+2. Implement transaction seeding (5 calls)
+3. Implement output seeding (5 calls)
+4. Update failing tests to use fixtures (5-10 calls)
+
+**Tests Fixed:**
+- `test_abort_action.py::test_abort_specific_reference`
+- `test_internalize_action.py::test_internalize_custom_output_basket_insertion`
+- `test_relinquish_output.py::test_relinquish_specific_output`
+- `test_sign_process_action.py::test_sign_action_with_valid_reference`
+- `test_sign_process_action.py::test_sign_action_with_spend_authorizations`
+- `test_sign_process_action.py::test_process_action_invalid_params_missing_txid`
+- `test_sign_process_action.py::test_process_action_new_transaction`
+- `test_sign_process_action.py::test_process_action_with_send_with` (maybe)
+
+**Estimated Effort:** 15-25 calls
+
 ---
 
-## 🛠️ Development Tools
+### 2. Integration Utilities (20-30 calls)
 
-### Required Tools
-
-- **Python 3.11+**: Core language
-- **pytest**: Test framework
-- **black**: Code formatter (120 char line length)
-- **ruff**: Linter
-- **mypy**: Type checker
-- **SQLAlchemy 2.0+**: Database ORM
-
-### Development Workflow
-
-```bash
-# 1. Format code
-black src/ tests/
-
-# 2. Lint code
-ruff check --fix src/ tests/
-
-# 3. Type check
-mypy src/
-
-# 4. Run tests
-pytest
-
-# 5. Run tests with coverage
-pytest --cov=src/bsv_wallet_toolbox --cov-report=html
+**Files to Create:**
+```python
+src/bsv_wallet_toolbox/integration/local_kv_store.py       # Key-value storage
+src/bsv_wallet_toolbox/integration/bulk_file_manager.py     # File management
+src/bsv_wallet_toolbox/integration/rw_lock.py               # Reader-writer lock
 ```
 
-### Coding Standards
+**Implementation Steps:**
+1. Implement LocalKVStore (8-10 calls)
+   - get(), set(), delete() methods
+   - In-memory storage for tests
+   
+2. Implement BulkFileDataManager (8-10 calls)
+   - CDN file management
+   - Caching logic
+   
+3. Implement SingleWriterMultiReaderLock (4-10 calls)
+   - Concurrency primitives
+   - Test scenarios
 
-- **Style**: PEP 8 (with 120 char line length)
-- **Naming**: snake_case for functions/variables, PascalCase for classes
-- **Documentation**: Google-style docstrings in English
-- **Type Hints**: Required for all public APIs
-- **Comments**: English only (no Japanese in code)
+**Tests Fixed:**
+- `test_local_kv_store.py::test_get_non_existent`
+- `test_local_kv_store.py::test_set_get`
+- `test_local_kv_store.py::test_set_x_4_get`
+- `test_local_kv_store.py::test_set_x_4_get_set_x_4_get`
+- `test_bulk_file_data_manager.py::test_default_options_cdn_files`
+- `test_bulk_file_data_manager.py::test_default_options_cdn_files_nodropall`
+- `test_single_writer_multi_reader_lock.py::test_concurrent_reads_and_writes_execute_in_correct_order`
 
----
-
-## 📚 Key Reference Documents
-
-### Primary References (TypeScript Implementation)
-
-- **Wallet Class**: `toolbox/ts-wallet-toolbox/src/Wallet.ts`
-- **WalletInterface**: TypeScript SDK types
-- **Services**: `toolbox/ts-wallet-toolbox/src/services/Services.ts`
-- **Tests**: `toolbox/ts-wallet-toolbox/test/`
-
-### Implementation Guides (Separate Repository)
-
-These documents are in a separate documentation repository:
-- Development strategy and principles
-- Complete API inventory (130 APIs)
-- Complete test inventory (856 test cases)
-- Implementation progress tracker
-- Database schema design
-
-**Note**: Reference TypeScript implementation directly; avoid cross-repository documentation dependencies.
+**Estimated Effort:** 20-30 calls
 
 ---
 
-## 🎯 Current Focus (Week 2)
+### 3. Universal Vector Fixtures (40-60 calls)
 
-### Immediate Priorities
+**Strategy:** Create deterministic test environment matching TS/Go
 
-1. **Complete P0 Method Tests**
-   - Write comprehensive test suites for 4 basic methods
-   - Validate against Universal Test Vectors
-   - Ensure all edge cases are covered
+**Files to Create:**
+```python
+tests/fixtures/universal_vector_setup.py  # Deterministic setup utilities
+tests/universal/conftest.py               # Shared fixtures for all vectors
+```
 
-2. **Implement Internal Utilities (P1)**
-   - Validation functions (14 functions)
-   - Start with `validateOriginator()` (used by all methods)
-   - Add comprehensive error handling
+**Implementation Steps:**
+1. Analyze TS/Go universal vector test setup (5 calls)
+2. Create deterministic key derivation (10 calls)
+3. Implement UTXO seeding matching vectors (10 calls)
+4. Create transaction building utilities (10 calls)
+5. Update vector tests to use fixtures (10-15 calls)
 
-3. **Begin Phase 2 Planning**
-   - Review WalletServices implementation
-   - Plan Storage layer architecture
-   - Identify additional dependencies
+**Key Challenges:**
+- Must produce **exact** txids matching vectors
+- Must use **exact** key derivation paths as TS/Go
+- Must have **exact** UTXO states as vectors expect
 
-### Weekly Goals
+**Tests Fixed:** All 22 universal vector tests
 
-- ✅ Phase 0: Complete (100%)
-- 🎯 Phase 1: Start P0 method testing
-- 📋 Phase 2: Design and planning
-
----
-
-## 🔮 Future Enhancements
-
-### v0.7.0 - Core Transaction Operations
-- Action creation and signing
-- Transaction management
-- Basic storage layer
-
-### v0.8.0 - Advanced Features
-- Certificate management
-- Identity operations
-- Sync operations
-
-### v0.9.0 - Production Readiness
-- Performance optimization
-- Security audit
-- Comprehensive error handling
-- Production-grade logging
-
-### v1.0.0 - First Stable Release
-- All 28 WalletInterface methods implemented
-- 90%+ test coverage
-- Complete documentation
-- Universal Test Vectors passing
-- Cross-implementation compatibility validated
+**Estimated Effort:** 40-60 calls
 
 ---
 
-## 🤝 Compatibility
+### 4. Chaintracks Client (20-30 calls)
 
-### Cross-Implementation Compatibility
+**Files to Create:**
+```python
+src/bsv_wallet_toolbox/services/chaintracker/chaintracks/client.py
+src/bsv_wallet_toolbox/services/chaintracker/chaintracks/fetch_utils.py
+```
 
-| Feature | TypeScript | Go | Python | Status |
-|---------|-----------|-----|--------|--------|
-| WalletInterface (28 methods) | ✅ Complete | ✅ Complete | 🚧 21% (6/28) | In Progress |
-| Storage Layer | ✅ IndexedDB | ✅ SQL | ❌ SQLAlchemy | Planned |
-| WalletServices | ✅ Multiple | ✅ Multiple | 🚧 WhatsOnChain | In Progress |
-| Universal Test Vectors | ✅ Validated | ✅ Validated | 🚧 Partial | In Progress |
+**Implementation Steps:**
+1. Implement JSON-RPC client (10-15 calls)
+2. Implement fetch utilities (5-10 calls)
+3. Add configuration support (5 calls)
 
-### Data Compatibility
+**Tests Fixed:**
+- `test_chaintracks.py::test_nodb_mainnet`
+- `test_chaintracks.py::test_nodb_testnet`
+- `test_fetch.py::test_fetchjson`
+- `test_fetch.py::test_download`
+- `test_fetch.py::test_download_716`
+- `test_fetch.py::test_download_717`
+- `test_service_client.py::test_mainnet_findheaderforheight`
+- `test_service_client.py::test_testnet_findheaderforheight`
 
-- ✅ **JSON-RPC 2.0**: Primary communication protocol (implemented)
-- 🚧 **BRC-100 ABI**: Wire protocol (planned for browser extensions)
-- ✅ **Database Schema**: Compatible with TypeScript/Go schemas
-- ✅ **Key Derivation**: BIP32/BIP39 compatible (via py-sdk)
-
----
-
-## 📞 Support & Resources
-
-### Community
-
-- **GitHub Issues**: Bug reports and feature requests
-- **Discussions**: Architecture and design discussions
-- **Documentation**: Inline docstrings and README
-
-### Contributing
-
-Contributions are welcome! Please:
-1. Follow the coding standards (English only, PEP 8)
-2. Write tests for new features
-3. Update documentation
-4. Reference TypeScript implementation for consistency
+**Estimated Effort:** 20-30 calls
 
 ---
 
-**Version**: 0.6.0  
-**Last Updated**: 2025-10-22  
-**Status**: Phase 0 Complete (100%), Phase 1 Ready to Start
+### 5. Permissions Proxy Methods (30-40 calls)
 
-**Progress**: 6/130 APIs implemented (4.6%) | 17/856 tests passing
+**Files to Update:**
+```python
+src/bsv_wallet_toolbox/manager/wallet_permissions_manager.py
+```
+
+**Implementation Steps:**
+1. Implement proxy method stubs (10 calls)
+2. Add encryption/decryption integration (10-15 calls)
+3. Implement admin originator bypass (5 calls)
+4. Update tests (5-10 calls)
+
+**Proxy Methods Needed:**
+- `create_action()`
+- `create_signature()`
+- `disclose_certificate()`
+- `list_actions()` with decryption
+- `list_outputs()` with decryption
+
+**Tests Fixed:**
+- 4 encryption integration tests
+- 6 initialization/proxy tests
+
+**Estimated Effort:** 30-40 calls
+
+---
+
+### 6. Certificate System (50-80 calls)
+
+**Files to Create:**
+```python
+src/bsv_wallet_toolbox/certificates/certificate_manager.py
+src/bsv_wallet_toolbox/certificates/proving.py
+src/bsv_wallet_toolbox/certificates/discovery.py
+src/bsv_wallet_toolbox/certificates/storage.py
+```
+
+**Implementation Steps:**
+1. Design certificate data model (5 calls)
+2. Implement certificate storage (10-15 calls)
+3. Implement certificate creation/acquisition (10-15 calls)
+4. Implement proving mechanisms (10-15 calls)
+5. Implement discovery system (10-15 calls)
+6. Integrate with wallet (5-10 calls)
+
+**Tests Fixed:** All 10 certificate tests
+
+**Estimated Effort:** 50-80 calls
+
+---
+
+### 7. Monitor Live Ingestor (5-10 calls)
+
+**Files to Create:**
+```python
+src/bsv_wallet_toolbox/monitor/live_ingestor.py
+```
+
+**Implementation Steps:**
+1. Implement header polling (5-10 calls)
+
+**Tests Fixed:**
+- `test_live_ingestor_whats_on_chain_poll.py::test_listen_for_first_new_header`
+
+**Estimated Effort:** 5-10 calls
+
+---
+
+## 🚀 RECOMMENDED IMPLEMENTATION ORDER
+
+### Week 1: Quick Wins (35-55 calls)
+**Goal:** +14 tests passing (604 → 618, 76%)**
+
+1. Wallet Test Data Fixtures (15-25 calls) → +7-8 tests
+2. Integration Utilities (20-30 calls) → +7 tests
+
+**Result:** Foundation infrastructure in place
+
+### Week 2: Specification Compliance (40-60 calls)
+**Goal:** +22 tests passing (618 → 640, 79%)**
+
+3. Universal Vector Fixtures (40-60 calls) → +22 tests
+
+**Result:** Full BRC-100 compliance proven
+
+### Week 3: Supporting Systems (50-70 calls)
+**Goal:** +19 tests passing (640 → 659, 81%)**
+
+4. Chaintracks Client (20-30 calls) → +8 tests
+5. Permissions Proxy Methods (30-40 calls) → +10 tests
+6. Monitor Live Ingestor (5-10 calls) → +1 test
+
+**Result:** All supporting systems functional
+
+### Week 4: Enterprise Features (50-80 calls)
+**Goal:** +10 tests passing (659 → 669, 83%)**
+
+7. Certificate System (50-80 calls) → +10 tests
+
+**Result:** Complete enterprise feature set
+
+---
+
+## 📊 CUMULATIVE PROGRESS PROJECTION
+
+| Milestone | Tests Passing | Coverage | Calls | Cumulative Calls |
+|-----------|---------------|----------|-------|------------------|
+| **Current** | 604 | 75% | 0 | 225 |
+| After Week 1 | 618 | 76% | 35-55 | 260-280 |
+| After Week 2 | 640 | 79% | 75-115 | 300-340 |
+| After Week 3 | 659 | 81% | 125-185 | 350-410 |
+| After Week 4 | 669 | 83% | 175-265 | 400-490 |
+
+**Final Goal:** 669/809 passing (83%)
+
+---
+
+## 🎯 SUCCESS CRITERIA
+
+### By Priority Level
+
+**Priority 1 Complete (Week 1):**
+- ✅ Wallet tests have proper fixtures
+- ✅ Integration utilities implemented
+- ✅ 618/809 tests passing (76%)
+
+**Priority 2 Complete (Week 2-3):**
+- ✅ Universal vectors all passing
+- ✅ Chaintracks client functional
+- ✅ Permissions proxy methods working
+- ✅ 659/809 tests passing (81%)
+
+**Priority 3 Complete (Week 4):**
+- ✅ Certificate system fully implemented
+- ✅ 669/809 tests passing (83%)
+- ✅ All major subsystems complete
+
+---
+
+## 💡 IMPLEMENTATION TIPS
+
+### For Wallet Test Data Fixtures
+- Use pytest fixtures with `scope="function"` to avoid session conflicts
+- Create factories that return new instances each time
+- Use SQLAlchemy's scoped_session properly
+- Consider using test database transactions for isolation
+
+### For Universal Vectors
+- Start by running TS/Go tests to see exact setup
+- Extract key derivation paths from vector generation code
+- Match UTXO setup exactly (amounts, scripts, etc.)
+- Use same transaction building logic as TS/Go
+
+### For Chaintracks
+- Use async/await consistently
+- Implement proper error handling for network failures
+- Add caching to reduce API calls
+- Test with both mainnet and testnet
+
+### For Certificates
+- Design data model first
+- Consider using existing storage provider tables
+- Implement proving before discovery
+- Test certificate chains thoroughly
+
+---
+
+## 📝 NOTES
+
+### What's NOT Needed (Already Done)
+- ✅ Core wallet functionality (75% proven)
+- ✅ Transaction building and signing
+- ✅ Storage layer
+- ✅ Service integration basics
+- ✅ Utils (HeightRange, MerklePath, etc.)
+
+### What IS Needed (This Roadmap)
+- Test infrastructure (fixtures, utilities)
+- Specification compliance (universal vectors)
+- Supporting systems (chaintracks, monitor)
+- Enterprise features (certificates, permissions)
+
+### Critical Success Factors
+1. **Don't modify universal test vectors** - Implementation must match them
+2. **Use proper fixtures** - Avoid SQLAlchemy session conflicts
+3. **Follow TS/Go patterns** - Maintain parity
+4. **Test incrementally** - One subsystem at a time
+5. **Document as you go** - Keep roadmap updated
+
+---
+
+## ✨ CONCLUSION
+
+**Total Estimated Effort:** 175-265 tool calls  
+**Total Tests to Fix:** 65  
+**Final Coverage Target:** 83% (669/809)
+
+**This roadmap provides:**
+- ✅ Clear priorities (ordered by ROI)
+- ✅ Detailed implementation steps
+- ✅ Effort estimates for each category
+- ✅ Success criteria at each milestone
+- ✅ Practical implementation tips
+
+**Next Steps:**
+1. Start with Priority 1 (Week 1) for quick wins
+2. Move to Priority 2 (Weeks 2-3) for spec compliance
+3. Complete Priority 3 (Week 4) for enterprise features
+
+**Status:** Ready for systematic implementation 🚀

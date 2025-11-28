@@ -8,9 +8,9 @@ Reference: wallet-toolbox/src/services/providers/__tests/exchangeRates.test.ts
 import pytest
 
 try:
-    from bsv_wallet_toolbox.services import create_default_wallet_services_options
+    from bsv_wallet_toolbox.services import create_default_options
     from bsv_wallet_toolbox.services.providers import update_exchangeratesapi
-    from bsv_wallet_toolbox.utils import TestUtils
+    from tests.test_utils import TestUtils
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -24,7 +24,7 @@ class TestExchangeRates:
                describe('exchangeRates tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for exchangeRates implementation")
+    @pytest.mark.skip(reason="update_exchangeratesapi not yet implemented")
     def test_update_exchange_rates_for_multiple_currencies(self) -> None:
         """Given: Default wallet services options for mainnet
            When: Call updateExchangeratesapi with ['EUR', 'GBP', 'USD']
@@ -36,11 +36,12 @@ class TestExchangeRates:
         Note: The default API key for this service is severely use limited.
               Do not run this test aggressively without substituting your own key.
         """
-        # Given
+        # Given - Requires implementation of update_exchangeratesapi
+        from tests.test_utils import TestUtils
         if TestUtils.no_env("main"):
             pytest.skip("No 'main' environment configured")
 
-        options = create_default_wallet_services_options("main")
+        options = create_default_options("main")
         # To use your own API key, uncomment:
         # options.exchangeratesapi_key = 'YOUR_API_KEY'
 

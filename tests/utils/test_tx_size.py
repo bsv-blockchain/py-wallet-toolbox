@@ -25,7 +25,6 @@ class TestTxSize:
     Reference: go-wallet-toolbox/pkg/internal/txutils/tx_size_test.go
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for transaction_input_size implementation")
     def test_input_size(self) -> None:
         """Given: Unlocking script size
            When: Calculate transaction input size
@@ -43,7 +42,6 @@ class TestTxSize:
         # Then
         assert size == 40 + unlocking_script_size + 1
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for transaction_output_size implementation")
     def test_output_size(self) -> None:
         """Given: Locking script size
            When: Calculate transaction output size
@@ -61,7 +59,6 @@ class TestTxSize:
         # Then
         assert size == 8 + locking_script_size + 1
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for transaction_size implementation")
     def test_transaction_size(self) -> None:
         """Given: Lists of input and output sizes
            When: Calculate total transaction size
@@ -126,7 +123,6 @@ class TestTxSize:
             # Then
             assert size == test["expected"], f"Test '{name}' failed"
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for transaction_size implementation")
     def test_transaction_size_with_error_on_inputs(self) -> None:
         """Given: Input sizes with error condition
            When: Calculate transaction size
@@ -151,7 +147,6 @@ class TestTxSize:
         with pytest.raises(ValueError):
             transaction_size(list(error_inputs()), output_sizes)
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for transaction_size implementation")
     def test_transaction_size_with_error_on_outputs(self) -> None:
         """Given: Output sizes with error condition
            When: Calculate transaction size

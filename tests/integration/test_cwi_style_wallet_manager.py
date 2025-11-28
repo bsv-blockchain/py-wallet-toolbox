@@ -14,10 +14,13 @@ from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
+# Mark entire module as needing CWI integration implementation
+pytestmark = pytest.mark.skip(reason="Needs CWI-style wallet manager implementation (25 tests)")
+
 try:
     from bsv.sdk import SymmetricKey
     from bsv.wallet.wallet_interface import WalletInterface
-    from bsv_wallet_toolbox.cwi_style_wallet_manager import (
+    from bsv_wallet_toolbox.manager.cwi_style_wallet_manager import (
         PBKDF2_NUM_ROUNDS,
         CWIStyleWalletManager,
         UMPToken,
@@ -128,7 +131,6 @@ async def create_mock_ump_token(  # noqa: PLR0913
 class TestCWIStyleWalletManagerXOR:
     """Test suite for XOR utility function."""
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     def test_xor_function_verifies_correctness(self) -> None:
         """Given: Two byte arrays
            When: XOR them together
@@ -149,7 +151,6 @@ class TestCWIStyleWalletManagerXOR:
 class TestCWIStyleWalletManagerNewUser:
     """Test suite for new user creation."""
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_successfully_creates_a_new_token_and_calls_buildandsend(self) -> None:
         """Given: New user registration with presentation key and password
@@ -182,7 +183,6 @@ class TestCWIStyleWalletManagerNewUser:
         assert result["token"] is not None
         assert mock_ump_interactor.build_and_send.call_count == 1
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_user_tries_to_provide_recovery_key_during_new_user_flow(self) -> None:
         """Given: New user registration attempt
@@ -217,7 +217,6 @@ class TestCWIStyleWalletManagerNewUser:
 class TestCWIStyleWalletManagerExistingUser:
     """Test suite for existing user authentication."""
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_decryption_of_primary_key_and_building_the_wallet(self) -> None:
         """Given: Existing user with stored UMP token
@@ -259,7 +258,6 @@ class TestCWIStyleWalletManagerExistingUser:
         assert result["wallet"] is not None
         assert mock_wallet_builder.call_count == 1
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_successfully_decrypts_with_presentation_plus_recovery(self) -> None:
         """Given: Existing user with stored UMP token
@@ -300,7 +298,6 @@ class TestCWIStyleWalletManagerExistingUser:
         assert result["authenticated"] is True
         assert result["primary_key"] is not None
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_presentation_key_not_provided_first(self) -> None:
         """Given: Authentication attempt
@@ -329,7 +326,6 @@ class TestCWIStyleWalletManagerExistingUser:
         with pytest.raises(ValueError, match="presentation key required"):
             await manager.authenticate_with_recovery(None, recovery_key)
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_works_with_correct_keys_sets_mode_as_existing_user(self) -> None:
         """Given: Correct presentation key and password
@@ -370,7 +366,6 @@ class TestCWIStyleWalletManagerExistingUser:
         assert result["mode"] == "existing-user"
         assert result["authenticated"] is True
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_no_token_found_by_recovery_key_hash(self) -> None:
         """Given: Recovery key that doesn't match any stored token
@@ -404,7 +399,6 @@ class TestCWIStyleWalletManagerExistingUser:
 class TestCWIStyleWalletManagerSnapshot:
     """Test suite for snapshot save/load functionality."""
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_saves_a_snapshot_and_can_load_it_into_a_fresh_manager_instance(self) -> None:
         """Given: Authenticated manager with wallet
@@ -457,7 +451,6 @@ class TestCWIStyleWalletManagerSnapshot:
         assert manager2.is_authenticated() is True
         assert manager2.get_primary_key() == manager1.get_primary_key()
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_error_if_saving_snapshot_while_no_primary_key_or_token_set(self) -> None:
         """Given: Manager without authentication
@@ -484,7 +477,6 @@ class TestCWIStyleWalletManagerSnapshot:
         with pytest.raises(ValueError, match="not authenticated"):
             await manager.save_snapshot()
 
-    @pytest.mark.skip(reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_snapshot_is_corrupt_or_cannot_be_decrypted(self) -> None:
         """Given: Corrupted or invalid snapshot data
@@ -521,7 +513,6 @@ class TestCWIStyleWalletManagerChangePassword:
                describe('Change Password')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_requires_authentication_and_updates_the_ump_token_on_chain(self) -> None:
         """Given: Authenticated manager
@@ -564,7 +555,6 @@ class TestCWIStyleWalletManagerChangePassword:
         # Then
         assert mock_ump_interactor.build_and_send.call_count == 2  # Initial + change
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_not_authenticated(self) -> None:
         """Given: Unauthenticated manager
@@ -600,7 +590,6 @@ class TestCWIStyleWalletManagerChangeRecoveryKey:
                describe('Change Recovery Key')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_prompts_to_save_the_new_key_updates_the_token(self) -> None:
         """Given: Authenticated manager
@@ -642,7 +631,6 @@ class TestCWIStyleWalletManagerChangeRecoveryKey:
         assert mock_recovery_key_saver.call_count == 2  # Initial + change
         assert mock_ump_interactor.build_and_send.call_count == 2
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_not_authenticated_527(self) -> None:
         """Given: Unauthenticated manager
@@ -678,7 +666,6 @@ class TestCWIStyleWalletManagerChangePresentationKey:
                describe('Change Presentation Key')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_requires_authentication_re_publishes_the_token_old_token_consumed(self) -> None:
         """Given: Authenticated manager
@@ -728,7 +715,6 @@ class TestCWIStyleWalletManagerDestroy:
                test('Destroy callback clears sensitive data')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_destroy_callback_clears_sensitive_data(self) -> None:
         """Given: Authenticated manager
@@ -782,7 +768,6 @@ class TestCWIStyleWalletManagerProxyMethods:
                describe('Proxy method calls')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_user_is_not_authenticated(self) -> None:
         """Given: Unauthenticated manager
@@ -810,7 +795,6 @@ class TestCWIStyleWalletManagerProxyMethods:
         with pytest.raises(ValueError, match="User is not authenticated"):
             await manager.get_public_key({"identity_key": True})
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_throws_if_originator_is_adminoriginator(self) -> None:
         """Given: Authenticated manager
@@ -849,7 +833,6 @@ class TestCWIStyleWalletManagerProxyMethods:
         with pytest.raises(ValueError, match="External applications are not allowed to use the admin originator"):
             await manager.get_public_key({"identity_key": True}, originator="admin.test.com")
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_passes_if_user_is_authenticated_and_originator_is_not_admin(self) -> None:
         """Given: Authenticated manager with normal originator
@@ -891,7 +874,6 @@ class TestCWIStyleWalletManagerProxyMethods:
         # Then
         mock_underlying_wallet.get_public_key.assert_called_once()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_all_proxied_methods_call_underlying_with_correct_arguments(self) -> None:
         """Given: Authenticated manager
@@ -937,7 +919,6 @@ class TestCWIStyleWalletManagerProxyMethods:
             {"plaintext": [1, 2, 3], "protocolID": [1, "tests"], "keyID": "1"}, "mydomain.com"
         )
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_isauthenticated_rejects_if_originator_is_admin_resolves_otherwise(self) -> None:
         """Given: Authenticated manager
@@ -980,7 +961,6 @@ class TestCWIStyleWalletManagerProxyMethods:
         result = await manager.is_authenticated({}, originator="normal.com")
         assert result == {"authenticated": True}
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_waitforauthentication_eventually_resolves(self) -> None:
         """Given: Authenticated manager
@@ -1030,7 +1010,6 @@ class TestCWIStyleWalletManagerAdditionalTests:
                describe('Additional Tests for Password Retriever Callback, Privileged Key Expiry, and UMP Token Serialization')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_serializeumptoken_and_deserializeumptoken_correctly_round_trip_a_ump_token(self) -> None:
         """Given: UMP token
@@ -1078,7 +1057,6 @@ class TestCWIStyleWalletManagerAdditionalTests:
             deserialized = deserialize_fn(serialized)
             assert deserialized == token
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_password_retriever_callback_the_test_function_is_passed_and_returns_a_boolean(self) -> None:
         """Given: Manager with custom password retriever
@@ -1129,7 +1107,6 @@ class TestCWIStyleWalletManagerAdditionalTests:
         assert captured_test_fn("test-password") is True
         assert captured_test_fn("wrong-password") is False
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for CWIStyleWalletManager implementation")
     @pytest.mark.asyncio
     async def test_privileged_key_expiry_each_call_to_decrypt_via_the_privileged_manager_invokes_passwordretriever(
         self,

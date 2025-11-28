@@ -23,7 +23,6 @@ class TestContainsUtxo:
                 func TestContainsUtxo(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for contains_utxo implementation")
     def test_contains_utxo_checks_presence_correctly(self) -> None:
         """Given: List of UTXO details and an outpoint
            When: Check if outpoint is in the list

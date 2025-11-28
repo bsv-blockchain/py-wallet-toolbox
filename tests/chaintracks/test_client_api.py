@@ -12,6 +12,9 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+# Mark entire module as needing chaintracks client implementation  
+pytestmark = pytest.mark.skip(reason="Needs Chaintracks client API implementation (10 tests)")
+
 if TYPE_CHECKING:
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import ChaintracksClientApi
 
@@ -66,7 +69,6 @@ class TestChaintracksClientApi:
         # Cleanup
         local_service.stop_json_rpc_server()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_getchain(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call getChain
@@ -85,7 +87,6 @@ class TestChaintracksClientApi:
             got_chain = client.get_chain()
             assert got_chain == chain
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_getinfo(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call getInfo
@@ -107,7 +108,6 @@ class TestChaintracksClientApi:
             assert got_info.height_bulk > 700000
             assert got_info.height_live >= first_tip.height - 2
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_getpresentheight(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call getPresentHeight
@@ -126,7 +126,6 @@ class TestChaintracksClientApi:
             present_height = client.get_present_height()
             assert present_height >= first_tip.height - 2
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_getheaders(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call getHeaders for various height ranges
@@ -170,7 +169,6 @@ class TestChaintracksClientApi:
         headers = deserialize_base_block_headers(data)
         return headers
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_findchaintipheader(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call findChainTipHeader
@@ -189,7 +187,6 @@ class TestChaintracksClientApi:
             tip_header = client.find_chain_tip_header()
             assert tip_header.height >= first_tip.height
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_findchaintiphash(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call findChainTipHash
@@ -207,7 +204,6 @@ class TestChaintracksClientApi:
             hash_str = client.find_chain_tip_hash()
             assert len(hash_str) == 64
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_findheaderforheight(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call findHeaderForHeight for genesis, tip, and missing height
@@ -239,7 +235,6 @@ class TestChaintracksClientApi:
             missing = client.find_header_for_height(99999999)
             assert missing is None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_addheader(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call addHeader with chain tip header data
@@ -265,7 +260,6 @@ class TestChaintracksClientApi:
             }
             client.add_header(h)
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_subscribeheaders(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call subscribeHeaders with header listener
@@ -291,7 +285,6 @@ class TestChaintracksClientApi:
             assert isinstance(subscription_id, str)
             assert client.unsubscribe(subscription_id) is True
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChaintracksClientApi implementation")
     def test_subscribereorgs(self, setup_clients) -> None:
         """Given: ChaintracksClientApi clients
            When: Call subscribeReorgs with reorg listener

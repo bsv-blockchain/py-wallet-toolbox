@@ -31,6 +31,8 @@ Phase 4 Implementation Status:
 # TODO: Phase 5 - ChainTracks integration for advanced sync
 """
 
+import asyncio
+import inspect
 from collections.abc import Callable
 from time import time
 from typing import Any
@@ -315,6 +317,21 @@ class Services(WalletServices):
             "getTransactionStatus": self.get_transaction_status_services.get_service_call_history(reset),
         }
 
+    @staticmethod
+    def _run_async(coro_or_result: Any) -> Any:
+        """Helper to run async coroutines or return sync results.
+
+        Args:
+            coro_or_result: Either a coroutine or a direct result
+
+        Returns:
+            The result, running the coroutine if needed
+        """
+        if inspect.iscoroutine(coro_or_result):
+            # Run the coroutine using asyncio.run (creates new event loop)
+            return asyncio.run(coro_or_result)
+        return coro_or_result
+
     def get_chain_tracker(self) -> ChainTracker:
         """Get ChainTracker instance for Merkle proof verification.
 
@@ -559,8 +576,8 @@ class Services(WalletServices):
         for _tries in range(services.count):
             stc = services.service_to_call
             try:
-                # Call service
-                r = stc.service(txid, self.chain)
+                # Call service (handle async if needed)
+                r = self._run_async(stc.service(txid, self.chain))
 
                 if isinstance(r, dict) and r.get("rawTx"):
                     # Validate transaction hash matches
@@ -609,6 +626,10 @@ class Services(WalletServices):
             True if the Merkle root matches the header's merkleRoot at the height
         """
         return self.whatsonchain.is_valid_root_for_height(root, height)
+
+    def get_merkle_path(self, txid: str, use_next: bool = False) -> dict[str, Any]:
+        """Alias for get_merkle_path_for_transaction for test compatibility."""
+        return self.get_merkle_path_for_transaction(txid, use_next)
 
     def get_merkle_path_for_transaction(self, txid: str, use_next: bool = False) -> dict[str, Any]:
         """Get the Merkle path for a transaction with multi-provider failover and caching.
@@ -840,8 +861,11 @@ class Services(WalletServices):
             for _tries in range(services.count):
                 stc = services.service_to_call
                 try:
-                    # Call service
-                    r = stc.service(output, output_format, outpoint)
+                    # Call service (handle async if needed)
+                    if asyncio.iscoroutinefunction(stc.service):
+                        r = self._run_async(stc.service(output, output_format, outpoint))
+                    else:
+                        r = stc.service(output, output_format, outpoint)
 
                     if isinstance(r, dict) and r.get("status") == "success":
                         # Success - cache and return
@@ -912,8 +936,11 @@ class Services(WalletServices):
         for _tries in range(services.count):
             stc = services.service_to_call
             try:
-                # Call service
-                r = stc.service(script_hash)
+                # Call service (handle async if needed)
+                if asyncio.iscoroutinefunction(stc.service):
+                    r = self._run_async(stc.service(script_hash))
+                else:
+                    r = stc.service(script_hash)
 
                 if isinstance(r, dict) and r.get("status") == "success":
                     # Success - cache and return
@@ -977,16 +1004,20 @@ class Services(WalletServices):
         for _tries in range(services.count):
             stc = services.service_to_call
             try:
-                # Call service
-                r = stc.service(txid, use_next)
+                # Call service (handle async if needed)
+                if asyncio.iscoroutinefunction(stc.service):
+                    r = self._run_async(stc.service(txid, use_next))
+                else:
+                    r = stc.service(txid, use_next)
 
-                if isinstance(r, dict) and r.get("status") == "success":
-                    # Success - cache and return
+                # For transaction status, any response with a valid status field is success
+                if isinstance(r, dict) and "status" in r and not r.get("error"):
+                    # Valid transaction status - cache and return
                     result = r
                     services.add_service_call_success(stc)
                     self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
                     return result
-                # Failure or not found
+                # Failure or error
                 elif isinstance(r, dict) and r.get("error"):
                     services.add_service_call_error(stc, r["error"])
                 else:
@@ -1051,7 +1082,8 @@ class Services(WalletServices):
         # 1. Try ARC GorillaPool (if configured)
         if self.arc_gorillapool:
             try:
-                res = self.arc_gorillapool.broadcast(tx)
+                # Handle async broadcast
+                res = self._run_async(self.arc_gorillapool.broadcast(tx))
                 if getattr(res, "status", "") == "success":
                     self.post_beef_services.add_service_call_success(
                         {"name": "arcGorillaPool", "service": self.arc_gorillapool.post_beef}
@@ -1074,7 +1106,8 @@ class Services(WalletServices):
         # 2. Try ARC TAAL (if configured)
         if self.arc_taal:
             try:
-                res = self.arc_taal.broadcast(tx)
+                # Handle async broadcast
+                res = self._run_async(self.arc_taal.broadcast(tx))
                 if getattr(res, "status", "") == "success":
                     self.post_beef_services.add_service_call_success(
                         {"name": "arcTaal", "service": self.arc_taal.post_beef}
@@ -1134,7 +1167,8 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
         """
-        if self.arc_url:
+        # Use ARC if either provider is configured
+        if self.arc_gorillapool or self.arc_taal:
             results: list[dict[str, Any]] = []
             for beef in beefs:
                 results.append(self.post_beef(beef))

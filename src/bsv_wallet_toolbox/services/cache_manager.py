@@ -11,7 +11,7 @@ Example:
     ...     print(result)  # {"data": "value"}
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Generic, TypeVar
 
 T = TypeVar("T")
@@ -28,7 +28,7 @@ class CacheEntry(Generic[T]):
             ttl_msecs: Time-to-live in milliseconds
         """
         self.value = value
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(UTC)
         self.ttl = timedelta(milliseconds=ttl_msecs)
 
     def is_expired(self) -> bool:
@@ -37,7 +37,7 @@ class CacheEntry(Generic[T]):
         Returns:
             True if the entry has exceeded its TTL, False otherwise
         """
-        return datetime.utcnow() > self.created_at + self.ttl
+        return datetime.now(UTC) > self.created_at + self.ttl
 
 
 class CacheManager(Generic[T]):

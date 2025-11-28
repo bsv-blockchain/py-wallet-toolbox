@@ -40,7 +40,6 @@ def _default_args() -> dict[str, Any]:
     }
 
 
-@pytest.mark.xfail(reason="TODO: parity with TS/Go noSendChange duplicate check", strict=True)
 def test_create_action_nosendchange_duplicate(storage_seeded: tuple[StorageProvider, dict[str, Any]]) -> None:
     """Duplicated noSendChange outpoints must raise (Go TestCreateActionWithNoSendChangeDuplicate)."""
 
@@ -71,7 +70,6 @@ def test_create_action_nosendchange_duplicate(storage_seeded: tuple[StorageProvi
         storage.create_action(_auth_for(user), args)
 
 
-@pytest.mark.xfail(reason="TODO: parity with TS/Go output tag propagation", strict=True)
 def test_create_action_output_tags_persisted(storage_seeded: tuple[StorageProvider, dict[str, Any]]) -> None:
     """Output tags supplied by caller should be inserted and mapped (Go TestCreateActionOutputTags)."""
 
@@ -189,7 +187,6 @@ def test_create_action_randomizes_outputs(storage_seeded: tuple[StorageProvider,
     assert order not in ([0, 1, 2], [2, 1, 0])
 
 
-@pytest.mark.xfail(reason="TODO: parity with TS returnTXIDOnly", strict=True)
 def test_create_action_known_txids_return_txid_only(storage_seeded: tuple[StorageProvider, dict[str, Any]]) -> None:
     """When returnTXIDOnly is true, signable transaction bytes should be omitted (TS createAction2 test)."""
 

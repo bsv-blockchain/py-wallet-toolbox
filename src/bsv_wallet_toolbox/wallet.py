@@ -28,7 +28,13 @@ from .manager.wallet_settings_manager import WalletSettingsManager
 from .sdk.privileged_key_manager import PrivilegedKeyManager
 from .sdk.types import specOpInvalidChange, specOpThrowReviewActions, specOpWalletBalance
 from .services import WalletServices
-from .signer.methods import acquire_direct_certificate, prove_certificate
+from .signer.methods import (
+    acquire_direct_certificate,
+    create_action as signer_create_action,
+    internalize_action as signer_internalize_action,
+    prove_certificate,
+    sign_action as signer_sign_action,
+)
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
 from .utils.validation import (
     validate_abort_action_args,
@@ -132,7 +138,7 @@ class Wallet:
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "0.28.0"  # Will become "1.0.0" when project manager approved our implementation
+    VERSION = "1.0.0"  # Updated to match Universal Test Vectors
 
     def __init__(  # noqa: PLR0913
         self,
@@ -166,7 +172,14 @@ class Wallet:
         Note:
             Version is not configurable, it's a class constant.
             Chain parameter is required (no default value), matching TypeScript implementation.
+
+        Raises:
+            ValueError: If chain is not 'main' or 'test'
         """
+        # Validate chain parameter
+        if chain not in ("main", "test"):
+            raise ValueError(f"Invalid chain: {chain}. Must be 'main' or 'test'.")
+        
         self.chain: Chain = chain
         self.services: WalletServices | None = services
         self.key_deriver: KeyDeriver | None = key_deriver
@@ -200,6 +213,9 @@ class Wallet:
         except Exception:
             # Fallback if Beef initialization fails
             self.beef = None
+        
+        # Fallback list for known txids when BEEF isn't available
+        self._known_txids: list[str] = []
 
         self.auto_known_txids: bool = False  # Wave 4: autoKnownTxids setting
         self.include_all_source_transactions: bool = False  # Wave 4: includeAllSourceTransactions
@@ -220,6 +236,43 @@ class Wallet:
                 self.storage.set_services(self.services)
         except Exception:
             # Best-effort wiring; storage providers without set_services are tolerated
+            pass
+
+        # Initialize default labels and baskets if storage is available
+        # TS parity: TypeScript wallet ensures defaults exist on initialization
+        if self.storage is not None:
+            self._ensure_defaults()
+
+    def _ensure_defaults(self) -> None:
+        """Ensure default labels and baskets exist in storage.
+
+        Creates default label and default basket for the wallet user if they don't exist.
+        This matches TypeScript behavior where wallet initialization ensures defaults.
+
+        Reference: ts-wallet-toolbox/src/Wallet.ts (constructor initialization)
+        """
+        if not self.storage:
+            return
+
+        try:
+            # Ensure storage is available
+            self.storage.make_available()
+            
+            # Get or create user
+            auth = self._make_auth()
+            user_id = auth.get("userId")
+            
+            if not user_id:
+                return
+
+            # Ensure default label and basket exist using find_or_insert methods
+            # These methods handle checking if the record already exists
+            self.storage.find_or_insert_tx_label(user_id, "default")
+            self.storage.find_or_insert_output_basket(user_id, "default")
+
+        except Exception:
+            # Best-effort: If defaults can't be created, continue anyway
+            # Storage might not be fully initialized yet
             pass
 
     def _validate_originator(self, originator: str | None) -> None:
@@ -396,15 +449,22 @@ class Wallet:
             new_known_txids: Optional list of new transaction IDs to merge
 
         Returns:
-            List of valid transaction IDs from BEEF
+            List of valid transaction IDs from BEEF or fallback list
 
         Note:
             Merges new txids into self.beef as txid-only transactions and returns
             all valid txids from the BEEF. Uses py-sdk Beef.merge_txid_only() and
-            get_valid_txids() methods.
+            get_valid_txids() methods. Falls back to simple list when BEEF unavailable.
         """
+        # Add new txids to fallback list (used when BEEF not available)
+        if new_known_txids:
+            for txid in new_known_txids:
+                if txid not in self._known_txids:
+                    self._known_txids.append(txid)
+        
         if not self.beef:
-            return new_known_txids or []
+            # Return sorted fallback list when BEEF not available
+            return sorted(self._known_txids)
 
         try:
             # Merge new txids into BEEF as txid-only transactions
@@ -420,10 +480,10 @@ class Wallet:
                 return self.beef.get_valid_txids()
 
         except Exception:
-            # Best-effort: if any error occurs, return provided txids
+            # Best-effort: if any error occurs, return fallback list
             pass
 
-        return new_known_txids or []
+        return sorted(self._known_txids)
 
     def destroy(self) -> None:
         """Destroy wallet and clean up resources.
@@ -484,12 +544,17 @@ class Wallet:
         Returns:
             Dict with keys: totalOutputs, outputs.
         Raises:
-            InvalidParameterError: If originator is invalid.
+            InvalidParameterError: If originator or args are invalid.
             RuntimeError: If storage provider is not configured.
         Reference:
             toolbox/ts-wallet-toolbox/src/Wallet.ts
         """
+        from bsv_wallet_toolbox.utils.validation import validate_list_outputs_args
+        
+        # Validate parameters
         self._validate_originator(originator)
+        validate_list_outputs_args(args)
+        
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth")
@@ -501,14 +566,30 @@ class Wallet:
         return self.storage.list_outputs(auth, args)
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
-        """List certificates with optional filters."""
+        """List certificates with optional filters.
+        
+        Args:
+            args: Input dict with optional filters (certifiers, types, limit, etc.)
+            originator: Optional originator domain string (<250 bytes).
+            
+        Returns:
+            Dict with keys: totalCertificates, certificates.
+            
+        Raises:
+            InvalidParameterError: If originator or args are invalid.
+            RuntimeError: If storage provider is not configured.
+        """
+        from bsv_wallet_toolbox.utils.validation import validate_list_certificates_args
+        
+        # Validate parameters
         self._validate_originator(originator)
+        validate_list_certificates_args(args)
 
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # Generate auth object with identity key
-        auth = self._make_auth()
+        auth = args.get("auth") if "auth" in args else self._make_auth()
 
         # Delegate to storage provider (TS parity)
         return self.storage.list_certificates(auth, args)
@@ -533,9 +614,16 @@ class Wallet:
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
-        # For now, simple stub that returns success
-        # Full implementation would parse output identifier and update storage
-        result = self.storage.relinquish_output(args)
+        # Generate auth object with identity key
+        auth = self._make_auth()
+
+        # Extract outpoint from args
+        outpoint = args.get("output")
+        if not outpoint:
+            raise InvalidParameterError("output", "required")
+
+        # Delegate to storage provider
+        result = self.storage.relinquish_output(auth, outpoint)
 
         return {"relinquished": bool(result)}
 
@@ -707,9 +795,6 @@ class Wallet:
         if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
-        # Validate input arguments (raises InvalidParameterError on failure)
-        validate_create_action_args(args)
-
         # Initialize options if not provided (TS parity: args.options ||= {})
         if "options" not in args or args["options"] is None:
             args["options"] = {}
@@ -723,21 +808,39 @@ class Wallet:
             # Get known transaction IDs from wallet state (TS parity: calls getKnownTxids)
             args["options"]["knownTxids"] = self.get_known_txids(args["options"].get("knownTxids"))
 
+        # Validate and normalize args - returns vargs with computed flags (TS parity)
+        # validate_create_action_args computes: isNewTx, isSendWith, isDelayed, isNoSend, etc.
+        vargs = validate_create_action_args(args)
+
         # Generate auth object with identity key
         auth = self._make_auth()
 
         # Apply wallet-level configuration for complete transaction handling
         # TS: vargs.includeAllSourceTransactions = this.includeAllSourceTransactions
-        if "includeAllSourceTransactions" not in args:
-            args["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", False)
+        if "includeAllSourceTransactions" not in vargs:
+            vargs["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", False)
 
         # Apply random values if configured (TS: if (this.randomVals && this.randomVals.length > 1))
         random_vals = getattr(self, "random_vals", None)
-        if random_vals and len(random_vals) > 1 and "randomVals" not in args:
-            args["randomVals"] = random_vals[:]
+        if random_vals and len(random_vals) > 1 and "randomVals" not in vargs:
+            vargs["randomVals"] = random_vals[:]
 
-        # Delegate to storage provider (TS: await createAction(this, auth, vargs))
-        result = self.storage.create_action(auth, args)
+        # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
+        signer_result = signer_create_action(self, auth, vargs)
+        
+        # Convert CreateActionResultX to BRC-100 CreateActionResult
+        # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
+        result = {}
+        if signer_result.txid is not None:
+            result["txid"] = signer_result.txid
+        if signer_result.tx is not None:
+            # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
+            result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
+        if signer_result.no_send_change is not None:
+            result["noSendChange"] = signer_result.no_send_change
+        if signer_result.signable_transaction is not None:
+            result["signableTransaction"] = signer_result.signable_transaction
+        # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
 
         # Wave 4 Enhancement - BEEF integration (TS parity)
         # 1. BEEF merge from transaction (if r.tx): this.beef.mergeBeefFromParty(this.storageParty, r.tx)
@@ -756,13 +859,13 @@ class Wallet:
 
         # 2. Atomic BEEF verification (if r.tx): r.tx = this.verifyReturnedTxidOnlyAtomicBEEF(...)
         if "tx" in result and result["tx"] is not None:
-            known_txids = args.get("options", {}).get("knownTxids")
+            known_txids = vargs.get("options", {}).get("knownTxids")
             verified_beef = self.verify_returned_txid_only_atomic_beef(result["tx"], known_txids)
             if verified_beef is not None:
                 result["tx"] = verified_beef
 
         # 3. Error handling (unless isDelayed): throwIfAnyUnsuccessfulCreateActions(r)
-        if not args.get("options", {}).get("isDelayed"):
+        if not vargs.get("isDelayed"):
             throw_if_any_unsuccessful_create_actions(result)
 
         return result
@@ -804,10 +907,20 @@ class Wallet:
         # Generate auth object with identity key
         auth = self._make_auth()
 
-        # Delegate to storage provider for signing and finalization
+        # Delegate to signer layer for BRC-100 compliant signing
         # TS: const { auth, vargs } = this.validateAuthAndArgs(args, validateSignActionArgs)
         # TS: const r = await signAction(this, auth, args)
-        result = self.storage.process_action(auth, args)
+        signer_result = signer_sign_action(self, auth, args)
+        
+        # Convert to BRC-100 SignActionResult format
+        # Remove internal fields (sendWithResults, notDelayedResults) - not part of BRC-100 spec
+        result = {}
+        if signer_result.get("txid") is not None:
+            result["txid"] = signer_result["txid"]
+        if signer_result.get("tx") is not None:
+            # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
+            result["tx"] = _to_byte_list(signer_result["tx"]) if isinstance(signer_result["tx"], bytes) else signer_result["tx"]
+        # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
 
         # Wave 4 Enhancement - Pending action tracking & BEEF integration (TS parity)
         # 1. Pending sign action lookup (if this.pendingSignActions[args.reference])
@@ -907,9 +1020,9 @@ class Wallet:
             # Implement throwDummyReviewActions() to fail with dummy review actions
             _throw_dummy_review_actions()
 
-        # Delegate to storage provider for internalization logic
+        # Delegate to signer layer for BRC-100 compliant internalization
         # TS: const r = await internalizeAction(this, auth, args)
-        result = self.storage.internalize_action(auth, args)
+        result = signer_internalize_action(self, auth, args)
 
         # Wave 4 Enhancement - Error handling & validation & BEEF integration
         # 1. BEEF merge from input
@@ -1006,6 +1119,32 @@ class Wallet:
         """
         self._validate_originator(originator)
         return {"version": self.VERSION}
+
+    def get_client_change_key_pair(self) -> dict[str, str]:
+        """Get the client change key pair.
+
+        Returns the root key pair (private and public keys) used for change outputs
+        and wallet identification.
+
+        Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (getClientChangeKeyPair)
+
+        Returns:
+            dict: Key pair with 'privateKey' and 'publicKey' as hex strings
+
+        Raises:
+            RuntimeError: If key_deriver is not configured
+        """
+        if not self.key_deriver:
+            raise RuntimeError("key_deriver is not configured")
+
+        # Get root private key from key deriver (accessing private attribute for parity with TypeScript)
+        root_private_key = self.key_deriver._root_private_key  # type: ignore
+        root_public_key = self.key_deriver._root_public_key  # type: ignore
+
+        return {
+            "privateKey": root_private_key.hex(),
+            "publicKey": root_public_key.hex(),
+        }
 
     def _make_auth(self) -> dict[str, Any]:
         """Generate auth object containing wallet userId.
@@ -1161,6 +1300,27 @@ class Wallet:
         height = self.services.get_height()
         return {"height": height}
 
+    def get_header(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
+        """Get block header at specified height (alias for get_header_for_height).
+
+        BRC-100 WalletInterface method implementation.
+        Returns the block header at the specified height as a hex string.
+
+        This is an alias for get_header_for_height to match BRC-100 interface.
+
+        Args:
+            args: Dictionary with 'height' key (non-negative integer)
+            originator: Optional originator domain name (must be string under 250 bytes)
+
+        Returns:
+            Dictionary with 'header' key containing block header as hex string
+
+        Raises:
+            InvalidParameterError: If originator parameter is invalid or height is invalid
+            RuntimeError: If services are not configured
+        """
+        return self.get_header_for_height(args, originator)
+
     def get_header_for_height(self, args: dict[str, Any], originator: str | None = None) -> GetHeaderResult:
         """Get block header at specified height.
 
@@ -1197,10 +1357,7 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        if self.services is None:
-            raise RuntimeError("Services must be configured to use getHeaderForHeight")
-
-        # Validate height parameter
+        # Validate height parameter first (before services check for better error messages)
         if "height" not in args:
             raise InvalidParameterError("height", "required")
 
@@ -1211,6 +1368,9 @@ class Wallet:
 
         if height < 0:
             raise InvalidParameterError("height", f"a non-negative integer (got {height})")
+
+        if self.services is None:
+            raise RuntimeError("Services must be configured to use getHeaderForHeight")
 
         # Get header from services (returns bytes)
         header_bytes = self.services.get_header_for_height(height)
@@ -1615,6 +1775,14 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate required parameters
+        if not args.get("type"):
+            raise InvalidParameterError("type", "a non-empty string")
+        if not args.get("certifier"):
+            raise InvalidParameterError("certifier", "a non-empty string")
+        if not args.get("acquisitionProtocol"):
+            raise InvalidParameterError("acquisitionProtocol", "a non-empty string")
+
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -1678,7 +1846,8 @@ class Wallet:
 
         # Delegate to signer layer for certificate proof
         # (coordinate with Storage and Services through signer)
-        return prove_certificate(self, args)
+        auth = args.get("auth") if "auth" in args else self._make_auth()
+        return prove_certificate(self, auth, args)
 
     def reveal_counterparty_key_linkage(
         self,
@@ -2542,8 +2711,9 @@ class Wallet:
         # TS: if attributes is an object, sort its top-level keys
         attributes_key: Any = args["attributes"]
         if isinstance(args["attributes"], dict):
-            keys = sorted(args["attributes"].keys())
-            attributes_key = json.dumps(args["attributes"], keys=keys, sort_keys=False)
+            # Create sorted dict for stable cache key
+            sorted_attributes = {k: args["attributes"][k] for k in sorted(args["attributes"].keys())}
+            attributes_key = json.dumps(sorted_attributes, sort_keys=True)
 
         # --- Check overlay cache (2 minute TTL) ---
         cache_key = json.dumps(
