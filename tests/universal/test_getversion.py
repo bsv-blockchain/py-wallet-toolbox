@@ -50,12 +50,28 @@ class TestUniversalVectorsGetVersion:
     def test_getversion_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:
-        """ABI (wire) test - skipped because TypeScript doesn't test this.
+        """ABI wire format test for getVersion.
 
-        This test would verify:
-        1. Deserialize wire input: "1c00" -> method + args
-        2. Execute getVersion
-        3. Serialize result -> matches "00312e302e30"
-
-        Following the principle: "If TypeScript skips it, we skip it too."
+        Verifies:
+        1. Deserialize wire input to method call
+        2. Execute getVersion method
+        3. Serialize result matches expected wire output
         """
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
+
+        # Given
+        args_data, result_data = load_test_vectors("getVersion-simple")
+        wire_input = bytes.fromhex(args_data["wire"])
+        expected_wire_output = bytes.fromhex(result_data["wire"])
+
+        wallet = Wallet(chain="main")
+
+        # When
+        method_name, args = deserialize_request(wire_input)
+        assert method_name == "getVersion"
+
+        result = wallet.get_version(args, originator=None)
+        wire_output = serialize_response(result)
+
+        # Then
+        assert wire_output == expected_wire_output
