@@ -8,7 +8,7 @@ business semantics beyond the TS-like shape to avoid divergence.
 from bsv_wallet_toolbox.services import Services
 
 
-async def test_post_beef_arc_minimal() -> None:
+def test_post_beef_arc_minimal() -> None:
     """Ensure ARC path returns TS-like shape when ARC is configured."""
     options = Services.create_default_options("main")
     options["arcUrl"] = "https://arc.mock"  # triggers ARC path; HTTP is mocked in conftest

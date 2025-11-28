@@ -7,6 +7,7 @@ import pytest
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from tests.fixtures.transaction_fixtures import create_abortable_transaction, seed_transaction
 
 
 class TestWalletAbortAction:
@@ -64,11 +65,16 @@ class TestWalletAbortAction:
 
         Reference: wallet-toolbox/test/wallet/action/abortAction.test.ts
                    test('1_abort reference 49f878d8405589')
-
-        Note: This test requires a populated test database with the specific action.
         """
-        # Given
-        valid_args = {"reference": "Sfh42EBViQ=="}  # Base64 reference from test data
+        # Given - Seed an abortable transaction
+        reference = "Sfh42EBViQ=="
+        tx_data = create_abortable_transaction(
+            user_id=1,
+            reference=reference,
+        )
+        seed_transaction(wallet_with_storage.storage, tx_data)
+        
+        valid_args = {"reference": reference}
 
         # When
         wallet_with_storage.abort_action(valid_args)

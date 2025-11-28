@@ -119,7 +119,7 @@ class TestValidateInternalizeActionArgs:
         invalid_args = {
             "tx": b"\x01\x00\x00\x00",
             "outputs": [{"outputIndex": 0, "protocol": "wallet payment"}],
-            "description": "Test",
+            "description": "Valid description",
             "labels": ["a" * 301],  # 301 characters (exceeds 300 limit)
         }
 
@@ -141,7 +141,7 @@ class TestValidateInternalizeActionArgs:
         invalid_args = {
             "tx": b"\x01\x00\x00\x00",
             "outputs": [{"outputIndex": 0, "protocol": ""}],  # Empty protocol
-            "description": "Test",
+            "description": "Valid description",
         }
 
         # When / Then
@@ -164,7 +164,7 @@ class TestValidateInternalizeActionArgs:
             "outputs": [
                 {"outputIndex": 0, "protocol": "wallet payment", "paymentRemittance": None}  # Missing remittance
             ],
-            "description": "Test",
+            "description": "Valid description",
         }
 
         # When / Then

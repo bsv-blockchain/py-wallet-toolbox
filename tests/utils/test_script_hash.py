@@ -22,7 +22,6 @@ class TestScriptHashSuccessCases:
                 func TestHashOutputScript_SuccessCases(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for hash_output_script implementation")
     def test_hash_output_script_success_cases(self) -> None:
         """Given: Valid script hex strings
            When: Hash output script
@@ -69,7 +68,6 @@ class TestScriptHashErrorCases:
                 func TestHashOutputScript_ErrorCases(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for hash_output_script implementation")
     def test_hash_output_script_error_cases(self) -> None:
         """Given: Invalid script hex strings
            When: Hash output script

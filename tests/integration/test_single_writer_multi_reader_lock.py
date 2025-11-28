@@ -10,14 +10,14 @@ import asyncio
 import pytest
 
 try:
-    from bsv_wallet_toolbox.chaintracks.util import SingleWriterMultiReaderLock
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.util import SingleWriterMultiReaderLock
 
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
 
 
-class TestLock:
+class LockHelper:
     """Helper class for testing lock behavior.
 
     Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/__tests/SingleWriterMultiReaderLock.test.ts
@@ -100,10 +100,9 @@ class TestSingleWriterMultiReaderLock:
                describe('SingleWriterMultiReaderLock tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for SingleWriterMultiReaderLock implementation")
     @pytest.mark.asyncio
     async def test_concurrent_reads_and_writes_execute_in_correct_order(self) -> None:
-        """Given: TestLock instance with concurrent read/write operations
+        """Given: LockHelper instance with concurrent read/write operations
            When: Execute run_concurrent_read_write_test() which runs multiple concurrent reads and writes
            Then: Results should match expected sequence [0, 0, 0, 42, 43, 47, 46, 46, 46, 44, 45, 46, 46, 46, 46]
 
@@ -111,7 +110,7 @@ class TestSingleWriterMultiReaderLock:
                    test('0_')
         """
         # Given
-        t = TestLock()
+        t = LockHelper()
 
         # When
         r = await t.run_concurrent_read_write_test()

@@ -22,7 +22,6 @@ class TestProofForMerklePath:
                 func TestConvertTscProofToMerklePath(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for convert_tsc_proof_to_merkle_path implementation")
     def test_convert_tsc_proof_to_merkle_path_with_various_inputs(self) -> None:
         """Given: TSC proof data (txid, index, nodes, blockHeight)
            When: Convert TSC proof to MerklePath

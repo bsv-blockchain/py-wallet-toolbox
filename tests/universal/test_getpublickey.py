@@ -22,7 +22,7 @@ class TestUniversalVectorsGetPublicKey:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="py-sdk KeyDeriver uses different algorithm than TypeScript deriveChild")
+    @pytest.mark.skip(reason="Requires deterministic key derivation setup")
     def test_getpublickey_json_matches_universal_vectors(
         self,
         load_test_vectors: Callable[[str], tuple[dict, dict]],
@@ -69,7 +69,6 @@ class TestUniversalVectorsGetPublicKey:
         assert "publicKey" in result
         assert result["publicKey"] == "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097"
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_getpublickey_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]]
     ) -> None:

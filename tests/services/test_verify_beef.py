@@ -7,12 +7,10 @@ Reference: wallet-toolbox/src/services/__tests/verifyBeef.test.ts
 
 import pytest
 
-from bsv_wallet_toolbox.utils import TestUtils, verify_truthy
-
 try:
-    from bsv_wallet_toolbox.beef import Beef
-
+    from bsv.transaction import Beef
     from bsv_wallet_toolbox.services import Services
+    from tests.test_utils import TestUtils
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -30,26 +28,29 @@ class TestVerifyBeef:
                describe('verifyBeef tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
-    def test_verify_beef_from_hex(self) -> None:
+    @pytest.mark.skip(reason="Integration test: requires working chaintracker with network access for merkle path verification")
+    async def test_verify_beef_from_hex(self) -> None:
         """Given: BEEF hex string and mainnet services
            When: Parse BEEF and verify with chaintracker
            Then: BEEF verifies successfully
 
         Reference: wallet-toolbox/src/services/__tests/verifyBeef.test.ts
                    test('0_')
+        
+        Note: Using parse_beef from bsv.transaction.beef module.
+        This test requires a functioning chaintracker with network access to verify merkle paths.
         """
         # Given
-        beef = Beef.from_string(BEEF_HEX)
+        from bsv.transaction.beef import parse_beef
+        beef = parse_beef(bytes.fromhex(BEEF_HEX))
         chaintracker = Services("main").get_chain_tracker()
 
         # When
-        ok = beef.verify(chaintracker, True)
+        ok = await beef.verify(chaintracker, True)
 
         # Then
         assert ok is True
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_verify_beef_from_storage(self) -> None:
         """Given: Wallet storage with mainnet setup
            When: Get BEEF for txid from services and storage, then verify both

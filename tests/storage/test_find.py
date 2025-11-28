@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def test_find_proventx(storage_seeded) -> None:
@@ -70,7 +70,7 @@ def test_find_output_baskets(storage_seeded) -> None:
     inclusive = storage.find_output_baskets({"since": seed["since_anchor"]})
     assert len(inclusive) == 3
 
-    future = storage.find_output_baskets({"since": datetime.utcnow()})
+    future = storage.find_output_baskets({"since": datetime.now(timezone.utc)})
     assert not future
 
     first_created = min(basket["createdAt"] for basket in baskets)

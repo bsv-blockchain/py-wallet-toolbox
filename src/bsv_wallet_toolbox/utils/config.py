@@ -124,3 +124,106 @@ def create_action_tx_assembler() -> dict[str, Any]:
     }
 
     return assembler_config
+
+
+def get_config_value(config: dict[str, Any] | None, key: str, default: Any = None) -> Any:
+    """Get a configuration value by key with optional default.
+
+    Supports dot notation for nested keys (e.g., "database.host").
+    If the key exists as-is (including dots), returns that value first.
+
+    Args:
+        config: Configuration dictionary, can be None
+        key: Configuration key (supports dot notation for nesting)
+        default: Default value if key not found
+
+    Returns:
+        Configuration value or default
+
+    Example:
+        >>> config = {"database": {"host": "localhost"}, "key.with.dots": "value"}
+        >>> get_config_value(config, "database.host")  # "localhost"
+        >>> get_config_value(config, "key.with.dots")  # "value"
+        >>> get_config_value(config, "missing.key", "default")  # "default"
+    """
+    if config is None:
+        return default
+
+    # First try the key as-is (handles keys with dots in their names)
+    if key in config:
+        return config[key]
+
+    # Then try dot notation for nested access
+    keys = key.split(".")
+    value = config
+
+    for k in keys:
+        if isinstance(value, dict) and k in value:
+            value = value[k]
+        else:
+            return default
+
+    return value
+
+
+def set_config_value(config: dict[str, Any] | None, key: str, value: Any) -> dict[str, Any]:
+    """Set a configuration value by key.
+
+    Supports dot notation for nested keys (e.g., "database.host").
+    Creates nested dictionaries as needed.
+
+    Args:
+        config: Configuration dictionary (can be None, will create new dict)
+        key: Configuration key (supports dot notation)
+        value: Value to set
+
+    Returns:
+        Modified configuration dictionary
+
+    Example:
+        >>> config = {}
+        >>> set_config_value(config, "database.host", "localhost")
+        >>> config  # {"database": {"host": "localhost"}}
+    """
+    if config is None:
+        config = {}
+
+    keys = key.split(".")
+    current = config
+
+    # Navigate to the parent of the final key
+    for k in keys[:-1]:
+        if k not in current or not isinstance(current[k], dict):
+            current[k] = {}
+        current = current[k]
+
+    # Set the final value
+    current[keys[-1]] = value
+
+    return config
+
+
+def validate_config(config: dict[str, Any] | None, schema: dict[str, Any] | None = None) -> bool:
+    """Validate configuration dictionary structure.
+
+    Args:
+        config: Configuration dictionary to validate
+        schema: Optional schema for validation (currently unused, for future extension)
+
+    Returns:
+        True if config is valid (non-empty dict), False otherwise
+
+    Example:
+        >>> validate_config({"key": "value"})  # True
+        >>> validate_config({})  # True (empty dict is valid)
+        >>> validate_config(None)  # False
+    """
+    if config is None:
+        return False
+
+    if not isinstance(config, dict):
+        return False
+
+    # For now, just check that it's a dictionary
+    # Future: implement schema validation if schema is provided
+    return True

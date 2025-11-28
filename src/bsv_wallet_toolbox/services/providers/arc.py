@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -241,7 +241,7 @@ class ARC:
 
         headers = self.request_headers()
         url = f"{self.url}/v1/tx"
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
@@ -362,7 +362,7 @@ class ARC:
         """
         result = PostBeefResult(name=self.name, status="success", txid_results=[])
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}

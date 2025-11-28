@@ -1,0 +1,18 @@
+# BSV Wallet Toolbox Demo - dependencies
+#
+# Use this file to treat brc100_wallet_demo as an isolated venv project.
+#
+# Installation:
+#   pip install -r requirements.txt
+
+# Local BSV Wallet Toolbox (editable mode)
+-e ../../
+
+# Environment helper
+python-dotenv>=1.0.0
+
+# The toolbox brings its own dependency chain:
+# - bsv-sdk (git dependency)
+# - requests>=2.31
+# - sqlalchemy>=2.0
+

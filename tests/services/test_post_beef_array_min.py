@@ -6,7 +6,7 @@ Validates only TS-like result shape per element, without asserting ARC semantics
 from bsv_wallet_toolbox.services import Services
 
 
-async def test_post_beef_array_minimal() -> None:
+def test_post_beef_array_minimal() -> None:
     options = Services.create_default_options("main")
     options["arcUrl"] = "https://arc.mock"
     options["arcApiKey"] = "test"

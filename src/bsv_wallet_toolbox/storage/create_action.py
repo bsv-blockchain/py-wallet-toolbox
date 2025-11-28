@@ -302,6 +302,15 @@ def _normalize_no_send_change(value: Any) -> list[dict[str, Any]]:
                 result.append({"txid": txid, "vout": vout})
             else:
                 raise InvalidParameterError("noSendChange", "list of outpoints")
+        
+        # Check for duplicates (TS/Go parity)
+        seen_outpoints = set()
+        for item in result:
+            outpoint = f"{item['txid']}.{item['vout']}"
+            if outpoint in seen_outpoints:
+                raise InvalidParameterError("noSendChange", "contains duplicate outpoints")
+            seen_outpoints.add(outpoint)
+        
         return result
     raise InvalidParameterError("noSendChange", "list")
 

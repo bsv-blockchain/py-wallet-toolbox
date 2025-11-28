@@ -1,4 +1,9 @@
 # BSV BLOCKCHAIN | Wallet Toolbox for Python
+[![build](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml/badge.svg)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
+[![PyPI version](https://img.shields.io/pypi/v/bsv-sdk)](https://pypi.org/project/bsv-sdk)
+[![Python versions](https://img.shields.io/pypi/pyversions/bsv-sdk)](https://pypi.org/project/bsv-sdk)
+[![Coverage](https://img.shields.io/badge/coverage-87.5%25-green)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
+
 
 Welcome to the BSV Blockchain Wallet Toolbox for Python — BRC-100 conforming wallet implementation providing production-ready, persistent storage components. Built on top of the official [Python SDK](https://github.com/bsv-blockchain/py-sdk), this toolbox helps you assemble scalable wallet-backed applications and services.
 
@@ -6,6 +11,7 @@ Welcome to the BSV Blockchain Wallet Toolbox for Python — BRC-100 conforming w
 
 - [Objective](#objective)
 - [Current Status](#current-status)
+- [Testing & Quality](#testing--quality)
 - [Getting Started](#getting-started)
   - [Installation](#installation)
   - [Quick Start](#quick-start)
@@ -52,6 +58,15 @@ This is an early-stage implementation. The wallet is being built incrementally w
 
 See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
+## Testing & Quality
+
+The project maintains high code quality standards:
+- **87.5%+ code coverage** across the entire codebase
+- Comprehensive test suite with 846 tests
+- Type checking with mypy
+- Linting with ruff and black
+- Continuous integration via GitHub Actions
+
 ## Getting Started
 
 ### Installation
@@ -66,7 +81,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
 ```bash
 # Clone the repository
-git clone https://github.com/bsv-blockchain/wallet-toolbox.git
+git clone https://github.com/bsv-blockchain/py-wallet-toolbox.git
 cd wallet-toolbox/toolbox/py-wallet-toolbox
 
 # Create virtual environment (recommended)

@@ -24,7 +24,7 @@ Reference Implementation: ts-wallet-toolbox/src/services/providers/Bitails.ts
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -180,7 +180,7 @@ class Bitails:
         def make_note_extended(name: str, when: str, beef_hex: str, txids_str: str) -> dict[str, Any]:
             return {"name": name, "when": when, "beef": beef_hex, "txids": txids_str}
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         nn = make_note("BitailsPostBeef", now)
         beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else ""
         txids_str = ",".join(txids)
@@ -401,7 +401,7 @@ class Bitails:
         result = GetMerklePathResult(name="BitailsTsc", notes=[])
 
         url = f"{self.url}tx/{txid}/proof/tsc"
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         def make_note_merkle(name: str, when: str, txid_val: str, url_val: str) -> dict[str, Any]:
             return {"name": name, "when": when, "txid": txid_val, "url": url_val}

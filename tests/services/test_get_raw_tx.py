@@ -28,7 +28,6 @@ class TestGetRawTx:
                describe('getRawTx service tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for Services implementation")
     def test_get_raw_tx(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Given: Services with testnet configuration
            When: Get raw transaction for a known txid
@@ -41,18 +40,15 @@ class TestGetRawTx:
         options = Services.create_default_options("test")
         services = Services(options)
 
-        # Mock: inject canned response into provider HTTP layer (equivalent to TS recorded fixtures)
-        async def fake_fetch(url: str, request_options: dict[str, Any]) -> Any:
-            class Resp:
-                ok = True
-                status_code = 200
+        # Mock: inject canned response in the service collection (proper dict structure)
+        def fake_get_raw_tx(txid: str, chain: str = None) -> dict:
+            return {
+                "rawTx": "01000000",
+                "computedTxid": txid,  # Return same txid to pass validation
+            }
 
-                def json(self) -> dict[str, str]:
-                    return {"data": "01000000"}  # truthy
-
-            return Resp()
-
-        monkeypatch.setattr(services.whatsonchain.http_client, "fetch", fake_fetch)
+        # Replace the service in the collection (not just on the provider)
+        services.get_raw_tx_services.services[0]["service"] = fake_get_raw_tx
 
         # When
         result = services.get_raw_tx("c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76")

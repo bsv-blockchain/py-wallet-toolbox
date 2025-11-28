@@ -43,7 +43,7 @@ class Testinsert:
             "txid": "1" * 64,
             "height": 100,
             "index": 0,
-            "merkle_path": [],
+            "merkle_path": b"",  # Empty bytes, not empty list
             "raw_tx": b"test",
             "block_hash": "block",
             "merkle_root": "root",
@@ -66,11 +66,10 @@ class Testinsert:
                   test('1 insert ProvenTxReq')
         """
         ptxreq = {
-            "userId": 1,
             "txid": "2" * 64,
             "status": "unsent",
-            "reference": "",
             "attempts": 0,
+            "raw_tx": b"test",  # Required field
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }
@@ -110,7 +109,7 @@ class Testinsert:
             "certifier": "03" + "0" * 64,
             "signature": "",
             "verifier": None,
-            "revocationOutpoint": None,
+            "revocationOutpoint": "0000000000000000000000000000000000000000000000000000000000000000.0",  # Required field
             "is_deleted": False,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
@@ -135,7 +134,7 @@ class Testinsert:
             "certifier": "03" + "0" * 64,
             "signature": "",
             "verifier": None,
-            "revocationOutpoint": None,
+            "revocationOutpoint": "0000000000000000000000000000000000000000000000000000000000000000.0",  # Required field
             "is_deleted": False,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
@@ -224,7 +223,7 @@ class Testinsert:
             "userId": user,
             "isRedeemed": False,
             "key_offset": "offset123",
-            "locking_script": [1, 2, 3],
+            "locking_script": b"\x01\x02\x03",  # Should be bytes, not list
             "satoshis": 500,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
@@ -258,7 +257,7 @@ class Testinsert:
             "userId": user,
             "vout": 0,
             "satoshis": 101,
-            "locking_script": [1, 2, 3],
+            "locking_script": b"\x01\x02\x03",  # Should be bytes, not list
             "spendable": True,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
@@ -311,7 +310,7 @@ class Testinsert:
             "userId": user,
             "vout": 0,
             "satoshis": 101,
-            "locking_script": [1, 2, 3],
+            "locking_script": b"\x01\x02\x03",  # Should be bytes, not list
             "spendable": True,
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
@@ -406,7 +405,7 @@ class Testinsert:
         event = {
             "created_at": datetime.now(),
             "event": "test_event",
-            "data": "{}",
+            "details": "{}",  # Correct field name is 'details', not 'data'
         }
 
         event_id = storage.insert_monitor_event(event)
@@ -423,8 +422,10 @@ class Testinsert:
         state = {
             "userId": user,
             "storage_identity_key": "03" + "0" * 64,
-            "sync_status": "",
-            "sync_ref_num": 0,
+            "storage_name": "test_storage",  # Required field
+            "status": "unknown",  # Correct field name (not sync_status)
+            "ref_num": "0",  # Correct field name (not sync_ref_num), and should be string
+            "sync_map": "{}",  # Required field
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
         }

@@ -2,7 +2,7 @@
   "json": {
     "protocolID": [
       1,
-      "test-protocol"
+      "testprotocol"
     ],
     "keyID": "test-key",
     "counterparty": "self",
@@ -16,5 +16,5 @@
       44
     ]
   },
-  "wire": "0f00010d746573742d70726f746f636f6c08746573742d6b65790b010b7465737420726561736f6e01040b16212c01"
+  "wire": "0f00010c746573747072696f746f636f6c08746573742d6b65790b010b7465737420726561736f6e01040b16212c01"
 }

@@ -115,3 +115,72 @@ async def aggregate_action_results(
         rar.append(ar_ndr)
 
     return {"swr": swr, "rar": rar}
+
+
+def aggregate_results(results: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Aggregate a list of results into a summary.
+
+    Simple utility function to combine multiple result dictionaries.
+
+    Args:
+        results: List of result dictionaries to aggregate
+
+    Returns:
+        Aggregated result dictionary or None if no results
+
+    Example:
+        >>> results = [{"value": 100, "status": "success"}]
+        >>> aggregate_results(results)  # {"count": 1, "total_value": 100, "statuses": ["success"]}
+    """
+    if not results:
+        return None
+
+    aggregated = {
+        "count": len(results),
+        "statuses": [r.get("status") for r in results if "status" in r],
+        "values": [r.get("value") for r in results if "value" in r],
+    }
+
+    # Add summary statistics
+    if aggregated["values"]:
+        aggregated["total_value"] = sum(aggregated["values"])
+        aggregated["avg_value"] = aggregated["total_value"] / len(aggregated["values"])
+
+    return aggregated
+
+
+def combine_results(*results: dict[str, Any]) -> dict[str, Any]:
+    """Combine multiple result dictionaries into a single result.
+
+    Args:
+        *results: Variable number of result dicts to combine
+
+    Returns:
+        Combined result dictionary
+
+    Example:
+        >>> combine_results({"a": 1}, {"b": 2})  # {"a": 1, "b": 2}
+    """
+    combined = {}
+    for result in results:
+        if isinstance(result, dict):
+            combined.update(result)
+    return combined
+
+
+def merge_result_arrays(arrays: list[list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Merge multiple arrays of results into a single array.
+
+    Args:
+        arrays: List of result arrays to merge
+
+    Returns:
+        Single merged array of results
+
+    Example:
+        >>> merge_result_arrays([[{"a": 1}], [{"b": 2}]])  # [{"a": 1}, {"b": 2}]
+    """
+    merged = []
+    for array in arrays:
+        merged.extend(array)
+    return merged

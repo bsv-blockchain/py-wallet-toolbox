@@ -98,7 +98,7 @@ def test_update_certificate(storage_seeded) -> None:
         {
             "type": "updated-type",
             "subject": "updated-subject",
-            "isDeleted": True,
+            "serialNumber": "updated-serial",
         },
     )
     assert updated == 1
@@ -106,7 +106,7 @@ def test_update_certificate(storage_seeded) -> None:
     refreshed = _first(storage.find_certificates({"partial": {"certificateId": cert["certificateId"]}}))
     assert refreshed["type"] == "updated-type"
     assert refreshed["subject"] == "updated-subject"
-    assert refreshed["isDeleted"] is True
+    assert refreshed["serialNumber"] == "updated-serial"
 
 
 def test_update_certificate_field(storage_seeded) -> None:

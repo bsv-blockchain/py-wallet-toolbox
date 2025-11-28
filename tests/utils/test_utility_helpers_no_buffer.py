@@ -8,7 +8,7 @@ Reference: wallet-toolbox/src/utility/__tests/utilityHelpers.noBuffer.test.ts
 import pytest
 
 try:
-    from bsv_wallet_toolbox.utils import as_string, as_uint8_array
+    from bsv_wallet_toolbox.utils import as_string, as_uint8array as as_uint8_array
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -22,7 +22,6 @@ class TestUtilityHelpersNoBuffer:
                describe('utilityHelpers.noBuffer tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
     def test_convert_from_uint8array(self) -> None:
         """Given: Uint8Array [1, 2, 3, 4]
            When: Convert using asUint8Array and asString with various encodings
@@ -55,7 +54,6 @@ class TestUtilityHelpersNoBuffer:
         r = as_string(a, "base64")
         assert r == "AQIDBA=="
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
     def test_convert_from_number_array(self) -> None:
         """Given: number[] [1, 2, 3, 4]
            When: Convert using asUint8Array and asString with various encodings
@@ -88,7 +86,6 @@ class TestUtilityHelpersNoBuffer:
         r = as_string(a, "base64")
         assert r == "AQIDBA=="
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
     def test_convert_from_hex_string(self) -> None:
         """Given: hex string '01020304'
            When: Convert using asUint8Array and asString with various input/output encodings
@@ -125,7 +122,6 @@ class TestUtilityHelpersNoBuffer:
         r = as_string(a, "hex", "base64")
         assert r == "AQIDBA=="
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for utilityHelpers implementation")
     def test_convert_from_utf8_string(self) -> None:
         """Given: utf8 string '\x01\x02\x03\x04'
            When: Convert using asUint8Array and asString with various output encodings

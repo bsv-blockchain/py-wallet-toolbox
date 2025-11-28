@@ -49,7 +49,6 @@ class TestChangeDistribution:
                 func TestChangeDistribution(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChangeDistribution implementation")
     def test_change_distribution_with_various_scenarios(self) -> None:
         """Given: Various initial values, randomizers, counts, and amounts
            When: Distribute change
@@ -184,7 +183,6 @@ class TestChangeDistributionPanics:
                 func TestChangeDistributionPanics(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChangeDistribution implementation")
     def test_change_distribution_panics_on_invalid_inputs(self) -> None:
         """Given: Invalid combinations of count and amount
            When: Try to distribute change
@@ -230,7 +228,6 @@ class TestChangeDistributionWithActualRandomizer:
                 func TestChangeDistributionWithActualRandomizer(t *testing.T)
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for ChangeDistribution implementation")
     def test_change_distribution_with_real_randomizer(self) -> None:
         """Given: ChangeDistribution with real randomizer
            When: Distribute 2000 * 1000 satoshis into 1000 outputs

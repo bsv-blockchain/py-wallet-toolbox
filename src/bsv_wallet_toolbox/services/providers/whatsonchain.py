@@ -486,7 +486,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             use_next: Provider selection hint (ignored here; kept for parity with TS)
 
         Returns:
-            dict: { "confirmed": [...], "unconfirmed": [...] }
+            dict: { "status": "success", "name": "WhatsOnChain", "confirmed": [...], "unconfirmed": [...] }
 
         Raises:
             RuntimeError: If the provider request fails or returns a non-OK status.
@@ -500,7 +500,13 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         response = await self.http_client.fetch(url, request_options)
         if not response.ok:
             raise RuntimeError("Failed to get script history")
-        return response.json() or {"confirmed": [], "unconfirmed": []}
+        data = response.json() or {"confirmed": [], "unconfirmed": []}
+        return {
+            "status": "success",
+            "name": "WhatsOnChain",
+            "confirmed": data.get("confirmed", []),
+            "unconfirmed": data.get("unconfirmed", []),
+        }
 
     async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
         """Get transaction status for a given txid (TS-compatible response shape).
@@ -515,8 +521,8 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             use_next: Provider selection hint (ignored here; kept for parity with TS)
 
         Returns:
-            dict: A dictionary describing the transaction status. The exact fields depend on the provider,
-                  but tests expect a TS-compatible shape (e.g., { "status": "confirmed", ... }).
+            dict: A dictionary describing the transaction status with "name" and "status" fields.
+                  Status can be "confirmed", "not_found", "unknown", etc.
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
@@ -527,7 +533,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         response = await self.http_client.fetch(url, request_options)
         if not response.ok:
             raise RuntimeError("Failed to get transaction status")
-        return response.json() or {"status": "unknown"}
+        data = response.json() or {"status": "unknown"}
+        # Add provider name to response
+        data["name"] = "WhatsOnChain"
+        return data
 
     async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid (TS-compatible optional result).

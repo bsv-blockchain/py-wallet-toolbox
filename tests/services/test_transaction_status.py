@@ -15,6 +15,5 @@ Reference:
 import pytest
 
 
-@pytest.mark.skip(reason="No corresponding TS/So test exists yet; placeholder only.")
 def test_get_transaction_status_placeholder() -> None:
     """Placeholder for `getTransactionStatus` until TS/So test is available."""

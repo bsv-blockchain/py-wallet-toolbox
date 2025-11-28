@@ -7,7 +7,7 @@
 from bsv_wallet_toolbox.services import Services
 
 
-async def test_get_utxo_status_minimal_normal() -> None:
+def test_get_utxo_status_minimal_normal() -> None:
     """Normal case should return a dict with details: list of entries."""
     services = Services(Services.create_default_options("main"))
 
@@ -23,7 +23,7 @@ async def test_get_utxo_status_minimal_normal() -> None:
         assert isinstance(entry["spent"], bool)
 
 
-async def test_get_utxo_status_minimal_not_found() -> None:
+def test_get_utxo_status_minimal_not_found() -> None:
     """Sentinel hash should yield an empty details list (not_found-like)."""
     services = Services(Services.create_default_options("main"))
 

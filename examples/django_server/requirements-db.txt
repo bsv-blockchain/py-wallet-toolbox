@@ -1,0 +1,8 @@
+# Database backends for Django JSON-RPC server
+# SQLite is included with Python by default
+
+# PostgreSQL
+psycopg2-binary>=2.9.0
+
+# MySQL
+pymysql>=1.1.0
