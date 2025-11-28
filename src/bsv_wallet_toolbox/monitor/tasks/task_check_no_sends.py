@@ -1,7 +1,14 @@
 """TaskCheckNoSends implementation."""
 
-from ..monitor import Monitor
+from typing import TYPE_CHECKING
+
 from .task_check_for_proofs import TaskCheckForProofs
+
+if TYPE_CHECKING:
+    from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskCheckNoSends(TaskCheckForProofs):
@@ -15,7 +22,7 @@ class TaskCheckNoSends(TaskCheckForProofs):
 
     ONE_DAY: int = 24 * 60 * 60 * 1000
 
-    def __init__(self, monitor: Monitor, trigger_msecs: int = ONE_DAY) -> None:
+    def __init__(self, monitor: "Monitor", trigger_msecs: int = ONE_DAY) -> None:
         """Initialize TaskCheckNoSends."""
         super().__init__(monitor, trigger_msecs)
         self.name = "CheckNoSends"

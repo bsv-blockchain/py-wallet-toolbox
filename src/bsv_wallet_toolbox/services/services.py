@@ -342,7 +342,7 @@ class Services(WalletServices):
         """
         return self.whatsonchain
 
-    def get_height(self) -> int:
+    async def get_height(self) -> int:
         """Get current blockchain height from WhatsOnChain.
 
         Equivalent to TypeScript's Services.getHeight()
@@ -354,9 +354,9 @@ class Services(WalletServices):
         Raises:
             RuntimeError: If unable to retrieve height
         """
-        return self.whatsonchain.current_height()
+        return await self.whatsonchain.current_height()
 
-    def get_present_height(self) -> int:
+    async def get_present_height(self) -> int:
         """Get latest chain height (provider's present height).
 
         TS parity:
@@ -368,7 +368,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
         """
-        return self.whatsonchain.get_present_height()
+        return await self.whatsonchain.get_present_height()
 
     def get_header_for_height(self, height: int) -> bytes:
         """Get block header at specified height from WhatsOnChain.
@@ -414,13 +414,13 @@ class Services(WalletServices):
             "hash": h.hash,
         }
 
-    def get_chain(self) -> str:
+    async def get_chain(self) -> str:
         """Return configured chain identifier ('main' | 'test').
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
         """
-        return self.whatsonchain.get_chain()
+        return await self.whatsonchain.get_chain()
 
     def get_info(self) -> dict[str, Any]:
         """Get provider configuration/state summary (if available).

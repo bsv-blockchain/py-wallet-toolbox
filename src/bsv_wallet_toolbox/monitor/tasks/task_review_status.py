@@ -1,10 +1,15 @@
 """TaskReviewStatus implementation."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from ..wallet_monitor_task import WalletMonitorTask
+
+if TYPE_CHECKING:
+    from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskReviewStatus(WalletMonitorTask):

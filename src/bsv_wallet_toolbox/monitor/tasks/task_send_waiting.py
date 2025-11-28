@@ -1,9 +1,14 @@
 """TaskSendWaiting implementation."""
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from ..wallet_monitor_task import WalletMonitorTask
+
+if TYPE_CHECKING:
+    from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskSendWaiting(WalletMonitorTask):
@@ -24,7 +29,7 @@ class TaskSendWaiting(WalletMonitorTask):
         """Initialize TaskSendWaiting.
 
         Args:
-            monitor: Monitor instance.
+            monitor: "Monitor" instance.
             check_period_msecs: Interval between checks (default 8s).
             min_age_msecs: Minimum age of transaction before broadcasting (default 7s).
                            Used to prevent race conditions with immediate broadcast.

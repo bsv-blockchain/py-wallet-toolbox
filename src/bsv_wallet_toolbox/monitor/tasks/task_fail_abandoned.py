@@ -3,8 +3,11 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
+from ..wallet_monitor_task import WalletMonitorTask
 
 
 class TaskFailAbandoned(WalletMonitorTask):

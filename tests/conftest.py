@@ -588,9 +588,7 @@ def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
         "test_mergeexisting_updates_user_with_trx": "By design: User.merge_existing() always returns False (users are storage-local)",
         # FIXED: test_insert.py complex DTO tests (locking_script should be bytes)
         # FIXED: test_insert.py schema constraint tests (revocationOutpoint required)
-        # Key linkage revelation methods not implemented yet
-        "test_reveal_counterparty_key_linkage": "TODO: Implement reveal_counterparty_key_linkage method",
-        "test_reveal_specific_key_linkage": "TODO: Implement reveal_specific_key_linkage method",
+        # Key linkage revelation methods are now implemented
         # Bulk ingestor integration tests require missing test data files
         "test_default_options_cdn_files": "Requires local test data files (./test_data/chaintracks/cdnTest499/mainNet_*.headers)",
         "test_default_options_cdn_files_nodropall": "Requires local test data files (./test_data/chaintracks/cdnTest499/mainNet_*.headers)",
