@@ -2,8 +2,11 @@
 
 from bsv.transaction import Transaction as BsvTransaction
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
+from ..wallet_monitor_task import WalletMonitorTask
 
 
 class TaskUnFail(WalletMonitorTask):

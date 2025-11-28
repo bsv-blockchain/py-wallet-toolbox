@@ -1898,6 +1898,10 @@ class Wallet:
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
+        # Check if key_deriver has the method
+        if not hasattr(self.key_deriver, 'reveal_counterparty_key_linkage'):
+            raise NotImplementedError("KeyDeriver does not support reveal_counterparty_key_linkage")
+
         # Delegate to key_deriver for standard (non-privileged) operation
         return self.key_deriver.reveal_counterparty_key_linkage(args)
 
@@ -1944,6 +1948,10 @@ class Wallet:
 
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
+
+        # Check if key_deriver has the method
+        if not hasattr(self.key_deriver, 'reveal_specific_key_linkage'):
+            raise NotImplementedError("KeyDeriver does not support reveal_specific_key_linkage")
 
         # Delegate to key_deriver for standard (non-privileged) operation
         return self.key_deriver.reveal_specific_key_linkage(args)

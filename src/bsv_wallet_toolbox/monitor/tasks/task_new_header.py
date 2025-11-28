@@ -1,8 +1,12 @@
 """TaskNewHeader implementation."""
 
-from ..monitor import Monitor
+from typing import TYPE_CHECKING
+
 from .task_check_for_proofs import TaskCheckForProofs
-from .wallet_monitor_task import WalletMonitorTask
+from ..wallet_monitor_task import WalletMonitorTask
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskNewHeader(WalletMonitorTask):
@@ -29,13 +33,13 @@ class TaskNewHeader(WalletMonitorTask):
         if self.monitor.last_new_header:
             h = self.monitor.last_new_header
             log += f"Processing new header {h.get('height')} {h.get('hash')}\n"
-            
+
             # Trigger proof checks
             # In Python implementation, we might need a way to signal TaskCheckForProofs
-            # directly or rely on its next scheduled run. 
+            # directly or rely on its next scheduled run.
             # TS sets TaskCheckForProofs.checkNow = true.
             # Here we can find the task instance and set a flag.
-            
+
             for task in self.monitor._tasks:
                 if isinstance(task, TaskCheckForProofs):
                     task.check_now = True

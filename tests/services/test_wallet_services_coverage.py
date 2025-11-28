@@ -79,19 +79,15 @@ class TestWalletServicesMethods:
     """Test WalletServices methods."""
 
     @pytest.fixture
-    def mock_services(self):
+    def mock_services(self, mock_wallet_services):
         """Create mock wallet services."""
-        try:
-            from bsv_wallet_toolbox.services.wallet_services import WalletServices
-            return WalletServices()
-        except (ImportError, TypeError):
-            pytest.skip("Cannot initialize WalletServices")
+        return mock_wallet_services
 
-    def test_get_chain_tracker(self, mock_services) -> None:
+    async def test_get_chain_tracker(self, mock_services) -> None:
         """Test getting chain tracker."""
         try:
             if hasattr(mock_services, "get_chain_tracker"):
-                tracker = mock_services.get_chain_tracker()
+                tracker = await mock_services.get_chain_tracker()
                 assert tracker is not None or tracker is None
         except AttributeError:
             pass

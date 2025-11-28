@@ -1,7 +1,14 @@
 """TaskSyncWhenIdle implementation (Placeholder)."""
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from typing import TYPE_CHECKING
+
+from ..wallet_monitor_task import WalletMonitorTask
+
+if TYPE_CHECKING:
+    from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskSyncWhenIdle(WalletMonitorTask):

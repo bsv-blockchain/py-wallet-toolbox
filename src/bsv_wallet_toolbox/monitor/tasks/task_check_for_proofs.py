@@ -1,11 +1,16 @@
 """TaskCheckForProofs implementation."""
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from bsv.merkle_path import MerklePath
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from ..wallet_monitor_task import WalletMonitorTask
+
+if TYPE_CHECKING:
+    from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskCheckForProofs(WalletMonitorTask):
@@ -24,7 +29,7 @@ class TaskCheckForProofs(WalletMonitorTask):
         """Initialize TaskCheckForProofs.
 
         Args:
-            monitor: Monitor instance.
+            monitor: "Monitor" instance.
             trigger_msecs: Periodic trigger interval in milliseconds.
         """
         super().__init__(monitor, "CheckForProofs")

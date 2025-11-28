@@ -6,7 +6,7 @@ from typing import Any, Callable, ClassVar
 
 from ..services.services import Services
 from ..services.wallet_services import Chain
-from ..storage.provider import Provider
+from ..storage.provider import StorageProvider
 from .tasks import (
     TaskCheckForProofs,
     TaskCheckNoSends,
@@ -31,7 +31,7 @@ class MonitorOptions:
 
     chain: Chain
     services: Services
-    storage: Provider
+    storage: StorageProvider
     task_run_wait_msecs: int
     on_transaction_broadcasted: Callable[[dict[str, Any]], Any] | None
     on_transaction_proven: Callable[[dict[str, Any]], Any] | None
@@ -39,7 +39,7 @@ class MonitorOptions:
     def __init__(
         self,
         chain: Chain,
-        storage: Provider,
+        storage: StorageProvider,
         services: Services | None = None,
         task_run_wait_msecs: int = 5000,
         on_transaction_broadcasted: Callable[[dict[str, Any]], Any] | None = None,
@@ -72,7 +72,7 @@ class Monitor:
     options: MonitorOptions
     services: Services
     chain: Chain
-    storage: Provider
+    storage: StorageProvider
     _tasks: list[WalletMonitorTask]
 
     last_new_header: dict[str, Any] | None = None

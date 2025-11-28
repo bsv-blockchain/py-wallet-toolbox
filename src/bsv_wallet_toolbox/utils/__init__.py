@@ -10,7 +10,12 @@ from types import SimpleNamespace
 
 from dotenv import load_dotenv
 
-from bsv_wallet_toolbox.utils.aggregate_results import aggregate_action_results
+from bsv_wallet_toolbox.utils.aggregate_results import (
+    aggregate_action_results,
+    aggregate_results,
+    combine_results,
+    merge_result_arrays,
+)
 from bsv_wallet_toolbox.utils.buffer_utils import (
     as_array,
     as_buffer,
@@ -20,7 +25,10 @@ from bsv_wallet_toolbox.utils.buffer_utils import (
 from bsv_wallet_toolbox.utils.config import (
     configure_logger,
     create_action_tx_assembler,
+    get_config_value,
     load_config,
+    set_config_value,
+    validate_config,
 )
 from bsv_wallet_toolbox.utils.format_utils import Format
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
@@ -320,19 +328,23 @@ __all__ = [
     "Setup",
     "TestUtils",
     "aggregate_action_results",
+    "aggregate_results",
     "arrays_equal",
     "as_array",
     "as_buffer",
     "as_string",
     "as_uint8array",
+    "combine_results",
     "configure_logger",
     "convert_proof_to_merkle_path",
     "create_action_tx_assembler",
     "double_sha256_be",
     "double_sha256_le",
     "generate_change_sdk",
+    "get_config_value",
     "load_config",
     "max_date",
+    "merge_result_arrays",
     "optional_arrays_equal",
     "parse_results",
     "parse_tx_script_offsets",
@@ -351,10 +363,12 @@ __all__ = [
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",
+    "set_config_value",
     "sha256_hash",
     "to_wallet_network",
     "transform_verifiable_certificates_with_trust",
     "validate_basket_config",
+    "validate_config",
     "validate_create_action_args",
     "validate_internalize_action_args",
     "validate_originator",

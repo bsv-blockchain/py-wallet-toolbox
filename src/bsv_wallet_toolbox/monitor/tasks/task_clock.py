@@ -1,10 +1,15 @@
 """TaskClock implementation."""
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..monitor import Monitor
-from .wallet_monitor_task import WalletMonitorTask
+from ..wallet_monitor_task import WalletMonitorTask
+
+if TYPE_CHECKING:
+    from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..monitor import Monitor
 
 
 class TaskClock(WalletMonitorTask):

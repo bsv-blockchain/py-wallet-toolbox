@@ -35,13 +35,9 @@ class TestWhatsOnChainProviderMethods:
     """Test WhatsOnChain methods."""
 
     @pytest.fixture
-    def mock_provider(self):
+    def mock_provider(self, mock_whats_on_chain):
         """Create mock WhatsOnChain provider."""
-        try:
-            provider = WhatsOnChain(chain="main")
-            return provider
-        except TypeError:
-            pytest.skip("Cannot initialize WhatsOnChain")
+        return mock_whats_on_chain
 
     @patch("requests.get")
     def test_get_raw_tx(self, mock_get, mock_provider) -> None:

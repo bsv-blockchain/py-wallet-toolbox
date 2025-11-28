@@ -10,8 +10,8 @@ import asyncio
 
 import pytest
 
-# Mark entire module as needing monitor system implementation
-pytestmark = pytest.mark.skip(reason="Needs Monitor background task system implementation (8 tests)")
+# Monitor tests - previously skipped due to missing helper functions
+# These tests require implementation of test utility functions
 
 try:
     from bsv_wallet_toolbox.monitor import Monitor
@@ -24,16 +24,34 @@ try:
     )
 
     from bsv_wallet_toolbox.storage.models import EntityProvenTxReq
+
+    IMPORTS_AVAILABLE = True
+except ImportError:
+    IMPORTS_AVAILABLE = False
+
+# Import utility functions separately
+try:
     from tests.utils.test_utils_wallet_storage import (
         create_legacy_wallet_sqlite_copy,
         create_sqlite_test_setup_1_wallet,
         mock_merkle_path_services_as_callback,
         mock_post_services_as_callback,
     )
-
-    IMPORTS_AVAILABLE = True
+    UTILS_AVAILABLE = True
 except ImportError:
-    IMPORTS_AVAILABLE = False
+    UTILS_AVAILABLE = False
+    # Create dummy functions if utils failed
+    def create_sqlite_test_setup_1_wallet(*args, **kwargs):
+        pytest.skip("Utility functions not available")
+
+    def create_legacy_wallet_sqlite_copy(*args, **kwargs):
+        pytest.skip("Utility functions not available")
+
+    def mock_merkle_path_services_as_callback(*args, **kwargs):
+        pytest.skip("Utility functions not available")
+
+    def mock_post_services_as_callback(*args, **kwargs):
+        pytest.skip("Utility functions not available")
 
 
 # Mock Merkle Path results (from TypeScript test)
@@ -180,6 +198,7 @@ MOCK_MERKLE_PATH_RESULTS = [
 class TestMonitor:
     """Test suite for Monitor tasks."""
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value
@@ -213,6 +232,7 @@ class TestMonitor:
         start_tasks_promise
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_tasknewheader(self) -> None:
         """Given: Monitor with new header task running for 10+ seconds
            When: Check header and checkNow flag
@@ -244,6 +264,7 @@ class TestMonitor:
         start_tasks_promise
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_tasksendwaiting_success(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and mocked successful postBeef
            When: Execute TaskSendWaiting
@@ -309,6 +330,7 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_taskcheckforproofs_success(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning valid proofs
            When: Execute TaskCheckForProofs
@@ -381,6 +403,7 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_taskcheckforproofs_fail(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning empty results
            When: Execute TaskCheckForProofs
@@ -439,6 +462,7 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_taskreviewstatus(self) -> None:
         """Given: Storage with various transaction statuses including invalid ProvenTxReq
            When: Execute TaskReviewStatus
@@ -470,6 +494,7 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_processproventransaction(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and onTransactionProven callback
            When: Execute TaskCheckForProofs to create ProvenTxs
@@ -556,6 +581,7 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
+    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_processbroadcastedtransactions(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and onTransactionBroadcasted callback
            When: Execute TaskSendWaiting to broadcast transactions

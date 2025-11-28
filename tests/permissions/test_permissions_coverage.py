@@ -34,13 +34,9 @@ class TestPermissionChecking:
     """Test permission checking methods."""
 
     @pytest.fixture
-    def mock_manager(self):
+    def mock_manager(self, mock_permissions_wallet_manager):
         """Create mock permission manager."""
-        try:
-            from bsv_wallet_toolbox.manager.permissions_wallet_manager import PermissionsWalletManager
-            return PermissionsWalletManager()
-        except (ImportError, TypeError):
-            pytest.skip("Cannot create PermissionsWalletManager")
+        return mock_permissions_wallet_manager
 
     def test_check_permission(self, mock_manager) -> None:
         """Test checking if user has permission."""
@@ -74,13 +70,9 @@ class TestRoleManagement:
     """Test role management."""
 
     @pytest.fixture
-    def mock_manager(self):
+    def mock_manager(self, mock_permissions_wallet_manager):
         """Create mock permission manager."""
-        try:
-            from bsv_wallet_toolbox.manager.permissions_wallet_manager import PermissionsWalletManager
-            return PermissionsWalletManager()
-        except (ImportError, TypeError):
-            pytest.skip("Cannot create PermissionsWalletManager")
+        return mock_permissions_wallet_manager
 
     def test_assign_role(self, mock_manager) -> None:
         """Test assigning role to user."""

@@ -282,10 +282,10 @@ def generate_change(
 
     for change in selected_change:
         # Create lock record for this output
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         # Calculate expiration: default 1 hour lock timeout
         lock_timeout_seconds = 3600  # 1 hour
-        locked_until = (datetime.utcnow() + timedelta(seconds=lock_timeout_seconds)).isoformat()
+        locked_until = (datetime.now(timezone.utc) + timedelta(seconds=lock_timeout_seconds)).isoformat()
 
         output_lock_record = {
             "txid": change.get("txid") if hasattr(change, "get") else getattr(change, "txid", ""),
@@ -354,7 +354,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
     labels = args.labels or []
 
     # Initialize result structure
-    result = {"total_actions": 0, "actions": []}
+    result = {"totalActions": 0, "actions": []}
 
     # Step 1: Separate regular labels from SpecOp operations
     spec_op = None
@@ -427,7 +427,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
 
     # Step 4: Count total matching transactions
     if len(transactions) < limit:
-        result["total_actions"] = len(transactions)
+        result["totalActions"] = len(transactions)
     else:
         # Need to count all matching records
         total_count = storage.count(
@@ -439,7 +439,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
                 },
             },
         )
-        result["total_actions"] = total_count
+        result["totalActions"] = total_count
 
     # Step 5: Build action objects from transaction records
     for tx in transactions:
@@ -550,7 +550,7 @@ def list_outputs(storage: Any, auth: dict[str, Any], args: ListOutputsArgs) -> d
     basket = getattr(args, "basket", None)
 
     # Initialize result structure
-    result = {"total_outputs": 0, "outputs": []}
+    result = {"totalOutputs": 0, "outputs": []}
 
     # Step 1: Build query filters
     query_filter = {
@@ -579,11 +579,11 @@ def list_outputs(storage: Any, auth: dict[str, Any], args: ListOutputsArgs) -> d
 
     # Step 5: Count total matching outputs
     if len(outputs) < limit:
-        result["total_outputs"] = len(outputs)
+        result["totalOutputs"] = len(outputs)
     else:
         # Need to count all matching records
         total_count = storage.count("Output", query_filter)
-        result["total_outputs"] = total_count
+        result["totalOutputs"] = total_count
 
     # Step 6: Build output objects from records
     for output in outputs:
@@ -671,18 +671,18 @@ def list_certificates(storage: Any, auth: dict[str, Any], limit: int = 100, offs
         raise WalletError("userId is required in auth context")
 
     # Initialize result structure
-    result = {"total_certificates": 0, "certificates": []}
+    result = {"totalCertificates": 0, "certificates": []}
 
     # Step 1: Query certificate records
     certificates = storage.find("Certificate", {"userId": user_id, "isDeleted": False}, limit=limit, offset=offset)
 
     # Step 2: Count total matching certificates
     if len(certificates) < limit:
-        result["total_certificates"] = len(certificates)
+        result["totalCertificates"] = len(certificates)
     else:
         # Need to count all matching records
         total_count = storage.count("Certificate", {"userId": user_id, "isDeleted": False})
-        result["total_certificates"] = total_count
+        result["totalCertificates"] = total_count
 
     # Step 3: Build certificate objects from records
     for cert in certificates:
