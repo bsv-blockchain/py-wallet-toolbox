@@ -31,6 +31,8 @@ from .create_action import (
 )
 from .db import create_session_factory, session_scope
 from .methods import get_sync_chunk as _get_sync_chunk
+from .methods import purge_data as _purge_data
+from .methods import review_status as _review_status
 from .models import (
     Base,
     Certificate,
@@ -244,11 +246,11 @@ class StorageProvider:
     def is_storage_provider(self) -> bool:
         """Check if this is a StorageProvider (not StorageClient).
 
-        Returns False for StorageProvider instances.
-        StorageClient returns false, StorageProvider returns false.
+        Returns True for StorageProvider instances.
+        StorageClient returns false, StorageProvider returns true.
 
         Returns:
-            bool: Always False for StorageProvider
+            bool: Always True for StorageProvider
 
         Raises:
             N/A
@@ -257,7 +259,7 @@ class StorageProvider:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
             toolbox/ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
         """
-        return False
+        return True
 
     def is_available(self) -> bool:
         """Return True if storage is initialized.
@@ -3042,6 +3044,55 @@ class StorageProvider:
             return True
         finally:
             session.close()
+
+    def review_status(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Review and update transaction statuses.
+
+        Delegates to methods.review_status for each user in the system.
+
+        Args:
+            args: Dict containing 'agedLimit'.
+
+        Returns:
+            Dict with results (aggregated).
+        """
+        aged_limit = args.get("agedLimit")
+        log = ""
+        updated_count = 0
+        aged_count = 0
+
+        # Get all users
+        users = self.find_users()
+        for user in users:
+            auth = {"userId": user["user_id"]}
+            try:
+                # Call methods.review_status for each user
+                res = _review_status(self, auth, aged_limit)
+                updated_count += res.get("updated_count", 0)
+                aged_count += res.get("aged_count", 0)
+                if res.get("log"):
+                    log += f"[User {user['user_id']}] {res['log']}\n"
+            except Exception as e:
+                log += f"[User {user['user_id']}] Error: {e!s}\n"
+
+        return {
+            "updated_count": updated_count,
+            "aged_count": aged_count,
+            "log": log,
+        }
+
+    def purge_data(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Purge transient data according to params.
+
+        Delegates to methods.purge_data.
+
+        Args:
+            params: Purge parameters (purgeSpent, purgeFailed, ages...).
+
+        Returns:
+            Dict with log and count.
+        """
+        return _purge_data(self, params)
 
     def allocate_change_input(
         self,

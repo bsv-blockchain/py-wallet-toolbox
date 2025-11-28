@@ -7,7 +7,7 @@ import hashlib
 import hmac
 import json
 import time
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from bsv.keys import PublicKey
 from bsv.transaction import Beef
@@ -44,6 +44,9 @@ from .utils.validation import (
     validate_relinquish_certificate_args,
     validate_sign_action_args,
 )
+
+if TYPE_CHECKING:
+    from .monitor.monitor import Monitor
 
 # Type alias for chain (matches TypeScript: 'main' | 'test')
 Chain = Literal["main", "test"]
@@ -145,6 +148,7 @@ class Wallet:
         storage_provider: Any | None = None,
         privileged_key_manager: PrivilegedKeyManager | None = None,
         settings_manager: WalletSettingsManager | None = None,
+        monitor: "Monitor | None" = None,
     ) -> None:
         """Initialize wallet.
 
@@ -163,6 +167,7 @@ class Wallet:
                                    this manager's methods instead of key_deriver.
             settings_manager: Optional WalletSettingsManager for wallet configuration.
                            If None, a default WalletSettingsManager will be created.
+            monitor: Optional Monitor instance for background task management.
 
         Note:
             Version is not configurable, it's a class constant.
@@ -184,6 +189,8 @@ class Wallet:
 
         # Initialize settings manager (TS parity)
         self.settings_manager: WalletSettingsManager = settings_manager or WalletSettingsManager(self)
+        
+        self.monitor: "Monitor | None" = monitor
 
         # Initialize BEEF and Wave 4 attributes
         # TS: this.beef = new BeefParty([this.userParty])
@@ -550,8 +557,12 @@ class Wallet:
         
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
-        # Use provided auth or generate from wallet's identity
-        auth = args.get("auth") if "auth" in args else self._make_auth()
+        auth = args.get("auth")
+        if not auth:
+            auth = self._make_auth()
+            # Avoid mutating caller's dict
+            args = {**args, "auth": auth}
+
         return self.storage.list_outputs(auth, args)
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:

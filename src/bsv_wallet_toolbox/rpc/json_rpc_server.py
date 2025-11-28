@@ -64,41 +64,6 @@ from ..storage.provider import StorageProvider
 logger = logging.getLogger(__name__)
 
 
-class JsonRpcParseError(Exception):
-    """JSON parse error (-32700)."""
-
-    code = -32700
-    message = "Parse error"
-
-
-class JsonRpcInvalidRequestError(Exception):
-    """Invalid JSON-RPC request (-32600)."""
-
-    code = -32600
-    message = "Invalid Request"
-
-
-class JsonRpcMethodNotFoundError(Exception):
-    """Method not found in registry (-32601)."""
-
-    code = -32601
-    message = "Method not found"
-
-
-class JsonRpcInvalidParamsError(Exception):
-    """Invalid JSON-RPC parameters (-32602)."""
-
-    code = -32602
-    message = "Invalid params"
-
-
-class JsonRpcInternalError(Exception):
-    """Internal server error (-32603)."""
-
-    code = -32603
-    message = "Internal error"
-
-
 class JsonRpcError(Exception):
     """Base class for JSON-RPC protocol errors.
 
@@ -130,6 +95,41 @@ class JsonRpcError(Exception):
             "code": self.code,
             "message": self.message,
         }
+
+
+class JsonRpcParseError(JsonRpcError):
+    """JSON parse error (-32700)."""
+
+    code = -32700
+    message = "Parse error"
+
+
+class JsonRpcInvalidRequestError(JsonRpcError):
+    """Invalid JSON-RPC request (-32600)."""
+
+    code = -32600
+    message = "Invalid Request"
+
+
+class JsonRpcMethodNotFoundError(JsonRpcError):
+    """Method not found in registry (-32601)."""
+
+    code = -32601
+    message = "Method not found"
+
+
+class JsonRpcInvalidParamsError(JsonRpcError):
+    """Invalid JSON-RPC parameters (-32602)."""
+
+    code = -32602
+    message = "Invalid params"
+
+
+class JsonRpcInternalError(JsonRpcError):
+    """Internal server error (-32603)."""
+
+    code = -32603
+    message = "Internal error"
 
 
 class JsonRpcServer:
@@ -324,40 +324,19 @@ class JsonRpcServer:
             if hasattr(storage_provider, python_method):
                 method = getattr(storage_provider, python_method)
                 if callable(method):
-                    # Create wrapper that handles auth and args parameters
-                    # Use partial to avoid closure issues with loop variables
+                    # Create wrapper that passes params directly to storage method
+                    # TS parity: Mirrors StorageServer.ts behavior: (this.storage as any)[method](...(params || []))
+                    # JSON-RPC params are passed as *args array, matching TypeScript spread operator
                     def create_method_wrapper(
                         storage_method: Callable[..., Any],
                         python_method: str,
-                        auth: dict[str, Any],
-                        args: dict[str, Any],
+                        *params: Any,
                     ) -> Any:
                         try:
-                            # TS parity: Call storage method based on parameter requirements
-                            if python_method in ["destroy"]:
-                                # Methods that take no parameters or just auth
-                                return storage_method()
-                            elif python_method in [
-                                "is_storage_provider",
-                                "is_available",
-                                "get_services",
-                                "get_settings",
-                            ]:
-                                # Methods that take only auth
-                                return storage_method(auth)
-                            elif python_method in ["make_available", "migrate", "set_services"]:
-                                # Methods that take auth + config
-                                return storage_method(auth, args)
-                            elif python_method in [
-                                "find_or_insert_user",
-                                "find_or_insert_sync_state_auth",
-                                "set_active",
-                            ]:
-                                # Methods that take auth + specific args
-                                return storage_method(auth, **args)
-                            else:
-                                # Default: auth + args
-                                return storage_method(auth, args)
+                            # TS parity: Pass params directly to storage method (same as TS spread operator)
+                            # TypeScript: (this.storage as any)[method](...(params || []))
+                            # Python: storage_method(*params)
+                            return storage_method(*params)
                         except Exception as e:
                             logger.error(f"Error in storage method ({python_method}): {e}")
                             raise
