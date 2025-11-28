@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from bsv.transaction import Transaction
@@ -1213,7 +1213,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
             {"txid": txid, "userId": user_id},
             {
                 "status": post_status,
-                "lastUpdate": datetime.utcnow().isoformat(),
+                "lastUpdate": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -1222,7 +1222,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
         result["results"][txid] = {
             "status": "success",
             "message": "Posted to network",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     return result
@@ -1289,7 +1289,7 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
                     {"txid": txid, "userId": user_id},
                     {
                         "status": blockchain_status,
-                        "updatedAt": datetime.utcnow().isoformat(),
+                        "updatedAt": datetime.now(timezone.utc).isoformat(),
                     },
                 )
         except Exception:
@@ -1423,7 +1423,7 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     # Step 5: Delete old request records
     # Filter by retention period (recommend 7 days)
     retention_days = 7  # Default retention period
-    cutoff_date = (datetime.utcnow() - timedelta(days=retention_days)).isoformat()
+    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
 
     deleted_reqs = (
         storage.delete("ProvenTxReq", {"status": {"$in": ["sent", "complete"]}, "createdAt": {"$lt": cutoff_date}}) or 0
@@ -1595,7 +1595,7 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         result["nextChunkId"] = chunk_offset + chunk_size
 
     # Store sync state update
-    now_timestamp = datetime.utcnow().isoformat()
+    now_timestamp = datetime.now(timezone.utc).isoformat()
     next_version = (sync_state.get("syncVersion", 0) + 1) if sync_state else 1
 
     if sync_state:
