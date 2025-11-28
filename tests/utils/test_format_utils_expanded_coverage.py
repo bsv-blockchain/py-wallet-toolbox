@@ -286,3 +286,155 @@ class TestEdgeCases:
         result_odd = Format.align_middle(text, 11)
         assert len(result_odd) == 11
 
+
+@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+class TestFormatTransactionLogging:
+    """Test Format transaction logging methods."""
+
+    def test_to_log_string_transaction_basic(self) -> None:
+        """Test basic transaction logging."""
+        # Create a mock transaction
+        from unittest.mock import Mock, MagicMock
+
+        tx = Mock()
+        tx.id = Mock(return_value="a" * 64)  # 64 char hex txid
+        tx.inputs = []
+        tx.outputs = []
+
+        # Add a mock input
+        input_mock = Mock()
+        input_mock.source_transaction = None
+        input_mock.source_txid = "b" * 64
+        input_mock.source_output_index = 0
+        tx.inputs.append(input_mock)
+
+        # Add a mock output
+        output_mock = Mock()
+        output_mock.satoshis = 1000
+        output_mock.locking_script = Mock()
+        output_mock.locking_script.to_hex = Mock(return_value="76a9141234567890abcdef1234567890abcdef1234567888ac")
+        tx.outputs.append(output_mock)
+
+        result = Format.to_log_string_transaction(tx)
+
+        assert "txid" in result
+        assert "total in:" in result
+        assert "out:" in result
+        assert "fee:" in result
+        assert "Inputs" in result
+        assert "Outputs" in result
+
+    def test_to_log_string_transaction_invalid_txid(self) -> None:
+        """Test transaction logging with invalid txid."""
+        from unittest.mock import Mock
+
+        tx = Mock()
+        tx.id = Mock(side_effect=Exception("Invalid transaction"))
+
+        result = Format.to_log_string_transaction(tx)
+
+        assert "Cannot get txid:" in result
+
+    def test_to_log_string_transaction_complex(self) -> None:
+        """Test transaction logging with complex inputs/outputs."""
+        from unittest.mock import Mock
+
+        tx = Mock()
+        tx.id = Mock(return_value="c" * 64)
+
+        # Create inputs with source transactions
+        input1 = Mock()
+        source_tx = Mock()
+        source_output = Mock()
+        source_output.satoshis = 5000
+        source_tx.outputs = [source_output]
+        input1.source_transaction = source_tx
+        input1.source_output_index = 0
+        input1.source_txid = "d" * 64
+
+        input2 = Mock()
+        input2.source_transaction = None
+        input2.source_txid = "e" * 64
+        input2.source_output_index = 1
+
+        tx.inputs = [input1, input2]
+
+        # Create outputs
+        output1 = Mock()
+        output1.satoshis = 3000
+        output1.locking_script = Mock()
+        output1.locking_script.to_hex = Mock(return_value="76a914abcdef1234567890abcdef1234567890abcdef88ac")
+
+        output2 = Mock()
+        output2.satoshis = 1000
+        output2.locking_script = Mock()
+        output2.locking_script.to_hex = Mock(return_value="a9141234567890abcdef1234567890abcdef12345687")
+
+        tx.outputs = [output1, output2]
+
+        result = Format.to_log_string_transaction(tx)
+
+        assert "txid" in result
+        assert "total in:50_00" in result  # 5000 satoshis
+        assert "out:40_00" in result  # 4000 satoshis
+        assert "fee:10_00" in result  # 1000 satoshis
+
+    def test_to_log_string_transaction_exception(self) -> None:
+        """Test transaction logging with processing exception."""
+        from unittest.mock import Mock
+
+        tx = Mock()
+        tx.id = Mock(return_value="f" * 64)
+        # Make any attribute access raise an exception
+        tx.inputs = Mock(side_effect=Exception("Processing error"))
+
+        result = Format.to_log_string_transaction(tx)
+
+        assert "is invalid" in result
+
+    def test_to_log_string_beef_txid_found(self) -> None:
+        """Test BEEF transaction logging when txid is found."""
+        from unittest.mock import Mock
+
+        beef = Mock()
+        txid = "a" * 64
+
+        # Mock the find_atomic_transaction method
+        mock_tx = Mock()
+        mock_tx.id = Mock(return_value=txid)
+        mock_tx.inputs = []
+        mock_tx.outputs = []
+        beef.find_atomic_transaction = Mock(return_value=mock_tx)
+
+        result = Format.to_log_string_beef_txid(beef, txid)
+
+        assert "txid" in result
+        beef.find_atomic_transaction.assert_called_once_with(txid)
+
+    def test_to_log_string_beef_txid_not_found(self) -> None:
+        """Test BEEF transaction logging when txid is not found."""
+        from unittest.mock import Mock
+
+        beef = Mock()
+        txid = "b" * 64
+
+        beef.find_atomic_transaction = Mock(return_value=None)
+
+        result = Format.to_log_string_beef_txid(beef, txid)
+
+        assert f"Transaction {txid} not found in beef" == result
+
+    def test_to_log_string_beef_txid_exception(self) -> None:
+        """Test BEEF transaction logging with exception."""
+        from unittest.mock import Mock
+
+        beef = Mock()
+        txid = "c" * 64
+
+        beef.find_atomic_transaction = Mock(side_effect=Exception("Beef processing error"))
+
+        result = Format.to_log_string_beef_txid(beef, txid)
+
+        assert "Cannot find transaction" in result
+        assert "Beef processing error" in result
+

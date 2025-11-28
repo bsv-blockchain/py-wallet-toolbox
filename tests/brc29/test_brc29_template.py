@@ -49,6 +49,26 @@ class TestBRC29TemplateLock:
         assert script_hex.startswith("76a914")  # OP_DUP OP_HASH160
         assert script_hex.endswith("88ac")  # OP_EQUALVERIFY OP_CHECKSIG
 
+    def test_return_error_when_key_id_is_invalid(self) -> None:
+        """Given: Invalid key ID (empty derivation prefix)
+           When: Call lock_for_counterparty
+           Then: Raises ValueError
+
+        Reference: go-wallet-toolbox/pkg/brc29/brc29_template_test.go
+                   TestBRC29TemplateLock
+                   errorTestCases "return error when key id is invalid"
+        """
+        # Given
+        invalid_key_id = KeyID(derivation_prefix="", derivation_suffix="Su==")
+
+        # When / Then
+        with pytest.raises(ValueError):
+            lock_for_counterparty(
+                sender_private_key=SENDER_PRIVATE_KEY_HEX,
+                key_id=invalid_key_id,
+                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            )
+
     def test_return_error_when_nil_is_passed_as_sender_private_key_deriver(self) -> None:
         """Given: None as sender private key deriver
            When: Call lock_for_counterparty
@@ -256,6 +276,26 @@ class TestBRC29TemplateLockForSelf:
         script_hex = locking_script.hex()
         assert script_hex.startswith("76a914")  # OP_DUP OP_HASH160
         assert script_hex.endswith("88ac")  # OP_EQUALVERIFY OP_CHECKSIG
+
+    def test_return_error_when_key_id_is_invalid_self(self) -> None:
+        """Given: Invalid key ID (empty derivation prefix)
+           When: Call lock_for_self
+           Then: Raises ValueError
+
+        Reference: go-wallet-toolbox/pkg/brc29/brc29_template_test.go
+                   TestBRC29TemplateLockForSelf
+                   errorTestCases "return error when key id is invalid (self)"
+        """
+        # Given
+        invalid_key_id = KeyID(derivation_prefix="", derivation_suffix="Su==")
+
+        # When / Then
+        with pytest.raises(ValueError):
+            lock_for_self(
+                sender_public_key=SENDER_PUBLIC_KEY_HEX,
+                key_id=invalid_key_id,
+                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+            )
 
     def test_return_error_when_nil_is_passed_as_sender_public_key_deriver(self) -> None:
         """Given: None as sender public key deriver
@@ -586,16 +626,13 @@ class TestBRC29TemplateUnlock:
                    TestBRC29TemplateUnlock
                    errorTestCases "return error when recipient key is empty"
         """
-        # Given
-        # from bsv_wallet_toolbox.brc29 import unlock
-
-        # When / Then
-        # with pytest.raises(Exception):
-        #     unlock(
-        #         sender_pub_key=SENDER_PUBLIC_KEY_HEX,
-        #         key_id=KEY_ID,
-        #         recipient_priv_key=""
-        #     )
+        # Given / When / Then
+        with pytest.raises(ValueError):
+            unlock(
+                sender_public_key=SENDER_PUBLIC_KEY_HEX,
+                key_id=KEY_ID,
+                recipient_private_key=""
+            )
 
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
@@ -606,13 +643,10 @@ class TestBRC29TemplateUnlock:
                    TestBRC29TemplateUnlock
                    errorTestCases "return error when recipient key parsing fails"
         """
-        # Given
-        # from bsv_wallet_toolbox.brc29 import unlock
-
-        # When / Then
-        # with pytest.raises(Exception):
-        #     unlock(
-        #         sender_pub_key=SENDER_PUBLIC_KEY_HEX,
-        #         key_id=KEY_ID,
-        #         recipient_priv_key=INVALID_KEY_HEX
-        #     )
+        # Given / When / Then
+        with pytest.raises(ValueError):
+            unlock(
+                sender_public_key=SENDER_PUBLIC_KEY_HEX,
+                key_id=KEY_ID,
+                recipient_private_key=INVALID_KEY_HEX
+            )

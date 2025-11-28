@@ -386,7 +386,7 @@ class StorageProvider:
         try:
             # Close all sessions
             if hasattr(self, "SessionLocal") and self.SessionLocal:
-                self.SessionLocal.close_all()
+                self.SessionLocal.close_all_sessions()
 
             # Dispose of engine connection pool
             if hasattr(self, "engine") and self.engine:
