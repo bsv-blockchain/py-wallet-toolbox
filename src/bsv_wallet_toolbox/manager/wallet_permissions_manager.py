@@ -11,6 +11,7 @@ Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Callable
 from typing import Any, Literal, TypedDict
@@ -1025,8 +1026,9 @@ class WalletPermissionsManager:
                             asyncio.run(callback(data))
                     else:
                         callback(data)
-                except Exception:
+                except Exception as e:
                     # Continue with other callbacks even if one fails
+                    print(f"Exception in callback: {e}")
                     pass
 
     def unbind_callback(self, reference: int | Callable, event_name: str | None = None) -> bool:
@@ -1255,18 +1257,26 @@ class WalletPermissionsManager:
         if security_level == 0:
             return
 
-        # Check for admin-only protocols
+        # Check for admin-only protocols (BRC-100: starts with 'admin' or 'p ')
         protocol_name = protocol_id.get("protocolName", "") if isinstance(protocol_id, dict) else ""
-        if protocol_name.startswith("admin."):
-            raise RuntimeError(f"Protocol '{protocol_name}' is admin-only")
+        if protocol_name.startswith("admin") or protocol_name.startswith("p "):
+            raise ValueError(f"Protocol '{protocol_name}' is admin-only")
 
-        # Check config flags
+        # Check config flags based on usage type (matching TypeScript ensureProtocolPermission)
         config_key_map = {
             "encrypt": "seekProtocolPermissionsForEncrypting",
             "decrypt": "seekProtocolPermissionsForEncrypting",
+            "encrypting": "seekProtocolPermissionsForEncrypting",
             "sign": "seekProtocolPermissionsForSigning",
+            "signing": "seekProtocolPermissionsForSigning",
             "verify": "seekProtocolPermissionsForSigning",
             "hmac": "seekProtocolPermissionsForHMAC",
+            "publicKey": "seekPermissionsForPublicKeyRevelation",
+            "public_key": "seekPermissionsForPublicKeyRevelation",
+            "identityKey": "seekPermissionsForIdentityKeyRevelation",
+            "identity_key": "seekPermissionsForIdentityKeyRevelation",
+            "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
+            "linkage_revelation": "seekPermissionsForKeyLinkageRevelation",
         }
 
         config_key = config_key_map.get(operation)
@@ -1296,14 +1306,11 @@ class WalletPermissionsManager:
         if originator == self._admin_originator:
             return  # Admin bypass
 
-        # Check for admin-only baskets
-        if basket.startswith("admin."):
-            raise RuntimeError(f"Basket '{basket}' is admin-only")
-
-        # Check for reserved baskets
-        reserved_baskets = {"default"}
-        if basket in reserved_baskets and originator != self._admin_originator:
-            raise RuntimeError(f"Basket '{basket}' is reserved for admin use")
+        # Check for admin-only baskets (BRC-100: starts with 'admin', 'p ', or is 'default')
+        if basket == "default":
+            raise ValueError(f"Basket '{basket}' is admin-only")
+        if basket.startswith("admin") or basket.startswith("p "):
+            raise ValueError(f"Basket '{basket}' is admin-only")
 
         # Check config flags
         config_key_map = {
@@ -1316,12 +1323,17 @@ class WalletPermissionsManager:
         if config_key and not self._config.get(config_key, False):
             return  # Permission check disabled
 
-        # Check for existing permission token
-        if not self.verify_dbap_permission(originator, basket):
-            # Request permission
-            token = self.request_dbap_permission(originator, basket)
-            if not token:
-                raise RuntimeError(f"Basket permission denied for {operation}")
+        # Check for existing permission token using synchronous flow
+        permission_request: PermissionRequest = {
+            "type": "basket",
+            "originator": originator,
+            "basket": basket,
+            "reason": f"Requesting access to basket '{basket}' for {operation}",
+        }
+        
+        token = self._check_permission(permission_request)
+        if not token:
+            raise RuntimeError(f"Basket permission denied for {operation}")
 
     def _check_certificate_permissions(
         self, originator: str, cert_type: str, verifier: str, operation: str = "access"
@@ -1446,53 +1458,62 @@ class WalletPermissionsManager:
             if callbacks:
                 # Call the first registered callback
                 callback = callbacks[0]
-                try:
                     # Execute callback - handle async callbacks
-                    if asyncio.iscoroutinefunction(callback):
-                        # For test compatibility, run async callback synchronously
-                        try:
-                            # Try to get current loop
-                            loop = asyncio.get_running_loop()
-                            # If we get here, loop is running, create task and wait a bit
-                            task = asyncio.create_task(callback(permission_request))
-                            # Wait for the task to complete (with timeout for tests)
-                            import time
-                            start_time = time.time()
-                            while not task.done() and (time.time() - start_time) < 1.0:  # 1 second timeout
-                                time.sleep(0.01)
-                            if task.done():
-                                result = task.result()
-                            else:
-                                result = None  # Timeout
-                        except RuntimeError:
-                            # No running loop, create new one
-                            asyncio.run(callback(permission_request))
-                            result = None
-                    else:
-                        result = callback(permission_request)
+                if asyncio.iscoroutinefunction(callback):
+                    # For test compatibility, run async callback synchronously
+                    try:
+                        # Try to get current loop
+                        loop = asyncio.get_running_loop()
+                        # If we get here, loop is running, create task and wait a bit
+                        task = asyncio.create_task(callback(permission_request))
+                        # Wait for the task to complete (with timeout for tests)
+                        start_time = time.time()
+                        while not task.done() and (time.time() - start_time) < 1.0:  # 1 second timeout
+                            time.sleep(0.01)
+                        if task.done():
+                            result = task.result()
+                        else:
+                            result = None  # Timeout
+                    except RuntimeError:
+                        # No running loop, create new one
+                        asyncio.run(callback(permission_request))
+                        result = None
+                else:
+                    result = callback(permission_request)
 
                     # Check if permission was granted via grant_permission/deny_permission
                     if request_id in self._pending_requests:
                         pending = self._pending_requests[request_id]
                         if pending.get("granted"):
-                            # Create and return token
+                            # Check if this is an ephemeral grant (skip token storage)
+                            grant_result = pending.get("result", {})
+                        if grant_result.get("ephemeral"):
+                            # For ephemeral grants, create in-memory token only
+                            token: PermissionToken = {
+                                "type": permission_request.get("type", ""),
+                                "originator": permission_request.get("originator", ""),
+                                "expiry": int(time.time()) + 3600,  # 1 hour default
+                                "ephemeral": True,
+                            }
+                            # Add type-specific fields
+                            if permission_request.get("type") == "spending":
+                                spending = permission_request.get("spending", {})
+                                token["authorizedAmount"] = spending.get("satoshis", 0)
+                        else:
+                            # Create persistent token on-chain
                             token = self._create_permission_token_from_request(permission_request)
+                        if request_id in self._active_requests:
                             del self._active_requests[request_id]
+                        if request_id in self._pending_requests:
                             del self._pending_requests[request_id]
                             return token
                         elif pending.get("denied"):
                             # Clean up and return None
-                            del self._active_requests[request_id]
-                            del self._pending_requests[request_id]
+                            if request_id in self._active_requests:
+                                del self._active_requests[request_id]
+                            if request_id in self._pending_requests:
+                                del self._pending_requests[request_id]
                             return None
-
-                except Exception as e:
-                    # On error, clean up and deny
-                    if request_id in self._active_requests:
-                        del self._active_requests[request_id]
-                    if request_id in self._pending_requests:
-                        del self._pending_requests[request_id]
-                    return None
 
         # If no callback or callback fails, clean up
         if request_id in self._active_requests:
@@ -1772,27 +1793,26 @@ class WalletPermissionsManager:
         Returns:
             Net satoshis spent (positive = spending, negative = receiving)
 
-        Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts calculateNetSpent
+        Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
+                   netSpent = totalOutputSatoshis + fee - totalInputSatoshis
         """
         inputs = args.get("inputs", [])
         outputs = args.get("outputs", [])
 
-        # Sum input satoshis (what we're spending from our owned UTXOs)
+        # Sum input satoshis (what we're providing as inputs)
         input_satoshis = 0
         for input_item in inputs:
-            # In a real implementation, we'd look up the actual UTXO value
-            # For now, assume inputs have a satoshis field or default
             input_satoshis += input_item.get("satoshis", 0)
 
-        # Sum output satoshis (what we're creating as new outputs)
+        # Sum output satoshis (what we're creating as new outputs - this is spending)
         output_satoshis = 0
         for output_item in outputs:
             output_satoshis += output_item.get("satoshis", 0)
 
-        # Net spent = inputs - outputs
-        # Positive = spending (we're consuming more than we're creating)
-        # Negative = receiving (we're creating more than we're consuming)
-        return input_satoshis - output_satoshis
+        # Net spent = outputs - inputs (TS parity)
+        # Positive = spending (we're creating outputs that cost more than our inputs)
+        # Negative = receiving (our inputs exceed our outputs)
+        return output_satoshis - input_satoshis
 
     def _check_spending_authorization(
         self, originator: str, satoshis: int, description: str
@@ -1825,6 +1845,23 @@ class WalletPermissionsManager:
 
             if authorized_amount - tracked_spending >= satoshis:
                 return True
+
+        # No valid token found, request permission via callback
+        permission_request: PermissionRequest = {
+            "type": "spending",
+            "originator": originator,
+            "spending": {"satoshis": satoshis},
+            "reason": description,
+        }
+
+        token = self._request_permission(permission_request)
+        if token:
+            # Store the new token
+            cache_key = f"dsap:{originator}:{satoshis}"
+            if cache_key not in self._permissions:
+                self._permissions[cache_key] = []
+            self._permissions[cache_key].append(token)
+            return True
 
         return False
 
@@ -1884,6 +1921,13 @@ class WalletPermissionsManager:
         import copy
         args = copy.deepcopy(args)
 
+        # Check basket permissions for outputs (BRC-100: admin-only baskets must be blocked first)
+        outputs = args.get("outputs", [])
+        for output in outputs:
+            basket = output.get("basket")
+            if basket:
+                self._check_basket_permissions(originator or "", basket, "insert")
+
         # Check label permissions if enabled
         action_labels = args.get("labels", [])
         if action_labels:
@@ -1939,7 +1983,7 @@ class WalletPermissionsManager:
         # Check protocol permissions
         protocol_id = args.get("protocolID")
         if protocol_id:
-            self._check_protocol_permissions(originator or "", protocol_id, "sign")
+            self._check_protocol_permissions(originator or "", protocol_id, "signing")
 
         return self._underlying_wallet.create_signature(args, originator)
 
@@ -2047,8 +2091,15 @@ class WalletPermissionsManager:
         if originator == self._admin_originator:
             return self._underlying_wallet.get_public_key(args, originator)
 
-        # Check public key revelation permissions
-        self._check_identity_permissions(originator or "", "public_key_reveal")
+        # Check protocol permissions if protocolID is provided
+        protocol_id = args.get("protocolID")
+        if protocol_id:
+            self._check_protocol_permissions(originator or "", protocol_id, "publicKey")
+
+        # Check identity key permissions if identityKey is true
+        identity_key = args.get("identityKey")
+        if identity_key:
+            self._check_protocol_permissions(originator or "", [1, "identity key retrieval"], "identityKey")
 
         return self._underlying_wallet.get_public_key(args, originator)
 
@@ -2113,7 +2164,7 @@ class WalletPermissionsManager:
         # Check protocol permissions for encrypting
         protocol_id = args.get("protocolID")
         if protocol_id:
-            self._check_protocol_permissions(originator or "", protocol_id, "encrypt")
+            self._check_protocol_permissions(originator or "", protocol_id, "encrypting")
 
         return self._underlying_wallet.encrypt(args, originator)
 
@@ -2136,7 +2187,7 @@ class WalletPermissionsManager:
         # Check protocol permissions for decrypting
         protocol_id = args.get("protocolID")
         if protocol_id:
-            self._check_protocol_permissions(originator or "", protocol_id, "decrypt")
+            self._check_protocol_permissions(originator or "", protocol_id, "encrypting")
 
         return self._underlying_wallet.decrypt(args, originator)
 
@@ -2205,7 +2256,7 @@ class WalletPermissionsManager:
         # Check protocol permissions for signature verification
         protocol_id = args.get("protocolID")
         if protocol_id:
-            self._check_protocol_permissions(originator or "", protocol_id, "verify")
+            self._check_protocol_permissions(originator or "", protocol_id, "signing")
 
         return self._underlying_wallet.verify_signature(args, originator)
 
@@ -2370,12 +2421,16 @@ class WalletPermissionsManager:
     ) -> None:
         """Check if label permissions are granted.
 
+        Uses protocol permission system with special protocol ID [1, 'action label <label>']
+        per TypeScript implementation.
+
         Args:
             originator: Domain requesting access
             action_labels: Labels being applied
-            operation: Specific operation
+            operation: Specific operation ('apply' or 'list')
 
         Raises:
+            ValueError: If label is admin-reserved
             RuntimeError: If permission denied
         """
         if originator == self._admin_originator:
@@ -2391,14 +2446,22 @@ class WalletPermissionsManager:
         if config_key and not self._config.get(config_key, False):
             return  # Permission check disabled
 
-        # Check for admin-only labels
+        # Check for admin-only labels (BRC-100: starts with 'admin')
         for label in action_labels:
             if label.startswith("admin"):
-                raise ValueError("Labels starting with 'admin' are reserved")
+                raise ValueError(f"Label '{label}' is admin-only")
 
-        # For now, label permissions are not fully implemented
-        # TODO: Implement label permission tokens
-        pass
+        # Check permission for each label using protocol permission system
+        # TypeScript uses protocol ID [1, 'action label <label>']
+        for label in action_labels:
+            protocol_id = {"securityLevel": 1, "protocolName": f"action label {label}"}
+            
+            # Check for existing permission token
+            if not self.verify_dpacp_permission(originator, protocol_id):
+                # Request permission via callback
+                token = self.request_dpacp_permission(originator, protocol_id)
+                if not token:
+                    raise RuntimeError(f"Label permission denied for {label}")
 
     # --- Utility/Info Methods ---
     # These methods don't require permission checks and are simple pass-throughs
@@ -2529,6 +2592,11 @@ class WalletPermissionsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
+        # Check label permissions if listing by label
+        labels = args.get("labels", [])
+        if labels and originator != self._admin_originator:
+            self._check_label_permissions(originator or "", labels, "list")
+
         # Call underlying wallet
         result_or_coro = self._underlying_wallet.list_actions(args, originator)
         
@@ -2565,6 +2633,11 @@ class WalletPermissionsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
+        # Check basket listing permissions if basket is specified
+        basket = args.get("basket")
+        if basket and originator != self._admin_originator:
+            self._check_basket_permissions(originator or "", basket, "list")
+
         # Call underlying wallet
         result_or_coro = self._underlying_wallet.list_outputs(args, originator)
         

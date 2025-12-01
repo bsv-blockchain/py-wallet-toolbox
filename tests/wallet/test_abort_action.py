@@ -191,13 +191,13 @@ class TestWalletAbortAction:
     def test_invalid_params_missing_reference_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs missing reference key
            When: Call abort_action
-           Then: Raises KeyError or TypeError
+           Then: Raises InvalidParameterError, KeyError or TypeError
         """
         # Given
         invalid_args = {}  # Missing reference key
 
         # When/Then
-        with pytest.raises((KeyError, TypeError)):
+        with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.abort_action(invalid_args)
 
     def test_invalid_params_extra_keys_ignored(self, wallet_with_storage: Wallet) -> None:

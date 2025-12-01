@@ -586,7 +586,7 @@ class TestWalletVerifySignature:
         # When
         result = wallet_with_storage.verify_signature(verify_args)
 
-        # Then
+        # Then - Should be invalid because public key doesn't match signature
         assert "valid" in result
         assert result["valid"] is False
 

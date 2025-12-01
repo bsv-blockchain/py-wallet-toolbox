@@ -38,11 +38,25 @@ from .signer.methods import (
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
 from .utils.validation import (
     validate_abort_action_args,
+    validate_acquire_certificate_args,
     validate_create_action_args,
+    validate_create_hmac_args,
+    validate_create_signature_args,
+    validate_decrypt_args,
+    validate_discover_by_attributes_args,
+    validate_discover_by_identity_key_args,
+    validate_encrypt_args,
+    validate_get_header_args,
+    validate_get_public_key_args,
+    validate_get_version_args,
     validate_internalize_action_args,
     validate_list_actions_args,
+    validate_prove_certificate_args,
     validate_relinquish_certificate_args,
     validate_sign_action_args,
+    validate_verify_hmac_args,
+    validate_verify_signature_args,
+    validate_wallet_constructor_args,
 )
 
 if TYPE_CHECKING:
@@ -179,7 +193,15 @@ class Wallet:
         # Validate chain parameter
         if chain not in ("main", "test"):
             raise ValueError(f"Invalid chain: {chain}. Must be 'main' or 'test'.")
-        
+
+        # Validate key_deriver parameter
+        if key_deriver is None:
+            raise ValueError("key_deriver is required")
+
+        # Validate key_deriver parameter
+        if key_deriver is not None and not hasattr(key_deriver, 'derive_public_key'):
+            raise ValueError("key_deriver must implement the KeyDeriver interface")
+
         self.chain: Chain = chain
         self.services: WalletServices | None = services
         self.key_deriver: KeyDeriver | None = key_deriver
@@ -609,18 +631,21 @@ class Wallet:
         Raises:
             RuntimeError: If storage_provider is not configured
         """
+        from bsv_wallet_toolbox.utils.validation import validate_relinquish_output_args
 
         self._validate_originator(originator)
+
+        # Validate arguments
+        vargs = validate_relinquish_output_args(args)
+
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
 
         # Generate auth object with identity key
         auth = self._make_auth()
 
-        # Extract outpoint from args
-        outpoint = args.get("output")
-        if not outpoint:
-            raise InvalidParameterError("output", "required")
+        # Extract outpoint from validated args
+        outpoint = vargs["output"]
 
         # Delegate to storage provider
         result = self.storage.relinquish_output(auth, outpoint)
@@ -836,8 +861,8 @@ class Wallet:
         if signer_result.tx is not None:
             # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
             result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
-        if signer_result.no_send_change is not None:
-            result["noSendChange"] = signer_result.no_send_change
+        if signer_result.no_send_change is not None or vargs.get("options", {}).get("noSend"):
+            result["noSendChange"] = signer_result.no_send_change or []
         if signer_result.signable_transaction is not None:
             result["signableTransaction"] = signer_result.signable_transaction
         # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
@@ -1117,6 +1142,9 @@ class Wallet:
             >>> result = wallet.get_version({})
             >>> assert result == {"version": Wallet.VERSION}
         """
+        # Validate arguments
+        validate_get_version_args(_args)
+
         self._validate_originator(originator)
         return {"version": self.VERSION}
 
@@ -1357,17 +1385,10 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate height parameter first (before services check for better error messages)
-        if "height" not in args:
-            raise InvalidParameterError("height", "required")
+        # Validate arguments
+        validate_get_header_args(args)
 
         height = args["height"]
-
-        if not isinstance(height, int):
-            raise InvalidParameterError("height", "an integer")
-
-        if height < 0:
-            raise InvalidParameterError("height", f"a non-negative integer (got {height})")
 
         if self.services is None:
             raise RuntimeError("Services must be configured to use getHeaderForHeight")
@@ -1775,13 +1796,8 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate required parameters
-        if not args.get("type"):
-            raise InvalidParameterError("type", "a non-empty string")
-        if not args.get("certifier"):
-            raise InvalidParameterError("certifier", "a non-empty string")
-        if not args.get("acquisitionProtocol"):
-            raise InvalidParameterError("acquisitionProtocol", "a non-empty string")
+        # Validate arguments
+        validate_acquire_certificate_args(args)
 
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
@@ -1834,6 +1850,9 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/signer/methods/proveCertificate.ts
         """
         self._validate_originator(originator)
+
+        # Validate arguments
+        validate_prove_certificate_args(args)
 
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
@@ -2003,6 +2022,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_get_public_key_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.get_public_key(args)
@@ -2017,20 +2039,10 @@ class Wallet:
             return {"publicKey": root_public_key.hex()}
 
         # Case 2: Derive a key
-        # Validate required parameters (matching TS ProtoWallet.getPublicKey)
-        if "protocolID" not in args or "keyID" not in args:
-            raise InvalidParameterError("protocolID and keyID", "required if identityKey is false or undefined")
-
         protocol_id = args["protocolID"]
         key_id = args["keyID"]
 
-        # Validate keyID is not empty (matching TS check)
-        if not key_id or key_id == "":
-            raise InvalidParameterError("keyID", "a non-empty string")
-
         # Convert TypeScript protocolID format [security_level, protocol_name] to Protocol
-        if not isinstance(protocol_id, (list, tuple)) or len(protocol_id) != 2:
-            raise InvalidParameterError("protocolID", "a tuple/list of [security_level, protocol_name]")
 
         security_level, protocol_name = protocol_id
         protocol = Protocol(security_level=security_level, protocol=protocol_name)
@@ -2089,6 +2101,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_create_signature_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_signature(args)
@@ -2100,9 +2115,6 @@ class Wallet:
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
-
-        if not protocol_id or not key_id:
-            raise InvalidParameterError("protocolID/keyID", "required")
 
         protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
         counterparty = _parse_counterparty(counterparty_arg)
@@ -2164,6 +2176,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_verify_signature_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_signature(args)
@@ -2177,21 +2192,23 @@ class Wallet:
         counterparty_arg = args.get("counterparty", "self")
         for_self = args.get("forSelf", False)
 
-        if not protocol_id or not key_id or signature is None:
-            raise InvalidParameterError("protocolID/keyID/signature", "required")
-
         signature_bytes = _as_bytes(signature, "signature")
 
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-        counterparty = _parse_counterparty(counterparty_arg)
-
-        # Derive public key for verification
-        pub = self.key_deriver.derive_public_key(
-            protocol=protocol,
-            key_id=key_id,
-            counterparty=counterparty,
-            for_self=for_self,
-        )
+        # Use provided publicKey for verification (BRC-100 compliant)
+        public_key_hex = args.get("publicKey")
+        if public_key_hex:
+            # Use the provided public key directly
+            pub = PublicKey(public_key_hex)
+        else:
+            # Fall back to deriving from protocolID/keyID if no publicKey provided
+            protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
+            counterparty = _parse_counterparty(counterparty_arg)
+            pub = self.key_deriver.derive_public_key(
+                protocol=protocol,
+                key_id=key_id,
+                counterparty=counterparty,
+                for_self=for_self,
+            )
 
         h_direct = args.get("hashToDirectlyVerify")
         if h_direct is not None:
@@ -2238,6 +2255,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_encrypt_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.encrypt(args)
@@ -2251,8 +2271,6 @@ class Wallet:
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
         for_self = args.get("forSelf", False)
-        if not protocol_id or not key_id:
-            raise InvalidParameterError("protocolID/keyID", "required")
 
         protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
         counterparty = _parse_counterparty(counterparty_arg)
@@ -2295,6 +2313,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_decrypt_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.decrypt(args)
@@ -2307,8 +2328,6 @@ class Wallet:
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
-        if not protocol_id or not key_id:
-            raise InvalidParameterError("protocolID/keyID", "required")
 
         protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
         counterparty = _parse_counterparty(counterparty_arg)
@@ -2353,6 +2372,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_create_hmac_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_hmac(args)
@@ -2365,8 +2387,6 @@ class Wallet:
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
-        if not protocol_id or not key_id:
-            raise InvalidParameterError("protocolID/keyID", "required")
 
         protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
         counterparty = _parse_counterparty(counterparty_arg)
@@ -2406,6 +2426,9 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_verify_hmac_args(args)
+
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_hmac(args)
@@ -2419,8 +2442,6 @@ class Wallet:
         protocol_id = args.get("protocolID")
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
-        if not protocol_id or not key_id:
-            raise InvalidParameterError("protocolID/keyID", "required")
 
         protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
         counterparty = _parse_counterparty(counterparty_arg)
@@ -2599,14 +2620,11 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_discover_by_identity_key_args(args)
+
         if not self.services:
             raise RuntimeError("services are required for discoverByIdentityKey")
-
-        # TS: validate args
-        if not isinstance(args, dict):
-            raise InvalidParameterError("args", "a dict")
-        if "identityKey" not in args or not isinstance(args["identityKey"], str):
-            raise InvalidParameterError("identityKey", "a non-empty string")
 
         # Cache TTL: 2 minutes
         ttl_ms = 2 * 60 * 1000
@@ -2682,14 +2700,11 @@ class Wallet:
         """
         self._validate_originator(originator)
 
+        # Validate arguments
+        validate_discover_by_attributes_args(args)
+
         if not self.services:
             raise RuntimeError("services are required for discoverByAttributes")
-
-        # TS: validate args
-        if not isinstance(args, dict):
-            raise InvalidParameterError("args", "a dict")
-        if "attributes" not in args:
-            raise InvalidParameterError("attributes", "must be present")
 
         # Cache TTL: 2 minutes
         ttl_ms = 2 * 60 * 1000

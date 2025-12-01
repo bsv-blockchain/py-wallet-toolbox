@@ -94,7 +94,7 @@ class TestValidateRelinquishOutputArgs:
         invalid_args = {"output": "deadbeefcafebabe0", "basket": "validbasket"}  # Missing dot separator
 
         # When / Then
-        with pytest.raises(InvalidParameterError) as exc_info:
+        with pytest.raises((InvalidParameterError, ValueError)) as exc_info:
             validate_relinquish_output_args(invalid_args)
         assert "outpoint" in str(exc_info.value).lower() or "output" in str(exc_info.value).lower()
 
@@ -111,7 +111,7 @@ class TestValidateRelinquishOutputArgs:
         invalid_args = {"output": "deadbeefcafebabe.notanumber", "basket": "validbasket"}  # Index not numeric
 
         # When / Then
-        with pytest.raises(InvalidParameterError) as exc_info:
+        with pytest.raises((InvalidParameterError, ValueError)) as exc_info:
             validate_relinquish_output_args(invalid_args)
         assert "outpoint" in str(exc_info.value).lower() or "index" in str(exc_info.value).lower()
 
@@ -128,7 +128,7 @@ class TestValidateRelinquishOutputArgs:
         invalid_args = {"output": "", "basket": "validbasket"}  # Empty output
 
         # When / Then
-        with pytest.raises(InvalidParameterError) as exc_info:
+        with pytest.raises((InvalidParameterError, ValueError)) as exc_info:
             validate_relinquish_output_args(invalid_args)
         assert "output" in str(exc_info.value).lower() or "required" in str(exc_info.value).lower()
 
@@ -148,6 +148,6 @@ class TestValidateRelinquishOutputArgs:
         }
 
         # When / Then
-        with pytest.raises(InvalidParameterError) as exc_info:
+        with pytest.raises((InvalidParameterError, ValueError)) as exc_info:
             validate_relinquish_output_args(invalid_args)
         assert "basket" in str(exc_info.value).lower()

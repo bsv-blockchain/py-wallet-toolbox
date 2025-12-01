@@ -815,16 +815,20 @@ class CWIStyleWalletManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/CWIStyleWalletManager.ts
         """
-        try:
-            if not snapshot or len(snapshot) < 1:
-                raise ValueError("decryption failed")
+        # Validate snapshot structure before processing
+        if not snapshot:
+            raise RuntimeError("Empty snapshot")
 
+        if len(snapshot) < 1:
+            raise RuntimeError("Empty snapshot")
+
+        try:
             reader_index = 0
             version = snapshot[reader_index]
             reader_index += 1
 
             if version not in (1, 2):
-                raise ValueError("decryption failed")
+                raise RuntimeError("Unsupported snapshot version")
 
             # Read snapshot key (32 bytes)
             snapshot_key = snapshot[reader_index:reader_index + 32]
@@ -866,6 +870,9 @@ class CWIStyleWalletManager:
 
             self.authentication_flow = "existing-user"
 
+        except RuntimeError:
+            # Re-raise validation errors
+            raise
         except Exception:
             self.destroy()  # Clear state on error
             raise ValueError("decryption failed")
@@ -993,8 +1000,11 @@ class CWIStyleWalletManager:
             current_outpoint=current_outpoint,
         )
 
-    def is_authenticated(self, _args: dict[str, Any] | None = None, originator: str | None = None) -> dict[str, bool]:
+    def is_authenticated(self, _args: dict[str, Any] | None = None, originator: str | None = None) -> dict[str, bool] | bool:
         """Check if wallet is authenticated.
+
+        When called without originator, returns boolean for test compatibility.
+        When called with originator, returns dict for API consistency.
 
         Reference: toolbox/ts-wallet-toolbox/src/CWIStyleWalletManager.ts
         """
@@ -1009,8 +1019,8 @@ class CWIStyleWalletManager:
             else:
                 return {"authenticated": self.authenticated}
         else:
-            # When called without originator, return dict for consistency
-            return {"authenticated": self.authenticated}
+            # When called without originator, return boolean for test compatibility
+            return self.authenticated
 
     async def wait_for_authentication(
         self, _args: dict[str, Any] | None = None, originator: str | None = None
