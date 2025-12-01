@@ -208,7 +208,6 @@ class TestWalletPermissionsManagerEncryptionIntegration:
         assert action["outputs"][0]["outputDescription"] == output_desc
         assert action["outputs"][0]["customInstructions"] == custom_instr
 
-    @pytest.mark.skip(reason="Test expectation unclear - expects decrypt calls when encryption=False")
     def test_should_not_encrypt_metadata_if_encryptwalletmetadata_false_storing_and_retrieving_plaintext(
         self,
     ) -> None:

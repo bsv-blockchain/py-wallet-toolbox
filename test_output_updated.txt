@@ -1,10 +1,10 @@
 ============================= test session starts ==============================
-platform linux -- Python 3.12.3, pytest-9.0.1, pluggy-1.6.0 -- /home/sneakyfox/TOOLBOX/py-wallet-toolbox/venv/bin/python
+platform linux -- Python 3.12.3, pytest-8.3.5, pluggy-1.6.0 -- /usr/bin/python
 cachedir: .pytest_cache
 rootdir: /home/sneakyfox/TOOLBOX/py-wallet-toolbox
 configfile: pyproject.toml
 testpaths: tests
-plugins: cov-7.0.0, asyncio-1.3.0
+plugins: cov-7.0.0, cocotb-test-0.2.6, asyncio-1.2.0, django-4.11.1
 asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
 collecting ... collected 2511 items
 
@@ -253,8 +253,8 @@ tests/errors/test_errors_coverage.py::TestErrorStringRepresentations::test_walle
 tests/errors/test_errors_coverage.py::TestErrorStringRepresentations::test_wallet_error_str_with_context PASSED [  9%]
 tests/errors/test_errors_coverage.py::TestErrorStringRepresentations::test_invalid_parameter_error_str PASSED [  9%]
 tests/errors/test_errors_coverage.py::TestErrorStringRepresentations::test_insufficient_funds_error_str PASSED [  9%]
-tests/integration/test_bulk_file_data_manager.py::TestBulkFileDataManager::test_default_options_cdn_files SKIPPEDnNet_*.headers)) [  9%]
-tests/integration/test_bulk_file_data_manager.py::TestBulkFileDataManager::test_default_options_cdn_files_nodropall SKIPPEDnNet_*.headers)) [  9%]
+tests/integration/test_bulk_file_data_manager.py::TestBulkFileDataManager::test_default_options_cdn_files SKIPPED [  9%]
+tests/integration/test_bulk_file_data_manager.py::TestBulkFileDataManager::test_default_options_cdn_files_nodropall SKIPPED [  9%]
 tests/integration/test_bulk_ingestor_cdn_babbage.py::TestBulkIngestorCDNBabbage::test_mainnet SKIPPED [  9%]
 tests/integration/test_bulk_ingestor_cdn_babbage.py::TestBulkIngestorCDNBabbage::test_testnet SKIPPED [  9%]
 tests/integration/test_cwi_style_wallet_manager.py::TestCWIStyleWalletManagerXOR::test_xor_function_verifies_correctness SKIPPED [  9%]
@@ -436,7 +436,7 @@ tests/models/test_models_coverage.py::TestModelSerialization::test_model_to_dict
 tests/models/test_models_coverage.py::TestModelSerialization::test_model_from_dict PASSED [ 16%]
 tests/models/test_models_coverage.py::TestModelSerialization::test_model_to_json PASSED [ 17%]
 tests/monitor/test_live_ingestor_whats_on_chain_poll.py::TestLiveIngestorWhatsOnChainPoll::test_listen_for_first_new_header SKIPPED [ 17%]
-tests/monitor/test_monitor.py::TestMonitor::test_taskclock SKIPPED       [ 17%]
+tests/monitor/test_monitor.py::TestMonitor::test_taskclock SKIPPED (...) [ 17%]
 tests/monitor/test_monitor.py::TestMonitor::test_tasknewheader SKIPPED   [ 17%]
 tests/monitor/test_monitor.py::TestMonitor::test_tasksendwaiting_success SKIPPED [ 17%]
 tests/monitor/test_monitor.py::TestMonitor::test_taskcheckforproofs_success SKIPPED [ 17%]
@@ -781,7 +781,7 @@ tests/services/test_services_methods.py::TestServicesChainTrackerMethods::test_u
 tests/services/test_services_methods.py::TestServicesChainTrackerMethods::test_add_header PASSED [ 30%]
 tests/services/test_transaction_status.py::test_get_transaction_status_placeholder PASSED [ 30%]
 tests/services/test_transaction_status_min.py::test_get_transaction_status_minimal PASSED [ 30%]
-tests/services/test_verify_beef.py::TestVerifyBeef::test_verify_beef_from_hex SKIPPEDr merkle path verification) [ 30%]
+tests/services/test_verify_beef.py::TestVerifyBeef::test_verify_beef_from_hex SKIPPED [ 30%]
 tests/services/test_verify_beef.py::TestVerifyBeef::test_verify_beef_from_storage PASSED [ 30%]
 tests/services/test_wallet_services_coverage.py::TestWalletServices::test_import_wallet_services PASSED [ 30%]
 tests/services/test_wallet_services_coverage.py::TestWalletServices::test_create_wallet_services PASSED [ 30%]
@@ -1017,9 +1017,9 @@ tests/storage/entities/test_users.py::TestUsersEntity::test_handles_empty_api_ob
 tests/storage/entities/test_users.py::TestUsersEntity::test_id_getter_and_setter_work_correctly PASSED [ 40%]
 tests/storage/entities/test_users.py::TestUsersEntity::test_entityname_returns_user PASSED [ 40%]
 tests/storage/entities/test_users.py::TestUsersEntity::test_entitytable_returns_users PASSED [ 40%]
-tests/storage/entities/test_users.py::TestUsersEntity::test_mergeexisting_updates_user_when_ei_updated_at_is_newer SKIPPEDge-local)) [ 40%]
+tests/storage/entities/test_users.py::TestUsersEntity::test_mergeexisting_updates_user_when_ei_updated_at_is_newer SKIPPED [ 40%]
 tests/storage/entities/test_users.py::TestUsersEntity::test_mergeexisting_does_not_update_user_when_ei_updated_at_is_older PASSED [ 40%]
-tests/storage/entities/test_users.py::TestUsersEntity::test_mergeexisting_updates_user_with_trx SKIPPEDge-local)) [ 40%]
+tests/storage/entities/test_users.py::TestUsersEntity::test_mergeexisting_updates_user_with_trx SKIPPED [ 40%]
 tests/storage/entities/test_users.py::TestUsersEntity::test_mergenew_always_throws_error PASSED [ 40%]
 tests/storage/test_count.py::Testcount::test_count_proventx PASSED       [ 40%]
 tests/storage/test_count.py::Testcount::test_count_proventxreq PASSED    [ 40%]
@@ -1477,13 +1477,12 @@ tests/unit/test_wallet_getnetwork.py::TestWalletGetNetwork::test_returns_mainnet
 tests/unit/test_wallet_getversion.py::TestWalletGetVersion::test_returns_correct_wallet_version PASSED [ 58%]
 tests/unit/test_wallet_isauthenticated.py::TestIsAuthenticated::test_resolves_with_authenticated_true PASSED [ 58%]
 tests/unit/test_wallet_waitforauthentication.py::TestWaitForAuthentication::test_eventually_resolves PASSED [ 58%]
-tests/universal/test_abortaction.py::TestUniversalVectorsAbortAction::test_abortaction_wire_matches_universal_vectors XFAILpre-created in
-database)                                                                [ 58%]
+tests/universal/test_abortaction.py::TestUniversalVectorsAbortAction::test_abortaction_wire_matches_universal_vectors XFAIL [ 58%]
 tests/universal/test_acquirecertificate.py::TestUniversalVectorsAcquireCertificate::test_acquirecertificate_simple_json_matches_universal_vectors XFAIL [ 58%]
 tests/universal/test_acquirecertificate.py::TestUniversalVectorsAcquireCertificate::test_acquirecertificate_simple_wire_matches_universal_vectors PASSED [ 58%]
 tests/universal/test_acquirecertificate.py::TestUniversalVectorsAcquireCertificate::test_acquirecertificate_issuance_json_matches_universal_vectors XFAIL [ 58%]
 tests/universal/test_acquirecertificate.py::TestUniversalVectorsAcquireCertificate::test_acquirecertificate_issuance_wire_matches_universal_vectors PASSED [ 58%]
-tests/universal/test_createaction.py::TestUniversalVectorsCreateAction::test_createaction_1out_json_matches_universal_vectors SKIPPEDion) [ 58%]
+tests/universal/test_createaction.py::TestUniversalVectorsCreateAction::test_createaction_1out_json_matches_universal_vectors SKIPPED [ 58%]
 tests/universal/test_createaction.py::TestUniversalVectorsCreateAction::test_createaction_1out_wire_matches_universal_vectors PASSED [ 58%]
 tests/universal/test_createaction.py::TestUniversalVectorsCreateAction::test_createaction_nosignandprocess_json_matches_universal_vectors SKIPPED [ 58%]
 tests/universal/test_createaction.py::TestUniversalVectorsCreateAction::test_createaction_nosignandprocess_wire_matches_universal_vectors PASSED [ 58%]
@@ -2384,16 +2383,16 @@ tests/wallet/test_hmac_signature.py::TestWalletVerifySignature::test_verify_sign
 tests/wallet/test_internalize_action.py::TestWalletInternalizeAction::test_invalid_params_empty_tx PASSED [ 94%]
 tests/wallet/test_internalize_action.py::TestWalletInternalizeAction::test_invalid_params_empty_description PASSED [ 94%]
 tests/wallet/test_internalize_action.py::TestWalletInternalizeAction::test_invalid_params_empty_outputs PASSED [ 94%]
-tests/wallet/test_internalize_action.py::TestWalletInternalizeAction::test_internalize_custom_output_basket_insertion SKIPPEDp) [ 94%]
+tests/wallet/test_internalize_action.py::TestWalletInternalizeAction::test_internalize_custom_output_basket_insertion SKIPPED [ 94%]
 tests/wallet/test_list_actions.py::TestWalletListActions::test_invalid_params_label_too_long PASSED [ 94%]
 tests/wallet/test_list_actions.py::TestWalletListActions::test_all_actions PASSED [ 94%]
 tests/wallet/test_list_actions.py::TestWalletListActions::test_non_existing_label_with_any PASSED [ 94%]
 tests/wallet/test_list_actions.py::TestWalletListActions::test_specific_label_filter PASSED [ 94%]
 tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_invalid_params_invalid_certifier PASSED [ 94%]
-tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_certifier_lowercase SKIPPEDrom TypeScript) [ 94%]
-tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_certifier_uppercase SKIPPEDrom TypeScript) [ 94%]
-tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_multiple_certifiers SKIPPEDrom TypeScript) [ 94%]
-tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_type SKIPPEDrom TypeScript) [ 94%]
+tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_certifier_lowercase SKIPPED [ 94%]
+tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_certifier_uppercase SKIPPED [ 94%]
+tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_multiple_certifiers SKIPPED [ 94%]
+tests/wallet/test_list_certificates.py::TestWalletListCertificates::test_filter_by_type SKIPPED [ 94%]
 tests/wallet/test_list_outputs.py::TestWalletListOutputs::test_invalid_params_empty_basket PASSED [ 95%]
 tests/wallet/test_list_outputs.py::TestWalletListOutputs::test_invalid_params_empty_tag PASSED [ 95%]
 tests/wallet/test_list_outputs.py::TestWalletListOutputs::test_invalid_params_limit_zero PASSED [ 95%]
@@ -2411,7 +2410,7 @@ tests/wallet/test_misc_methods.py::TestWalletConstructor::test_wallet_constructo
 tests/wallet/test_misc_methods.py::TestWalletConstructor::test_wallet_constructor_with_invalid_chain PASSED [ 95%]
 tests/wallet/test_relinquish_output.py::TestWalletRelinquishOutput::test_relinquish_specific_output PASSED [ 95%]
 tests/wallet/test_sign_process_action.py::TestWalletSignAction::test_sign_action_invalid_params_empty_reference PASSED [ 95%]
-tests/wallet/test_sign_process_action.py::TestWalletSignAction::test_sign_action_with_valid_reference SKIPPEDneration)) [ 95%]
+tests/wallet/test_sign_process_action.py::TestWalletSignAction::test_sign_action_with_valid_reference SKIPPED [ 95%]
 tests/wallet/test_sign_process_action.py::TestWalletSignAction::test_sign_action_with_spend_authorizations SKIPPED [ 95%]
 tests/wallet/test_sign_process_action.py::TestWalletProcessAction::test_process_action_invalid_params_missing_txid SKIPPED [ 95%]
 tests/wallet/test_sign_process_action.py::TestWalletProcessAction::test_process_action_invalid_params_new_tx_missing_reference PASSED [ 95%]
@@ -2521,111 +2520,4 @@ tests/wallet/test_wallet_expanded_coverage.py::TestWalletStoragePartyMethods::te
 tests/wallet/test_wallet_expanded_coverage.py::TestWalletHeaderMethods::test_get_header PASSED [ 99%]
 tests/wallet/test_wallet_expanded_coverage.py::TestWalletHeaderMethods::test_get_header_for_height PASSED [100%]
 
-================================ tests coverage ================================
-_______________ coverage: platform linux, python 3.12.3-final-0 ________________
-
-Name                                                                                               Stmts   Miss   Cover   Missing
----------------------------------------------------------------------------------------------------------------------------------
-src/bsv_wallet_toolbox/__init__.py                                                                     7      0 100.00%
-src/bsv_wallet_toolbox/abi/__init__.py                                                                 2      0 100.00%
-src/bsv_wallet_toolbox/abi/serializer.py                                                             145      5  96.55%   187, 229, 237, 242, 250
-src/bsv_wallet_toolbox/brc29/__init__.py                                                               4      0 100.00%
-src/bsv_wallet_toolbox/brc29/address.py                                                               26      4  84.62%   65-66, 135-136
-src/bsv_wallet_toolbox/brc29/template.py                                                              42     17  59.52%   57-58, 100-101, 117, 132-136, 150, 186-193
-src/bsv_wallet_toolbox/brc29/types.py                                                                 18      1  94.44%   50
-src/bsv_wallet_toolbox/brc29/utils.py                                                                 61     17  72.13%   43-46, 50, 55, 87-88, 98-102, 106, 111, 158-159
-src/bsv_wallet_toolbox/errors/__init__.py                                                              2      0 100.00%
-src/bsv_wallet_toolbox/errors/wallet_errors.py                                                        78      0 100.00%
-src/bsv_wallet_toolbox/local_kv_store.py                                                              24      5  79.17%   75-76, 80-85
-src/bsv_wallet_toolbox/manager/__init__.py                                                             5      0 100.00%
-src/bsv_wallet_toolbox/manager/cwi_style_wallet_manager.py                                           179     32  82.12%   109, 133, 135, 149-152, 163, 165, 168, 178, 189, 194, 204, 213-217, 224-225, 235, 245-259, 268, 276
-src/bsv_wallet_toolbox/manager/simple_wallet_manager.py                                              132     81  38.64%   72-73, 86-87, 97-104, 113-116, 129-134, 148, 168-171, 181-182, 191-195, 199-200, 204-205, 209-210, 214-215, 219-220, 224-225, 229-230, 234-235, 239-240, 244-245, 249-250, 254-255, 259-260, 264-265, 269-270, 274-275, 279-280, 284-285, 289-290, 294-295, 299-300, 304-305, 309-310, 314-315, 319-320, 324-325
-src/bsv_wallet_toolbox/manager/wallet_permissions_manager.py                                         536    181  66.23%   200-222, 245-253, 273-278, 292-296, 309-314, 331-344, 358-364, 378-383, 396-401, 419-434, 449-455, 470-475, 488-493, 510-523, 537-543, 557-566, 580-594, 607-614, 630-648, 661-673, 686-689, 699, 730, 750-766, 859-864, 882-883, 911, 934-935, 955-956, 976, 995, 1014, 1033, 1052, 1071, 1090, 1109, 1128, 1147, 1166, 1185, 1204, 1223, 1242, 1247, 1265, 1284, 1310, 1429, 1434, 1464, 1469, 1492, 1496, 1518, 1522, 1571, 1600, 1626, 1631
-src/bsv_wallet_toolbox/manager/wallet_settings_manager.py                                             40      5  87.50%   146-150, 160, 169-170
-src/bsv_wallet_toolbox/monitor/__init__.py                                                             4      0 100.00%
-src/bsv_wallet_toolbox/monitor/monitor.py                                                            121     80  33.88%   49-54, 84-89, 100-102, 109-130, 141-145, 153-177, 186-203, 213-218, 235-238, 252-256, 264-268
-src/bsv_wallet_toolbox/monitor/monitor_daemon.py                                                      38     24  36.84%   27-29, 37-42, 50-53, 57-72
-src/bsv_wallet_toolbox/monitor/tasks/__init__.py                                                      13      0 100.00%
-src/bsv_wallet_toolbox/monitor/tasks/task_check_for_proofs.py                                         98     68  30.61%   54-55, 58, 78-90, 95-189, 192-195
-src/bsv_wallet_toolbox/monitor/tasks/task_check_no_sends.py                                           24     18  25.00%   27-28, 32-57
-src/bsv_wallet_toolbox/monitor/tasks/task_clock.py                                                    12      0 100.00%
-src/bsv_wallet_toolbox/monitor/tasks/task_fail_abandoned.py                                           48     26  45.83%   33-34, 49, 53-81, 84
-src/bsv_wallet_toolbox/monitor/tasks/task_monitor_call_history.py                                     14      2  85.71%   27-28
-src/bsv_wallet_toolbox/monitor/tasks/task_new_header.py                                               20      0 100.00%
-src/bsv_wallet_toolbox/monitor/tasks/task_purge.py                                                    23      3  86.96%   43-46, 56
-src/bsv_wallet_toolbox/monitor/tasks/task_reorg.py                                                    63     43  31.75%   42-50, 59-133
-src/bsv_wallet_toolbox/monitor/tasks/task_review_status.py                                            24      4  83.33%   41-42, 55-56
-src/bsv_wallet_toolbox/monitor/tasks/task_send_waiting.py                                             36      3  91.67%   68, 74-75
-src/bsv_wallet_toolbox/monitor/tasks/task_sync_when_idle.py                                           11      1  90.91%   47
-src/bsv_wallet_toolbox/monitor/tasks/task_un_fail.py                                                  68     42  38.24%   28-31, 44, 49, 54-80, 84, 92-127
-src/bsv_wallet_toolbox/monitor/wallet_monitor_task.py                                                 16      2  87.50%   40, 51
-src/bsv_wallet_toolbox/rpc/__init__.py                                                                 4      0 100.00%
-src/bsv_wallet_toolbox/rpc/json_rpc_client.py                                                        145     36  75.17%   123-124, 127-128, 184-187, 264-266, 301-305, 342-343, 347, 376-377, 393-394, 410-411, 427-428, 439-440, 541-542, 575-576, 592-593, 609-610, 621-622
-src/bsv_wallet_toolbox/rpc/json_rpc_server.py                                                        119     79  33.61%   84-86, 94, 223, 246-248, 261, 269, 291-353, 378-398, 449-526, 565-577
-src/bsv_wallet_toolbox/sdk/__init__.py                                                                 3      0 100.00%
-src/bsv_wallet_toolbox/sdk/privileged_key_manager.py                                                 366     41  88.80%   61, 71-74, 80, 151-153, 157-158, 183, 198, 287, 292, 294, 338, 356, 358, 405, 424, 426, 445-446, 482, 484, 498-500, 538, 540, 590, 592, 635, 637, 766-768, 784, 790, 813, 829-830
-src/bsv_wallet_toolbox/sdk/types.py                                                                    6      0 100.00%
-src/bsv_wallet_toolbox/services/__init__.py                                                            8      0 100.00%
-src/bsv_wallet_toolbox/services/cache_manager.py                                                      30      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/__init__.py                                               4      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/__init__.py                                   3      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/api/__init__.py                               3      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/api/block_header_api.py                      37      4  89.19%   106, 120, 134, 148
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/api/chaintracks_client_api.py                40      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/chaintracks.py                               34      3  91.18%   68, 96, 120
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/options.py                                    5      1  80.00%   46
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/storage/__init__.py                           2      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/storage/knex.py                              25     12  52.00%   21-23, 41-42, 55, 59, 63, 67, 75, 87, 95
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/util/__init__.py                              5      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/util/bulk_file_data_manager.py               51     34  33.33%   36-39, 44-46, 64-67, 86-95, 105-109, 124, 135, 146-151, 164, 180-183
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/util/chaintracks_fs.py                       31     17  45.16%   30, 45-46, 56-57, 69, 79-82, 100-113
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/util/height_range.py                         51      2  96.08%   142, 151
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks/util/single_writer_multi_reader_lock.py      45      0 100.00%
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks_service.py                                   46     26  43.48%   102-106, 126-145, 162-163, 184-185, 195, 205-206, 219-223, 236-240, 247
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks_service_client.py                           100     73  27.00%   63-66, 73, 78, 104-108, 123-149, 165-168, 183-195, 205, 219-223, 236-240, 251-252, 265-273, 287, 301, 315, 322-323
-src/bsv_wallet_toolbox/services/chaintracker/chaintracks_storage.py                                  160    106  33.75%   178-183, 198-217, 227-232, 244-253, 286-322, 335-357, 375-400, 412-433, 446-465, 474-479, 505-512, 528
-src/bsv_wallet_toolbox/services/merkle_path_utils.py                                                  25      0 100.00%
-src/bsv_wallet_toolbox/services/providers/__init__.py                                                  4      0 100.00%
-src/bsv_wallet_toolbox/services/providers/arc.py                                                     196     31  84.18%   166-170, 195, 198, 201, 204, 236-238, 289-292, 305-306, 325-329, 393-395, 404-405, 451-453
-src/bsv_wallet_toolbox/services/providers/bitails.py                                                 184     88  52.17%   156, 195-209, 228-384, 429-460
-src/bsv_wallet_toolbox/services/providers/whatsonchain.py                                            175     94  46.29%   77, 87, 98, 108, 118-122, 130-131, 146-172, 199-221, 231, 241, 251, 261, 271, 281, 291, 301, 316-330, 366, 385, 410-431, 467, 469, 474, 502, 535, 559, 563-564, 578, 600-607
-src/bsv_wallet_toolbox/services/service_collection.py                                                183     40  78.14%   183, 188, 193, 228, 236-239, 244, 254, 258, 275, 386-401, 412-473
-src/bsv_wallet_toolbox/services/services.py                                                          403    177  56.08%   343, 389, 403-406, 431, 442, 458, 462, 466, 470, 474, 522-527, 532, 535, 572, 594-612, 628, 632, 658-714, 732-733, 746, 760-763, 786, 808, 845, 857, 868, 872-875, 878, 882-883, 889, 921, 933, 943, 952-964, 990, 1001, 1011, 1021-1033, 1041, 1076-1151, 1176, 1194-1219
-src/bsv_wallet_toolbox/services/wallet_services.py                                                    13      0 100.00%
-src/bsv_wallet_toolbox/services/wallet_services_options.py                                            29      0 100.00%
-src/bsv_wallet_toolbox/signer/__init__.py                                                              2      0 100.00%
-src/bsv_wallet_toolbox/signer/methods.py                                                             391    209  46.55%   106-107, 162, 171, 187, 194-196, 205-258, 303-314, 320-360, 372-385, 396-400, 458-460, 463, 472-489, 511-554, 663, 689-711, 773-776, 792-804, 818-847, 863, 869, 873-897, 910, 939-991, 1014-1083
-src/bsv_wallet_toolbox/single_writer_multi_reader_lock.py                                             45      0 100.00%
-src/bsv_wallet_toolbox/storage/__init__.py                                                             4      0 100.00%
-src/bsv_wallet_toolbox/storage/create_action.py                                                      209     59  71.77%   125, 128-129, 134-135, 162, 166, 170, 192, 195, 198-199, 202, 214-232, 291-295, 300, 304, 315, 410-411, 447-462, 478-482, 497-500
-src/bsv_wallet_toolbox/storage/db.py                                                                  25      1  96.00%   53
-src/bsv_wallet_toolbox/storage/entities.py                                                           917    166  81.90%   99, 191-200, 308-332, 404, 465-473, 605, 719, 738, 741, 746, 763, 788, 819-829, 875, 897, 913, 920, 928, 939, 954, 959, 966, 1017-1031, 1046-1047, 1058, 1062, 1091, 1111-1114, 1118, 1124, 1127-1128, 1134, 1138-1139, 1149, 1152-1154, 1161, 1170-1184, 1218-1230, 1278, 1311, 1334-1342, 1359, 1382, 1406, 1429-1434, 1450, 1470, 1542, 1546, 1571, 1655, 1666-1668, 1673, 1717, 1778, 1810
-src/bsv_wallet_toolbox/storage/methods.py                                                            539    163  69.76%   33-34, 38-39, 197-210, 248, 251, 346, 350, 368-369, 403-405, 413-426, 433-442, 446-455, 460-469, 477-486, 490-512, 542, 546, 568-572, 585-586, 590-600, 607-620, 625-641, 671, 684-685, 689-700, 708-727, 758, 776, 802, 837-877, 881, 883, 888, 901-911, 916-947, 1030-1032, 1069-1088, 1103-1119, 1167-1172, 1178-1183, 1201, 1203, 1282-1283, 1295-1297, 1336, 1342-1352
-src/bsv_wallet_toolbox/storage/models.py                                                             207      0 100.00%
-src/bsv_wallet_toolbox/storage/provider.py                                                          1565    606  61.28%   200-202, 311-316, 328-332, 360, 392-393, 426-429, 455-487, 592-599, 605-608, 611, 628-629, 631-632, 637, 672, 676-691, 707-741, 745-763, 767-784, 788-791, 795-796, 804-806, 809, 830-838, 859-869, 895, 904-930, 933-934, 937, 944, 952, 983, 1011-1014, 1037-1040, 1078-1096, 1164, 1166, 1168, 1203, 1236, 1241-1243, 1299, 1350, 1352, 1495, 1517-1542, 1559-1675, 1681, 1718, 1898-1901, 1908-1909, 1918, 1928, 1932, 1943-1950, 1974, 1978-1981, 2063-2075, 2126, 2159, 2211, 2213, 2217, 2219, 2251, 2253, 2349, 2361, 2491-2494, 2527, 2540-2543, 2588-2591, 2623, 2636-2639, 2712, 2716, 2732, 2789, 2851-2870, 2906, 2909, 2912, 2924, 2957, 2989, 2998, 3026-3028, 3031, 3035, 3067-3076, 3095, 3127-3151, 3171-3186, 3218, 3221, 3240-3242, 3245-3247, 3300, 3350, 3356, 3361, 3391, 3419-3422, 3448-3450, 3470-3478, 3561, 3568, 3650-3672, 3677, 3682, 3687-3701, 3705-3717, 3721-3773, 3777-3805, 3809-3824, 3828-3847, 3851-3868, 3872-3901, 3905-3925, 3929-3961, 3965-3975, 3979-4028, 4032-4055, 4059-4079, 4098-4107
-src/bsv_wallet_toolbox/types.py                                                                        8      0 100.00%
-src/bsv_wallet_toolbox/utils/__init__.py                                                              88      3  96.59%   207-209
-src/bsv_wallet_toolbox/utils/aggregate_results.py                                                     75     11  85.33%   90-97, 183-186
-src/bsv_wallet_toolbox/utils/buffer_utils.py                                                          55      0 100.00%
-src/bsv_wallet_toolbox/utils/change_distribution.py                                                   36      0 100.00%
-src/bsv_wallet_toolbox/utils/config.py                                                                59      1  98.31%   225
-src/bsv_wallet_toolbox/utils/contains_utxo.py                                                          9      0 100.00%
-src/bsv_wallet_toolbox/utils/extract_raw_txs.py                                                       18      0 100.00%
-src/bsv_wallet_toolbox/utils/format_utils.py                                                          89      0 100.00%
-src/bsv_wallet_toolbox/utils/generate_change_sdk.py                                                  172     22  87.21%   18-24, 152, 190-202, 212, 221-222, 325, 329, 347-349
-src/bsv_wallet_toolbox/utils/identity_utils.py                                                       101     15  85.15%   185-187, 247-281
-src/bsv_wallet_toolbox/utils/merkle_path_utils.py                                                     32      0 100.00%
-src/bsv_wallet_toolbox/utils/parse_tx_script_offsets.py                                               53      1  98.11%   138
-src/bsv_wallet_toolbox/utils/proof_for_merkle_path.py                                                 32      3  90.62%   11, 17, 44
-src/bsv_wallet_toolbox/utils/random_utils.py                                                          53      0 100.00%
-src/bsv_wallet_toolbox/utils/reader_uint8array.py                                                     47      0 100.00%
-src/bsv_wallet_toolbox/utils/satoshi.py                                                               64     11  82.81%   101, 120-123, 143, 165-169
-src/bsv_wallet_toolbox/utils/script_hash.py                                                           11      0 100.00%
-src/bsv_wallet_toolbox/utils/stamp_log.py                                                             57      1  98.25%   81
-src/bsv_wallet_toolbox/utils/transaction_id.py                                                         6      0 100.00%
-src/bsv_wallet_toolbox/utils/tx_size.py                                                               41      5  87.80%   17, 32-33, 41-42
-src/bsv_wallet_toolbox/utils/validation.py                                                           391     62  84.14%   73, 127, 133, 137, 143, 146, 150, 156, 166, 174, 220, 223, 240, 250, 258, 266, 272-274, 276-278, 282, 314, 319, 327, 333, 341, 347, 352, 429, 435-439, 461, 464, 472, 486, 488, 515, 530, 556, 570, 597, 600, 603, 611, 644, 676, 688, 691, 695, 706, 734, 737, 760, 768-771
-src/bsv_wallet_toolbox/wallet.py                                                                     773    290  62.48%   74, 80, 86-87, 204, 237-239, 255, 266, 273-276, 314, 331-338, 359, 364-381, 385-389, 417, 426-434, 469-486, 507-509, 559, 589, 615, 623, 669, 710, 753, 796, 809, 826, 848-858, 869, 902, 908-968, 1008, 1014-1058, 1138, 1178, 1180, 1518, 1782, 1787, 1790, 1793, 1836-1850, 1894, 1901, 1945, 1952, 2008, 2011, 2029, 2033, 2094, 2097, 2105, 2169, 2172, 2181, 2243, 2246, 2255, 2300, 2303, 2311, 2358, 2361, 2369, 2411, 2414, 2423, 2458-2479, 2502-2508, 2539-2572, 2600-2655, 2683-2745, 2776-2788, 2812-2821, 2841-2852, 2875-2877
----------------------------------------------------------------------------------------------------------------------------------
-TOTAL                                                                                              10643   3157  70.34%
-================ 2246 passed, 259 skipped, 6 xfailed in 40.72s =================
+================ 2246 passed, 259 skipped, 6 xfailed in 20.06s =================
