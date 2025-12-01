@@ -12,7 +12,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofBasic:
     """Test basic convert_proof_to_merkle_path functionality."""
 
@@ -81,7 +81,7 @@ class TestConvertProofBasic:
         assert result["path"][0][1]["txid"] is True
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofDuplicates:
     """Test handling of duplicate nodes."""
 
@@ -135,7 +135,7 @@ class TestConvertProofDuplicates:
         assert sibling["hash"] == "diff" * 16
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofIndexCalculation:
     """Test index calculation across levels."""
 
@@ -184,7 +184,7 @@ class TestConvertProofIndexCalculation:
         assert result["path"][2][0]["offset"] == 0
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofTxidLeaf:
     """Test txid leaf placement."""
 
@@ -239,7 +239,7 @@ class TestConvertProofTxidLeaf:
         assert path_level_0[0]["offset"] == 0
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofPathStructure:
     """Test overall path structure."""
 
@@ -290,7 +290,7 @@ class TestConvertProofPathStructure:
         assert txid_leaves[0]["hash"] == txid
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofEdgeCases:
     """Test edge cases in proof conversion."""
 
@@ -364,7 +364,7 @@ class TestConvertProofEdgeCases:
         assert result["blockHeight"] == 0
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofRealWorld:
     """Test with realistic proof scenarios."""
 
@@ -439,7 +439,7 @@ class TestConvertProofRealWorld:
         assert level_0[1]["hash"] == txid
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofLeafAttributes:
     """Test individual leaf attributes."""
 
@@ -493,7 +493,7 @@ class TestConvertProofLeafAttributes:
         assert sibling_leaf["offset"] == 1
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConvertProofIntegration:
     """Integration tests for proof conversion."""
 

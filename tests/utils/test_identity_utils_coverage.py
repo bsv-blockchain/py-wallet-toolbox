@@ -18,7 +18,6 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
 class TestTransformVerifiableCertificatesWithTrust:
     """Test transform_verifiable_certificates_with_trust function."""
 
@@ -178,7 +177,6 @@ class TestTransformVerifiableCertificatesWithTrust:
         assert result["certificates"] == []
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
 class TestQueryOverlayCertificates:
     """Test query_overlay_certificates function."""
 
@@ -244,7 +242,6 @@ class TestQueryOverlayCertificates:
         assert result[0]["certifier"] == ""  # Default empty string
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
 class TestParseResults:
     """Test parse_results function."""
 
@@ -306,7 +303,6 @@ class TestParseResults:
         assert isinstance(result, list)
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
 class TestQueryOverlay:
     """Test query_overlay function."""
 

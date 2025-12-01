@@ -583,7 +583,7 @@ class TestPrivilegedKeyManager:
         user = PrivilegedKeyManager(lambda reason="": user_key)
 
         # When
-        linkage = await user.reveal_counterparty_key_linkage(
+        linkage = user.reveal_counterparty_key_linkage(
             {
                 "counterparty": counterparty_key.public_key().hex(),
                 "verifier": counterparty_key.public_key().hex(),
@@ -611,7 +611,7 @@ class TestPrivilegedKeyManager:
         user = PrivilegedKeyManager(lambda reason="": user_key)
 
         # When
-        linkage = await user.reveal_specific_key_linkage(
+        linkage = user.reveal_specific_key_linkage(
             {
                 "counterparty": counterparty_key.public_key().hex(),
                 "protocolID": [2, "tests"],

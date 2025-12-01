@@ -22,7 +22,6 @@ class TestUniversalVectorsRevealSpecificKeyLinkage:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="revealSpecificKeyLinkage implementation causes infinite loop")
     def test_revealspecifickeylinkage_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:

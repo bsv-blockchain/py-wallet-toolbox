@@ -16,7 +16,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestAggregateResults:
     """Test aggregate_results function."""
 
@@ -76,7 +76,7 @@ class TestAggregateResults:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestCombineResults:
     """Test combine_results function."""
 
@@ -115,7 +115,7 @@ class TestCombineResults:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestMergeResultArrays:
     """Test merge_result_arrays function."""
 
@@ -163,7 +163,7 @@ class TestMergeResultArrays:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestAggregateResultsAdvanced:
     """Advanced tests for result aggregation."""
 
@@ -202,7 +202,7 @@ class TestAggregateResultsAdvanced:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestEdgeCases:
     """Test edge cases in result aggregation."""
 

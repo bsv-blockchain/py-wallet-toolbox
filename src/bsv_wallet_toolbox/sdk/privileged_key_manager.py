@@ -645,7 +645,7 @@ class PrivilegedKeyManager:
         valid = hmac.compare_digest(computed_hmac, expected_hmac)
         return {"valid": valid}
 
-    async def reveal_counterparty_key_linkage(
+    def reveal_counterparty_key_linkage(
         self,
         args: dict[str, Any],
     ) -> dict[str, Any]:
@@ -684,7 +684,7 @@ class PrivilegedKeyManager:
             "encryptedLinkageProof": [5, 6, 7, 8]
         }
 
-    async def reveal_specific_key_linkage(
+    def reveal_specific_key_linkage(
         self,
         args: dict[str, Any],
     ) -> dict[str, Any]:
