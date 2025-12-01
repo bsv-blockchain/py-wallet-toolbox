@@ -14,7 +14,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesInitialization:
     """Test WalletServices initialization."""
 
@@ -44,7 +44,7 @@ class TestWalletServicesInitialization:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesTransactionMethods:
     """Test transaction-related service methods."""
 
@@ -104,7 +104,7 @@ class TestWalletServicesTransactionMethods:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesUtxoMethods:
     """Test UTXO-related service methods."""
 
@@ -146,7 +146,7 @@ class TestWalletServicesUtxoMethods:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesMerklePathMethods:
     """Test merkle path service methods."""
 
@@ -179,7 +179,7 @@ class TestWalletServicesMerklePathMethods:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesBlockchainMethods:
     """Test blockchain-related service methods."""
 
@@ -221,7 +221,7 @@ class TestWalletServicesBlockchainMethods:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesProviderManagement:
     """Test provider management in services."""
 
@@ -264,7 +264,7 @@ class TestWalletServicesProviderManagement:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesErrorHandling:
     """Test error handling in services."""
 
@@ -293,7 +293,7 @@ class TestWalletServicesErrorHandling:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesCaching:
     """Test caching in services."""
 
@@ -320,7 +320,7 @@ class TestWalletServicesCaching:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="WalletServices not available")
+
 class TestWalletServicesEdgeCases:
     """Test edge cases in services."""
 

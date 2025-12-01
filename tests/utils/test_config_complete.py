@@ -21,7 +21,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestLoadConfig:
     """Test load_config function."""
 
@@ -122,7 +122,7 @@ class TestLoadConfig:
             Path(env_file).unlink()
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConfigureLogger:
     """Test configure_logger function."""
 
@@ -261,7 +261,7 @@ class TestConfigureLogger:
             assert mock_emit.call_count == 1
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestCreateActionTxAssembler:
     """Test create_action_tx_assembler function."""
 
@@ -365,7 +365,7 @@ class TestCreateActionTxAssembler:
         assert 'custom_field' not in new_assembler
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConfigIntegration:
     """Integration tests for config utilities."""
 
@@ -393,7 +393,7 @@ class TestConfigIntegration:
         assert assembler['fee_rate'] == 50
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConfigEdgeCases:
     """Test edge cases in config utilities."""
 

@@ -18,7 +18,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestLoadConfig:
     """Test load_config function."""
 
@@ -67,7 +67,7 @@ class TestLoadConfig:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestGetConfigValue:
     """Test get_config_value function."""
 
@@ -134,7 +134,7 @@ class TestGetConfigValue:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestSetConfigValue:
     """Test set_config_value function."""
 
@@ -185,7 +185,7 @@ class TestSetConfigValue:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestValidateConfig:
     """Test validate_config function."""
 
@@ -233,7 +233,7 @@ class TestValidateConfig:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestConfigAdvanced:
     """Advanced tests for config utilities."""
 
@@ -281,7 +281,7 @@ class TestConfigAdvanced:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestEdgeCases:
     """Test edge cases for config utilities."""
 

@@ -12,7 +12,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatAlignLeft:
     """Test Format.align_left method."""
 
@@ -41,7 +41,7 @@ class TestFormatAlignLeft:
         assert len(result) == 10
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatAlignRight:
     """Test Format.align_right method."""
 
@@ -70,7 +70,7 @@ class TestFormatAlignRight:
         assert len(result) == 10
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatAlignMiddle:
     """Test Format.align_middle method."""
 
@@ -98,7 +98,7 @@ class TestFormatAlignMiddle:
         assert len(result) == 10
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatSatoshis:
     """Test Format.satoshis method."""
 
@@ -130,7 +130,7 @@ class TestFormatSatoshis:
         # Should handle negative values
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatTxidBytes:
     """Test Format.txid_bytes method."""
 
@@ -145,7 +145,7 @@ class TestFormatTxidBytes:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatBeefBytes:
     """Test Format.beef_bytes method."""
 
@@ -160,7 +160,7 @@ class TestFormatBeefBytes:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatBsvAmount:
     """Test Format.bsv_amount method."""
 
@@ -183,7 +183,7 @@ class TestFormatBsvAmount:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatUtilsAdvanced:
     """Advanced tests for format utilities."""
 
@@ -231,7 +231,7 @@ class TestFormatUtilsAdvanced:
             pass
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestEdgeCases:
     """Test edge cases in format utilities."""
 
@@ -287,7 +287,7 @@ class TestEdgeCases:
         assert len(result_odd) == 11
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Format class not available")
+
 class TestFormatTransactionLogging:
     """Test Format transaction logging methods."""
 

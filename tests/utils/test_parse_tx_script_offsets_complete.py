@@ -15,7 +15,7 @@ except ImportError:
     IMPORT_SUCCESS = False
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestReadVarint:
     """Test _read_varint internal function."""
 
@@ -110,7 +110,7 @@ class TestReadVarint:
         assert value3 == 0
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestParseTxScriptOffsetsEmpty:
     """Test parse_tx_script_offsets with empty/invalid data."""
 
@@ -138,7 +138,7 @@ class TestParseTxScriptOffsetsEmpty:
         assert isinstance(result, dict)
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestParseTxScriptOffsetsSimple:
     """Test parse_tx_script_offsets with simple transactions."""
 
@@ -228,7 +228,7 @@ class TestParseTxScriptOffsetsSimple:
         assert result["outputs"][0] == 15
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestParseTxScriptOffsetsMultiple:
     """Test parse_tx_script_offsets with multiple inputs/outputs."""
 
@@ -307,7 +307,7 @@ class TestParseTxScriptOffsetsMultiple:
         assert result["outputs"][0] == 58
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestParseTxScriptOffsetsVarint:
     """Test parse_tx_script_offsets with large varint values."""
 
@@ -367,7 +367,7 @@ class TestParseTxScriptOffsetsVarint:
         assert result["inputs"][0] == 44
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestParseTxScriptOffsetsEdgeCases:
     """Test parse_tx_script_offsets edge cases."""
 
@@ -437,7 +437,7 @@ class TestParseTxScriptOffsetsEdgeCases:
         assert result["outputs"][1] > result["outputs"][0]  # Second output after first
 
 
-@pytest.mark.skipif(not IMPORT_SUCCESS, reason="Module functions not available")
+
 class TestParseTxScriptOffsetsStress:
     """Stress tests for parse_tx_script_offsets."""
 
