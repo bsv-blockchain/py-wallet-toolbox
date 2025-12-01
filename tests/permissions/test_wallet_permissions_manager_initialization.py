@@ -200,7 +200,6 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    @pytest.mark.skip(reason="Complex async permission queueing not yet implemented")
     def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(
         self,
     ) -> None:

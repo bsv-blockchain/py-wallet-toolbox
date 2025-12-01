@@ -22,7 +22,6 @@ except ImportError:
     WalletInterface = None
 
 
-@pytest.mark.skip(reason="Needs Permissions Manager permission checking subsystem")
 class TestWalletPermissionsManagerChecks:
     """Test suite for WalletPermissionsManager permission checks.
 

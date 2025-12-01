@@ -22,7 +22,6 @@ except ImportError:
     WalletInterface = None
 
 
-@pytest.mark.skip(reason="Needs Permissions Manager full integration flows")
 class TestWalletPermissionsManagerFlows:
     """Test suite for WalletPermissionsManager request flows.
 
@@ -30,6 +29,8 @@ class TestWalletPermissionsManagerFlows:
                describe('WalletPermissionsManager - Permission Request Flow & Active Requests')
     """
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_coalesce_parallel_requests_for_the_same_resource_into_a_single_user_prompt(self) -> None:
         """Given: Manager with no tokens found
            When: Make two parallel calls for same resource
@@ -105,6 +106,7 @@ class TestWalletPermissionsManagerFlows:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_generate_two_distinct_user_prompts_for_two_different_permission_requests(self) -> None:
         """Given: Manager with no tokens found
            When: Make one protocol request and one basket request
@@ -182,6 +184,7 @@ class TestWalletPermissionsManagerFlows:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_resolve_all_parallel_requests_when_permission_is_granted_referencing_the_same_requestid(
         self,
     ) -> None:
@@ -252,6 +255,7 @@ class TestWalletPermissionsManagerFlows:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_reject_only_the_matching_request_queue_on_deny_if_requestid_is_specified(self) -> None:
         """Given: Manager with two different pending requests
            When: Deny one requestID
@@ -313,6 +317,7 @@ class TestWalletPermissionsManagerFlows:
             p1_promise
         assert len(active_requests) == 0
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_not_create_a_token_if_ephemeral_true_so_subsequent_calls_re_trigger_the_request(self) -> None:
         """Given: Manager grants ephemeral=True permission
            When: Call same method again
@@ -368,6 +373,7 @@ class TestWalletPermissionsManagerFlows:
         manager.grant_permission({"requestID": req_id2, "ephemeral": True})
         p_call2
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_create_a_token_if_ephemeral_false_so_subsequent_calls_do_not_re_trigger_if_unexpired(
         self,
     ) -> None:
@@ -425,6 +431,7 @@ class TestWalletPermissionsManagerFlows:
         )
         assert request_cb.call_count == 1  # Still 1, not 2
 
+    @pytest.mark.skip(reason="ensure_protocol_permission method does not exist in Python implementation")
     def test_should_handle_renewal_if_the_found_token_is_expired_passing_previoustoken_in_the_request(
         self,
     ) -> None:
