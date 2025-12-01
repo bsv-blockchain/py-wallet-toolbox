@@ -1,0 +1,101 @@
+# Python Wallet-Toolbox Failing Tests Summary
+# Total: 273 failing tests
+# Generated: 2025-01-01
+
+## Failures by Test File (sorted by count)
+
+| Count | Test File |
+|-------|-----------|
+| 19 | tests/services/test_post_beef.py |
+| 16 | tests/services/test_services_methods.py |
+| 15 | tests/services/test_transaction_status.py |
+| 15 | tests/services/test_post_beef_min.py |
+| 15 | tests/services/test_post_beef_array_min.py |
+| 15 | tests/services/test_get_script_history_min.py |
+| 14 | tests/services/test_get_raw_tx.py |
+| 13 | tests/wallet/test_hmac_signature.py |
+| 12 | tests/permissions/test_wallet_permissions_manager_checks.py |
+| 11 | tests/wallet/test_crypto_methods.py |
+| 11 | tests/services/test_local_services_hash_and_locktime.py |
+| 10 | tests/wallet/test_misc_methods.py |
+| 10 | tests/wallet/test_certificates.py |
+| 10 | tests/services/test_exchange_rates.py |
+| 10 | tests/services/test_arc_services.py |
+| 9 | tests/wallet/test_list_certificates.py |
+| 8 | tests/services/test_get_merkle_path.py |
+| 7 | tests/services/test_transaction_status_min.py |
+| 7 | tests/permissions/test_wallet_permissions_manager_proxying.py |
+| 6 | tests/wallet/test_list_outputs.py |
+| 5 | tests/wallet/test_list_actions.py |
+| 4 | tests/services/test_whats_on_chain.py |
+| 3 | tests/wallet/test_internalize_action.py |
+| 3 | tests/universal/test_signature_min.py |
+| 3 | tests/services/test_verify_beef.py |
+| 3 | tests/services/test_get_utxo_status_min.py |
+| 3 | tests/permissions/test_wallet_permissions_manager_callbacks.py |
+| 2 | tests/wallet/test_relinquish_output.py |
+| 2 | tests/services/test_get_chain_tracker.py |
+| 2 | tests/manager/test_cwi_manager_coverage.py |
+| 1 | tests/wallet/test_wallet_create_action.py |
+| 1 | tests/wallet/test_abort_action.py |
+| 1 | tests/universal/test_verifysignature.py |
+| 1 | tests/universal/test_encrypt.py |
+| 1 | tests/universal/test_encrypt_min.py |
+| 1 | tests/unit/test_wallet_getheaderforheight.py |
+| 1 | tests/test_edge_cases.py |
+| 1 | tests/permissions/test_wallet_permissions_manager_initialization.py |
+| 1 | tests/permissions/test_wallet_permissions_manager_encryption.py |
+| 1 | tests/integration/test_cwi_style_wallet_manager.py |
+
+## Categories Summary
+
+### Services Layer (~120 failures)
+- test_post_beef.py (19)
+- test_services_methods.py (16)
+- test_transaction_status.py (15)
+- test_post_beef_min.py (15)
+- test_post_beef_array_min.py (15)
+- test_get_script_history_min.py (15)
+- test_get_raw_tx.py (14)
+- test_local_services_hash_and_locktime.py (11)
+- test_exchange_rates.py (10)
+- test_arc_services.py (10)
+- test_get_merkle_path.py (8)
+- test_transaction_status_min.py (7)
+- test_whats_on_chain.py (4)
+- test_verify_beef.py (3)
+- test_get_utxo_status_min.py (3)
+- test_get_chain_tracker.py (2)
+
+### Wallet Validation (~50 failures)
+- test_hmac_signature.py (13)
+- test_crypto_methods.py (11)
+- test_misc_methods.py (10)
+- test_certificates.py (10)
+- test_list_certificates.py (9)
+- test_list_outputs.py (6)
+- test_list_actions.py (5)
+- test_internalize_action.py (3)
+- test_relinquish_output.py (2)
+- test_wallet_create_action.py (1)
+- test_abort_action.py (1)
+
+### Permissions Manager (~25 failures)
+- test_wallet_permissions_manager_checks.py (12)
+- test_wallet_permissions_manager_proxying.py (7)
+- test_wallet_permissions_manager_callbacks.py (3)
+- test_wallet_permissions_manager_initialization.py (1)
+- test_wallet_permissions_manager_encryption.py (1)
+
+### Universal Signatures (~5 failures)
+- test_signature_min.py (3)
+- test_verifysignature.py (1)
+- test_encrypt.py (1)
+- test_encrypt_min.py (1)
+
+### Integration/Edge Cases (~5 failures)
+- test_cwi_manager_coverage.py (2)
+- test_wallet_getheaderforheight.py (1)
+- test_edge_cases.py (1)
+- test_cwi_style_wallet_manager.py (1)
+

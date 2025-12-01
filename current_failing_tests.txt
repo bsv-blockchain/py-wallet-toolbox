@@ -1,0 +1,50 @@
+# Current Failing Tests - Categorized for Sequential Fixing
+# Total: ~150 tests
+
+## Category 8: Services Layer (~50 tests)
+# ARC Services
+tests/services/test_arc_services.py::TestArcServices::test_arc_post_beef_invalid_beef_data
+tests/services/test_arc_services.py::TestArcServices::test_arc_post_beef_network_failures
+tests/services/test_arc_services.py::TestArcServices::test_arc_post_beef_success_responses
+# Exchange Rates
+tests/services/test_exchange_rates.py::TestExchangeRates::test_update_exchange_rates_invalid_currencies
+tests/services/test_exchange_rates.py::TestExchangeRates::test_update_exchange_rates_network_failures
+tests/services/test_exchange_rates.py::TestExchangeRates::test_update_exchange_rates_success_responses
+# Get Merkle Path
+tests/services/test_get_merkle_path.py::TestGetMerklePath::test_get_merkle_path_invalid_txid_formats
+tests/services/test_get_merkle_path.py::TestGetMerklePath::test_get_merkle_path_provider_fallback
+tests/services/test_get_merkle_path.py::TestGetMerklePath::test_get_merkle_path_success_response
+# Get Raw TX
+tests/services/test_get_raw_tx.py::TestGetRawTx::test_get_raw_tx_network_failure_500
+tests/services/test_get_raw_tx.py::TestGetRawTx::test_get_raw_tx_provider_fallback
+tests/services/test_get_raw_tx.py::TestGetRawTx::test_get_raw_tx_success_response
+# Transaction Status
+tests/services/test_transaction_status.py::test_get_transaction_status_network_failure_500
+tests/services/test_transaction_status.py::test_get_transaction_status_provider_fallback
+tests/services/test_transaction_status.py::test_get_transaction_status_confirmed_transaction
+# Script History
+tests/services/test_get_script_history_min.py::test_get_script_history_minimal_normal
+tests/services/test_get_script_history_min.py::test_get_script_history_invalid_script_formats
+# Post BEEF
+tests/services/test_post_beef_min.py::test_post_beef_arc_invalid_arc_url
+tests/services/test_post_beef_min.py::test_post_beef_arc_different_chains
+
+## Category 10: Integration/Edge Cases (~10 tests)
+tests/integration/test_cwi_style_wallet_manager.py::TestCWIStyleWalletManagerSnapshot::test_saves_a_snapshot_and_can_load_it_into_a_fresh_manager_instance
+tests/manager/test_cwi_manager_coverage.py::TestCWIManagerBlockchainOperations::test_ensure_can_call_with_invalid_originator
+tests/manager/test_cwi_manager_coverage.py::TestCWIManagerBlockchainOperations::test_ensure_can_call_not_authenticated
+tests/test_edge_cases.py::TestCWIWalletManagerEdgeCases::test_snapshot_validation
+tests/wallet/test_wallet_coverage.py::TestWalletInitializationEdgeCases::test_wallet_with_custom_chain
+
+## Category 11: Unit Tests (Wallet Methods) (~15 tests)
+tests/unit/test_wallet_getheaderforheight.py::TestGetHeaderForHeightBasic::test_returns_valid_header_string
+tests/unit/test_wallet_getheaderforheight.py::TestGetHeaderForHeightBasic::test_requires_services_configured
+tests/unit/test_wallet_getheight.py::TestGetHeightBasic::test_returns_positive_height
+tests/unit/test_wallet_getheight.py::TestGetHeightBasic::test_requires_services_configured
+tests/unit/test_wallet_getknowntxids.py::TestGetKnownTxids::test_returns_empty_array_when_no_txids_provided
+tests/unit/test_wallet_getnetwork.py::TestWalletGetNetwork::test_returns_testnet_for_test_chain
+tests/unit/test_wallet_getnetwork.py::TestWalletGetNetwork::test_returns_mainnet_for_main_chain
+tests/unit/test_wallet_getversion.py::TestWalletGetVersion::test_returns_correct_wallet_version
+tests/unit/test_wallet_isauthenticated.py::TestIsAuthenticated::test_resolves_with_authenticated_true
+tests/unit/test_wallet_waitforauthentication.py::TestWaitForAuthentication::test_eventually_resolves
+

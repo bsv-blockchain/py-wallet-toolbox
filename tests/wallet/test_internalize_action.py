@@ -297,37 +297,37 @@ class TestWalletInternalizeAction:
     def test_invalid_params_missing_tx_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: InternalizeActionArgs missing tx key
            When: Call internalize_action
-           Then: Raises KeyError or TypeError
+           Then: Raises InvalidParameterError, KeyError or TypeError
         """
         # Given
         invalid_args = {"outputs": [{"outputIndex": 0}], "description": "test"}
 
         # When/Then
-        with pytest.raises((KeyError, TypeError)):
+        with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.internalize_action(invalid_args)
 
     def test_invalid_params_missing_outputs_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: InternalizeActionArgs missing outputs key
            When: Call internalize_action
-           Then: Raises KeyError or TypeError
+           Then: Raises InvalidParameterError, KeyError or TypeError
         """
         # Given
         invalid_args = {"tx": b"\x01\x00\x00\x00", "description": "test"}
 
         # When/Then
-        with pytest.raises((KeyError, TypeError)):
+        with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.internalize_action(invalid_args)
 
     def test_invalid_params_missing_description_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: InternalizeActionArgs missing description key
            When: Call internalize_action
-           Then: Raises KeyError or TypeError
+           Then: Raises InvalidParameterError, KeyError or TypeError
         """
         # Given
         invalid_args = {"tx": b"\x01\x00\x00\x00", "outputs": [{"outputIndex": 0}]}
 
         # When/Then
-        with pytest.raises((KeyError, TypeError)):
+        with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.internalize_action(invalid_args)
 
     def test_valid_params_unicode_description(self, wallet_with_storage: Wallet) -> None:

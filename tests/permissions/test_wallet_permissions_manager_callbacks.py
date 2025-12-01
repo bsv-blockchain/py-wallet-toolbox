@@ -176,33 +176,33 @@ class TestWalletPermissionsManagerCallbacks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.get_public_key = AsyncMock(return_value={"publicKey": "test"})
+        mock_underlying_wallet.create_signature = AsyncMock(return_value={"signature": [0x01, 0x02]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test.com",
-            config={"securityLevel": 1, "seekProtocolPermissions": True},
+            config={"seekProtocolPermissionsForSigning": True},
         )
 
         captured_params = None
 
-        async def permission_callback(params) -> None:
+        def permission_callback(params) -> None:
             nonlocal captured_params
             captured_params = params
             # Grant permission
-            manager.grant_permission(params["requestID"], {"ephemeral": False})
+            manager.grant_permission({"requestID": params["requestID"], "ephemeral": False})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - non-admin domain requests protocol operation
-        manager.get_public_key(
-            {"identityKey": True, "protocolID": [1, "test-protocol"], "keyID": "1"}, originator="example.com"
+        manager.create_signature(
+            {"protocolID": [1, "test-protocol"], "data": [0x01, 0x02], "keyID": "1"}, originator="example.com"
         )
 
         # Then
         assert captured_params is not None
         assert captured_params["originator"] == "example.com"
-        assert captured_params["protocolID"] == [1, "test-protocol"]
+        assert captured_params["protocolID"] == {"securityLevel": 1, "protocolName": "test-protocol"}
         assert "requestID" in captured_params
 
     def test_should_resolve_the_original_caller_promise_when_requests_are_granted(self) -> None:
@@ -215,17 +215,17 @@ class TestWalletPermissionsManagerCallbacks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.get_public_key = AsyncMock(return_value={"publicKey": "test-key"})
+        mock_underlying_wallet.get_public_key = Mock(return_value={"publicKey": "test-key"})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test.com",
-            config={"securityLevel": 1, "seekProtocolPermissions": True},
+            config={"seekPermissionsForPublicKeyRevelation": True, "seekPermissionsForIdentityKeyRevelation": True},
         )
 
-        async def permission_callback(params) -> None:
+        def permission_callback(params) -> None:
             # Grant permission immediately
-            manager.grant_permission(params["requestID"], {"ephemeral": False})
+            manager.grant_permission({"requestID": params["requestID"], "ephemeral": True})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
@@ -248,22 +248,22 @@ class TestWalletPermissionsManagerCallbacks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.get_public_key = AsyncMock(return_value={"publicKey": "test-key"})
+        mock_underlying_wallet.get_public_key = Mock(return_value={"publicKey": "test-key"})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test.com",
-            config={"securityLevel": 1, "seekProtocolPermissions": True},
+            config={"seekPermissionsForPublicKeyRevelation": True, "seekPermissionsForIdentityKeyRevelation": True},
         )
 
-        async def permission_callback(params) -> None:
+        def permission_callback(params) -> None:
             # Deny permission
             manager.deny_permission(params["requestID"])
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When/Then - request should be denied
-        with pytest.raises(ValueError, match="Permission denied"):
+        with pytest.raises(RuntimeError, match="Protocol permission denied"):
             manager.get_public_key(
                 {"identityKey": True, "protocolID": [1, "test"], "keyID": "1"}, originator="example.com"
             )

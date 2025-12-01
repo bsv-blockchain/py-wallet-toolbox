@@ -217,7 +217,8 @@ class TestCWIWalletManagerEdgeCases:
         with pytest.raises(RuntimeError, match="already in use"):
             manager.add_profile("test-profile")
 
-    def test_snapshot_validation(self) -> None:
+    @pytest.mark.asyncio
+    async def test_snapshot_validation(self) -> None:
         """Test snapshot validation."""
         from bsv_wallet_toolbox.manager.cwi_style_wallet_manager import CWIStyleWalletManager
         from unittest.mock import Mock
@@ -230,11 +231,11 @@ class TestCWIWalletManagerEdgeCases:
 
         # Test empty snapshot
         with pytest.raises(RuntimeError, match="Empty snapshot"):
-            manager.load_snapshot([])
+            await manager.load_snapshot([])
 
         # Test invalid version
         with pytest.raises(RuntimeError, match="Unsupported snapshot version"):
-            manager.load_snapshot([99])  # Invalid version
+            await manager.load_snapshot([99])  # Invalid version
 
 
 class TestIntegrationEdgeCases:

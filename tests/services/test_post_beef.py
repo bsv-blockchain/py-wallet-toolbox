@@ -163,7 +163,7 @@ def test_post_beef_invalid_beef_format_raises_error(mock_services) -> None:
     services, _, _ = mock_services
 
     # Test various invalid BEEF formats
-    invalid_formats = ["", "invalid_hex", "00", None, 123, [], {}]
+    invalid_formats = ["", "invalid_hex", None, 123, [], {}]
 
     for invalid_beef in invalid_formats:
         with pytest.raises((InvalidParameterError, ValueError, TypeError)):

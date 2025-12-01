@@ -39,6 +39,9 @@ def pbkdf2_derive_key(password: bytes, salt: bytes, key_length: int = 32) -> byt
 def xor_bytes(a: bytes, b: bytes) -> bytes:
     """XOR two byte sequences.
 
+    If the sequences have different lengths, the shorter one is cycled
+    to match the length of the longer one.
+
     Args:
         a: First byte sequence
         b: Second byte sequence
@@ -46,16 +49,15 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
     Returns:
         XOR result
 
-    Raises:
-        ValueError: If sequences have different lengths
-
     Reference: wallet-toolbox/src/CWIStyleWalletManager.ts XOR operations
     """
-    # Repeat the shorter sequence to match the longer one
+    # Cycle the shorter sequence to match the longer one
     if len(a) > len(b):
-        b = (b * (len(a) // len(b) + 1))[:len(a)]
+        # Repeat b to match a's length
+        b = (b * ((len(a) // len(b)) + 1))[:len(a)]
     elif len(b) > len(a):
-        a = (a * (len(b) // len(a) + 1))[:len(b)]
+        # Repeat a to match b's length
+        a = (a * ((len(b) // len(a)) + 1))[:len(b)]
 
     return bytes(x ^ y for x, y in zip(a, b))
 

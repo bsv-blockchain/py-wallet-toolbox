@@ -12,6 +12,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 @pytest.fixture
@@ -404,8 +405,8 @@ class TestWalletDecrypt:
             "counterparty": "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097",
         }
 
-        # When/Then
-        with pytest.raises((ValueError, TypeError)):
+        # When/Then - InvalidParameterError is also acceptable
+        with pytest.raises((ValueError, TypeError, InvalidParameterError)):
             wallet_with_storage.decrypt(args)
 
     def test_decrypt_with_wrong_counterparty_raises_error(self, wallet_with_storage: Wallet) -> None:

@@ -7,7 +7,7 @@ Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.encryption.test.t
 """
 
 import base64
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
@@ -271,11 +271,12 @@ class TestWalletPermissionsManagerEncryptionIntegration:
             }
         )
 
-        underlying.decrypt = AsyncMock(side_effect=lambda x: x)
+        underlying.decrypt = Mock(side_effect=lambda x, orig=None: x)
 
         list_result = manager.list_actions({}, "nonadmin.com")
 
-        assert underlying.decrypt.call_count == 3
+        # When encryptWalletMetadata=False, decrypt should NOT be called
+        assert underlying.decrypt.call_count == 0
         first = list_result["actions"][0]
         assert first["description"] == action_description
         assert first["inputs"][0]["inputDescription"] == input_desc

@@ -41,7 +41,9 @@ from unittest.mock import Mock
 from bsv.chaintracker import ChainTracker
 from bsv.http_client import default_http_client
 from bsv.transaction import Transaction
+from bsv.transaction.beef import parse_beef
 
+from ..errors import InvalidParameterError
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
 from .providers.arc import ARC, ArcConfig
@@ -577,6 +579,16 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getRawTx
         """
+        # Validate txid format
+        if not isinstance(txid, str):
+            raise InvalidParameterError("txid", "a string")
+        if len(txid) != 64:
+            raise InvalidParameterError("txid", "64 hex characters")
+        try:
+            int(txid, 16)
+        except ValueError:
+            raise InvalidParameterError("txid", "a valid hexadecimal string")
+
         services = self.get_raw_tx_services
         if use_next:
             services.next()
@@ -668,6 +680,16 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getMerklePath
         """
+        # Validate txid format
+        if not isinstance(txid, str):
+            raise InvalidParameterError("txid", "a string")
+        if len(txid) != 64:
+            raise InvalidParameterError("txid", "64 hex characters")
+        try:
+            int(txid, 16)
+        except ValueError:
+            raise InvalidParameterError("txid", "a valid hexadecimal string")
+
         # Generate cache key
         cache_key = f"merkle_path:{txid}"
 
@@ -818,7 +840,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#updateBsvExchangeRate
         """
-        return self.whatsonchain.update_bsv_exchange_rate()
+        return self._run_async(self.whatsonchain.update_bsv_exchange_rate())
 
     def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
         """Get a fiat exchange rate for "currency" relative to "base".
@@ -840,7 +862,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getFiatExchangeRate
         """
-        return self.whatsonchain.get_fiat_exchange_rate(currency, base)
+        return self._run_async(self.whatsonchain.get_fiat_exchange_rate(currency, base))
 
     def get_utxo_status(
         self,
@@ -871,6 +893,16 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
         """
+        # Validate output parameter
+        if not isinstance(output, str):
+            raise InvalidParameterError("output", "a string")
+        if len(output.strip()) == 0:
+            raise InvalidParameterError("output", "a non-empty string")
+        try:
+            bytes.fromhex(output)
+        except ValueError as e:
+            raise InvalidParameterError("output", f"must be valid hex: {e}") from e
+
         # Generate cache key from parameters
         cache_key = f"utxo:{output}:{output_format}:{outpoint}"
 
@@ -952,6 +984,15 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHashHistory
         """
+        # Validate script_hash format
+        if not isinstance(script_hash, str):
+            raise InvalidParameterError("script_hash", "a string")
+        if len(script_hash.strip()) == 0:
+            raise InvalidParameterError("script_hash", "a non-empty string")
+        try:
+            bytes.fromhex(script_hash)
+        except ValueError:
+            raise InvalidParameterError("script_hash", "a valid hexadecimal string")
         # Generate cache key
         cache_key = f"script_history:{script_hash}"
 
@@ -1026,6 +1067,16 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getStatusForTxids
         """
+        # Validate txid format
+        if not isinstance(txid, str):
+            raise InvalidParameterError("txid", "a string")
+        if len(txid) != 64:
+            raise InvalidParameterError("txid", "64 hex characters")
+        try:
+            int(txid, 16)
+        except ValueError:
+            raise InvalidParameterError("txid", "a valid hexadecimal string")
+
         # Generate cache key
         cache_key = f"tx_status:{txid}"
 
@@ -1083,29 +1134,21 @@ class Services(WalletServices):
         return result
 
     def get_tx_propagation(self, txid: str) -> dict[str, Any]:
-        """Get transaction propagation info via provider.
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTxPropagation
-        """
         return self.whatsonchain.get_tx_propagation(txid)
 
-    async def post_beef(self, beef: str) -> dict[str, Any]:
-        """Broadcast a BEEF via ARC with multi-provider failover (TS-compatible behavior and shape).
+    def post_beef(self, beef: str) -> dict[str, Any]:
+        # Validate beef input
+        if not isinstance(beef, str):
+            raise InvalidParameterError("beef", "must be a string")
+        if len(beef.strip()) == 0:
+            raise InvalidParameterError("beef", "must not be empty")
+        if len(beef) % 2 != 0:
+            raise InvalidParameterError("beef", "hex string must have even length")
+        try:
+            bytes.fromhex(beef)
+        except ValueError as e:
+            raise InvalidParameterError("beef", f"must be valid hex: {e}") from e
 
-        Uses direct provider calling for compatibility with test mocking.
-
-        Args:
-            beef: BEEF payload string. In TS, postBeef may accept BEEF objects; here we currently accept
-                  transaction hex (or a BEEF string compatible with py-sdk Transaction.from_hex). If the
-                  input cannot be parsed, an error result is returned.
-
-        Returns:
-            dict: TS-like broadcast result: { "accepted": bool, "txid": str | None, "message": str | None }.
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeef
-        """
         # For mocked scenarios (tests), skip transaction validation
         services = self.post_beef_services
         if isinstance(services, Mock):
@@ -1122,9 +1165,9 @@ class Services(WalletServices):
             try:
                 tx = Transaction.from_hex(beef)
                 if tx is None:
-                    return {"accepted": False, "txid": None, "message": "Invalid BEEF/tx hex"}
+                    raise InvalidParameterError("beef", "invalid transaction hex")
             except Exception as e:
-                return {"accepted": False, "txid": None, "message": f"Failed to parse transaction: {e!s}"}
+                raise InvalidParameterError("beef", f"failed to parse transaction: {e!s}") from e
 
             # Get transaction ID
             txid = tx.txid()
@@ -1184,6 +1227,45 @@ class Services(WalletServices):
         # Otherwise return failure
         return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
 
+    async def verify_beef(self, beef: str | bytes) -> bool:
+        """Verify BEEF data using the chaintracker.
+
+        Parses the BEEF data and verifies it against the blockchain using
+        the configured chaintracker provider.
+
+        Args:
+            beef: BEEF data as hex string or bytes
+
+        Returns:
+            bool: True if BEEF verification succeeds, False otherwise
+
+        Raises:
+            InvalidParameterError: If beef data is invalid
+        """
+        # Validate input
+        if not isinstance(beef, (str, bytes)):
+            raise InvalidParameterError("beef", "must be a string or bytes")
+
+        if isinstance(beef, str):
+            if len(beef.strip()) == 0:
+                raise InvalidParameterError("beef", "must not be empty")
+            try:
+                beef_bytes = bytes.fromhex(beef)
+            except ValueError as e:
+                raise InvalidParameterError("beef", f"must be valid hex: {e}") from e
+        else:
+            beef_bytes = beef
+
+        # Parse BEEF
+        try:
+            beef_obj = parse_beef(beef_bytes)
+        except Exception as e:
+            raise InvalidParameterError("beef", f"failed to parse BEEF: {e}") from e
+
+        # Verify using chaintracker
+        chaintracker = self.get_chain_tracker()
+        return await beef_obj.verify(chaintracker, True)
+
     def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).
 
@@ -1201,6 +1283,10 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
         """
+        # Validate input type
+        if not isinstance(beefs, list):
+            raise TypeError("beefs must be a list")
+
         # Use ARC if either provider is configured
         if self.arc_gorillapool or self.arc_taal:
             results: list[dict[str, Any]] = []
@@ -1210,21 +1296,6 @@ class Services(WalletServices):
         return [{"accepted": True, "txid": None, "message": "mocked"} for _ in beefs]
 
     def is_utxo(self, output: Any) -> bool:
-        """Return True if the given output appears unspent per provider.
-
-        Summary:
-            TS parity helper used by SpecOps (invalid change). Computes the
-            locking script hash and queries provider UTXO status. If an outpoint
-            is known, requires an exact unspent match.
-        TS parity:
-            Mirrors toolbox/ts-wallet-toolbox Services.isUtxo behavior.
-        Args:
-            output: Object or dict with fields/keys 'txid', 'vout', 'lockingScript'.
-        Returns:
-            bool: True if the script is observed unspent (and matches outpoint when provided).
-        Reference:
-            toolbox/ts-wallet-toolbox/src/services/Services.ts
-        """
         txid = getattr(output, "txid", None) if not isinstance(output, dict) else output.get("txid")
         vout = getattr(output, "vout", None) if not isinstance(output, dict) else output.get("vout")
         script = (
@@ -1251,3 +1322,5 @@ class Services(WalletServices):
             )
         # No outpoint requirement: any unspent occurrence counts
         return any((not d.get("spent", False)) for d in details if isinstance(d, dict))
+
+
