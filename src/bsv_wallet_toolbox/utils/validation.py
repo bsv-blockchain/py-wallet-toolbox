@@ -1137,8 +1137,22 @@ def validate_create_signature_args(args: dict[str, Any]) -> None:
         raise TypeError("args must be a dict")
 
     # Validate data or hashToDirectlySign: one is required
-    has_data = "data" in args and args["data"] is not None
-    has_hash = "hashToDirectlySign" in args and args["hashToDirectlySign"] is not None
+    has_data = "data" in args
+    has_hash = "hashToDirectlySign" in args
+
+    # Check if data key exists and validate its value
+    if has_data:
+        data = args["data"]
+        if data is None:
+            raise ValueError("data cannot be None")
+
+    # Check if hashToDirectlySign key exists and validate its value
+    if has_hash:
+        hash_val = args["hashToDirectlySign"]
+        if hash_val is None:
+            raise ValueError("hashToDirectlySign cannot be None")
+
+    # At least one of data or hashToDirectlySign must be provided
     if not has_data and not has_hash:
         raise KeyError("data is required")
 
@@ -1166,8 +1180,22 @@ def validate_verify_signature_args(args: dict[str, Any]) -> None:
         raise TypeError("args must be a dict")
 
     # Validate data or hashToDirectlyVerify: one is required
-    has_data = "data" in args and args["data"] is not None
-    has_hash = "hashToDirectlyVerify" in args and args["hashToDirectlyVerify"] is not None
+    has_data = "data" in args
+    has_hash = "hashToDirectlyVerify" in args
+
+    # Check if data key exists and validate its value
+    if has_data:
+        data = args["data"]
+        if data is None:
+            raise ValueError("data cannot be None")
+
+    # Check if hashToDirectlyVerify key exists and validate its value
+    if has_hash:
+        hash_val = args["hashToDirectlyVerify"]
+        if hash_val is None:
+            raise ValueError("hashToDirectlyVerify cannot be None")
+
+    # At least one of data or hashToDirectlyVerify must be provided
     if not has_data and not has_hash:
         raise KeyError("data is required")
 
