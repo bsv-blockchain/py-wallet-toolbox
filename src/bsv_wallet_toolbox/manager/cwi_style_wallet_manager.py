@@ -1082,7 +1082,7 @@ class CWIStyleWalletManager:
         if not self._underlying:
             raise ValueError("No underlying wallet available")
         result = self._underlying.get_public_key(args, originator)
-        return self._handle_sync_or_async(result)
+        return await self._handle_sync_or_async(result)
 
     async def encrypt(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Encrypt using underlying wallet.
@@ -1465,7 +1465,7 @@ class CWIStyleWalletManager:
         # Find token by presentation key hash
         key_hash = sha256_hash(bytes(presentation_key))
         hash_int_list = bytes_to_int_list(key_hash)
-        token = self._ump_token_interactor.find_by_presentation_key_hash(hash_int_list)
+        token = await self._ump_token_interactor.find_by_presentation_key_hash(hash_int_list)
 
         if token:
             # Decrypt keys using recovery key

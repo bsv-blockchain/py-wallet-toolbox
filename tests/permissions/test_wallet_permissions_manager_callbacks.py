@@ -8,7 +8,7 @@ Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.callbacks.test.ts
 
 import asyncio
 from typing import Never
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -176,7 +176,7 @@ class TestWalletPermissionsManagerCallbacks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_signature = AsyncMock(return_value={"signature": [0x01, 0x02]})
+        mock_underlying_wallet.create_signature = Mock(return_value={"signature": [0x01, 0x02]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -281,7 +281,7 @@ class TestWalletPermissionsManagerCallbacks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.get_public_key = AsyncMock(return_value={"publicKey": "test-key"})
+        mock_underlying_wallet.get_public_key = Mock(return_value={"publicKey": "test-key"})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -330,7 +330,7 @@ class TestWalletPermissionsManagerCallbacks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.get_public_key = AsyncMock(return_value={"publicKey": "test-key"})
+        mock_underlying_wallet.get_public_key = Mock(return_value={"publicKey": "test-key"})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,

@@ -105,7 +105,8 @@ def original_storage() -> None:
 class TestWalletSyncToWriter:
     """Test suite for Wallet.sync_to_writer method."""
 
-    @pytest.mark.skip(reason="Requires complex sync infrastructure and fixtures")
+
+    @pytest.mark.skip(reason="Requires WalletStorageManager implementation")
     def test_sync_initial_then_no_changes_then_one_change(self, _wallet: Wallet, destination_storage) -> None:
         """Given: Source wallet and empty destination storage
            When: Call sync_to_writer multiple times with different states
@@ -121,7 +122,7 @@ class TestWalletSyncToWriter:
         """
         # Given - Initial sync
         # When
-        result1 = _wallet.sync_to_writer(destination_storage)
+        result1 = _wallet.sync_to_writer({"writer": destination_storage})
 
         # Then
         assert result1["inserts"] > 1000  # Initial data
@@ -129,7 +130,7 @@ class TestWalletSyncToWriter:
 
         # Given - No changes sync
         # When
-        result2 = _wallet.sync_to_writer(destination_storage)
+        result2 = _wallet.sync_to_writer({"writer": destination_storage})
 
         # Then
         assert result2["inserts"] == 0  # No new data
@@ -138,7 +139,7 @@ class TestWalletSyncToWriter:
         # Given - Add one change
         # ... add test output basket ...
         # When
-        result3 = _wallet.sync_to_writer(destination_storage)
+        result3 = _wallet.sync_to_writer({"writer": destination_storage})
 
         # Then
         assert result3["inserts"] == 1  # One new item
@@ -148,7 +149,8 @@ class TestWalletSyncToWriter:
 class TestWalletSetActive:
     """Test suite for Wallet.set_active method."""
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+
+    @pytest.mark.skip(reason="Requires WalletStorageManager implementation")
     def test_set_active_to_backup_and_back_without_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
     ) -> None:
@@ -187,7 +189,8 @@ class TestWalletSetActive:
         # Then
         # Should complete successfully with no errors
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+
+    @pytest.mark.skip(reason="Requires WalletStorageManager implementation")
     def test_set_active_to_backup_and_back_with_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
     ) -> None:
@@ -226,8 +229,8 @@ class TestWalletSetActive:
         # Then
         # Should complete successfully with backup-first semantics maintained
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
+    
     def test_sync_to_writer_invalid_params_empty_writer_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with empty writer
            When: Call sync_to_writer
@@ -240,8 +243,8 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
+    
     def test_sync_to_writer_invalid_params_none_writer_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with None writer
            When: Call sync_to_writer
@@ -254,8 +257,8 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
+    
     def test_sync_to_writer_invalid_params_wrong_writer_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with wrong writer type
            When: Call sync_to_writer
@@ -271,8 +274,8 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
+    
     def test_sync_to_writer_invalid_params_none_options_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with None options
            When: Call sync_to_writer
@@ -285,8 +288,8 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
+    
     def test_sync_to_writer_invalid_params_wrong_options_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with wrong options type
            When: Call sync_to_writer
@@ -302,7 +305,7 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_invalid_params_missing_writer_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs missing writer key
            When: Call sync_to_writer
@@ -315,7 +318,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_invalid_params_missing_options_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs missing options key
            When: Call sync_to_writer
@@ -328,7 +331,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_invalid_params_empty_args_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty SyncToWriterArgs
            When: Call sync_to_writer
@@ -341,7 +344,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_invalid_params_zero_batch_size_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with zero batch size
            When: Call sync_to_writer
@@ -354,7 +357,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_invalid_params_negative_batch_size_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with negative batch size
            When: Call sync_to_writer
@@ -367,7 +370,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_invalid_params_wrong_batch_size_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with wrong batch size type
            When: Call sync_to_writer
@@ -380,7 +383,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_sync_to_writer_valid_params_extra_options_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with extra options
            When: Call sync_to_writer
@@ -405,7 +408,7 @@ class TestWalletSetActive:
         except (InvalidParameterError, TypeError, ValueError):
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_empty_storage_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with empty storage
            When: Call set_active
@@ -418,7 +421,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_none_storage_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with None storage
            When: Call set_active
@@ -431,7 +434,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_wrong_storage_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with wrong storage type
            When: Call set_active
@@ -447,7 +450,7 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_none_backup_first_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with None backup_first
            When: Call set_active
@@ -460,7 +463,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_wrong_backup_first_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with wrong backup_first type
            When: Call set_active
@@ -476,7 +479,7 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_missing_storage_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs missing storage key
            When: Call set_active
@@ -489,7 +492,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_missing_backup_first_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs missing backup_first key
            When: Call set_active
@@ -502,7 +505,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_invalid_params_empty_args_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty SetActiveArgs
            When: Call set_active
@@ -515,7 +518,7 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_valid_params_backup_first_true(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with backup_first=True
            When: Call set_active
@@ -532,7 +535,7 @@ class TestWalletSetActive:
         except (InvalidParameterError, TypeError, ValueError):
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_valid_params_backup_first_false(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with backup_first=False
            When: Call set_active
@@ -549,7 +552,7 @@ class TestWalletSetActive:
         except (InvalidParameterError, TypeError, ValueError):
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
-    @pytest.mark.skip(reason="WalletStorageManager not implemented in Python - sync_to_writer/set_active are WalletStorageManager methods, not Wallet methods")
+    
     def test_set_active_valid_params_extra_parameters_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with extra parameters
            When: Call set_active

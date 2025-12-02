@@ -132,7 +132,8 @@ def test_get_chain_tracker_network_operations() -> None:
             pass
 
 
-def test_get_chain_tracker_subscription_management() -> None:
+@pytest.mark.asyncio
+async def test_get_chain_tracker_subscription_management() -> None:
     """Test get_chain_tracker subscription management."""
     services = Services(Services.create_default_options("main"))
     tracker = services.get_chain_tracker()
@@ -141,18 +142,19 @@ def test_get_chain_tracker_subscription_management() -> None:
     if hasattr(tracker, 'subscribe_reorgs'):
         mock_callback = Mock()
         try:
-            sub_id = tracker.subscribe_reorgs(mock_callback)
+            sub_id = await tracker.subscribe_reorgs(mock_callback)
             assert sub_id is not None
 
             if hasattr(tracker, 'unsubscribe'):
-                result = tracker.unsubscribe(sub_id)
+                result = await tracker.unsubscribe(sub_id)
                 assert result is True or result is None
         except Exception:
             # Subscription management should handle errors gracefully
             pass
 
 
-def test_get_chain_tracker_header_operations() -> None:
+@pytest.mark.asyncio
+async def test_get_chain_tracker_header_operations() -> None:
     """Test get_chain_tracker header retrieval operations."""
     services = Services(Services.create_default_options("main"))
     tracker = services.get_chain_tracker()
@@ -160,7 +162,7 @@ def test_get_chain_tracker_header_operations() -> None:
     # Test header operations if available
     if hasattr(tracker, 'get_header_for_height'):
         try:
-            header = tracker.get_header_for_height(1000)
+            header = await tracker.get_header_for_height(1000)
             assert header is None or isinstance(header, dict)
         except Exception:
             # Header operations should handle errors gracefully
@@ -168,7 +170,7 @@ def test_get_chain_tracker_header_operations() -> None:
 
     if hasattr(tracker, 'find_header_for_height'):
         try:
-            header = tracker.find_header_for_height(1000)
+            header = await tracker.find_header_for_height(1000)
             assert header is None or isinstance(header, dict)
         except Exception:
             # Header operations should handle errors gracefully
@@ -193,7 +195,8 @@ def test_get_chain_tracker_service_integration() -> None:
             pass
 
 
-def test_get_chain_tracker_reorg_handling() -> None:
+@pytest.mark.asyncio
+async def test_get_chain_tracker_reorg_handling() -> None:
     """Test get_chain_tracker reorg handling capabilities."""
     services = Services(Services.create_default_options("main"))
     tracker = services.get_chain_tracker()
@@ -202,7 +205,7 @@ def test_get_chain_tracker_reorg_handling() -> None:
     if hasattr(tracker, 'subscribe_reorgs'):
         mock_reorg_callback = Mock()
         try:
-            sub_id = tracker.subscribe_reorgs(mock_reorg_callback)
+            sub_id = await tracker.subscribe_reorgs(mock_reorg_callback)
             assert sub_id is not None
 
             # Simulate reorg callback

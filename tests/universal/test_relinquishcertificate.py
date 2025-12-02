@@ -21,9 +21,8 @@ class TestUniversalVectorsRelinquishCertificate:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="encrypt not implemented - requires crypto subsystem")
     def test_relinquishcertificate_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_storage
     ) -> None:
         """ABI wire format test for relinquishCertificate.
 
@@ -35,9 +34,9 @@ class TestUniversalVectorsRelinquishCertificate:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors(1)
+        args_data, result_data = load_test_vectors("relinquishCertificate-simple")
 
-        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
+        wallet = wallet_with_storage
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.relinquish_certificate(args_data["json"], originator=None)

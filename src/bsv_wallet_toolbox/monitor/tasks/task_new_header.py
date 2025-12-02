@@ -1,6 +1,6 @@
 """TaskNewHeader implementation."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .task_check_for_proofs import TaskCheckForProofs
 from ..wallet_monitor_task import WalletMonitorTask
@@ -16,10 +16,12 @@ class TaskNewHeader(WalletMonitorTask):
     """
 
     check_now: bool = False
+    header: dict[str, Any] | None = None
 
     def __init__(self, monitor: "Monitor") -> None:
         """Initialize TaskNewHeader."""
         super().__init__(monitor, "NewHeader")
+        self.header = None
 
     def trigger(self, now: int) -> dict[str, bool]:
         """Run when triggered by event."""
@@ -31,7 +33,8 @@ class TaskNewHeader(WalletMonitorTask):
         log = ""
 
         if self.monitor.last_new_header:
-            h = self.monitor.last_new_header
+            self.header = self.monitor.last_new_header
+            h = self.header
             log += f"Processing new header {h.get('height')} {h.get('hash')}\n"
 
             # Trigger proof checks
