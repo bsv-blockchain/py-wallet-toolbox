@@ -205,6 +205,22 @@ class ARC:
 
         return headers
 
+    def broadcast(self, tx: Any) -> PostTxResultForTxid:
+        """Broadcast a Transaction object via ARC.
+        
+        Args:
+            tx: Transaction object with to_hex() and txid() methods.
+            
+        Returns:
+            PostTxResultForTxid with broadcast result.
+        """
+        if hasattr(tx, 'to_hex') and hasattr(tx, 'txid'):
+            return self.post_raw_tx(tx.to_hex(), [tx.txid()])
+        else:
+            # Fallback for other transaction formats
+            tx_hex = str(tx)
+            return self.post_raw_tx(tx_hex, None)
+
     def post_raw_tx(
         self,
         raw_tx: str,
@@ -293,7 +309,12 @@ class ARC:
                 else:
                     result.notes.append({**nn, **nnr, "what": "postRawTxSuccess"})
             else:
-                result.status = "error"
+                # Check for rate limiting specifically
+                if response.status_code == 429:
+                    result.status = "rate_limited"
+                    result.rate_limited = True
+                else:
+                    result.status = "error"
                 result.service_error = True
 
                 nnr = {}

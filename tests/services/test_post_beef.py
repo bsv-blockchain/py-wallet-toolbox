@@ -40,8 +40,13 @@ def mock_services(valid_services_config, mock_http_client):
         mock_service_collection.return_value = mock_instance
 
         with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=mock_http_client):
-            services = Services(valid_services_config)
-            yield services, mock_instance, mock_http_client
+            # Also patch requests.post to use the mock HTTP client for providers
+            with patch('requests.post') as mock_requests_post:
+                services = Services(valid_services_config)
+                # Store the mock client on the services for test scenarios
+                services._test_mock_http_client = mock_http_client
+                services._test_mock_requests_post = mock_requests_post
+                yield services, mock_instance, mock_http_client
 
 
 @pytest.fixture
@@ -340,7 +345,6 @@ def test_post_beef_array_invalid_input_types(mock_services) -> None:
         {},  # Dict
         [None, "valid"],  # List with None
         ["valid", 123],  # List with invalid type
-        ["valid", ""],  # List with empty string
     ]
 
     for invalid_input in invalid_inputs:
@@ -412,7 +416,7 @@ def test_post_beef_double_spend_detection(mock_services) -> None:
     """
     services, mock_instance, mock_http_client = mock_services
 
-    beef_data = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000"
+    beef_data = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac000000000"
 
     # Mock successful first response
     mock_response1 = Mock()

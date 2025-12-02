@@ -78,7 +78,7 @@ class TestWalletPermissionsManagerChecks:
         )
 
         # Auto-grant ephemeral permission
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
@@ -142,7 +142,7 @@ class TestWalletPermissionsManagerChecks:
             config={"seekProtocolPermissionsForSigning": True, "differentiatePrivilegedOperations": True},
         )
 
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
@@ -174,7 +174,7 @@ class TestWalletPermissionsManagerChecks:
             config={"differentiatePrivilegedOperations": False, "seekProtocolPermissionsForSigning": True},
         )
 
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
@@ -335,13 +335,13 @@ class TestWalletPermissionsManagerChecks:
         )
 
         # Auto-grant basket access
-        async def basket_callback(request) -> None:
+        def basket_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onBasketAccessRequested", basket_callback)
 
         # Auto-grant spending authorization
-        async def spending_callback(request) -> None:
+        def spending_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onSpendingAuthorizationRequested", spending_callback)
@@ -384,7 +384,7 @@ class TestWalletPermissionsManagerChecks:
         )
 
         # Auto-grant spending authorization only
-        async def spending_callback(request) -> None:
+        def spending_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onSpendingAuthorizationRequested", spending_callback)
@@ -437,7 +437,7 @@ class TestWalletPermissionsManagerChecks:
             config={"seekBasketRemovalPermissions": True},
         )
 
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onBasketAccessRequested", permission_callback)
@@ -484,7 +484,7 @@ class TestWalletPermissionsManagerChecks:
             config={"seekCertificateDisclosurePermissions": True},
         )
 
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onCertificateAccessRequested", permission_callback)
@@ -565,7 +565,7 @@ class TestWalletPermissionsManagerChecks:
         }
         manager._find_certificate_token = AsyncMock(return_value=expired_token)
 
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             assert request["renewal"] is True
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
@@ -615,7 +615,7 @@ class TestWalletPermissionsManagerChecks:
             config={"seekSpendingPermissions": True},
         )
 
-        async def permission_callback(request) -> None:
+        def permission_callback(request) -> None:
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
 
         manager.bind_callback("onSpendingAuthorizationRequested", permission_callback)

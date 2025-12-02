@@ -511,7 +511,7 @@ class TestCWIStyleWalletManagerSnapshot:
 
         corrupted_snapshot = b"invalid data"
 
-        with pytest.raises(ValueError, match="decryption failed"):
+        with pytest.raises(RuntimeError, match="Unsupported snapshot version"):
             await manager.load_snapshot(corrupted_snapshot)
 
 

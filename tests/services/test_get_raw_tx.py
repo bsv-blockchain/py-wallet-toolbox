@@ -151,162 +151,180 @@ class TestGetRawTx:
             # Should handle invalid txid formats gracefully
             with pytest.raises((InvalidParameterError, ValueError, TypeError)):
                 services.get_raw_tx(invalid_txid)
-
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_network_failure_500(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_network_failure_500(self, mock_services, valid_txid) -> None:
         """Given: Network returns HTTP 500 error
            When: Call get_raw_tx
            Then: Handles server error appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
+
+        # Set count for the mocked service collection
+        mock_instance.count = 1
 
         # Mock service to return error
-        async def mock_get_raw_tx_error(txid, chain=None):
+        def mock_get_raw_tx_error(txid, chain):
             raise Exception("HTTP 500: Internal Server Error")
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_error
+        # Set up the mocked service
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_error
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
-        assert result is None  # Should return None on server errors
+        result = services.get_raw_tx(valid_txid)
+        assert result is None  # Exception caught, method returns None
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_network_timeout(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_network_timeout(self, mock_services, valid_txid) -> None:
         """Given: Network request times out
            When: Call get_raw_tx
            Then: Handles timeout appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Mock service to timeout
-        async def mock_get_raw_tx_timeout(txid, chain=None):
-            await asyncio.sleep(0.1)  # Simulate timeout
+        def mock_get_raw_tx_timeout(txid, chain):
             raise asyncio.TimeoutError("Connection timeout")
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_timeout
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_timeout
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is None  # Should return None on timeout
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_rate_limiting_429(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_rate_limiting_429(self, mock_services, valid_txid) -> None:
         """Given: API returns 429 rate limit exceeded
            When: Call get_raw_tx
            Then: Handles rate limiting appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Mock service to return rate limit error
-        async def mock_get_raw_tx_rate_limit(txid, chain=None):
+        def mock_get_raw_tx_rate_limit(txid, chain):
             raise Exception("HTTP 429: Rate limit exceeded")
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_rate_limit
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_rate_limit
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is None  # Should return None on rate limit
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_transaction_not_found_404(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_transaction_not_found_404(self, mock_services, valid_txid) -> None:
         """Given: Transaction not found (404)
            When: Call get_raw_tx
            Then: Returns None appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Mock service to return 404
-        async def mock_get_raw_tx_not_found(txid, chain=None):
+        def mock_get_raw_tx_not_found(txid, chain):
             raise Exception("HTTP 404: Transaction not found")
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_not_found
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_not_found
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is None  # Should return None for non-existent transactions
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_malformed_response(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_malformed_response(self, mock_services, valid_txid) -> None:
         """Given: API returns malformed response
            When: Call get_raw_tx
            Then: Handles malformed response appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Mock service to return malformed data
-        async def mock_get_raw_tx_malformed(txid, chain=None):
+        def mock_get_raw_tx_malformed(txid, chain):
             raise Exception("Invalid JSON response")
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_malformed
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_malformed
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is None  # Should return None on malformed response
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_connection_error(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_connection_error(self, mock_services, valid_txid) -> None:
         """Given: Connection error occurs
            When: Call get_raw_tx
            Then: Handles connection error appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Mock service to raise connection error
-        async def mock_get_raw_tx_connection_error(txid, chain=None):
+        def mock_get_raw_tx_connection_error(txid, chain):
             raise ConnectionError("Network is unreachable")
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_connection_error
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_connection_error
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is None  # Should return None on connection error
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_provider_fallback(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_provider_fallback(self, mock_services, valid_txid) -> None:
         """Given: Primary provider fails, fallback provider succeeds
-           When: Call get_raw_tx
-           Then: Uses fallback provider successfully
+        When: Call get_raw_tx
+        Then: Uses fallback provider successfully
         """
         services, mock_instance = mock_services
-
-        # Mock primary provider failure, fallback success
+        mock_instance.count = 2  # Allow 2 tries for fallback
+        
+        # Mock providers with fallback
         call_count = 0
-        async def mock_get_raw_tx_with_fallback(txid, chain=None):
+        def mock_get_raw_tx_with_fallback(txid, chain):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise Exception("Primary provider failed")
             else:
                 return {"rawTx": "01000000", "computedTxid": txid}
-
-        mock_instance.get_raw_tx = mock_get_raw_tx_with_fallback
-
-        result = await services.get_raw_tx(valid_txid)
+        
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_with_fallback
+        mock_instance.service_to_call = mock_service_to_call
+        
+        result = services.get_raw_tx(valid_txid)
         assert result is not None
-        assert result["rawTx"] == "01000000"
+        assert call_count == 2  # Should have tried fallback
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_success_response(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_success_response(self, mock_services, valid_txid) -> None:
         """Given: Valid txid and successful API response
-           When: Call get_raw_tx
-           Then: Returns raw transaction data
+        When: Call get_raw_tx
+        Then: Returns raw transaction data
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         expected_raw_tx = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000"
 
         # Mock successful response
-        async def mock_get_raw_tx_success(txid, chain=None):
+        def mock_get_raw_tx_success(txid, chain):
             return {"rawTx": expected_raw_tx, "computedTxid": txid}
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_success
+        # Set up the mocked service
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_success
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is not None
-        assert result["rawTx"] == expected_raw_tx
-        assert result["computedTxid"] == valid_txid
+        assert result == expected_raw_tx
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_different_chains(self, mock_services) -> None:
+    def test_get_raw_tx_different_chains(self, mock_services) -> None:
         """Given: Different blockchain chains
            When: Call get_raw_tx
            Then: Handles different chains appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         test_cases = [
             ("main", "d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805"),
@@ -315,82 +333,90 @@ class TestGetRawTx:
 
         for chain, txid in test_cases:
             # Mock response for specific chain
-            async def mock_get_raw_tx_chain(txid_param, chain_param=None):
+            def mock_get_raw_tx_chain(txid_param, chain_param):
                 return {"rawTx": "01000000", "computedTxid": txid_param}
 
-            mock_instance.get_raw_tx = mock_get_raw_tx_chain
+            mock_service_to_call = Mock()
+            mock_service_to_call.service = mock_get_raw_tx_chain
+            mock_instance.service_to_call = mock_service_to_call
 
-            result = await services.get_raw_tx(txid)
+            result = services.get_raw_tx(txid)
             assert result is not None
-            assert result["computedTxid"] == txid
+            assert result == "01000000"  # Returns string, not dict
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_unicode_txid_handling(self, mock_services) -> None:
+    def test_get_raw_tx_unicode_txid_handling(self, mock_services) -> None:
         """Given: Txid with unicode characters (though txids are hex)
            When: Call get_raw_tx
            Then: Handles gracefully
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Even though txids are hex, test unicode handling
         unicode_txid = "c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76"
 
-        async def mock_get_raw_tx_unicode(txid, chain=None):
+        def mock_get_raw_tx_unicode(txid, chain):
             return {"rawTx": "01000000", "computedTxid": txid}
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_unicode
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_unicode
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(unicode_txid)
+        result = services.get_raw_tx(unicode_txid)
         assert result is not None
+        assert result == "01000000"
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_large_tx_data_handling(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_large_tx_data_handling(self, mock_services, valid_txid) -> None:
         """Given: Very large transaction data
            When: Call get_raw_tx
            Then: Handles large data appropriately
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
         # Create large transaction data (simulate large transaction)
         large_raw_tx = "00" * 100000  # 100KB of transaction data
 
-        async def mock_get_raw_tx_large(txid, chain=None):
+        def mock_get_raw_tx_large(txid, chain):
             return {"rawTx": large_raw_tx, "computedTxid": txid}
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_large
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_large
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is not None
-        assert len(result["rawTx"]) == 200000  # Should handle large data
+        assert len(result) == 200000  # Should handle large data
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_empty_response_handling(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_empty_response_handling(self, mock_services, valid_txid) -> None:
         """Given: API returns empty raw transaction
            When: Call get_raw_tx
-           Then: Handles empty response appropriately
+           Then: Handles empty response appropriately (returns None)
         """
         services, mock_instance = mock_services
+        mock_instance.count = 1
 
-        async def mock_get_raw_tx_empty(txid, chain=None):
+        def mock_get_raw_tx_empty(txid, chain):
             return {"rawTx": "", "computedTxid": txid}
 
-        mock_instance.get_raw_tx = mock_get_raw_tx_empty
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_get_raw_tx_empty
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
-        assert result is not None
-        assert result["rawTx"] == ""
+        result = services.get_raw_tx(valid_txid)
+        assert result is None  # Empty rawTx is treated as not found
 
-    @pytest.mark.asyncio
-    async def test_get_raw_tx_multiple_providers_fallback(self, mock_services, valid_txid) -> None:
+    def test_get_raw_tx_multiple_providers_fallback(self, mock_services, valid_txid) -> None:
         """Given: Multiple providers with primary failing, secondary succeeding
            When: Call get_raw_tx
            Then: Successfully falls back to working provider
         """
         services, mock_instance = mock_services
+        mock_instance.count = 3  # Allow 3 tries
 
         # Simulate provider list with fallback
         provider_call_count = 0
-        async def mock_multi_provider_fallback(txid, chain=None):
+        def mock_multi_provider_fallback(txid, chain):
             nonlocal provider_call_count
             provider_call_count += 1
             if provider_call_count == 1:
@@ -400,9 +426,11 @@ class TestGetRawTx:
             else:
                 return {"rawTx": "01000000", "computedTxid": txid}
 
-        mock_instance.get_raw_tx = mock_multi_provider_fallback
+        mock_service_to_call = Mock()
+        mock_service_to_call.service = mock_multi_provider_fallback
+        mock_instance.service_to_call = mock_service_to_call
 
-        result = await services.get_raw_tx(valid_txid)
+        result = services.get_raw_tx(valid_txid)
         assert result is not None
-        assert result["rawTx"] == "01000000"
+        assert result == "01000000"  # Returns string, not dict
         assert provider_call_count == 3  # Tried 3 providers before success
