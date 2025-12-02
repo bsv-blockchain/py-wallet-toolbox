@@ -24,7 +24,7 @@ class TestUniversalVectorsProveCertificate:
 
     @pytest.mark.skip(reason="proveCertificate not implemented - requires certificate subsystem")
     def test_provecertificate_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for proveCertificate.
 
@@ -38,7 +38,7 @@ class TestUniversalVectorsProveCertificate:
         # Given
         args_data, result_data = load_test_vectors(1)
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.provecertificate(args_data["json"], originator=None)

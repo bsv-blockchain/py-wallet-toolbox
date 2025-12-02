@@ -1007,9 +1007,10 @@ def validate_encrypt_args(args: dict[str, Any]) -> None:
         raise KeyError("counterparty is required")
     counterparty = args["counterparty"]
     if not isinstance(counterparty, str) or len(counterparty.strip()) == 0:
-        raise ValueError("counterparty must be a valid hexadecimal string")
-    if not _is_hex_string(counterparty):
-        raise ValueError("counterparty must be a valid hexadecimal string")
+        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
+    # Allow special values 'self' and 'anyone'
+    if counterparty not in ("self", "anyone") and not _is_hex_string(counterparty):
+        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
 
 
 def validate_decrypt_args(args: dict[str, Any]) -> None:
@@ -1047,8 +1048,11 @@ def validate_decrypt_args(args: dict[str, Any]) -> None:
     if "counterparty" not in args:
         raise KeyError("counterparty is required")
     counterparty = args["counterparty"]
-    if not isinstance(counterparty, str) or len(counterparty) == 0:
-        raise ValueError("counterparty must be a valid hexadecimal string")
+    if not isinstance(counterparty, str) or len(counterparty.strip()) == 0:
+        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
+    # Allow special values 'self' and 'anyone'
+    if counterparty not in ("self", "anyone") and not _is_hex_string(counterparty):
+        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
 
 
 # ----------------------------------------------------------------------------
@@ -1220,8 +1224,6 @@ def validate_get_header_args(args: dict[str, Any]) -> None:
         raise InvalidParameterError("height", "an integer")
     if height < 0:
         raise InvalidParameterError("height", "an integer >= 0")
-    if height == 0:
-        raise InvalidParameterError("height", "greater than 0")
 
     # Validate extremely large height
     if height > 10000000:  # Arbitrary large number for "extremely large"

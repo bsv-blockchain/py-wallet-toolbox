@@ -18,7 +18,7 @@ EXPECTED_HEIGHT = 850000
 class TestGetHeightBasic:
     """Basic functionality tests for getHeight method."""
 
-    def test_returns_positive_height(self) -> None:
+    def test_returns_positive_height(self, test_key_deriver) -> None:
         """Given: Wallet with mock services
            When: Call getHeight
            Then: Returns positive height value
@@ -28,7 +28,7 @@ class TestGetHeightBasic:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_height({})
@@ -38,7 +38,7 @@ class TestGetHeightBasic:
         assert result["height"] > 0
         assert result["height"] == EXPECTED_HEIGHT
 
-    def test_requires_services_configured(self) -> None:
+    def test_requires_services_configured(self, test_key_deriver) -> None:
         """Given: Wallet without services
         When: Call getHeight
         Then: Raises RuntimeError
@@ -47,7 +47,7 @@ class TestGetHeightBasic:
               This test verifies Python's error handling when services are not configured.
         """
         # Given
-        wallet = Wallet(chain="test")  # No services
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)  # No services
 
         # When/Then
         with pytest.raises(RuntimeError, match="Services must be configured"):
@@ -57,7 +57,7 @@ class TestGetHeightBasic:
 class TestGetHeightWithOriginator:
     """Tests for getHeight with originator parameter."""
 
-    def test_accepts_valid_originator(self) -> None:
+    def test_accepts_valid_originator(self, test_key_deriver) -> None:
         """Given: Wallet with services and valid originator
         When: Call getHeight with originator
         Then: Returns height without error
@@ -67,7 +67,7 @@ class TestGetHeightWithOriginator:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
         originator = "test.example.com"
 
         # When

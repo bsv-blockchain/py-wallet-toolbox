@@ -23,7 +23,7 @@ class TestUniversalVectorsIsAuthenticated:
     """
 
     def test_isauthenticated_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for isAuthenticated.
 
@@ -37,7 +37,7 @@ class TestUniversalVectorsIsAuthenticated:
         # Given
         args_data, result_data = load_test_vectors("isAuthenticated-simple")
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.is_authenticated(args_data["json"], originator=None)
@@ -49,7 +49,7 @@ class TestUniversalVectorsIsAuthenticated:
         from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # Test serialization/deserialization functions exist and work
         args = {}

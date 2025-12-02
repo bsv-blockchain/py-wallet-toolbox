@@ -24,7 +24,7 @@ class TestUniversalVectorsSignAction:
 
     @pytest.mark.skip(reason="Requires deterministic pending action state")
     def test_signaction_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for signAction.
 
@@ -38,7 +38,7 @@ class TestUniversalVectorsSignAction:
         # Given
         args_data, result_data = load_test_vectors(1)
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.signaction(args_data["json"], originator=None)

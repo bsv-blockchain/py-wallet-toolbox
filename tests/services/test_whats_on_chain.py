@@ -377,8 +377,8 @@ class TestWhatsOnChain:
         """
         provider, mock_client = mock_woc_provider
 
-        # Mock timeout exception
-        mock_client.get.side_effect = asyncio.TimeoutError("Connection timeout")
+        # Mock timeout exception - use fetch.side_effect since the code calls fetch, not get
+        mock_client.fetch.side_effect = asyncio.TimeoutError("Connection timeout")
 
         result = await provider.get_raw_tx(valid_txid)
         assert result is None  # Should return None on timeout
@@ -527,6 +527,13 @@ class TestWhatsOnChain:
         provider, mock_client = mock_woc_provider
         services = Mock()  # Mock services instance
 
+        # Configure mock to return 404 for invalid txids (not found)
+        mock_response = Mock()
+        mock_response.ok = False
+        mock_response.status_code = 404
+        mock_response.json.return_value = {"error": "Not Found"}
+        mock_client.fetch.return_value = mock_response
+
         for invalid_txid in invalid_txids:
             result = await provider.get_merkle_path(invalid_txid, services)
             assert isinstance(result, dict)
@@ -543,10 +550,11 @@ class TestWhatsOnChain:
 
         for error_scenario in network_error_responses:
             if error_scenario.get("timeout"):
-                mock_client.get.side_effect = asyncio.TimeoutError(error_scenario["error"])
+                mock_client.fetch.side_effect = asyncio.TimeoutError(error_scenario["error"])
             else:
                 mock_response = Mock()
                 mock_response.status_code = error_scenario["status"]
+                mock_response.ok = error_scenario["status"] == 200
                 mock_response.text = error_scenario["text"]
                 if error_scenario.get("malformed"):
                     mock_response.json.side_effect = ValueError("Invalid JSON")
@@ -555,6 +563,7 @@ class TestWhatsOnChain:
                 else:
                     mock_response.json.return_value = {"error": "Network error"}
                 mock_client.fetch.return_value = mock_response
+                mock_client.fetch.side_effect = None  # Clear side_effect when using return_value
 
             result = await provider.get_merkle_path(valid_txid, services)
             assert isinstance(result, dict)
@@ -569,23 +578,45 @@ class TestWhatsOnChain:
         provider, mock_client = mock_woc_provider
 
         for error_scenario in network_error_responses:
+            # Reset mock between iterations
+            mock_client.fetch.side_effect = None
+            mock_client.fetch.return_value = None
+
             if error_scenario.get("timeout"):
-                mock_client.get.side_effect = asyncio.TimeoutError(error_scenario["error"])
+                mock_client.fetch.side_effect = asyncio.TimeoutError(error_scenario["error"])
+                # Timeout raises RuntimeError
+                with pytest.raises(RuntimeError, match="Failed to update BSV exchange rate"):
+                    await provider.update_bsv_exchange_rate()
             else:
                 mock_response = Mock()
                 mock_response.status_code = error_scenario["status"]
+                mock_response.ok = error_scenario["status"] == 200
                 mock_response.text = error_scenario["text"]
                 if error_scenario.get("malformed"):
+                    # Malformed JSON raises ValueError, which gets caught and re-raised as RuntimeError
                     mock_response.json.side_effect = ValueError("Invalid JSON")
+                    mock_client.fetch.return_value = mock_response
+                    with pytest.raises(RuntimeError, match="Failed to update BSV exchange rate"):
+                        await provider.update_bsv_exchange_rate()
                 elif error_scenario.get("empty"):
+                    # Empty response (status 200) returns empty dict, not an error
                     mock_response.json.return_value = None
+                    mock_client.fetch.return_value = mock_response
+                    result = await provider.update_bsv_exchange_rate()
+                    assert isinstance(result, dict)
+                    assert result == {}
+                elif error_scenario["status"] == 200:
+                    # Status 200 with valid response returns the body
+                    mock_response.json.return_value = {"base": "USD", "rate": 45.67, "timestamp": 1640995200}
+                    mock_client.fetch.return_value = mock_response
+                    result = await provider.update_bsv_exchange_rate()
+                    assert isinstance(result, dict)
                 else:
+                    # Non-200 status codes raise RuntimeError
                     mock_response.json.return_value = {"error": "Network error"}
-                mock_client.fetch.return_value = mock_response
-
-            result = await provider.update_bsv_exchange_rate()
-            # Should handle errors gracefully, either return cached rate or error result
-            assert isinstance(result, dict) or result is None
+                    mock_client.fetch.return_value = mock_response
+                    with pytest.raises(RuntimeError, match="Failed to update BSV exchange rate"):
+                        await provider.update_bsv_exchange_rate()
 
     @pytest.mark.asyncio
     async def test_update_bsv_exchange_rate_success(self, mock_woc_provider) -> None:
@@ -680,8 +711,8 @@ class TestWhatsOnChain:
         """
         provider, mock_client = mock_woc_provider
 
-        # Mock connection error
-        mock_client.get.side_effect = ConnectionError("Network is unreachable")
+        # Mock connection error - use fetch.side_effect since the code calls fetch, not get
+        mock_client.fetch.side_effect = ConnectionError("Network is unreachable")
 
         result = await provider.get_raw_tx(valid_txid)
         assert result is None  # Should return None on connection error
@@ -695,8 +726,8 @@ class TestWhatsOnChain:
         provider, mock_client = mock_woc_provider
         services = Mock()
 
-        # Mock connection error
-        mock_client.get.side_effect = ConnectionError("Network is unreachable")
+        # Mock connection error - use fetch.side_effect since the code calls fetch, not get
+        mock_client.fetch.side_effect = ConnectionError("Network is unreachable")
 
         result = await provider.get_merkle_path(valid_txid, services)
         assert isinstance(result, dict)  # Should return error result
@@ -709,8 +740,9 @@ class TestWhatsOnChain:
         """
         provider, mock_client = mock_woc_provider
 
-        # Mock connection error
-        mock_client.get.side_effect = ConnectionError("Network is unreachable")
+        # Mock connection error - use fetch.side_effect since the code calls fetch, not get
+        mock_client.fetch.side_effect = ConnectionError("Network is unreachable")
 
-        result = await provider.update_bsv_exchange_rate()
-        assert isinstance(result, dict) or result is None  # Should handle gracefully
+        # The implementation raises RuntimeError on connection errors
+        with pytest.raises(RuntimeError, match="Failed to update BSV exchange rate"):
+            await provider.update_bsv_exchange_rate()
