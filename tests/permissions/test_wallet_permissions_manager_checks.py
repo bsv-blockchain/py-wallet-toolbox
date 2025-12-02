@@ -6,7 +6,7 @@ admin-only protocols/baskets, token renewal, and permission prompts.
 Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
 """
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
@@ -39,7 +39,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_signature = AsyncMock(return_value={"signature": [0x01, 0x02]})
+        mock_underlying_wallet.create_signature = Mock(return_value={"signature": [0x01, 0x02]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -69,7 +69,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_signature = AsyncMock(return_value={"signature": [0x99, 0xAA]})
+        mock_underlying_wallet.create_signature = Mock(return_value={"signature": [0x99, 0xAA]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -134,7 +134,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_signature = AsyncMock(return_value={"signature": [0xC0, 0xFF, 0xEE]})
+        mock_underlying_wallet.create_signature = Mock(return_value={"signature": [0xC0, 0xFF, 0xEE]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -166,7 +166,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_signature = AsyncMock(return_value={"signature": [0x99]})
+        mock_underlying_wallet.create_signature = Mock(return_value={"signature": [0x99]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -198,7 +198,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_hmac = AsyncMock()
+        mock_underlying_wallet.create_hmac = Mock()
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet, admin_originator="secure.admin.com"
@@ -259,7 +259,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock()
+        mock_underlying_wallet.create_action = Mock()
 
         manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.com")
 
@@ -293,7 +293,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock()
+        mock_underlying_wallet.create_action = Mock()
 
         manager = WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.com")
 
@@ -326,7 +326,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "abc123"})
+        mock_underlying_wallet.create_action = Mock(return_value={"txid": "abc123"})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -375,7 +375,7 @@ class TestWalletPermissionsManagerChecks:
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "xyz789"})
+        mock_underlying_wallet.create_action = Mock(return_value={"txid": "xyz789"})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -412,7 +412,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should require listing permission if seekBasketListingPermissions=true and no token')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.list_outputs = AsyncMock()
+        mock_underlying_wallet.list_outputs = Mock()
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -430,7 +430,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should prompt for removal permission if seekBasketRemovalPermissions=true')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.relinquish_output = AsyncMock(return_value={"txid": "test"})
+        mock_underlying_wallet.relinquish_output = Mock(return_value={"txid": "test"})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -450,7 +450,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should skip certificate disclosure permission if config.seekCertificateDisclosurePermissions=false')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        mock_underlying_wallet.prove_certificate = Mock(return_value={"keyring": {}})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -477,7 +477,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should require permission if seekCertificateDisclosurePermissions=true, no valid token')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        mock_underlying_wallet.prove_certificate = Mock(return_value={"keyring": {}})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -509,7 +509,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should check that requested fields are a subset of the token's fields')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        mock_underlying_wallet.prove_certificate = Mock(return_value={"keyring": {}})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -525,7 +525,7 @@ class TestWalletPermissionsManagerChecks:
             "certFields": ["name", "dob", "nationality"],
             "verifier": "02eeee",
         }
-        manager._find_certificate_token = AsyncMock(return_value=existing_token)
+        manager._find_certificate_token = Mock(return_value=existing_token)
         manager.prove_certificate(
             {
                 "certificate": {
@@ -547,7 +547,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should prompt for renewal if token is expired')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.prove_certificate = AsyncMock(return_value={"keyring": {}})
+        mock_underlying_wallet.prove_certificate = Mock(return_value={"keyring": {}})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -563,7 +563,7 @@ class TestWalletPermissionsManagerChecks:
             "certFields": ["name", "dob"],
             "verifier": "02verifier",
         }
-        manager._find_certificate_token = AsyncMock(return_value=expired_token)
+        manager._find_certificate_token = Mock(return_value=expired_token)
 
         def permission_callback(request) -> None:
             assert request["renewal"] is True
@@ -585,7 +585,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should skip if seekSpendingPermissions=false')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "test123"})
+        mock_underlying_wallet.create_action = Mock(return_value={"txid": "test123"})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",
@@ -606,7 +606,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should require spending token if netSpent > 0 and seekSpendingPermissions=true')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(
+        mock_underlying_wallet.create_action = Mock(
             return_value={"signableTransaction": {"tx": [0x00], "reference": "ref1"}}
         )
         manager = WalletPermissionsManager(
@@ -712,7 +712,7 @@ class TestWalletPermissionsManagerChecks:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should skip label permission if seekPermissionWhenApplyingActionLabels=false')"""
         mock_underlying_wallet = Mock(spec=WalletInterface)
-        mock_underlying_wallet.create_action = AsyncMock(return_value={"txid": "test"})
+        mock_underlying_wallet.create_action = Mock(return_value={"txid": "test"})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.com",

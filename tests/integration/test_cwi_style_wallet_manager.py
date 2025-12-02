@@ -858,7 +858,7 @@ class TestCWIStyleWalletManagerProxyMethods:
 
         mock_wallet_builder = AsyncMock()
         mock_underlying_wallet = Mock()
-        mock_underlying_wallet.get_public_key = AsyncMock(return_value={"publicKey": "test"})
+        mock_underlying_wallet.get_public_key = Mock(return_value={"publicKey": "test"})
         mock_wallet_builder.return_value = mock_underlying_wallet
 
         mock_recovery_key_saver = AsyncMock(return_value=True)
@@ -899,7 +899,7 @@ class TestCWIStyleWalletManagerProxyMethods:
 
         mock_wallet_builder = AsyncMock()
         mock_underlying_wallet = Mock()
-        mock_underlying_wallet.encrypt = AsyncMock(return_value={"ciphertext": [1, 2, 3]})
+        mock_underlying_wallet.encrypt = Mock(return_value={"ciphertext": [1, 2, 3]})
         mock_wallet_builder.return_value = mock_underlying_wallet
 
         mock_recovery_key_saver = AsyncMock(return_value=True)
@@ -986,7 +986,7 @@ class TestCWIStyleWalletManagerProxyMethods:
 
         mock_wallet_builder = AsyncMock()
         mock_underlying_wallet = Mock()
-        mock_underlying_wallet.wait_for_authentication = AsyncMock()
+        mock_underlying_wallet.wait_for_authentication = Mock()
         mock_wallet_builder.return_value = mock_underlying_wallet
 
         mock_recovery_key_saver = AsyncMock(return_value=True)

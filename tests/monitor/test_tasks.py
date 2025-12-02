@@ -35,30 +35,39 @@ class TestTaskClock:
         assert task.monitor == mock_monitor
 
     def test_task_clock_trigger_every_minute(self) -> None:
-        """Test TaskClock triggers every 60 seconds."""
+        """Test TaskClock triggers every 60 seconds based on next_minute logic."""
         mock_monitor = MagicMock()
         task = TaskClock(mock_monitor)
 
-        # First trigger should run (last_run is 0, so difference is now - 0)
-        result = task.trigger(60001)  # 60+ seconds from epoch
+        # TaskClock uses next_minute logic, not last_run_msecs_since_epoch
+        # next_minute is initialized to the next minute boundary
+
+        # Trigger before next_minute should not run
+        current_time = int(time.time() * 1000)
+        next_minute = task.next_minute
+        if current_time < next_minute:
+            result = task.trigger(current_time)
+            assert result["run"] is False
+
+        # Trigger after next_minute should run
+        result = task.trigger(next_minute + 1000)  # 1 second after next_minute
         assert result["run"] is True
 
-        # Second trigger within 60 seconds should not run
-        task.last_run_msecs_since_epoch = 60001
-        result = task.trigger(120000)  # Only 59 seconds later
+        # After run_task updates next_minute, trigger should not run until next boundary
+        task.run_task()  # This updates next_minute to next boundary
+        result = task.trigger(task.next_minute - 1000)  # Before new next_minute
         assert result["run"] is False
 
-        # Third trigger after 60 seconds should run
-        result = task.trigger(126001)  # 60+ seconds later
-        assert result["run"] is True
-
     def test_task_clock_run_task(self) -> None:
-        """Test TaskClock run_task returns time string."""
+        """Test TaskClock run_task returns ISO timestamp string."""
         mock_monitor = MagicMock()
         task = TaskClock(mock_monitor)
 
         result = task.run_task()
-        assert "Tick:" in result
+        # Should return ISO timestamp format like "2025-12-02T08:51:00"
+        assert "T" in result  # ISO format has T separator
+        assert ":" in result  # Time has colons
+        assert "-" in result  # Date has dashes
         assert isinstance(result, str)
 
 

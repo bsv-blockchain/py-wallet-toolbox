@@ -877,14 +877,26 @@ def validate_prove_certificate_args(args: dict[str, Any]) -> None:
     if not isinstance(certificate, dict) or len(certificate) == 0:
         raise InvalidParameterError("certificate", "a non-empty dict")
 
-    # Validate fieldsToReveal: list if present
-    if "fieldsToReveal" in args:
-        fields = args["fieldsToReveal"]
-        if not isinstance(fields, list):
-            raise InvalidParameterError("fieldsToReveal", "a list")
-        for field in fields:
-            if not isinstance(field, str):
-                raise InvalidParameterError("fieldsToReveal", "list of strings")
+    # Validate verifier: required hex string (even length for pubkey)
+    if "verifier" not in args:
+        raise InvalidParameterError("verifier", "required")
+    verifier = args["verifier"]
+    if not isinstance(verifier, str) or len(verifier) == 0:
+        raise InvalidParameterError("verifier", "a non-empty string")
+    if len(verifier) % 2 != 0 or not _is_hex_string(verifier):
+        raise InvalidParameterError("verifier", "a non-empty even-length hexadecimal string")
+
+    # Validate fieldsToReveal: required list of strings
+    if "fieldsToReveal" not in args:
+        raise InvalidParameterError("fieldsToReveal", "required")
+    fields = args["fieldsToReveal"]
+    if not isinstance(fields, list):
+        raise InvalidParameterError("fieldsToReveal", "a list")
+    if len(fields) == 0:
+        raise InvalidParameterError("fieldsToReveal", "a non-empty list")
+    for field in fields:
+        if not isinstance(field, str):
+            raise InvalidParameterError("fieldsToReveal", "list of strings")
 
 
 def validate_discover_by_identity_key_args(args: dict[str, Any]) -> None:
@@ -895,14 +907,14 @@ def validate_discover_by_identity_key_args(args: dict[str, Any]) -> None:
     if not isinstance(args, dict):
         raise InvalidParameterError("args", "a dict")
 
-    # Validate identityKey: required non-empty hex string
+    # Validate identityKey: required non-empty even-length hex string
     if "identityKey" not in args:
         raise InvalidParameterError("identityKey", "required")
     identity_key = args["identityKey"]
     if not isinstance(identity_key, str) or len(identity_key.strip()) == 0:
         raise InvalidParameterError("identityKey", "a non-empty string")
-    if not _is_hex_string(identity_key):
-        raise InvalidParameterError("identityKey", "a valid hexadecimal string")
+    if len(identity_key) % 2 != 0 or not _is_hex_string(identity_key):
+        raise InvalidParameterError("identityKey", "a non-empty even-length hexadecimal string")
 
 
 def validate_discover_by_attributes_args(args: dict[str, Any]) -> None:
@@ -922,11 +934,13 @@ def validate_discover_by_attributes_args(args: dict[str, Any]) -> None:
     if len(attributes) == 0:
         raise InvalidParameterError("attributes", "a non-empty dict")
 
-    # Validate limit: optional int 0-MAX_PAGINATION_LIMIT
+    # Validate limit: optional int 1-MAX_PAGINATION_LIMIT
     if "limit" in args:
         limit = args["limit"]
-        if not isinstance(limit, int) or limit < 0 or limit > MAX_PAGINATION_LIMIT:
-            raise InvalidParameterError("limit", f"must be 0..{MAX_PAGINATION_LIMIT}")
+        if not isinstance(limit, int) or isinstance(limit, bool):
+            raise InvalidParameterError("limit", f"must be an integer")
+        if limit <= 0 or limit > MAX_PAGINATION_LIMIT:
+            raise InvalidParameterError("limit", f"must be 1..{MAX_PAGINATION_LIMIT}")
 
 
 # ----------------------------------------------------------------------------

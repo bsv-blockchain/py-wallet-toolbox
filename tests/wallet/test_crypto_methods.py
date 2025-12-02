@@ -471,19 +471,12 @@ class TestWalletRevealCounterpartyKeyLinkage:
         Note: Based on BRC-100 specification for key linkage revelation.
         """
         # When
-        try:
-            result = wallet_with_storage.reveal_counterparty_key_linkage(valid_linkage_args)
-            # If we get here, the method is implemented
-            assert "revelation" in result or "encryptedLinkage" in result
-            # Should have some form of linkage data
-            assert isinstance(result, dict)
-            assert len(result) > 0
-        except NotImplementedError:
-            # Method not implemented in current KeyDeriver - this is expected
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except Exception as e:
-            # Other exceptions are unexpected
-            raise
+        result = wallet_with_storage.reveal_counterparty_key_linkage(valid_linkage_args)
+        # Method should be implemented (falls back to stub implementation)
+        assert "revelation" in result or "encryptedLinkage" in result
+        # Should have some form of linkage data
+        assert isinstance(result, dict)
+        assert len(result) > 0
 
     def test_reveal_counterparty_key_linkage_without_privileged_reason_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing privilegedReason when privileged=True
@@ -499,18 +492,9 @@ class TestWalletRevealCounterpartyKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError)):
+            # Should raise error for missing privileged reason
             wallet_with_storage.reveal_counterparty_key_linkage(args)
-            # If we get here without error, that's unexpected for privileged operation
-            pytest.fail("Should have raised error for missing privileged reason")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError):
-            # Expected - privileged operations need justification
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
 
     def test_reveal_counterparty_key_linkage_with_empty_counterparty_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty counterparty key
@@ -526,18 +510,9 @@ class TestWalletRevealCounterpartyKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError)):
+            # Should raise error for empty counterparty
             wallet_with_storage.reveal_counterparty_key_linkage(args)
-            # If we get here without error, that's unexpected
-            pytest.fail("Should have raised error for empty counterparty")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError):
-            # Expected - invalid counterparty
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
 
     def test_reveal_counterparty_key_linkage_with_invalid_counterparty_format_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Invalid counterparty key format
@@ -553,18 +528,9 @@ class TestWalletRevealCounterpartyKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError)):
+            # Should raise error for invalid counterparty format
             wallet_with_storage.reveal_counterparty_key_linkage(args)
-            # If we get here without error, that's unexpected
-            pytest.fail("Should have raised error for invalid counterparty format")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError):
-            # Expected - invalid counterparty format
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
 
     def test_reveal_counterparty_key_linkage_with_none_verifier_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None verifier
@@ -580,18 +546,9 @@ class TestWalletRevealCounterpartyKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError)):
+            # Should raise error for None verifier
             wallet_with_storage.reveal_counterparty_key_linkage(args)
-            # If we get here without error, that's unexpected
-            pytest.fail("Should have raised error for None verifier")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError):
-            # Expected - invalid verifier
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
 
 
 class TestWalletRevealSpecificKeyLinkage:
@@ -613,19 +570,12 @@ class TestWalletRevealSpecificKeyLinkage:
         }
 
         # When
-        try:
-            result = wallet_with_storage.reveal_specific_key_linkage(args)
-            # If we get here, the method is implemented
-            assert "revelation" in result or "encryptedLinkage" in result
-            # Should have some form of linkage data
-            assert isinstance(result, dict)
-            assert len(result) > 0
-        except NotImplementedError:
-            # Method not implemented in current KeyDeriver - this is expected
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except Exception as e:
-            # Other exceptions are unexpected
-            raise
+        result = wallet_with_storage.reveal_specific_key_linkage(args)
+        # Method should be implemented (falls back to stub implementation)
+        assert "revelation" in result or "encryptedLinkage" in result
+        # Should have some form of linkage data
+        assert isinstance(result, dict)
+        assert len(result) > 0
 
     def test_reveal_specific_key_linkage_with_different_protocols(self, wallet_with_storage: Wallet) -> None:
         """Given: Different protocolID and keyID combinations
@@ -652,14 +602,8 @@ class TestWalletRevealSpecificKeyLinkage:
                 "keyID": key_id,
             }
 
-            try:
-                result = wallet_with_storage.reveal_specific_key_linkage(args)
-                results.append(result)
-            except NotImplementedError:
-                pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-            except Exception:
-                # If one fails, they might all fail - skip the whole test
-                pytest.skip("Key linkage revelation failed")
+            result = wallet_with_storage.reveal_specific_key_linkage(args)
+            results.append(result)
 
         # If we got results, check they're different (or at least some are different)
         if len(results) > 1:
@@ -682,18 +626,9 @@ class TestWalletRevealSpecificKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError, KeyError)):
+            # Should raise error for missing protocolID
             wallet_with_storage.reveal_specific_key_linkage(args)
-            # If we get here without error, that's unexpected
-            pytest.fail("Should have raised error for missing protocolID")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError, KeyError):
-            # Expected - missing required parameter
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
 
     def test_reveal_specific_key_linkage_missing_key_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing keyID
@@ -709,18 +644,9 @@ class TestWalletRevealSpecificKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError, KeyError)):
+            # Should raise error for missing keyID
             wallet_with_storage.reveal_specific_key_linkage(args)
-            # If we get here without error, that's unexpected
-            pytest.fail("Should have raised error for missing keyID")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError, KeyError):
-            # Expected - missing required parameter
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
 
     def test_reveal_specific_key_linkage_empty_key_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty keyID string
@@ -736,15 +662,6 @@ class TestWalletRevealSpecificKeyLinkage:
         }
 
         # When/Then
-        try:
+        with pytest.raises((ValueError, TypeError)):
+            # Should raise error for empty keyID
             wallet_with_storage.reveal_specific_key_linkage(args)
-            # If we get here without error, that's unexpected
-            pytest.fail("Should have raised error for empty keyID")
-        except NotImplementedError:
-            pytest.skip("Key linkage revelation not implemented in KeyDeriver")
-        except (ValueError, TypeError):
-            # Expected - invalid keyID
-            pass
-        except Exception:
-            # Other exceptions may be acceptable depending on implementation
-            pass
