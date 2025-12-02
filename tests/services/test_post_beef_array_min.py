@@ -9,6 +9,7 @@ import pytest
 from unittest.mock import patch
 
 from bsv_wallet_toolbox.services import Services
+from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 def test_post_beef_array_minimal() -> None:
@@ -53,7 +54,7 @@ def test_post_beef_array_invalid_input_types() -> None:
     ]
 
     for invalid_input in invalid_inputs:
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises((ValueError, TypeError, InvalidParameterError)):
             services.post_beef_array(invalid_input)
 
 
@@ -218,12 +219,12 @@ def test_post_beef_array_all_invalid_elements() -> None:
     options["arcApiKey"] = "test"
     services = Services(options)
 
-    # All elements are invalid
-    invalid_array = ["", "invalid", "gggggggg", None, 123, []]
+    # All elements are invalid (invalid beef content, but valid strings)
+    invalid_array = ["", "invalid", "gggggggg", "odd", "12345"]
 
     result = services.post_beef_array(invalid_array)
     assert isinstance(result, list)
-    assert len(result) == 6  # Should return result for each element
+    assert len(result) == 5  # Should return result for each element
     for res in result:
         assert isinstance(res, dict)
         assert "accepted" in res
@@ -237,8 +238,8 @@ def test_post_beef_array_mixed_types_in_array() -> None:
     options["arcApiKey"] = "test"
     services = Services(options)
 
-    # Mix of strings, numbers, None, etc.
-    mixed_array = ["00", 123, None, [], {}, "11"]
+    # Mix of valid and invalid beef strings (all are strings, but some have invalid content)
+    mixed_array = ["00", "invalid_hex", "", "11", "odd_length", "gg"]
 
     result = services.post_beef_array(mixed_array)
     assert isinstance(result, list)

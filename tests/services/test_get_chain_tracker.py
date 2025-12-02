@@ -20,7 +20,7 @@ def test_get_chain_tracker_basic_functionality() -> None:
     tracker = services.get_chain_tracker()
     assert tracker is not None
     # Chain tracker should have expected interface
-    assert hasattr(tracker, 'get_height') or hasattr(tracker, 'get_chain_tip_height')
+    assert hasattr(tracker, 'get_present_height') or hasattr(tracker, 'get_chain_tip_height')
 
 
 def test_get_chain_tracker_multiple_calls() -> None:
@@ -104,9 +104,9 @@ def test_get_chain_tracker_configuration_persistence() -> None:
     tracker = services.get_chain_tracker()
 
     # Tracker should be aware of the service's chain
-    assert hasattr(tracker, 'chain') or hasattr(services, '_chain')
-    if hasattr(services, '_chain'):
-        assert services._chain == "main"
+    assert hasattr(tracker, 'chain') or hasattr(services, 'chain')
+    if hasattr(services, 'chain'):
+        assert services.chain == "main"
 
 
 def test_get_chain_tracker_network_operations() -> None:

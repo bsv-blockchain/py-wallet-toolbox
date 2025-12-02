@@ -37,7 +37,7 @@ def test_post_beef_arc_invalid_beef_data() -> None:
     invalid_beefs = ["", "invalid_hex", "123", None, 123, [], {}]
 
     for invalid_beef in invalid_beefs:
-        with pytest.raises((ValueError, TypeError)):
+        with pytest.raises((ValueError, TypeError, InvalidParameterError)):
             services.post_beef(invalid_beef)
 
 
@@ -48,11 +48,9 @@ def test_post_beef_arc_empty_beef() -> None:
     options["arcApiKey"] = "test"
     services = Services(options)
 
-    # Empty BEEF should be handled gracefully
-    result = services.post_beef("")
-    assert isinstance(result, dict)
-    assert "accepted" in result
-    assert result["accepted"] is False
+    # Empty BEEF raises an exception
+    with pytest.raises(InvalidParameterError):
+        services.post_beef("")
 
 
 def test_post_beef_arc_without_arc_config() -> None:
@@ -62,7 +60,9 @@ def test_post_beef_arc_without_arc_config() -> None:
     services = Services(options)
 
     # Should handle missing ARC config gracefully
-    result = services.post_beef("00")
+    # Use a valid dummy transaction hex
+    dummy_tx_hex = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100ffffffff0100f2052a010000001976a914000000000000000000000000000000000000000088ac00000000"
+    result = services.post_beef(dummy_tx_hex)
     assert isinstance(result, dict)
     assert "accepted" in result
 
@@ -75,7 +75,8 @@ def test_post_beef_arc_invalid_arc_url() -> None:
     services = Services(options)
 
     # Should handle invalid URL gracefully
-    result = services.post_beef("00")
+    dummy_tx_hex = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100ffffffff0100f2052a010000001976a914000000000000000000000000000000000000000088ac00000000"
+    result = services.post_beef(dummy_tx_hex)
     assert isinstance(result, dict)
     assert "accepted" in result
 
@@ -209,8 +210,8 @@ def test_post_beef_arc_error_response_handling() -> None:
             # Should return error-shaped response
             assert isinstance(result, dict)
             assert "accepted" in result
-        except (ValueError, TypeError):
-            # Some implementations may raise exceptions for invalid input
+        except (ValueError, TypeError, InvalidParameterError):
+            # Implementation may raise exceptions for validation errors
             pass
 
 
@@ -233,7 +234,8 @@ def test_post_beef_arc_config_validation() -> None:
         services = Services(options)
 
         # Should work with various valid ARC configs
-        result = services.post_beef("00")
+        dummy_tx_hex = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100ffffffff0100f2052a010000001976a914000000000000000000000000000000000000000088ac00000000"
+        result = services.post_beef(dummy_tx_hex)
         assert isinstance(result, dict)
         assert "accepted" in result
 

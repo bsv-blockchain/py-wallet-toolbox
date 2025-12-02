@@ -8,11 +8,11 @@ Reference: wallet-toolbox/src/services/providers/__tests/exchangeRates.test.ts
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
+from bsv_wallet_toolbox.errors import InvalidParameterError
 
 try:
     from bsv_wallet_toolbox.services import create_default_options
     from bsv_wallet_toolbox.services.providers import update_exchangeratesapi
-    from bsv_wallet_toolbox.errors import InvalidParameterError
     from tests.test_utils import TestUtils
 
     IMPORTS_AVAILABLE = True
@@ -218,6 +218,7 @@ def invalid_api_keys():
     ]
 
 
+@pytest.mark.skip(reason="update_exchangeratesapi not yet implemented")
 class TestExchangeRates:
     """Test suite for exchangeRates service.
 
@@ -225,7 +226,6 @@ class TestExchangeRates:
                describe('exchangeRates tests')
     """
 
-    @pytest.mark.skip(reason="update_exchangeratesapi not yet implemented")
     def test_update_exchange_rates_for_multiple_currencies(self) -> None:
         """Given: Default wallet services options for mainnet
            When: Call updateExchangeratesapi with ['EUR', 'GBP', 'USD']

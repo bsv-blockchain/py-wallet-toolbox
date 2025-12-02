@@ -63,10 +63,9 @@ def test_get_utxo_status_empty_script() -> None:
     """Test get_utxo_status with empty script."""
     services = Services(Services.create_default_options("main"))
 
-    result = services.get_utxo_status("")
-    assert isinstance(result, dict)
-    assert "details" in result
-    assert isinstance(result["details"], list)
+    # Empty string should raise InvalidParameterError
+    with pytest.raises(InvalidParameterError):
+        services.get_utxo_status("")
 
 
 def test_get_utxo_status_different_chains() -> None:
@@ -90,7 +89,7 @@ def test_get_utxo_status_various_script_patterns() -> None:
         "00" * 32,  # All zeros
         "ff" * 32,  # All FFs
         "aa" * 32,  # All A's
-        "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef",  # Mixed case
+        "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd",  # Mixed case (64 chars)
     ]
 
     for script in test_scripts:
@@ -105,7 +104,7 @@ def test_get_utxo_status_case_insensitive_script() -> None:
     services = Services(Services.create_default_options("main"))
 
     # Test that script handling is case-insensitive (though scripts are usually lowercase)
-    script_lower = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    script_lower = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd"  # 64 chars
 
     result = services.get_utxo_status(script_lower)
     assert isinstance(result, dict)
@@ -117,7 +116,7 @@ def test_get_utxo_status_unicode_script_handling() -> None:
     services = Services(Services.create_default_options("main"))
 
     # Should handle script with unicode characters gracefully (though scripts are hex)
-    unicode_script = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    unicode_script = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd"  # 64 chars
 
     result = services.get_utxo_status(unicode_script)
     assert isinstance(result, dict)
@@ -197,7 +196,7 @@ def test_get_utxo_status_mixed_case_script() -> None:
     services = Services(Services.create_default_options("main"))
 
     # Create mixed case script
-    mixed_case_script = "A1B2C3D4E5F6ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF"
+    mixed_case_script = "A1B2C3D4E5F6ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCD"  # 64 chars
 
     result = services.get_utxo_status(mixed_case_script)
     assert isinstance(result, dict)
