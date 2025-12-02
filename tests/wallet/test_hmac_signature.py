@@ -657,7 +657,8 @@ class TestWalletVerifySignature:
         }
 
         # When/Then
-        with pytest.raises((ValueError, TypeError)):
+        from bsv_wallet_toolbox.errors.wallet_errors import InvalidParameterError
+        with pytest.raises(InvalidParameterError):
             wallet_with_storage.verify_signature(verify_args)
 
     def test_verify_signature_missing_signature_raises_error(self, wallet_with_storage: Wallet, signature_test_data) -> None:
