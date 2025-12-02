@@ -354,19 +354,22 @@ class Services(WalletServices):
         """
         return self.whatsonchain
 
-    async def get_height(self) -> int:
+    async def get_height(self) -> int | None:
         """Get current blockchain height from WhatsOnChain.
 
         Equivalent to TypeScript's Services.getHeight()
         Uses py-sdk's WhatsOnChainTracker.current_height() (SDK method)
 
         Returns:
-            Current blockchain height
+            Current blockchain height or None if network failure occurs
 
         Raises:
-            RuntimeError: If unable to retrieve height
+            RuntimeError: If unable to retrieve height due to other errors
         """
-        return await self.whatsonchain.current_height()
+        try:
+            return await self.whatsonchain.current_height()
+        except (ConnectionError, TimeoutError):
+            return None
 
     async def get_present_height(self) -> int:
         """Get latest chain height (provider's present height).
@@ -400,7 +403,7 @@ class Services(WalletServices):
         """
         return self.whatsonchain.get_header_bytes_for_height(height)
 
-    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get a structured block header at a given height.
 
         Args:
@@ -412,7 +415,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
         """
-        h = self.whatsonchain.find_header_for_height(height)
+        h = await self.whatsonchain.find_header_for_height(height)
         if h is None:
             return None
         return {
@@ -477,9 +480,9 @@ class Services(WalletServices):
         """Subscribe to header events (if supported)."""
         return self.whatsonchain.subscribe_headers(listener)
 
-    def subscribe_reorgs(self, listener: Any) -> str:
+    async def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg events (if supported)."""
-        return self.whatsonchain.subscribe_reorgs(listener)
+        return await self.whatsonchain.subscribe_reorgs(listener)
 
     def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a subscription (if supported)."""
@@ -1064,7 +1067,7 @@ class Services(WalletServices):
         self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
         return result
 
-    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status via provider with multi-provider failover and 2-minute caching.
 
         Uses ServiceCollection-based multi-provider failover strategy:
@@ -1123,12 +1126,12 @@ class Services(WalletServices):
             try:
                 # Call service (handle async if needed)
                 if asyncio.iscoroutinefunction(stc.service):
-                    r = self._run_async(stc.service(txid, use_next))
+                    r = await stc.service(txid, use_next)
                 else:
                     r = stc.service(txid, use_next)
 
-                # For transaction status, any response with a valid status field is success
-                if isinstance(r, dict) and "status" in r and not r.get("error"):
+                # For transaction status, any response with transaction data or valid status is success
+                if isinstance(r, dict) and ("status" in r or "txid" in r) and not r.get("error"):
                     # Valid transaction status - cache and return
                     result = r
                     services.add_service_call_success(stc)
@@ -1149,8 +1152,8 @@ class Services(WalletServices):
         self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
         return result
 
-    def get_tx_propagation(self, txid: str) -> dict[str, Any]:
-        return self.whatsonchain.get_tx_propagation(txid)
+    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+        return await self.whatsonchain.get_tx_propagation(txid)
 
     def post_beef(self, beef: str) -> dict[str, Any]:
         # Validate beef input

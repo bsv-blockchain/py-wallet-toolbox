@@ -1809,8 +1809,8 @@ class WalletPermissionsManager:
         for output_item in outputs:
             output_satoshis += output_item.get("satoshis", 0)
 
-        # Net spent = outputs - inputs (TS parity)
-        # Positive = spending (we're creating outputs that cost more than our inputs)
+        # Net spent = outputs - inputs (TS parity: totalOutputSatoshis - totalInputSatoshis)
+        # Positive = spending (we're creating outputs that exceed our inputs)
         # Negative = receiving (our inputs exceed our outputs)
         return output_satoshis - input_satoshis
 

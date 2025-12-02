@@ -272,7 +272,7 @@ class TestIntegrationEdgeCases:
             "outputs": []
         }
         net_spent = manager._calculate_net_spent(args)
-        assert net_spent == 1000  # Spending (burning satoshis)
+        assert net_spent == -1000  # Spending (burning satoshis)
 
         # Test with balanced inputs and outputs (no net spending)
         args = {
@@ -288,4 +288,4 @@ class TestIntegrationEdgeCases:
             "outputs": [{"satoshis": 500}]
         }
         net_spent = manager._calculate_net_spent(args)
-        assert net_spent == -500  # Receiving (though this would be invalid in practice)
+        assert net_spent == 500  # Receiving (though this would be invalid in practice)

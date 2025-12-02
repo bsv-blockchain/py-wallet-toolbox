@@ -18,7 +18,7 @@ class TestUniversalVectorsGetHeaderForHeight:
     """Test getHeaderForHeight using Universal Test Vectors."""
 
     def test_getheaderforheight_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services, test_key_deriver
     ) -> None:
         """ABI wire format test for getHeaderForHeight.
 
@@ -42,7 +42,7 @@ class TestUniversalVectorsGetHeaderForHeight:
         from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # Test serialization/deserialization functions exist and work
         args = {}

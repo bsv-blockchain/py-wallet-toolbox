@@ -33,6 +33,7 @@ def mock_services(valid_services_config):
     """Fixture providing mock services instance."""
     with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
         mock_instance = Mock()
+        mock_instance.count = 1  # Set count to avoid early return
         mock_service_collection.return_value = mock_instance
 
         with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=Mock()):
@@ -43,7 +44,7 @@ def mock_services(valid_services_config):
 @pytest.fixture
 def valid_txid():
     """Fixture providing a valid transaction ID."""
-    return "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    return "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd"
 
 
 @pytest.fixture
@@ -54,8 +55,8 @@ def invalid_txids():
         "invalid_hex",  # Invalid hex
         "123",  # Too short
         "gggggggggggggggggggggggggggggggggggggggg",  # Invalid hex chars
-        "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcde",  # Too short (63 chars)
-        "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdefaa",  # Too long (65 chars)
+        "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abc",  # Too short (63 chars)
+        "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcde",  # Too long (65 chars)
         None,  # None type
         123,  # Wrong type
         [],  # Wrong type
@@ -170,7 +171,8 @@ def test_get_transaction_status_placeholder() -> None:
     """Placeholder for `getTransactionStatus` until TS/So test is available."""
 
 
-def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txids) -> None:
+@pytest.mark.asyncio
+async def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txids) -> None:
     """Given: Invalid txid formats
        When: Call get_transaction_status with invalid txids
        Then: Raises appropriate errors
@@ -179,7 +181,7 @@ def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txid
 
     for invalid_txid in invalid_txids:
         with pytest.raises((InvalidParameterError, ValueError, TypeError)):
-            services.get_transaction_status(invalid_txid)
+            await services.get_transaction_status(invalid_txid)
 
 
 @pytest.mark.asyncio
@@ -194,7 +196,9 @@ async def test_get_transaction_status_network_failure_500(mock_services, valid_t
     async def mock_get_transaction_status_error(txid, chain=None):
         raise Exception("HTTP 500: Internal Server Error")
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_error
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_error
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -214,7 +218,9 @@ async def test_get_transaction_status_network_timeout(mock_services, valid_txid)
         await asyncio.sleep(0.1)  # Simulate timeout
         raise asyncio.TimeoutError("Connection timeout")
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_timeout
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_timeout
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -233,7 +239,9 @@ async def test_get_transaction_status_rate_limiting_429(mock_services, valid_txi
     async def mock_get_transaction_status_rate_limit(txid, chain=None):
         raise Exception("HTTP 429: Rate limit exceeded")
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_rate_limit
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_rate_limit
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -252,7 +260,9 @@ async def test_get_transaction_status_transaction_not_found_404(mock_services, v
     async def mock_get_transaction_status_not_found(txid, chain=None):
         raise Exception("HTTP 404: Transaction not found")
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_not_found
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_not_found
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -271,7 +281,9 @@ async def test_get_transaction_status_malformed_response(mock_services, valid_tx
     async def mock_get_transaction_status_malformed(txid, chain=None):
         raise Exception("Invalid JSON response")
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_malformed
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_malformed
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -290,7 +302,9 @@ async def test_get_transaction_status_connection_error(mock_services, valid_txid
     async def mock_get_transaction_status_connection_error(txid, chain=None):
         raise ConnectionError("Network is unreachable")
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_connection_error
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_connection_error
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -304,6 +318,7 @@ async def test_get_transaction_status_provider_fallback(mock_services, valid_txi
        Then: Uses fallback provider successfully
     """
     services, mock_instance = mock_services
+    mock_instance.count = 2  # Allow 2 tries for fallback
 
     # Mock primary provider failure, fallback success
     call_count = 0
@@ -321,7 +336,9 @@ async def test_get_transaction_status_provider_fallback(mock_services, valid_txi
                 "blockTime": 1739329877
             }
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_with_fallback
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_with_fallback
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -348,7 +365,9 @@ async def test_get_transaction_status_confirmed_transaction(mock_services, valid
     async def mock_get_transaction_status_confirmed(txid, chain=None):
         return confirmed_response
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_confirmed
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_confirmed
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -377,7 +396,9 @@ async def test_get_transaction_status_unconfirmed_transaction(mock_services, val
     async def mock_get_transaction_status_unconfirmed(txid, chain=None):
         return unconfirmed_response
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_unconfirmed
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_unconfirmed
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -407,7 +428,9 @@ async def test_get_transaction_status_mempool_transaction(mock_services, valid_t
     async def mock_get_transaction_status_mempool(txid, chain=None):
         return mempool_response
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_mempool
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_mempool
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -424,8 +447,8 @@ async def test_get_transaction_status_different_chains(mock_services) -> None:
     services, mock_instance = mock_services
 
     test_cases = [
-        ("main", "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),
-        ("test", "b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef12"),
+        ("main", "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd"),
+        ("test", "b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),
     ]
 
     for chain, txid in test_cases:
@@ -438,7 +461,9 @@ async def test_get_transaction_status_different_chains(mock_services) -> None:
                 "blockTime": 1640995200
             }
 
-        mock_instance.get_transaction_status = mock_get_transaction_status_chain
+        mock_stc = Mock()
+        mock_stc.service = mock_get_transaction_status_chain
+        mock_instance.service_to_call = mock_stc
 
         result = await services.get_transaction_status(txid)
         assert isinstance(result, dict)
@@ -453,6 +478,7 @@ async def test_get_transaction_status_multiple_providers_fallback(mock_services,
        Then: Successfully falls back to working provider
     """
     services, mock_instance = mock_services
+    mock_instance.count = 3  # Allow 3 tries for multiple provider fallback
 
     # Simulate provider list with fallback
     provider_call_count = 0
@@ -472,7 +498,9 @@ async def test_get_transaction_status_multiple_providers_fallback(mock_services,
                 "blockTime": 1739331000
             }
 
-    mock_instance.get_transaction_status = mock_multi_provider_fallback
+    mock_stc = Mock()
+    mock_stc.service = mock_multi_provider_fallback
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -499,7 +527,9 @@ async def test_get_transaction_status_recently_confirmed(mock_services, valid_tx
     async def mock_get_transaction_status_recent(txid, chain=None):
         return recent_response
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_recent
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_recent
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -526,7 +556,9 @@ async def test_get_transaction_status_well_confirmed(mock_services, valid_txid) 
     async def mock_get_transaction_status_well_confirmed(txid, chain=None):
         return well_confirmed_response
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_well_confirmed
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_well_confirmed
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
@@ -543,7 +575,7 @@ async def test_get_transaction_status_unicode_txid_handling(mock_services) -> No
     services, mock_instance = mock_services
 
     # Even though txids are hex, test unicode handling
-    unicode_txid = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    unicode_txid = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd"
 
     async def mock_get_transaction_status_unicode(txid, chain=None):
         return {
@@ -552,7 +584,9 @@ async def test_get_transaction_status_unicode_txid_handling(mock_services) -> No
             "blockHeight": 883638
         }
 
-    mock_instance.get_transaction_status = mock_get_transaction_status_unicode
+    mock_stc = Mock()
+    mock_stc.service = mock_get_transaction_status_unicode
+    mock_instance.service_to_call = mock_stc
 
     result = await services.get_transaction_status(unicode_txid)
     assert isinstance(result, dict)

@@ -24,7 +24,7 @@ class TestUniversalVectorsInternalizeAction:
 
     @pytest.mark.skip(reason="Requires deterministic wallet state")
     def test_internalizeaction_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for internalizeAction.
 
@@ -38,7 +38,7 @@ class TestUniversalVectorsInternalizeAction:
         # Given
         args_data, result_data = load_test_vectors(1)
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.internalizeaction(args_data["json"], originator=None)

@@ -51,6 +51,10 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
 
     Reference: wallet-toolbox/src/CWIStyleWalletManager.ts XOR operations
     """
+    # Check for empty input edge case - cannot cycle empty sequence
+    if (len(a) == 0 and len(b) > 0) or (len(b) == 0 and len(a) > 0):
+        raise ValueError("different lengths")
+
     # Cycle the shorter sequence to match the longer one
     if len(a) > len(b):
         # Repeat b to match a's length

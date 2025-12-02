@@ -23,7 +23,7 @@ class TestUniversalVectorsRelinquishCertificate:
 
     @pytest.mark.skip(reason="encrypt not implemented - requires crypto subsystem")
     def test_relinquishcertificate_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for relinquishCertificate.
 
@@ -37,7 +37,7 @@ class TestUniversalVectorsRelinquishCertificate:
         # Given
         args_data, result_data = load_test_vectors(1)
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.relinquish_certificate(args_data["json"], originator=None)

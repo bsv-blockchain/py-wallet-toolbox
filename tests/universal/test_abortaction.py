@@ -12,6 +12,8 @@ from collections.abc import Callable
 
 import pytest
 
+from bsv_wallet_toolbox import Wallet
+
 
 class TestUniversalVectorsAbortAction:
     """Tests using Universal Test Vectors for abortAction.
@@ -24,7 +26,7 @@ class TestUniversalVectorsAbortAction:
         reason="Test vector incomplete: transaction with reference 'dGVzdA==' must be pre-created in database"
     )
     def test_abortaction_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for abortAction.
 
@@ -38,7 +40,7 @@ class TestUniversalVectorsAbortAction:
         # Given
         args_data, result_data = load_test_vectors(1-simple)
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.abortaction(args_data["json"], originator=None)
@@ -50,7 +52,7 @@ class TestUniversalVectorsAbortAction:
         from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # Test serialization/deserialization functions exist and work
         args = {}
