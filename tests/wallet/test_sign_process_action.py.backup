@@ -10,7 +10,7 @@ References:
 import pytest
 
 from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
+from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 @pytest.fixture
@@ -92,7 +92,7 @@ class TestWalletSignAction:
         invalid_args = {"reference": "", "spends": {}}  # Empty reference
 
         # When / Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), InvalidParameterError):
             wallet_with_storage.sign_action(invalid_args)
 
     @pytest.mark.skip(reason="Requires transaction building infrastructure (input selection, BEEF generation)")
@@ -167,7 +167,7 @@ class TestWalletSignAction:
         invalid_args = {"reference": None, "spends": {}}
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
             wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_params_wrong_reference_type_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -182,7 +182,7 @@ class TestWalletSignAction:
             invalid_args = {"reference": invalid_ref, "spends": {}}
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
                 wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_params_whitespace_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -197,7 +197,7 @@ class TestWalletSignAction:
             invalid_args = {"reference": ref, "spends": {}}
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError, WalletError)):
                 wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_params_wrong_spends_type_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -212,7 +212,7 @@ class TestWalletSignAction:
             invalid_args = {"reference": "test_ref", "spends": invalid_spends}
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
                 wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_params_missing_reference_key_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -224,7 +224,7 @@ class TestWalletSignAction:
         invalid_args = {"spends": {}}
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (KeyError, TypeError, InvalidParameterError)):
             wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_params_missing_spends_key_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -236,7 +236,7 @@ class TestWalletSignAction:
         invalid_args = {"reference": "test_ref"}
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (KeyError, TypeError, WalletError)):
             wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_params_extra_keys_ignored(self, wallet_with_storage: Wallet) -> None:
@@ -254,7 +254,7 @@ class TestWalletSignAction:
         }
 
         # When/Then - Should fail on the invalid reference, not the extra keys
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), InvalidParameterError):
             wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_reference_too_short_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -269,7 +269,7 @@ class TestWalletSignAction:
             invalid_args = {"reference": ref, "spends": {}}
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError)):
                 wallet_with_storage.sign_action(invalid_args)
 
     def test_sign_action_invalid_reference_invalid_base64_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -295,7 +295,7 @@ class TestWalletSignAction:
             invalid_args = {"reference": ref, "spends": {}}
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError)):
                 wallet_with_storage.sign_action(invalid_args)
 
 
@@ -323,7 +323,7 @@ class TestWalletProcessAction:
         }
 
         # When / Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), InvalidParameterError):
             wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_new_tx_missing_reference(self, wallet_with_storage: Wallet) -> None:
@@ -342,7 +342,7 @@ class TestWalletProcessAction:
         }
 
         # When / Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), InvalidParameterError):
             wallet_with_storage.process_action(invalid_args)
 
     @pytest.mark.skip(reason="Requires proper transaction state setup")
@@ -415,7 +415,7 @@ class TestWalletProcessAction:
         }
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
             wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_wrong_txid_type_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -435,7 +435,7 @@ class TestWalletProcessAction:
             }
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
                 wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_txid_wrong_length_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -455,7 +455,7 @@ class TestWalletProcessAction:
             }
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError)):
                 wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_none_raw_tx_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -472,7 +472,7 @@ class TestWalletProcessAction:
         }
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
             wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_wrong_raw_tx_type_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -492,7 +492,7 @@ class TestWalletProcessAction:
             }
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
                 wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_none_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -509,7 +509,7 @@ class TestWalletProcessAction:
         }
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
             wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_wrong_reference_type_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -529,7 +529,7 @@ class TestWalletProcessAction:
             }
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, TypeError)):
                 wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_whitespace_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -549,7 +549,7 @@ class TestWalletProcessAction:
             }
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError)):
                 wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_missing_txid_key_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -565,7 +565,7 @@ class TestWalletProcessAction:
         }
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (KeyError, TypeError)):
             wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_missing_raw_tx_key_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -581,7 +581,7 @@ class TestWalletProcessAction:
         }
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (KeyError, TypeError)):
             wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_is_new_tx_false_missing_txid_allowed(self, wallet_with_storage: Wallet) -> None:
@@ -601,8 +601,8 @@ class TestWalletProcessAction:
             result = wallet_with_storage.process_action(args)
             # If it succeeds, should return some result
             assert isinstance(result, dict)
-        except (InvalidParameterError, WalletError):
-            # Acceptable - implementation may require txid or reference recovery may fail
+        except (InvalidParameterError, ValueError):
+            # Acceptable - implementation may require txid
             pass
 
     def test_process_action_invalid_params_invalid_base64_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -627,7 +627,7 @@ class TestWalletProcessAction:
             }
 
             # When/Then
-            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+            with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError)):
                 wallet_with_storage.process_action(invalid_args)
 
     def test_process_action_invalid_params_empty_raw_tx_raises_error(self, wallet_with_storage: Wallet) -> None:
@@ -644,5 +644,5 @@ class TestWalletProcessAction:
         }
 
         # When/Then
-        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
+        with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError), (InvalidParameterError, ValueError)):
             wallet_with_storage.process_action(invalid_args)

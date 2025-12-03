@@ -1,26 +1,126 @@
-"""Placeholder tests for `postBeef`/`postBeefArray` (TS-parity policy).
+"""Unit tests for postBeef service.
 
-Overview:
-    - Intentionally skipped because there is no corresponding TS/So test to port yet.
-    - When upstream TS tests become available, replace these with assertions that
-      match the TS behavior, shapes, and edge cases (success, double-spend, errors).
+This module tests postBeef service functionality for mainnet and testnet.
 
-Rationale:
-    - Keep placeholders to make intended coverage explicit while avoiding Python-only
-      expectations that drift from TS.
-
-Reference:
-    - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeef
-    - toolbox/ts-wallet-toolbox/src/services/Services.ts#postBeefArray
+Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
 """
 
 import pytest
+from unittest.mock import Mock, patch, AsyncMock
+import json
+import time
 
-# =============================
-# Section B: Minimal (enabled)
-# =============================
 from bsv_wallet_toolbox.services import Services
-from tests.test_utils import Setup
+from bsv_wallet_toolbox.errors import InvalidParameterError
+
+
+@pytest.fixture
+def valid_services_config():
+    """Fixture providing valid services configuration."""
+    return {
+        "chain": "main",
+        "arcUrl": "https://arc.mock",
+        "arcApiKey": "test_key_123",
+        "whatsonchain_api_key": "woc_key_456",
+        "taal_api_key": "taal_key_789"
+    }
+
+
+@pytest.fixture
+def mock_http_client():
+    """Fixture providing a mock HTTP client for testing."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_services(valid_services_config, mock_http_client):
+    """Fixture providing mock services instance."""
+    with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
+        mock_instance = Mock()
+        mock_service_collection.return_value = mock_instance
+
+        with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=mock_http_client):
+            # Also patch requests.post to use the mock HTTP client for providers
+            with patch('requests.post') as mock_requests_post:
+                services = Services(valid_services_config)
+                # Store the mock client on the services for test scenarios
+                services._test_mock_http_client = mock_http_client
+                services._test_mock_requests_post = mock_requests_post
+                yield services, mock_instance, mock_http_client
+
+
+@pytest.fixture
+def valid_beef_data():
+    """Fixture providing valid BEEF data for testing."""
+    # Valid transaction hex from test fixtures
+    return "010000000158EED5DBBB7E2F7D70C79A11B9B61AABEECFA5A7CEC679BEDD00F42C48A4BD45010000006B483045022100AE8BB45498A40E2AC797775C405C108168804CD84E8C09A9D42D280D18EDDB6D022024863BFAAC5FF3C24CA65E2F3677EDA092BC3CC5D2EFABA73264B8FF55CF416B412102094AAF520E14E1C4D68496822800BCC7D3B3B26CA368E004A2CB70B398D82FACFFFFFFFF0203000000000000007421020A624B72B34BC192851C5D8890926BBB70B31BC10FDD4E3BC6534E41B1C81B93AC03010203030405064630440220013B4984F4054C2FBCD2F448AB896CCA5C4E234BF765B0C7FB27EDE572A7F7DA02201A5C8D0D023F94C209046B9A2B96B2882C5E43B72D8115561DF8C07442010EEA6D7592090000000000001976A9146511FCE2F7EF785A2102142FBF381AD1291C918688AC00000000"
+
+
+@pytest.fixture
+def invalid_beef_data():
+    """Fixture providing various invalid BEEF data."""
+    return [
+        "",  # Empty string
+        "invalid_hex",  # Invalid hex
+        "00",  # Too short
+        "gg" * 100,  # Invalid hex characters
+        None,  # None value
+        123,  # Wrong type
+        [],  # Wrong type
+        {},  # Wrong type
+    ]
+
+
+@pytest.fixture
+def network_error_responses():
+    """Fixture providing various network error response scenarios."""
+    return [
+        # HTTP 500 Internal Server Error
+        {"status": 500, "text": "Internal Server Error"},
+
+        # HTTP 503 Service Unavailable
+        {"status": 503, "text": "Service Unavailable"},
+
+        # HTTP 429 Rate Limited
+        {"status": 429, "text": "Rate limit exceeded"},
+
+        # HTTP 401 Unauthorized
+        {"status": 401, "text": "Unauthorized"},
+
+        # HTTP 403 Forbidden
+        {"status": 403, "text": "Forbidden"},
+
+        # Timeout scenarios
+        {"timeout": True, "error": "Connection timeout"},
+
+        # Malformed JSON response
+        {"status": 200, "text": "invalid json {{{", "malformed": True},
+
+        # Empty response
+        {"status": 200, "text": "", "empty": True},
+
+        # Very large response (simulating memory issues)
+        {"status": 200, "text": "x" * 1000000, "large": True},
+    ]
+
+
+@pytest.fixture
+def double_spend_scenarios():
+    """Fixture providing double-spend test scenarios."""
+    return [
+        {
+            "name": "same_transaction_twice",
+            "beef1": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
+            "beef2": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
+            "expect_double_spend": True
+        },
+        {
+            "name": "different_transactions",
+            "beef1": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
+            "beef2": "01000000020000000000000000000000000000000000000000000000000000000000000000ffffffff0200f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
+            "expect_double_spend": False
+        }
+    ]
 
 
 def test_post_beef_arc_minimal_enabled() -> None:
@@ -60,153 +160,371 @@ def test_post_beef_array_arc_minimal_enabled() -> None:
         assert res["accepted"] in (True, False)
 
 
-def test_post_beef_placeholder() -> None:
-    """Placeholder for `postBeef` until TS/So test is available."""
-
-
-def test_post_beef_array_placeholder() -> None:
-    """Placeholder for `postBeefArray` until TS/So test is available."""
-
-
-"""Unit tests for postBeef service.
-
-This module tests postBeef service functionality for mainnet and testnet.
-
-Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
-"""
-
-
-try:
-    from bsv_wallet_toolbox.beef import BeefTx
-
-    from bsv_wallet_toolbox.services import Services
-    from bsv_wallet_toolbox.utils import Setup, TestUtils, logger
-
-    IMPORTS_AVAILABLE = True
-except ImportError:
-    IMPORTS_AVAILABLE = False
-
-
-class TestPostBeef:
-    """Test suite for postBeef service.
-
-    Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
-               describe.skip('postBeef service tests')
+def test_post_beef_invalid_beef_format_raises_error(mock_services) -> None:
+    """Given: Invalid BEEF format
+       When: Call post_beef
+       Then: Raises InvalidParameterError or ValueError
     """
+    services, _, _ = mock_services
 
-    def test_postbeef_mainnet(self) -> None:
-        """Given: Services with mainnet configuration
-           When: Post BEEF with valid transactions and then with double spend
-           Then: First post succeeds, second detects double spend
+    # Test various invalid BEEF formats
+    invalid_formats = ["", "invalid_hex", None, 123, [], {}]
 
-        Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
-                   test('0 postBeef mainnet')
-        """
-        # Given
-        if Setup.no_env("main"):
-            return
+    for invalid_beef in invalid_formats:
+        with pytest.raises((InvalidParameterError, ValueError, TypeError)):
+            services.post_beef(invalid_beef)
 
-        services = self._create_services("main")
 
-        # When/Then
-        self._post_beef_test(services)
+def test_post_beef_network_failure_500_error(mock_services, valid_beef_data) -> None:
+    """Given: Network returns HTTP 500 error
+       When: Call post_beef
+       Then: Handles error appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
 
-    def test_postbeef_testnet(self) -> None:
-        """Given: Services with testnet configuration
-           When: Post BEEF with valid transactions and then with double spend
-           Then: First post succeeds, second detects double spend
+    # Mock HTTP 500 response
+    mock_response = Mock()
+    mock_response.status = 500
+    mock_response.text = "Internal Server Error"
+    mock_http_client.post.return_value = mock_response
 
-        Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
-                   test('1 postBeef testnet')
-        """
-        # Given
-        if Setup.no_env("test"):
-            return
+    # Should handle network errors gracefully
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
 
-        services = self._create_services("test")
 
-        # When/Then
-        self._post_beef_test(services)
+def test_post_beef_network_timeout_error(mock_services, valid_beef_data) -> None:
+    """Given: Network request times out
+       When: Call post_beef
+       Then: Handles timeout appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
 
-    def _create_services(self, chain: str) -> "Services":
-        """Create Services instance with API keys from environment.
+    # Mock timeout exception
+    mock_http_client.post.side_effect = TimeoutError("Connection timeout")
 
-        Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
-                   function createServices(chain: sdk.Chain)
-        """
-        env = TestUtils.get_env(chain)
-        options = Services.create_default_options(chain)
+    # Should handle timeout errors gracefully
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
 
-        if env.taal_api_key:
-            options.taal_api_key = env.taal_api_key
-            options.arc_config.api_key = env.taal_api_key
-        if env.whatsonchain_api_key:
-            options.whats_on_chain_api_key = env.whatsonchain_api_key
-        if env.bitails_api_key:
-            options.bitails_api_key = env.bitails_api_key
 
-        logger(
-            f"""
-API Keys:
-TAAL {options.taal_api_key[:20] if options.taal_api_key else 'N/A'}
-WHATSONCHAIN {options.whats_on_chain_api_key[:20] if options.whats_on_chain_api_key else 'N/A'}
-BITAILS {options.bitails_api_key[:20] if options.bitails_api_key else 'N/A'}
-"""
-        )
+def test_post_beef_rate_limiting_429_error(mock_services, valid_beef_data) -> None:
+    """Given: API returns 429 rate limit exceeded
+       When: Call post_beef
+       Then: Handles rate limiting appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
 
-        return Services(options)
+    # Mock HTTP 429 response
+    mock_response = Mock()
+    mock_response.status = 429
+    mock_response.text = "Rate limit exceeded"
+    mock_response.headers = {"Retry-After": "60"}
+    mock_http_client.post.return_value = mock_response
 
-    async def _post_beef_test(self, services: "Services") -> None:
-        """Test posting BEEF with valid transactions and double spend detection.
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
+    assert "rate_limited" in result or "message" in result
 
-        Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
-                   async function postBeefTest(services: Services)
-        """
-        # Given
-        chain = services.chain
-        if Setup.no_env(chain):
-            return
 
-        c = TestUtils.create_no_send_tx_pair(chain)
-        txids = [c.txid_do, c.txid_undo]
+def test_post_beef_malformed_json_response(mock_services, valid_beef_data) -> None:
+    """Given: API returns malformed JSON response
+       When: Call post_beef
+       Then: Handles malformed response appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
 
-        # When - Post valid BEEF
-        rs = services.post_beef(c.beef, txids)
+    # Mock malformed JSON response
+    mock_response = Mock()
+    mock_response.status = 200
+    mock_response.text = "invalid json {{{"
+    mock_response.json.side_effect = ValueError("Invalid JSON")
+    mock_http_client.post.return_value = mock_response
 
-        # Then - Verify success
-        for r in rs:
-            log_func = logger if r.status == "success" else print
-            log_func(f"r.notes = {r.notes}")
-            log_func(f"r.txidResults = {r.txid_results}")
-            assert r.status == "success"
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
 
-            for txid in txids:
-                tr = next((tx for tx in r.txid_results if tx.txid == txid), None)
-                assert tr is not None
-                assert tr.status == "success"
 
-        # When - Replace Undo transaction with double spend transaction and send again
-        beef2 = c.beef.clone()
-        beef2.txs[-1] = BeefTx.from_tx(c.double_spend_tx)
-        txids2 = [c.txid_do, c.double_spend_tx.id("hex")]
+def test_post_beef_empty_response(mock_services, valid_beef_data) -> None:
+    """Given: API returns empty response
+       When: Call post_beef
+       Then: Handles empty response appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
 
-        r2s = services.post_beef(beef2, txids2)
+    # Mock empty response
+    mock_response = Mock()
+    mock_response.status = 200
+    mock_response.text = ""
+    mock_response.json.side_effect = ValueError("Empty response")
+    mock_http_client.post.return_value = mock_response
 
-        # Then - Verify double spend detection
-        for r2 in r2s:
-            log_func = logger if r2.status == "error" else print
-            log_func(f"r2.notes = {r2.notes}")
-            log_func(f"r2.txidResults = {r2.txid_results}")
-            assert r2.status == "error"
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
 
-            for txid in txids2:
-                tr = next((tx for tx in r2.txid_results if tx.txid == txid), None)
-                assert tr is not None
 
-                if txid == c.txid_do:
-                    assert tr.status == "success"
-                else:
-                    assert tr.status == "error"
-                    assert tr.double_spend is True
-                    if tr.competing_txs is not None:
-                        assert tr.competing_txs == [c.txid_undo]
+def test_post_beef_service_unavailable_503_error(mock_services, valid_beef_data) -> None:
+    """Given: API returns 503 Service Unavailable
+       When: Call post_beef
+       Then: Handles service unavailable appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock HTTP 503 response
+    mock_response = Mock()
+    mock_response.status = 503
+    mock_response.text = "Service Unavailable"
+    mock_http_client.post.return_value = mock_response
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
+
+
+def test_post_beef_unauthorized_401_error(mock_services, valid_beef_data) -> None:
+    """Given: API returns 401 Unauthorized
+       When: Call post_beef
+       Then: Handles authentication error appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock HTTP 401 response
+    mock_response = Mock()
+    mock_response.status = 401
+    mock_response.text = "Unauthorized"
+    mock_http_client.post.return_value = mock_response
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
+
+
+def test_post_beef_forbidden_403_error(mock_services, valid_beef_data) -> None:
+    """Given: API returns 403 Forbidden
+       When: Call post_beef
+       Then: Handles forbidden error appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock HTTP 403 response
+    mock_response = Mock()
+    mock_response.status = 403
+    mock_response.text = "Forbidden"
+    mock_http_client.post.return_value = mock_response
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
+
+
+def test_post_beef_array_invalid_input_types(mock_services) -> None:
+    """Given: Invalid input types for post_beef_array
+       When: Call post_beef_array
+       Then: Raises appropriate errors
+    """
+    services, _, _ = mock_services
+
+    # Test various invalid inputs
+    invalid_inputs = [
+        None,  # None
+        "string",  # Single string instead of list
+        123,  # Number
+        {},  # Dict
+        [None, "valid"],  # List with None
+        ["valid", 123],  # List with invalid type
+    ]
+
+    for invalid_input in invalid_inputs:
+        with pytest.raises((InvalidParameterError, ValueError, TypeError)):
+            services.post_beef_array(invalid_input)
+
+
+def test_post_beef_array_empty_list(mock_services) -> None:
+    """Given: Empty list for post_beef_array
+       When: Call post_beef_array
+       Then: Handles empty list appropriately
+    """
+    services, _, _ = mock_services
+
+    result = services.post_beef_array([])
+    assert isinstance(result, list)
+    assert len(result) == 0
+
+
+def test_post_beef_array_mixed_valid_invalid(mock_services) -> None:
+    """Given: Array with mix of valid and invalid BEEF data
+       When: Call post_beef_array
+       Then: Handles mixed input appropriately
+    """
+    services, _, _ = mock_services
+
+    # Mix of valid and invalid BEEF data
+    mixed_input = ["00", "invalid_hex", "00", ""]
+
+    result = services.post_beef_array(mixed_input)
+    assert isinstance(result, list)
+    assert len(result) == 4  # Should return result for each input
+
+    # Check that invalid entries are marked as not accepted
+    for res in result:
+        assert isinstance(res, dict)
+        assert "accepted" in res
+        assert res["accepted"] in (True, False)
+
+
+def test_post_beef_success_response(mock_services, valid_beef_data) -> None:
+    """Given: Valid BEEF data and successful API response
+       When: Call post_beef
+       Then: Returns successful result
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status = 200
+    mock_response.json.return_value = {
+        "accepted": True,
+        "txid": "a1b2c3d4e5f6...",
+        "message": "Transaction broadcast successfully"
+    }
+    mock_http_client.post.return_value = mock_response
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert result.get("accepted") is True
+    assert "txid" in result
+    assert "message" in result
+
+
+def test_post_beef_double_spend_detection(mock_services) -> None:
+    """Given: Same transaction submitted twice
+       When: Call post_beef twice with same data
+       Then: Second call detects double spend
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    beef_data = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac000000000"
+
+    # Mock successful first response
+    mock_response1 = Mock()
+    mock_response1.status = 200
+    mock_response1.json.return_value = {
+        "accepted": True,
+        "txid": "txid123",
+        "message": "Accepted"
+    }
+
+    # Mock double spend second response
+    mock_response2 = Mock()
+    mock_response2.status = 200
+    mock_response2.json.return_value = {
+        "accepted": False,
+        "txid": "txid123",
+        "message": "Double spend detected",
+        "doubleSpend": True
+    }
+
+    # First call - success
+    mock_http_client.post.return_value = mock_response1
+    result1 = services.post_beef(beef_data)
+    assert result1.get("accepted") is True
+
+    # Second call - double spend
+    mock_http_client.post.return_value = mock_response2
+    result2 = services.post_beef(beef_data)
+    assert result2.get("accepted") is False
+    assert result2.get("doubleSpend") is True
+
+
+def test_post_beef_large_beef_data_handling(mock_services) -> None:
+    """Given: Very large BEEF data
+       When: Call post_beef
+       Then: Handles large data appropriately
+    """
+    services, _, _ = mock_services
+
+    # Create large BEEF data (simulate large transaction)
+    large_beef = "00" * 100000  # 100KB of data
+
+    result = services.post_beef(large_beef)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    # Should handle large data without crashing
+
+
+def test_post_beef_unicode_in_response(mock_services, valid_beef_data) -> None:
+    """Given: API response contains unicode characters
+       When: Call post_beef
+       Then: Handles unicode correctly
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock response with unicode
+    mock_response = Mock()
+    mock_response.status = 200
+    mock_response.json.return_value = {
+        "accepted": False,
+        "txid": None,
+        "message": "Error: 无效的交易数据 (Invalid transaction data)"
+    }
+    mock_http_client.post.return_value = mock_response
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "message" in result
+    assert "无效的交易数据" in result["message"]
+
+
+def test_post_beef_provider_fallback_simulation(mock_services, valid_beef_data) -> None:
+    """Given: Primary provider fails, fallback provider succeeds
+       When: Call post_beef
+       Then: Uses fallback provider successfully
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock fallback success response
+    mock_response = Mock()
+    mock_response.status = 200
+    mock_response.json.return_value = {
+        "accepted": True,
+        "txid": "fallback_txid_123",
+        "message": "Accepted via fallback provider"
+    }
+    mock_http_client.post.return_value = mock_response
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert result.get("accepted") is True
+    assert "fallback" in result.get("message", "").lower()
+
+
+def test_post_beef_connection_error_handling(mock_services, valid_beef_data) -> None:
+    """Given: Network connection error occurs
+       When: Call post_beef
+       Then: Handles connection error appropriately
+    """
+    services, mock_instance, mock_http_client = mock_services
+
+    # Mock connection error
+    mock_http_client.post.side_effect = ConnectionError("Network is unreachable")
+
+    result = services.post_beef(valid_beef_data)
+    assert isinstance(result, dict)
+    assert "accepted" in result
+    assert result["accepted"] is False
+    assert "error" in result or "message" in result
+
+

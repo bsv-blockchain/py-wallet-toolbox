@@ -1133,6 +1133,9 @@ class StorageProvider:
             o = _exec_result.scalar_one_or_none()
             if not o:
                 return 0
+            # Only relinquish if the output is currently in a basket
+            if o.basket_id is None:
+                return 0  # Already relinquished
             o.basket_id = None
             s.add(o)
             return 1

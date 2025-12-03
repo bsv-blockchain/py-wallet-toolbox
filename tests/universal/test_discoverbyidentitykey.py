@@ -22,9 +22,8 @@ class TestUniversalVectorsDiscoverByIdentityKey:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="discoverByIdentityKey not implemented - requires certificate subsystem")
     def test_discoverbyidentitykey_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
         """ABI wire format test for discoverByIdentityKey.
 
@@ -36,9 +35,9 @@ class TestUniversalVectorsDiscoverByIdentityKey:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors(1)
+        args_data, result_data = load_test_vectors("discoverByIdentityKey-simple")
 
-        wallet = Wallet(chain="main")
+        wallet = wallet_with_services
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet.discover_by_identity_key(args_data["json"], originator=None)

@@ -27,7 +27,7 @@ class TestUniversalVectorsGetVersion:
     """
 
     def test_getversion_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for getVersion
            When: Call getVersion with empty args
@@ -39,7 +39,7 @@ class TestUniversalVectorsGetVersion:
         """
         # Given
         args_data, result_data = load_test_vectors("getVersion-simple")
-        wallet = Wallet(chain="main")  # Will use Wallet.VERSION (currently "0.6.0")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)  # Will use Wallet.VERSION (currently "0.6.0")
 
         # When
         result = wallet.get_version(args_data["json"], originator=None)
@@ -48,7 +48,7 @@ class TestUniversalVectorsGetVersion:
         assert result == result_data["json"]
 
     def test_getversion_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for getVersion.
 
@@ -64,7 +64,7 @@ class TestUniversalVectorsGetVersion:
         wire_input = bytes.fromhex(args_data["wire"])
         expected_wire_output = bytes.fromhex(result_data["wire"])
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         method_name, args = deserialize_request(wire_input)

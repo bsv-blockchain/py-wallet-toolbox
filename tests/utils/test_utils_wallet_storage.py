@@ -29,29 +29,50 @@ def create_sqlite_test_setup_1_wallet(database_name="test_wallet", chain="main",
 
     This is a minimal implementation for monitor tests.
     """
+    # Create in-memory SQLite database
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    # Create storage provider
+    storage = StorageProvider(engine=engine, chain=chain, storage_identity_key=database_name)
+
+    # Create wallet with minimal key deriver for monitor tests
     try:
-        # Create in-memory SQLite database
-        engine = create_engine_from_url("sqlite:///:memory:")
-        Base.metadata.create_all(engine)
+        from bsv.wallet import KeyDeriver
+        from bsv import PrivateKey
+        # Create a key deriver from a test private key
+        test_private_key = PrivateKey.from_hex(root_key_hex[:64] if len(root_key_hex) >= 64 else "3" * 64)
+        key_deriver = KeyDeriver(test_private_key)
+        wallet = Wallet(chain=chain, storage_provider=storage, key_deriver=key_deriver)
+    except Exception:
+        # If key deriver creation fails, create wallet without it (may fail)
+        wallet = None
 
-        # Create storage provider
-        storage = StorageProvider(engine=engine, chain=chain, storage_identity_key=database_name)
-
-        # Create wallet (minimal - without key deriver for monitor tests)
-        wallet = Wallet(chain=chain, storage_provider=storage)
-
-        # Mock monitor - create a minimal monitor object
+    # Create real monitor instance
+    try:
+        from bsv_wallet_toolbox.monitor import Monitor, MonitorOptions
+        
+        services = Services(Services.create_default_options(chain))
+        monitor_options = MonitorOptions(
+            chain=chain,
+            storage=storage,
+            services=services,
+            task_run_wait_msecs=5000
+        )
+        monitor = Monitor(monitor_options)
+    except Exception as e:
+        # Fallback to mock if Monitor creation fails
+        import warnings
+        warnings.filterwarnings("ignore", category=RuntimeWarning)
         monitor = MagicMock()
         monitor.start_tasks = AsyncMock()
         monitor.stop_tasks = AsyncMock()
+        monitor._tasks = []
+        monitor.ONE_MINUTE = 60000
+        monitor.ONE_SECOND = 1000
 
-        ctx = MockWalletContext(wallet=wallet, storage=storage, monitor=monitor)
-        return ctx
-
-    except Exception:
-        # If setup fails, return minimal context
-        ctx = MockWalletContext()
-        return ctx
+    ctx = MockWalletContext(wallet=wallet, storage=storage, monitor=monitor)
+    return ctx
 
 
 def create_legacy_wallet_sqlite_copy(database_name="test_wallet"):

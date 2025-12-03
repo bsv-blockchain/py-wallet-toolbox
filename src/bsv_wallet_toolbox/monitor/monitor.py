@@ -176,6 +176,34 @@ class Monitor:
             finally:
                 ttr.last_run_msecs_since_epoch = int(time.time() * 1000)
 
+    _tasks_running: bool = False
+
+    async def start_tasks(self) -> None:
+        """Start running monitor tasks asynchronously.
+
+        Runs tasks in a loop, checking triggers and executing eligible tasks,
+        waiting between cycles according to task_run_wait_msecs.
+
+        Reference: ts-wallet-toolbox/src/monitor/Monitor.ts (startTasks)
+        """
+        if self._tasks_running:
+            raise ValueError("monitor tasks are already running")
+
+        self._tasks_running = True
+        import asyncio
+
+        while self._tasks_running:
+            self.run_once()
+            # Wait before next cycle
+            await asyncio.sleep(self.options.task_run_wait_msecs / 1000.0)
+
+    def stop_tasks(self) -> None:
+        """Stop running monitor tasks.
+
+        Sets the running flag to False, which will cause start_tasks loop to exit.
+        """
+        self._tasks_running = False
+
     def log_event(self, event: str, details: str | None = None) -> None:
         """Log a monitor event to storage.
 

@@ -23,7 +23,7 @@ class TestUniversalVectorsGetNetwork:
     """
 
     def test_getnetwork_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for getNetwork
            When: Call getNetwork with empty args on mainnet wallet
@@ -33,7 +33,7 @@ class TestUniversalVectorsGetNetwork:
         """
         # Given
         args_data, result_data = load_test_vectors("getNetwork-simple")
-        wallet = Wallet(chain="main")  # Mainnet wallet
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)  # Mainnet wallet
 
         # When
         result = wallet.get_network(args_data["json"], originator=None)
@@ -43,7 +43,7 @@ class TestUniversalVectorsGetNetwork:
         assert result["network"] == "mainnet"
 
     def test_getnetwork_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """ABI wire format test for getNetwork.
 
@@ -59,7 +59,7 @@ class TestUniversalVectorsGetNetwork:
         wire_input = bytes.fromhex(args_data["wire"])
         expected_wire_output = bytes.fromhex(result_data["wire"])
 
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         method_name, args = deserialize_request(wire_input)

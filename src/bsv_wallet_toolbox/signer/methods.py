@@ -680,7 +680,7 @@ def prove_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) -> dict[str
     }
 
     # Query storage for matching certificate
-    list_result = wallet.storage.list_certificates(list_cert_args)
+    list_result = wallet.storage.list_certificates(auth, list_cert_args)
     certificates = list_result.get("certificates", [])
 
     if len(certificates) != 1:

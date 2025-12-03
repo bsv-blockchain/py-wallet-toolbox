@@ -200,51 +200,43 @@ class TestWalletPermissionsManagerInitialization:
         active_requests = getattr(manager, "_active_requests", {})
         assert len(active_requests) == 0
 
-    @pytest.mark.skip(reason="Complex async permission queueing not yet implemented")
     def test_should_enforce_protocol_permission_checks_for_signing_if_seekprotocolpermissionsforsigning_true(
         self,
     ) -> None:
         """Given: Manager with seekProtocolPermissionsForSigning=True
            When: Non-admin creates signature with protocolID
-           Then: Permission check triggered, request queued
+           Then: Permission check triggered, callback called
 
         Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
                    test('should enforce protocol permission checks for signing if seekProtocolPermissionsForSigning=true')
-        
-        Note: This test requires permission request queueing and async grant/deny
-              which is not yet implemented in the Python version.
         """
         # Given
         mock_underlying_wallet = Mock(spec=WalletInterface)
+        mock_underlying_wallet.create_signature = Mock(return_value={"signature": [1, 2, 3]})
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.domain.com",
             config={"seekProtocolPermissionsForSigning": True},
         )
-        manager._find_protocol_token = AsyncMock(return_value=None)
+
+        callback_called = []
+
+        def permission_callback(request) -> None:
+            callback_called.append(request)
+            manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
+
+        manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - non-admin origin tries createSignature
-        create_sig_promise = asyncio.create_task(
-            manager.create_signature(
+        result = manager.create_signature(
                 {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
                 "nonadmin.com",
             )
-        )
 
-        # Wait a short tick to let the async code run
-        asyncio.sleep(0.01)
-
-        # Then - request queue has an entry
-        active_requests = getattr(manager, "_active_requests", {})
-        assert len(active_requests) > 0
-
-        # Forcibly deny the request so the test can conclude
-        first_request_key = next(iter(active_requests.keys()))
-        manager.deny_permission(first_request_key)
-
-        # The promise eventually rejects
-        with pytest.raises(ValueError, match="Permission denied"):
-            create_sig_promise
+        # Then - callback was triggered and signature was created
+        assert len(callback_called) == 1
+        assert callback_called[0]["type"] == "protocol"
+        mock_underlying_wallet.create_signature.assert_called_once()
 
     def test_should_skip_basket_insertion_permission_checks_if_seekbasketinsertionpermissions_false(self) -> None:
         """Given: Manager with seekBasketInsertionPermissions=False

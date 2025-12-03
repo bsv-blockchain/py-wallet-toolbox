@@ -282,7 +282,7 @@ class TestCWIManagerAuthentication:
         """Test is_authenticated returns false initially."""
         result = unauthenticated_manager.is_authenticated()
 
-        assert result == False
+        assert result == {"authenticated": False}
 
     def test_is_authenticated_with_originator_check(self, mock_manager) -> None:
         """Test is_authenticated with originator validation."""
@@ -546,7 +546,7 @@ class TestCWIManagerBlockchainOperations:
     def test_ensure_can_call_with_invalid_originator(self, mock_manager) -> None:
         """Test _ensure_can_call with invalid originator."""
         # Admin originator should raise error
-        with pytest.raises(ValueError, match="External applications are not allowed to use the admin originator"):
+        with pytest.raises(RuntimeError, match="cannot use the admin originator"):
             mock_manager._ensure_can_call("test.admin.com")
 
     def test_ensure_can_call_no_originator(self, mock_manager) -> None:
@@ -556,6 +556,6 @@ class TestCWIManagerBlockchainOperations:
 
     def test_ensure_can_call_not_authenticated(self, unauthenticated_manager) -> None:
         """Test _ensure_can_call when not authenticated."""
-        with pytest.raises(ValueError, match="User is not authenticated"):
+        with pytest.raises(RuntimeError, match="Wallet not authenticated"):
             unauthenticated_manager._ensure_can_call("other.com")
 

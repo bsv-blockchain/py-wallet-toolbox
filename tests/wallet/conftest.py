@@ -94,3 +94,90 @@ def wallet_with_mocked_create_action(test_key_deriver) -> tuple[Wallet, StorageP
     storage.create_action = MagicMock(side_effect=stub_create_action)
 
     return wallet, storage, call_log, seed_user_id
+
+
+@pytest.fixture
+def _wallet(test_key_deriver) -> Wallet:
+    """Wallet fixture with populated data for sync tests.
+
+    Creates a wallet with storage provider and some seeded data for testing
+    sync operations.
+    """
+    # Create in-memory SQLite database
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    # Create storage provider
+    storage = StorageProvider(engine=engine, chain="main", storage_identity_key="sync-test-wallet")
+    storage.make_available()
+
+    # Create wallet with storage
+    wallet = Wallet(chain="main", key_deriver=test_key_deriver, storage_provider=storage)
+
+    # Seed some data (similar to wallet_with_services but minimal)
+    from datetime import datetime, timezone
+    try:
+        user_id = storage.insert_user({
+            "identityKey": test_key_deriver._root_private_key.public_key().hex(),
+            "activeStorage": "test",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        })
+    except Exception:
+        # User might already exist, get the existing user
+        user_id = storage.get_or_create_user_id(test_key_deriver._root_private_key.public_key().hex())
+
+    # Create default basket
+    try:
+        storage.insert_output_basket({
+            "userId": user_id,
+            "name": "default",
+            "numberOfDesiredUTXOs": 10,
+            "minimumDesiredUTXOValue": 1000,
+            "isDeleted": False,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        })
+    except Exception:
+        # Basket might already exist
+        pass
+
+    return wallet
+
+
+@pytest.fixture
+def destination_storage() -> StorageProvider:
+    """Empty destination storage for sync_to_writer tests."""
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    storage = StorageProvider(engine=engine, chain="main", storage_identity_key="destination-storage")
+    storage.make_available()
+
+    return storage
+
+
+@pytest.fixture
+def backup_storage() -> StorageProvider:
+    """Empty backup storage for set_active tests."""
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    storage = StorageProvider(engine=engine, chain="main", storage_identity_key="backup-storage")
+    storage.make_available()
+
+    return storage
+
+
+@pytest.fixture
+def original_storage() -> StorageProvider:
+    """Original storage with data for set_active tests."""
+    engine = create_engine_from_url("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    storage = StorageProvider(engine=engine, chain="main", storage_identity_key="original-storage")
+    storage.make_available()
+
+    # For set_active tests, we need a wallet with storage that has data
+    # The test will set this as the active storage
+    return storage
