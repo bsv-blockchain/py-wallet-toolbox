@@ -1,8 +1,6 @@
 """Unit tests for Wallet.wait_for_authentication method.
 
 Note: TypeScript does not have dedicated unit tests for base Wallet.waitForAuthentication
-      (only tested through manager implementations in src/__tests/CWIStyleWalletManager.test.ts).
-
       This Python test verifies basic functionality to ensure the method works as expected,
       even though no direct TypeScript equivalent exists for the base Wallet class.
 """

@@ -1,7 +1,6 @@
 """Unit tests for Wallet.is_authenticated method.
 
 Note: TypeScript does not have dedicated unit tests for base Wallet.isAuthenticated
-      (only tested through manager implementations in src/__tests/CWIStyleWalletManager.test.ts).
 
       This Python test verifies basic functionality to ensure the method works as expected,
       even though no direct TypeScript equivalent exists for the base Wallet class.

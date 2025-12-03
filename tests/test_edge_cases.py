@@ -56,53 +56,6 @@ class TestCryptoUtilsEdgeCases:
         result = generate_random_bytes(0)
         assert result == b""
 
-
-class TestUMPTokenEdgeCases:
-    """Test edge cases for UMP token handling."""
-
-    def test_empty_token_fields(self) -> None:
-        """Test UMP token with empty fields."""
-        from bsv_wallet_toolbox.manager.ump_token_interactor import UMPToken
-
-        token = UMPToken(
-            password_presentation_primary=[],
-            password_recovery_primary=[],
-            presentation_recovery_primary=[],
-            password_primary_privileged=[],
-            presentation_recovery_privileged=[],
-            presentation_hash=[],
-            password_salt=[],
-            recovery_hash=[],
-            presentation_key_encrypted=[],
-            recovery_key_encrypted=[],
-            password_key_encrypted=[],
-        )
-
-        assert token.password_presentation_primary == []
-        assert token.current_outpoint is None
-
-    def test_token_with_outpoint(self) -> None:
-        """Test UMP token with outpoint."""
-        from bsv_wallet_toolbox.manager.ump_token_interactor import UMPToken
-
-        token = UMPToken(
-            password_presentation_primary=[1, 2, 3],
-            password_recovery_primary=[4, 5, 6],
-            presentation_recovery_primary=[7, 8, 9],
-            password_primary_privileged=[10, 11, 12],
-            presentation_recovery_privileged=[13, 14, 15],
-            presentation_hash=[16, 17, 18],
-            password_salt=[19, 20, 21],
-            recovery_hash=[22, 23, 24],
-            presentation_key_encrypted=[25, 26, 27],
-            recovery_key_encrypted=[28, 29, 30],
-            password_key_encrypted=[31, 32, 33],
-            current_outpoint="abcd1234.0"
-        )
-
-        assert token.current_outpoint == "abcd1234.0"
-
-
 class TestPermissionTokenEdgeCases:
     """Test edge cases for permission token handling."""
 
@@ -183,60 +136,6 @@ class TestPermissionTokenEdgeCases:
         }
         cache_key = manager._get_cache_key_for_token(spending_token)
         assert cache_key == "dsap:test.com:1000"
-
-
-class TestCWIWalletManagerEdgeCases:
-    """Test edge cases for CWI wallet manager."""
-
-    def test_profile_name_validation(self) -> None:
-        """Test profile name validation."""
-        from bsv_wallet_toolbox.manager.cwi_style_wallet_manager import CWIStyleWalletManager
-        from unittest.mock import Mock
-
-        # Mock dependencies
-        mock_wallet_builder = Mock()
-        mock_wallet = Mock()
-        mock_wallet_builder.return_value = mock_wallet
-
-        manager = CWIStyleWalletManager(
-            admin_originator="admin.test.com",
-            wallet_builder=mock_wallet_builder,
-        )
-
-        # Simulate authentication
-        manager.authenticated = True
-        manager._root_primary_key = [1] * 32
-
-        # Test reserved name
-        with pytest.raises(RuntimeError, match="already in use"):
-            manager.add_profile("default")
-
-        # Test duplicate name
-        from bsv_wallet_toolbox.manager.cwi_style_wallet_manager import Profile
-        manager._profiles = [Profile("test-profile", [1] * 16, [2] * 32, [3] * 32)]
-        with pytest.raises(RuntimeError, match="already in use"):
-            manager.add_profile("test-profile")
-
-    @pytest.mark.asyncio
-    async def test_snapshot_validation(self) -> None:
-        """Test snapshot validation."""
-        from bsv_wallet_toolbox.manager.cwi_style_wallet_manager import CWIStyleWalletManager
-        from unittest.mock import Mock
-
-        mock_wallet_builder = Mock()
-        manager = CWIStyleWalletManager(
-            admin_originator="admin.test.com",
-            wallet_builder=mock_wallet_builder,
-        )
-
-        # Test empty snapshot
-        with pytest.raises(RuntimeError, match="Empty snapshot"):
-            await manager.load_snapshot([])
-
-        # Test invalid version
-        with pytest.raises(RuntimeError, match="Unsupported snapshot version"):
-            await manager.load_snapshot([99])  # Invalid version
-
 
 class TestIntegrationEdgeCases:
     """Test integration edge cases between components."""

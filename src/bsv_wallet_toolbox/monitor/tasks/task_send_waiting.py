@@ -1,5 +1,6 @@
 """TaskSendWaiting implementation."""
 
+import time
 from typing import TYPE_CHECKING, Any
 
 from ..wallet_monitor_task import WalletMonitorTask
@@ -50,47 +51,77 @@ class TaskSendWaiting(WalletMonitorTask):
         Returns:
             str: Log message summarizing actions.
         """
-        # 1. Find 'signed' transactions
-        # Note: min_age filtering would ideally happen in DB query,
-        # but we'll filter in memory for now if query doesn't support complex where.
-        txs = self.monitor.storage.find_transactions({"tx_status": "signed"})
-        if not txs:
+        # Find unsent ProvenTxReqs
+        reqs = self.monitor.storage.find_proven_tx_reqs({"partial": {}, "status": ["unsent", "sending"]})
+        if not reqs:
             return ""
 
         log_messages: list[str] = []
-        # TODO: Implement min_age filtering logic using created_at
 
-        for tx in txs:
-            txid = tx.get("txid")
-            tx_id = tx.get("transaction_id")
+        # Filter reqs by minimum age
+        current_time = int(time.time() * 1000)
+        filtered_reqs = []
+        for req in reqs:
+            updated_at = req.get("updated_at") or req.get("updatedAt")
+            if updated_at is not None:
+                # Convert updated_at to milliseconds since epoch
+                if hasattr(updated_at, 'timestamp'):  # datetime object
+                    updated_at_ms = int(updated_at.timestamp() * 1000)
+                elif isinstance(updated_at, str):
+                    # Assume ISO format, convert to timestamp
+                    continue  # Skip for now
+                elif updated_at < 1e10:  # Likely in seconds
+                    updated_at_ms = updated_at * 1000
+                else:
+                    updated_at_ms = updated_at
 
-            if not txid or not tx_id:
-                continue
-
-            # 2. Get BEEF (BUMP Extended Format)
-            # In TS implementation, we get the full BEEF to broadcast.
-            beef_bytes = self.monitor.storage.get_beef_for_transaction(txid)
-            if not beef_bytes:
-                log_messages.append(f"Skipped {txid}: No BEEF data found")
-                continue
-
-            # 3. Broadcast via Services
-            # post_beef accepts hex string
-            beef_hex = beef_bytes.hex()
-            result = self.monitor.services.post_beef(beef_hex)
-
-            if result.get("accepted"):
-                # 4. Update status on success
-                self.monitor.storage.update_transaction(tx_id, {"tx_status": "broadcasted"})
-                log_messages.append(f"Broadcasted {txid}: Success")
-
-                # Trigger hook if available (TS parity)
-                self.monitor.call_on_broadcasted_transaction(result)
+                if current_time - updated_at_ms >= self.min_age_msecs:
+                    filtered_reqs.append(req)
             else:
-                # Log failure but keep as 'signed' to retry later
-                # TODO: Implement retry count and eventual failure
-                msg = result.get("message", "unknown error")
-                log_messages.append(f"Broadcast failed {txid}: {msg}")
+                # If no updated_at, assume it's old enough to process
+                filtered_reqs.append(req)
+
+        for req in filtered_reqs:
+            txid = req.get("txid")
+            req_id = req.get("provenTxReqId") or req.get("proven_tx_req_id")
+
+            if not txid or not req_id:
+                continue
+
+            # Get the raw transaction
+            raw_tx = req.get("rawTx")
+            if not raw_tx:
+                continue
+
+            try:
+                # Call the post service
+                result = self.monitor.services.post_beef(raw_tx, [txid])
+
+                if result == "success" or (isinstance(result, dict) and result.get("accepted")):
+                    # Update req status to 'unmined'
+                    self.monitor.storage.update_proven_tx_req(req_id, {"status": "unmined"})
+                    # Update associated transactions to 'unproven'
+                    notify = req.get("notify", {})
+                    if isinstance(notify, str):
+                        import json
+                        notify = json.loads(notify)
+                    transaction_ids = notify.get("transactionIds", [])
+                    for tx_id in transaction_ids:
+                        self.monitor.storage.update_transaction(tx_id, {"status": "unproven"})
+                    log_messages.append(f"Broadcasted {txid}: Success")
+
+                    # Call callback
+                    broadcast_result = {"status": "success", "txid": txid}
+                    self.monitor.call_on_broadcasted_transaction(broadcast_result)
+                else:
+                    # Format error message to match test expectations
+                    if isinstance(result, dict) and "message" in result:
+                        log_messages.append(f"Broadcast failed {txid}: {result['message']}")
+                    else:
+                        log_messages.append(f"Failed to broadcast transaction {txid}: {result}")
+
+            except Exception as e:
+                log_messages.append(f"Error broadcasting transaction {txid}: {e!s}")
 
         return "\n".join(log_messages) if log_messages else ""
 

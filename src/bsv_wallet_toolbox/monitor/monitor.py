@@ -22,6 +22,7 @@ from .tasks import (
     TaskUnFail,
 )
 from .wallet_monitor_task import WalletMonitorTask
+from ..services.chaintracker.chaintracks.api import ChaintracksClientApi
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,12 @@ class MonitorOptions:
     chain: Chain
     services: Services
     storage: StorageProvider
+    chaintracks: ChaintracksClientApi | None
     task_run_wait_msecs: int
+    msecs_wait_per_merkle_proof_service_req: int
+    abandoned_msecs: int
+    unproven_attempts_limit_test: int
+    unproven_attempts_limit_main: int
     on_transaction_broadcasted: Callable[[dict[str, Any]], Any] | None
     on_transaction_proven: Callable[[dict[str, Any]], Any] | None
 
@@ -41,7 +47,12 @@ class MonitorOptions:
         chain: Chain,
         storage: StorageProvider,
         services: Services | None = None,
+        chaintracks: ChaintracksClientApi | None = None,
         task_run_wait_msecs: int = 5000,
+        msecs_wait_per_merkle_proof_service_req: int = 500,
+        abandoned_msecs: int = 1000 * 60 * 5,  # 5 minutes
+        unproven_attempts_limit_test: int = 10,
+        unproven_attempts_limit_main: int = 144,
         on_transaction_broadcasted: Callable[[dict[str, Any]], Any] | None = None,
         on_transaction_proven: Callable[[dict[str, Any]], Any] | None = None,
     ) -> None:
@@ -49,7 +60,12 @@ class MonitorOptions:
         self.chain = chain
         self.storage = storage
         self.services = services or Services(chain)
+        self.chaintracks = chaintracks
         self.task_run_wait_msecs = task_run_wait_msecs
+        self.msecs_wait_per_merkle_proof_service_req = msecs_wait_per_merkle_proof_service_req
+        self.abandoned_msecs = abandoned_msecs
+        self.unproven_attempts_limit_test = unproven_attempts_limit_test
+        self.unproven_attempts_limit_main = unproven_attempts_limit_main
         self.on_transaction_broadcasted = on_transaction_broadcasted
         self.on_transaction_proven = on_transaction_proven
 
@@ -83,8 +99,9 @@ class Monitor:
         """Initialize the Monitor with options."""
         self.options = options
         self.services = options.services
-        self.chain = self.services.get_chain()  # type: ignore
+        self.chain = options.chain
         self.storage = options.storage
+        self.chaintracks = options.chaintracks
         self._tasks = []
         self.deactivated_headers = []
 
@@ -277,9 +294,16 @@ class Monitor:
         Args:
             broadcast_result: Result of the broadcast.
         """
-        if self.options.on_transaction_broadcasted:
+        callback = self.on_transaction_broadcasted or self.options.on_transaction_broadcasted
+        if callback:
             try:
-                self.options.on_transaction_broadcasted(broadcast_result)
+                import inspect
+                if inspect.iscoroutinefunction(callback):
+                    # If callback is async, create a task to run it
+                    import asyncio
+                    asyncio.create_task(callback(broadcast_result))
+                else:
+                    callback(broadcast_result)
             except Exception as e:
                 logger.error("Error in on_transaction_broadcasted hook: %s", e)
 
@@ -289,8 +313,15 @@ class Monitor:
         Args:
             tx_status: Transaction status update.
         """
-        if self.options.on_transaction_proven:
+        callback = self.on_transaction_proven or self.options.on_transaction_proven
+        if callback:
             try:
-                self.options.on_transaction_proven(tx_status)
+                import asyncio
+                import inspect
+                if inspect.iscoroutinefunction(callback):
+                    # If callback is async, create a task to run it
+                    asyncio.create_task(callback(tx_status))
+                else:
+                    callback(tx_status)
             except Exception as e:
                 logger.error("Error in on_transaction_proven hook: %s", e)

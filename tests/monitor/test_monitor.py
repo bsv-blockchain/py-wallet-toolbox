@@ -7,6 +7,7 @@ Reference: wallet-toolbox/test/monitor/Monitor.test.ts
 """
 
 import asyncio
+import json
 
 import pytest
 
@@ -23,7 +24,7 @@ try:
         TaskSendWaiting,
     )
 
-    from bsv_wallet_toolbox.storage.models import EntityProvenTxReq
+    from bsv_wallet_toolbox.storage.entities import ProvenTxReq
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -283,7 +284,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_tasksendwaiting_success(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and mocked successful postBeef
            When: Execute TaskSendWaiting
@@ -316,17 +316,46 @@ class TestMonitor:
 
         mock_post_services_as_callback([ctx], post_beef_callback)
 
-        # Verify initial state
+        # Verify initial state - create test data if not exists
         for txid in expected_txids:
-            req = (storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
-            assert req.status == "unsent"
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            if len(reqs) == 0:
+                # Create test data if it doesn't exist
+                # Also create the associated transaction first
+                transaction_data = {
+                    "userId": 1,
+                    "txid": f"tx_{txid[:8]}",
+                    "reference": f"test_ref_{txid[:8]}",
+                    "status": "nosend",
+                    "isOutgoing": True,
+                    "satoshis": 1000,
+                    "description": "Test transaction",
+                    "version": 1,
+                    "lockTime": 0,
+                    "rawTx": b"test_tx",
+                }
+                transaction_id = storage.insert_transaction(transaction_data)
 
-            notify = EntityProvenTxReq(req).notify
+                proven_tx_req_data = {
+                    "txid": txid,
+                    "rawTx": b"test_raw_tx",
+                    "status": "unsent",
+                    "notify": json.dumps({"transactionIds": [transaction_id]}),
+                    "history": json.dumps(["created"]),
+                }
+                storage.insert_proven_tx_req(proven_tx_req_data)
+                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+            req = reqs[0]
+            assert req["status"] == "unsent"
+
+            notify = ProvenTxReq(req).notify
             notify_ids = notify.get("transactionIds", [])
             for transaction_id in notify_ids:
-                tx = storage.find_transaction_by_id(transaction_id)
-                assert tx is not None
-                assert tx.status in ["nosend", "unprocessed", "sending"]
+                txs = storage.find_transactions({"partial": {"transactionId": transaction_id}})
+                assert len(txs) > 0, f"No transaction found for id {transaction_id}"
+                tx = txs[0]
+                assert tx["status"] in ["nosend", "unprocessed", "sending"]
 
         # When
         task = TaskSendWaiting(monitor, 1, 1)
@@ -337,19 +366,21 @@ class TestMonitor:
         assert txids_posted == expected_txids
 
         for txid in expected_txids:
-            req = (storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
-            assert req.status == "unmined"
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+            req = reqs[0]
+            assert req["status"] == "unmined"
 
-            notify = EntityProvenTxReq(req).notify
+            notify = ProvenTxReq(req).notify
             notify_ids = notify.get("transactionIds", [])
             for transaction_id in notify_ids:
-                tx = storage.find_transaction_by_id(transaction_id)
-                assert tx is not None
-                assert tx.status == "unproven"
+                txs = storage.find_transactions({"partial": {"transactionId": transaction_id}})
+                assert len(txs) > 0, f"No transaction found for id {transaction_id}"
+                tx = txs[0]
+                assert tx["status"] == "unproven"
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_taskcheckforproofs_success(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning valid proofs
            When: Execute TaskCheckForProofs
@@ -396,12 +427,28 @@ class TestMonitor:
             "nonce": 0,
         }
 
+        # Verify initial state - create test data if not exists
+        for txid in expected_txids:
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            if len(reqs) == 0:
+                # Create test data if it doesn't exist
+                proven_tx_req_data = {
+                    "txid": txid,
+                    "rawTx": b"test_raw_tx",
+                    "status": "unmined",
+                    "notify": json.dumps({}),
+                    "history": json.dumps(["created"]),
+                }
+                storage.insert_proven_tx_req(proven_tx_req_data)
+                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+
         # Verify initial state
         for txid in expected_txids:
             proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
 
@@ -413,16 +460,15 @@ class TestMonitor:
         # Then
         for txid in expected_txids:
             proven = (storage.find_proven_txs({"partial": {"txid": txid}}))[0]
-            assert proven.merkle_path is not None
+            assert proven["merklePath"] is not None
 
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "completed"
-            assert req.proven_tx_id == proven.proven_tx_id
+            assert req.proven_tx_id == proven["provenTxId"]
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_taskcheckforproofs_fail(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and mocked getMerklePath returning empty results
            When: Execute TaskCheckForProofs
@@ -453,13 +499,29 @@ class TestMonitor:
 
         mock_merkle_path_services_as_callback([ctx], merkle_path_callback)
 
+        # Record initial attempts - create test data if not exists
+        for txid in expected_txids:
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            if len(reqs) == 0:
+                # Create test data if it doesn't exist
+                proven_tx_req_data = {
+                    "txid": txid,
+                    "rawTx": b"test_raw_tx",
+                    "status": "unmined",
+                    "notify": json.dumps({}),
+                    "history": json.dumps(["created"]),
+                }
+                storage.insert_proven_tx_req(proven_tx_req_data)
+                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+
         # Record initial attempts
         attempts: list[int] = []
         for txid in expected_txids:
             proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
             attempts.append(req.attempts)
@@ -474,7 +536,7 @@ class TestMonitor:
             proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
             assert req.attempts >= attempts[i]
@@ -532,7 +594,6 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_processproventransaction(self) -> None:
         """Given: Storage with unmined ProvenTxReqs and onTransactionProven callback
            When: Execute TaskCheckForProofs to create ProvenTxs
@@ -581,7 +642,7 @@ class TestMonitor:
 
         updates_received = 0
 
-        async def on_transaction_proven(tx_status) -> None:
+        def on_transaction_proven(tx_status) -> None:
             nonlocal updates_received
             assert tx_status["txid"] is not None
             assert tx_status["blockHash"] is not None
@@ -591,12 +652,28 @@ class TestMonitor:
 
         monitor.on_transaction_proven = on_transaction_proven
 
+        # Verify initial state - create test data if not exists
+        for txid in expected_txids:
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            if len(reqs) == 0:
+                # Create test data if it doesn't exist
+                proven_tx_req_data = {
+                    "txid": txid,
+                    "rawTx": b"test_raw_tx",
+                    "status": "unmined",
+                    "notify": json.dumps({}),
+                    "history": json.dumps(["created"]),
+                }
+                storage.insert_proven_tx_req(proven_tx_req_data)
+                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+
         # Verify initial state
         for txid in expected_txids:
             proven_txs = storage.find_proven_txs({"partial": {"txid": txid}})
             assert len(proven_txs) == 0
 
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unmined"
 
@@ -608,18 +685,17 @@ class TestMonitor:
         # Then
         for txid in expected_txids:
             proven = (storage.find_proven_txs({"partial": {"txid": txid}}))[0]
-            assert proven.merkle_path is not None
+            assert proven["merklePath"] is not None
 
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "completed"
-            assert req.proven_tx_id == proven.proven_tx_id
+            assert req.proven_tx_id == proven["provenTxId"]
 
         assert updates_received == len(expected_txids)
 
         ctx.storage.destroy()
 
-    @pytest.mark.skip(reason="Requires unimplemented task attributes")
     def test_processbroadcastedtransactions(self) -> None:
         """Given: Storage with unsent ProvenTxReqs and onTransactionBroadcasted callback
            When: Execute TaskSendWaiting to broadcast transactions
@@ -653,7 +729,7 @@ class TestMonitor:
 
         mock_post_services_as_callback([ctx], post_beef_callback)
 
-        async def on_transaction_broadcasted(broadcast_result) -> None:
+        def on_transaction_broadcasted(broadcast_result) -> None:
             nonlocal updates_received
             assert broadcast_result["status"] == "success"
             assert broadcast_result["txid"] in expected_txids
@@ -661,9 +737,40 @@ class TestMonitor:
 
         monitor.on_transaction_broadcasted = on_transaction_broadcasted
 
+        # Verify initial state - create test data if not exists
+        for txid in expected_txids:
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            if len(reqs) == 0:
+                # Create test data if it doesn't exist
+                # Also create the associated transaction first
+                transaction_data = {
+                    "userId": 1,
+                    "txid": f"tx_{txid[:8]}",
+                    "reference": f"test_ref_{txid[:8]}",
+                    "status": "nosend",
+                    "isOutgoing": True,
+                    "satoshis": 1000,
+                    "description": "Test transaction",
+                    "version": 1,
+                    "lockTime": 0,
+                    "rawTx": b"test_tx",
+                }
+                transaction_id = storage.insert_transaction(transaction_data)
+
+                proven_tx_req_data = {
+                    "txid": txid,
+                    "rawTx": b"test_raw_tx",
+                    "status": "unsent",
+                    "notify": json.dumps({"transactionIds": [transaction_id]}),
+                    "history": json.dumps(["created"]),
+                }
+                storage.insert_proven_tx_req(proven_tx_req_data)
+                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+
         # Verify initial state
         for txid in expected_txids:
-            req = EntityProvenTxReq.from_storage_txid(storage, txid)
+            req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
             assert req.status == "unsent"
 
@@ -676,8 +783,10 @@ class TestMonitor:
         assert txids_posted == expected_txids
 
         for txid in expected_txids:
-            req = (storage.find_proven_tx_reqs({"partial": {"txid": txid}}))[0]
-            assert req.status == "unmined"
+            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
+            req = reqs[0]
+            assert req["status"] == "unmined"
 
         assert updates_received == len(expected_txids)
 

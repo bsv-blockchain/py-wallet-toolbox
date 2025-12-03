@@ -57,7 +57,11 @@ def create_sqlite_test_setup_1_wallet(database_name="test_wallet", chain="main",
             chain=chain,
             storage=storage,
             services=services,
-            task_run_wait_msecs=5000
+            task_run_wait_msecs=5000,
+            msecs_wait_per_merkle_proof_service_req=500,
+            abandoned_msecs=1000 * 60 * 5,  # 5 minutes
+            unproven_attempts_limit_test=10,
+            unproven_attempts_limit_main=144
         )
         monitor = Monitor(monitor_options)
     except Exception as e:
