@@ -22,7 +22,6 @@ class TestUniversalVectorsListActions:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires deterministic wallet state with seeded transactions")
     def test_listActions_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
@@ -33,6 +32,7 @@ class TestUniversalVectorsListActions:
         from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
+        from bsv_wallet_toolbox.abi import serialize_request
         args = {}
         wire_request = serialize_request("listActions", args)
         parsed_method, parsed_args = deserialize_request(wire_request)

@@ -24,7 +24,6 @@ class TestUniversalVectorsListCertificates:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires deterministic wallet state with seeded certificates")
     def test_listcertificates_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
@@ -38,10 +37,10 @@ class TestUniversalVectorsListCertificates:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors(1)
+        args_data, result_data = load_test_vectors("listCertificates-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
-        result = wallet_with_services.listcertificates(args_data["json"], originator=None)
+        result = wallet_with_services.list_certificates(args_data["json"], originator=None)
         wire_output = serialize_response(result)
 
         # Then - Just verify the ABI serialization works

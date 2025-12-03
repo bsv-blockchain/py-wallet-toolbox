@@ -22,7 +22,7 @@ class TestUniversalVectorsInternalizeAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires deterministic wallet state")
+    @pytest.mark.skip(reason="Requires storage provider setup that cannot be easily mocked")
     def test_internalizeaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
@@ -36,12 +36,12 @@ class TestUniversalVectorsInternalizeAction:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors(1)
+        args_data, result_data = load_test_vectors("internalizeAction-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When - Use JSON args since wire deserialization is incomplete
-        result = wallet.internalizeaction(args_data["json"], originator=None)
+        result = wallet.internalize_action(args_data["json"], originator=None)
         wire_output = serialize_response(result)
 
         # Then - Just verify the ABI serialization works

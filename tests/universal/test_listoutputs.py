@@ -22,7 +22,6 @@ class TestUniversalVectorsListOutputs:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires deterministic wallet state with seeded outputs")
     def test_listoutputs_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
@@ -36,16 +35,16 @@ class TestUniversalVectorsListOutputs:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors(1)
+        args_data, result_data = load_test_vectors("listOutputs-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
-        result = wallet_with_services.listoutputs(args_data["json"], originator=None)
+        result = wallet_with_services.list_outputs(args_data["json"], originator=None)
         wire_output = serialize_response(result)
 
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
