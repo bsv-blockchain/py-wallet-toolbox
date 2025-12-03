@@ -44,6 +44,7 @@ from .signer.methods import (
     sign_action as signer_sign_action,
 )
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
+from .utils.ttl_cache import TTLCache
 from .utils.validation import (
     validate_abort_action_args,
     validate_acquire_certificate_args,
@@ -256,7 +257,7 @@ class Wallet:
         self.auto_known_txids: bool = False  # Wave 4: autoKnownTxids setting
         self.include_all_source_transactions: bool = False  # Wave 4: includeAllSourceTransactions
         self.random_vals: list | None = None  # Wave 4: randomVals setting
-        self.pending_sign_actions: dict[str, Any] = {}  # Wave 4: Pending action tracking
+        self.pending_sign_actions: TTLCache = TTLCache(ttl_seconds=300.0)  # Wave 4: Pending action tracking with TTL
         self.return_txid_only: bool = False  # Wave 4: returnTxidOnly setting for BEEF verification
 
         # Initialize caches for Discovery methods (Wave 5)
@@ -990,7 +991,7 @@ class Wallet:
         reference = args.get("reference")
         prior_action = None
         if reference and reference in self.pending_sign_actions:
-            prior_action = self.pending_sign_actions[reference]
+            prior_action = self.pending_sign_actions.get(reference)
             # TS: const prior = this.pendingSignActions[args.reference]
             # Use prior action for full BEEF reconstruction and known_txids verification
 
