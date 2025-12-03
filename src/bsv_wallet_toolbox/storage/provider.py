@@ -1904,7 +1904,7 @@ class StorageProvider:
             txid = deterministic_txid(reference, vargs.outputs)
             self.update_transaction(transaction_id, {"txid": txid})
             result["txid"] = txid
-        elif not vargs.options.return_txid_only:
+        elif not (getattr(vargs.options, "return_txid_only", False) if vargs.options else False):
             signable_tx = {
                 "reference": reference,
                 "tx": list(storage_beef_bytes) if storage_beef_bytes else [],
