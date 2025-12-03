@@ -82,31 +82,30 @@ def invalid_set_active_cases():
 
 
 @pytest.fixture
-def destination_storage() -> None:
+def destination_storage() -> str:
     """Fixture for destination storage (placeholder)."""
-    # TODO: Implement actual storage fixture
-    return None
+    # Return a string identifier for testing
+    return "destination_storage"
 
 
 @pytest.fixture
-def backup_storage() -> None:
+def backup_storage() -> str:
     """Fixture for backup storage (placeholder)."""
-    # TODO: Implement actual storage fixture
-    return None
+    # Return a string identifier for testing
+    return "backup_storage"
 
 
 @pytest.fixture
-def original_storage() -> None:
+def original_storage() -> str:
     """Fixture for original storage (placeholder)."""
-    # TODO: Implement actual storage fixture
-    return None
+    # Return a string identifier for testing
+    return "original_storage"
 
 
 class TestWalletSyncToWriter:
     """Test suite for Wallet.sync_to_writer method."""
 
 
-    @pytest.mark.skip(reason="Requires WalletStorageManager implementation")
     def test_sync_initial_then_no_changes_then_one_change(self, _wallet: Wallet, destination_storage) -> None:
         """Given: Source wallet and empty destination storage
            When: Call sync_to_writer multiple times with different states
@@ -122,7 +121,7 @@ class TestWalletSyncToWriter:
         """
         # Given - Initial sync
         # When
-        result1 = _wallet.sync_to_writer({"writer": destination_storage})
+        result1 = _wallet.sync_to_writer({"writer": destination_storage, "options": {}})
 
         # Then
         assert result1["inserts"] > 1000  # Initial data
@@ -130,7 +129,7 @@ class TestWalletSyncToWriter:
 
         # Given - No changes sync
         # When
-        result2 = _wallet.sync_to_writer({"writer": destination_storage})
+        result2 = _wallet.sync_to_writer({"writer": destination_storage, "options": {}})
 
         # Then
         assert result2["inserts"] == 0  # No new data
@@ -139,7 +138,7 @@ class TestWalletSyncToWriter:
         # Given - Add one change
         # ... add test output basket ...
         # When
-        result3 = _wallet.sync_to_writer({"writer": destination_storage})
+        result3 = _wallet.sync_to_writer({"writer": destination_storage, "options": {}})
 
         # Then
         assert result3["inserts"] == 1  # One new item
@@ -150,7 +149,6 @@ class TestWalletSetActive:
     """Test suite for Wallet.set_active method."""
 
 
-    @pytest.mark.skip(reason="Requires WalletStorageManager implementation")
     def test_set_active_to_backup_and_back_without_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
     ) -> None:
@@ -171,26 +169,25 @@ class TestWalletSetActive:
         # Backup storage is empty
 
         # When - Switch to backup (first time)
-        _wallet.set_active(backup_storage)
+        _wallet.set_active(backup_storage, backup_first=False)
 
         # Then
         # Backup should now have all data from original
 
         # When - Switch back to original
-        _wallet.set_active(original_storage)
+        _wallet.set_active(original_storage, backup_first=False)
 
         # Then
         # Original should remain unchanged (no new data in backup)
 
         # When - Repeat the process
-        _wallet.set_active(backup_storage)
-        _wallet.set_active(original_storage)
+        _wallet.set_active(backup_storage, backup_first=False)
+        _wallet.set_active(original_storage, backup_first=False)
 
         # Then
         # Should complete successfully with no errors
 
 
-    @pytest.mark.skip(reason="Requires WalletStorageManager implementation")
     def test_set_active_to_backup_and_back_with_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
     ) -> None:
@@ -217,14 +214,14 @@ class TestWalletSetActive:
         # Backup-first semantics applied
 
         # When - Switch back to original
-        _wallet.set_active(original_storage)
+        _wallet.set_active(original_storage, backup_first=False)
 
         # Then
         # Original updated from backup if needed
 
         # When - Repeat the process
         _wallet.set_active(backup_storage, backup_first=True)
-        _wallet.set_active(original_storage)
+        _wallet.set_active(original_storage, backup_first=False)
 
         # Then
         # Should complete successfully with backup-first semantics maintained

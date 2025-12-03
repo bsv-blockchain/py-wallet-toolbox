@@ -150,11 +150,19 @@ class TestSimpleWalletManagerMethods:
     def mock_manager(self):
         """Create mock manager."""
         try:
-            manager = SimpleWalletManager()
+            # SimpleWalletManager requires admin_originator and wallet_builder
+            def mock_wallet_builder(primary_key, privileged_key_manager):
+                mock_wallet = Mock()
+                return mock_wallet
+            
+            manager = SimpleWalletManager(
+                admin_originator="test.example.com",
+                wallet_builder=mock_wallet_builder
+            )
             manager.wallet = Mock()
             return manager
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize SimpleWalletManager")
+        except (TypeError, AttributeError) as e:
+            pytest.skip(f"Cannot initialize SimpleWalletManager: {e}")
 
     def test_create_action(self, mock_manager) -> None:
         """Test creating action through manager."""
@@ -262,11 +270,19 @@ class TestSimpleWalletManagerOutputs:
     def mock_manager(self):
         """Create mock manager."""
         try:
-            manager = SimpleWalletManager()
+            # SimpleWalletManager requires admin_originator and wallet_builder
+            def mock_wallet_builder(primary_key, privileged_key_manager):
+                mock_wallet = Mock()
+                return mock_wallet
+            
+            manager = SimpleWalletManager(
+                admin_originator="test.example.com",
+                wallet_builder=mock_wallet_builder
+            )
             manager.wallet = Mock()
             return manager
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize SimpleWalletManager")
+        except (TypeError, AttributeError) as e:
+            pytest.skip(f"Cannot initialize SimpleWalletManager: {e}")
 
     def test_relinquish_output(self, mock_manager) -> None:
         """Test relinquishing output through manager."""
@@ -519,11 +535,19 @@ class TestSimpleWalletManagerCryptoMethods:
     def mock_manager(self):
         """Create mock manager."""
         try:
-            manager = SimpleWalletManager()
+            # SimpleWalletManager requires admin_originator and wallet_builder
+            def mock_wallet_builder(primary_key, privileged_key_manager):
+                mock_wallet = Mock()
+                return mock_wallet
+            
+            manager = SimpleWalletManager(
+                admin_originator="test.example.com",
+                wallet_builder=mock_wallet_builder
+            )
             manager.wallet = Mock()
             return manager
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize SimpleWalletManager")
+        except (TypeError, AttributeError) as e:
+            pytest.skip(f"Cannot initialize SimpleWalletManager: {e}")
 
     def test_create_signature(self, mock_manager) -> None:
         """Test creating signature through manager."""

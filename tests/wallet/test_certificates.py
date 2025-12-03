@@ -1264,11 +1264,17 @@ class TestWalletDiscoverByAttributes:
     def test_valid_params_with_limit(self, wallet_with_services: Wallet) -> None:
         """Given: DiscoverByAttributesArgs with limit parameter
            When: Call discover_by_attributes
-           Then: Raises an error (implementation requires resolver)
+           Then: Returns empty result (mock resolver returns no certificates)
         """
         # Given
         args = {"attributes": {"name": "test"}, "limit": 5}
 
-        # When/Then - Implementation requires resolver which is not configured
-        with pytest.raises((TypeError, Exception)):
-            wallet_with_services.discover_by_attributes(args)
+        # When
+        result = wallet_with_services.discover_by_attributes(args)
+
+        # Then - Mock resolver returns empty results, so we get empty certificates
+        assert isinstance(result, dict)
+        assert "totalCertificates" in result
+        assert "certificates" in result
+        assert result["totalCertificates"] == 0
+        assert result["certificates"] == []

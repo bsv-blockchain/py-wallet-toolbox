@@ -1,0 +1,1302 @@
+{
+  "can_be_unskipped": [
+    {
+      "file": "tests/authentication/test_authentication_coverage.py",
+      "line": null,
+      "reason": "128: Cannot create AuthContext",
+      "count": 1,
+      "location": "tests/authentication/test_authentication_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "AuthContext implementation found"
+    },
+    {
+      "file": "tests/authentication/test_authentication_coverage.py",
+      "line": null,
+      "reason": "136: Cannot create AuthContext",
+      "count": 1,
+      "location": "tests/authentication/test_authentication_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "AuthContext implementation found"
+    },
+    {
+      "file": "tests/authentication/test_authentication_coverage.py",
+      "line": null,
+      "reason": "145: Cannot create AuthContext",
+      "count": 1,
+      "location": "tests/authentication/test_authentication_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "AuthContext implementation found"
+    },
+    {
+      "file": "tests/integration/test_bulk_ingestor_cdn_babbage.py",
+      "line": null,
+      "reason": "49: Module not yet implemented",
+      "count": 1,
+      "location": "tests/integration/test_bulk_ingestor_cdn_babbage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/integration/test_bulk_ingestor_cdn_babbage.py",
+      "line": null,
+      "reason": "70: Module not yet implemented",
+      "count": 1,
+      "location": "tests/integration/test_bulk_ingestor_cdn_babbage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "159: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "168: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "177: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "186: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "195: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "271: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "283: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "528: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "540: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "552: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "564: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "576: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "588: Cannot initialize SimpleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py",
+      "can_unskip": true,
+      "unskip_reason": "Wallet manager implementation found"
+    },
+    {
+      "file": "tests/monitor/test_live_ingestor_whats_on_chain_poll.py",
+      "line": null,
+      "reason": "29: Requires full Monitor system implementation",
+      "count": 1,
+      "location": "tests/monitor/test_live_ingestor_whats_on_chain_poll.py",
+      "can_unskip": true,
+      "unskip_reason": "Monitor system implementation found"
+    },
+    {
+      "file": "tests/monitor/test_monitor.py",
+      "line": null,
+      "reason": "286: Requires unimplemented task attributes",
+      "count": 1,
+      "location": "tests/monitor/test_monitor.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/monitor/test_monitor.py",
+      "line": null,
+      "reason": "352: Requires unimplemented task attributes",
+      "count": 1,
+      "location": "tests/monitor/test_monitor.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/monitor/test_monitor.py",
+      "line": null,
+      "reason": "425: Requires unimplemented task attributes",
+      "count": 1,
+      "location": "tests/monitor/test_monitor.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/monitor/test_monitor.py",
+      "line": null,
+      "reason": "535: Requires unimplemented task attributes",
+      "count": 1,
+      "location": "tests/monitor/test_monitor.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/monitor/test_monitor.py",
+      "line": null,
+      "reason": "622: Requires unimplemented task attributes",
+      "count": 1,
+      "location": "tests/monitor/test_monitor.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services.py",
+      "line": null,
+      "reason": "Module not yet implemented",
+      "count": 17,
+      "location": "tests/services/test_services.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "61: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "70: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "79: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "88: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "97: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "121: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "130: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "139: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "163: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "172: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "196: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "205: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "214: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "237: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "247: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "257: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/services/test_services_expanded_coverage.py",
+      "line": null,
+      "reason": "310: Cannot initialize WalletServices",
+      "count": 1,
+      "location": "tests/services/test_services_expanded_coverage.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/universal/test_discoverbyattributes.py",
+      "line": null,
+      "reason": "25: LookupResolver is not fully implemented",
+      "count": 1,
+      "location": "tests/universal/test_discoverbyattributes.py",
+      "can_unskip": true,
+      "unskip_reason": "LookupResolver implementation found"
+    },
+    {
+      "file": "tests/universal/test_discoverbyidentitykey.py",
+      "line": null,
+      "reason": "25: LookupResolver is not fully implemented",
+      "count": 1,
+      "location": "tests/universal/test_discoverbyidentitykey.py",
+      "can_unskip": true,
+      "unskip_reason": "LookupResolver implementation found"
+    },
+    {
+      "file": "tests/wallet/test_sync.py",
+      "line": null,
+      "reason": "109: Requires WalletStorageManager implementation",
+      "count": 1,
+      "location": "tests/wallet/test_sync.py",
+      "can_unskip": true,
+      "unskip_reason": "WalletStorageManager implementation found"
+    },
+    {
+      "file": "tests/wallet/test_sync.py",
+      "line": null,
+      "reason": "153: Requires WalletStorageManager implementation",
+      "count": 1,
+      "location": "tests/wallet/test_sync.py",
+      "can_unskip": true,
+      "unskip_reason": "WalletStorageManager implementation found"
+    },
+    {
+      "file": "tests/wallet/test_sync.py",
+      "line": null,
+      "reason": "193: Requires WalletStorageManager implementation",
+      "count": 1,
+      "location": "tests/wallet/test_sync.py",
+      "can_unskip": true,
+      "unskip_reason": "WalletStorageManager implementation found"
+    },
+    {
+      "file": "tests/wallet/test_wallet_create_action.py",
+      "line": null,
+      "reason": "189: Fixture wallet_with_mocked_create_action not yet implemented",
+      "count": 1,
+      "location": "tests/wallet/test_wallet_create_action.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    },
+    {
+      "file": "tests/wallet/test_wallet_create_action.py",
+      "line": null,
+      "reason": "213: Fixture wallet_with_mocked_create_action not yet implemented",
+      "count": 1,
+      "location": "tests/wallet/test_wallet_create_action.py",
+      "can_unskip": false,
+      "unskip_reason": "Cannot determine unskippability"
+    }
+  ],
+  "needs_implementation": [
+    {
+      "file": "tests/certificates/test_certificate_life_cycle.py",
+      "line": null,
+      "reason": "52: Requires full Certificate subsystem implementation",
+      "count": 1,
+      "location": "tests/certificates/test_certificate_life_cycle.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_callbacks.py",
+      "line": null,
+      "reason": "271: Complex async callback testing - requires event loop setup",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_callbacks.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_callbacks.py",
+      "line": null,
+      "reason": "320: Complex async callback testing - requires event loop setup",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_callbacks.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "75: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "85: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "95: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "105: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "114: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "124: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "137: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "146: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "156: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "166: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "176: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "186: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "200: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "210: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "219: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "232: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "242: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "252: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "265: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "274: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "283: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "293: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "316: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "337: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "346: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "355: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "364: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/services/test_services_methods.py",
+      "line": null,
+      "reason": "373: Requires full provider infrastructure",
+      "count": 1,
+      "location": "tests/services/test_services_methods.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "22: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "42: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "67: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "87: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "106: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "127: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "147: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "164: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "183: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "199: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "217: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "233: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "251: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "269: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "284: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "300: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "311: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/signer/test_methods_unit.py",
+      "line": null,
+      "reason": "326: Requires full transaction infrastructure",
+      "count": 1,
+      "location": "tests/signer/test_methods_unit.py"
+    },
+    {
+      "file": "tests/universal/test_createaction.py",
+      "line": null,
+      "reason": "27: Requires deterministic wallet state with exact UTXO and key configuration",
+      "count": 1,
+      "location": "tests/universal/test_createaction.py"
+    },
+    {
+      "file": "tests/universal/test_createaction.py",
+      "line": null,
+      "reason": "66: Requires deterministic wallet state with exact UTXO and key configuration",
+      "count": 1,
+      "location": "tests/universal/test_createaction.py"
+    },
+    {
+      "file": "tests/universal/test_getpublickey.py",
+      "line": null,
+      "reason": "25: Requires deterministic key derivation setup",
+      "count": 1,
+      "location": "tests/universal/test_getpublickey.py"
+    },
+    {
+      "file": "tests/universal/test_internalizeaction.py",
+      "line": null,
+      "reason": "25: Requires deterministic wallet state",
+      "count": 1,
+      "location": "tests/universal/test_internalizeaction.py"
+    },
+    {
+      "file": "tests/universal/test_listactions.py",
+      "line": null,
+      "reason": "25: Requires deterministic wallet state with seeded transactions",
+      "count": 1,
+      "location": "tests/universal/test_listactions.py"
+    },
+    {
+      "file": "tests/universal/test_listcertificates.py",
+      "line": null,
+      "reason": "27: Requires deterministic wallet state with seeded certificates",
+      "count": 1,
+      "location": "tests/universal/test_listcertificates.py"
+    },
+    {
+      "file": "tests/universal/test_listoutputs.py",
+      "line": null,
+      "reason": "25: Requires deterministic wallet state with seeded outputs",
+      "count": 1,
+      "location": "tests/universal/test_listoutputs.py"
+    },
+    {
+      "file": "tests/universal/test_relinquishoutput.py",
+      "line": null,
+      "reason": "25: Requires deterministic wallet state with seeded outputs",
+      "count": 1,
+      "location": "tests/universal/test_relinquishoutput.py"
+    },
+    {
+      "file": "tests/wallet/test_internalize_action.py",
+      "line": null,
+      "reason": "111: Needs valid transaction bytes (not placeholder) and proper basket setup",
+      "count": 1,
+      "location": "tests/wallet/test_internalize_action.py"
+    },
+    {
+      "file": "tests/wallet/test_list_certificates.py",
+      "line": null,
+      "reason": "90: Requires populated test database with specific certificate test data from TypeScript",
+      "count": 1,
+      "location": "tests/wallet/test_list_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_list_certificates.py",
+      "line": null,
+      "reason": "116: Requires populated test database with specific certificate test data from TypeScript",
+      "count": 1,
+      "location": "tests/wallet/test_list_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_list_certificates.py",
+      "line": null,
+      "reason": "142: Requires populated test database with specific certificate test data from TypeScript",
+      "count": 1,
+      "location": "tests/wallet/test_list_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_list_certificates.py",
+      "line": null,
+      "reason": "171: Requires populated test database with specific certificate test data from TypeScript",
+      "count": 1,
+      "location": "tests/wallet/test_list_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_sign_process_action.py",
+      "line": null,
+      "reason": "98: Requires transaction building infrastructure (input selection, BEEF generation)",
+      "count": 1,
+      "location": "tests/wallet/test_sign_process_action.py"
+    },
+    {
+      "file": "tests/wallet/test_sign_process_action.py",
+      "line": null,
+      "reason": "309: Requires proper transaction state setup",
+      "count": 1,
+      "location": "tests/wallet/test_sign_process_action.py"
+    },
+    {
+      "file": "tests/wallet/test_sign_process_action.py",
+      "line": null,
+      "reason": "348: Requires proper transaction state setup",
+      "count": 1,
+      "location": "tests/wallet/test_sign_process_action.py"
+    },
+    {
+      "file": "tests/wallet/test_sign_process_action.py",
+      "line": null,
+      "reason": "375: Requires proper transaction state setup",
+      "count": 1,
+      "location": "tests/wallet/test_sign_process_action.py"
+    }
+  ],
+  "requires_environment": [
+    {
+      "file": "tests/chaintracks/test_chain_tracker.py",
+      "line": null,
+      "reason": "26: ChaintracksChainTracker not available",
+      "count": 1,
+      "location": "tests/chaintracks/test_chain_tracker.py"
+    },
+    {
+      "file": "tests/chaintracks/test_chain_tracker.py",
+      "line": null,
+      "reason": "44: ChaintracksChainTracker not available",
+      "count": 1,
+      "location": "tests/chaintracks/test_chain_tracker.py"
+    },
+    {
+      "file": "tests/chaintracks/test_client_api.py",
+      "line": null,
+      "reason": "Needs Chaintracks client API implementation (10 tests)",
+      "count": 10,
+      "location": "tests/chaintracks/test_client_api.py"
+    },
+    {
+      "file": "tests/chaintracks/test_fetch.py",
+      "line": null,
+      "reason": "31: Requires network access to CDN",
+      "count": 1,
+      "location": "tests/chaintracks/test_fetch.py"
+    },
+    {
+      "file": "tests/chaintracks/test_fetch.py",
+      "line": null,
+      "reason": "54: Requires network access to CDN",
+      "count": 1,
+      "location": "tests/chaintracks/test_fetch.py"
+    },
+    {
+      "file": "tests/chaintracks/test_fetch.py",
+      "line": null,
+      "reason": "76: Requires network access to CDN",
+      "count": 1,
+      "location": "tests/chaintracks/test_fetch.py"
+    },
+    {
+      "file": "tests/chaintracks/test_fetch.py",
+      "line": null,
+      "reason": "98: Requires network access to CDN",
+      "count": 1,
+      "location": "tests/chaintracks/test_fetch.py"
+    },
+    {
+      "file": "tests/chaintracks/test_service_client.py",
+      "line": null,
+      "reason": "25: Requires running Chaintracks service",
+      "count": 1,
+      "location": "tests/chaintracks/test_service_client.py"
+    },
+    {
+      "file": "tests/chaintracks/test_service_client.py",
+      "line": null,
+      "reason": "52: Requires running Chaintracks service",
+      "count": 1,
+      "location": "tests/chaintracks/test_service_client.py"
+    },
+    {
+      "file": "tests/integration/test_bulk_file_data_manager.py",
+      "line": null,
+      "reason": "144: Requires local test data files (./test_data/chaintracks/cdnTest499/mainNet_*.headers)",
+      "count": 1,
+      "location": "tests/integration/test_bulk_file_data_manager.py"
+    },
+    {
+      "file": "tests/integration/test_bulk_file_data_manager.py",
+      "line": null,
+      "reason": "160: Requires local test data files (./test_data/chaintracks/cdnTest499/mainNet_*.headers)",
+      "count": 1,
+      "location": "tests/integration/test_bulk_file_data_manager.py"
+    },
+    {
+      "file": "tests/services/test_exchange_rates.py",
+      "line": null,
+      "reason": "249: No 'main' environment configured",
+      "count": 1,
+      "location": "tests/services/test_exchange_rates.py"
+    },
+    {
+      "file": "tests/services/test_verify_beef.py",
+      "line": null,
+      "reason": "117: Integration test: requires working chaintracker with network access for merkle path verification",
+      "count": 1,
+      "location": "tests/services/test_verify_beef.py"
+    },
+    {
+      "file": "tests/utils/test_pushdrop.py",
+      "line": null,
+      "reason": "177: Integration test requiring live network and wallet setup",
+      "count": 1,
+      "location": "tests/utils/test_pushdrop.py"
+    }
+  ],
+  "design_difference": [
+    {
+      "file": "tests/monitor/test_monitor.py",
+      "line": null,
+      "reason": "201: Takes too long to run",
+      "count": 1,
+      "location": "tests/monitor/test_monitor.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "32: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "109: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "187: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "258: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "320: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "376: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_flows.py",
+      "line": null,
+      "reason": "434: ensure_protocol_permission method does not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_flows.py"
+    },
+    {
+      "file": "tests/storage/entities/test_users.py",
+      "line": null,
+      "reason": "By design: User.merge_existing() always returns False (users are storage-local)",
+      "count": 2,
+      "location": "tests/storage/entities/test_users.py"
+    }
+  ],
+  "needs_fixtures": [
+    {
+      "file": "tests/services/test_services_coverage.py",
+      "line": null,
+      "reason": "113: Services requires specific initialization",
+      "count": 1,
+      "location": "tests/services/test_services_coverage.py"
+    }
+  ],
+  "uncategorized": [
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "69: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "78: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "87: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "96: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "105: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "220: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "232: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "244: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "486: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "495: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/manager/test_managers_expanded_coverage.py",
+      "line": null,
+      "reason": "504: Cannot initialize CWIStyleWalletManager",
+      "count": 1,
+      "location": "tests/manager/test_managers_expanded_coverage.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "36: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "69: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "95: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "127: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "158: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "194: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "222: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "256: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "284: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "322: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "353: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/permissions/test_wallet_permissions_manager_tokens.py",
+      "line": null,
+      "reason": "384: Testing private methods (_build_pushdrop_fields, _create_permission_token, _revoke_permission_token) that do not exist in Python implementation",
+      "count": 1,
+      "location": "tests/permissions/test_wallet_permissions_manager_tokens.py"
+    },
+    {
+      "file": "tests/services/test_get_merkle_path.py",
+      "line": null,
+      "reason": "144: Integration test requiring async service calls and network access",
+      "count": 1,
+      "location": "tests/services/test_get_merkle_path.py"
+    },
+    {
+      "file": "tests/universal/test_signaction.py",
+      "line": null,
+      "reason": "25: Requires deterministic pending action state",
+      "count": 1,
+      "location": "tests/universal/test_signaction.py"
+    },
+    {
+      "file": "tests/wallet/test_certificates.py",
+      "line": null,
+      "reason": "415: Requires Certificate subsystem implementation",
+      "count": 1,
+      "location": "tests/wallet/test_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_certificates.py",
+      "line": null,
+      "reason": "492: Requires Certificate subsystem implementation",
+      "count": 1,
+      "location": "tests/wallet/test_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_certificates.py",
+      "line": null,
+      "reason": "620: Requires Certificate subsystem implementation",
+      "count": 1,
+      "location": "tests/wallet/test_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_certificates.py",
+      "line": null,
+      "reason": "1064: Requires Certificate subsystem implementation",
+      "count": 1,
+      "location": "tests/wallet/test_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_certificates.py",
+      "line": null,
+      "reason": "1155: Requires Certificate subsystem implementation",
+      "count": 1,
+      "location": "tests/wallet/test_certificates.py"
+    },
+    {
+      "file": "tests/wallet/test_sign_process_action.py",
+      "line": null,
+      "reason": "136: Requires proper pending sign action setup with inputBeef",
+      "count": 1,
+      "location": "tests/wallet/test_sign_process_action.py"
+    }
+  ]
+}
