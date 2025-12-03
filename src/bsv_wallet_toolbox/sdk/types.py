@@ -27,3 +27,25 @@ specOpThrowReviewActions = "throw-review-actions"  # noqa: N816
 Signals to storage layer to throw errors when review actions contain
 error statuses, instead of continuing.
 """
+
+specOpSetWalletChangeParams = "a4979d28ced8581e9c1c92f1001cc7cb3aabf8ea32e10888ad898f0a509a3929"  # noqa: N816
+"""Special operation basket name for setting wallet change parameters.
+
+Signals to storage layer to update wallet change parameters using
+tags [count, satoshis] format.
+Used in setWalletChangeParams() method.
+"""
+
+specOpNoSendActions = "ac6b20a3bb320adafecd637b25c84b792ad828d3aa510d05dc841481f664277d"  # noqa: N816
+"""Special operation label for no-send actions filtering.
+
+Signals to storage layer to filter actions that should not be sent.
+Used in listNoSendActions() method.
+"""
+
+specOpFailedActions = "97d4eb1e49215e3374cc2c1939a7c43a55e95c7427bf2d45ed63e3b4e0c88153"  # noqa: N816
+"""Special operation label for failed actions filtering.
+
+Signals to storage layer to filter actions with 'failed' status.
+Used in listFailedActions() method.
+"""

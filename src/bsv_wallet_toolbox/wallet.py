@@ -27,7 +27,14 @@ from bsv.wallet.wallet_interface import (
 from .errors import InvalidParameterError, ReviewActionsError
 from .manager.wallet_settings_manager import WalletSettingsManager
 from .sdk.privileged_key_manager import PrivilegedKeyManager
-from .sdk.types import specOpInvalidChange, specOpThrowReviewActions, specOpWalletBalance
+from .sdk.types import (
+    specOpFailedActions,
+    specOpInvalidChange,
+    specOpNoSendActions,
+    specOpSetWalletChangeParams,
+    specOpThrowReviewActions,
+    specOpWalletBalance,
+)
 from .services import WalletServices
 from .signer.methods import (
     acquire_direct_certificate,
@@ -3030,6 +3037,170 @@ class Wallet:
         # For now, just validate and return to allow tests to pass
         pass
 
+    def list_failed_actions(
+        self, args: dict[str, Any], unfail: bool = False, originator: str | None = None
+    ) -> dict[str, Any]:
+        """List actions with status 'failed'. If unfail is true, request recovery.
+
+        Uses listActions special operation to return only actions with status 'failed'.
+        If unfail is true, adds 'unfail' label to request recovery for failed actions.
+
+        Args:
+            args: Dictionary containing listActions arguments:
+                - labels: List of labels to filter by (optional)
+                - limit: Maximum number of actions to return (optional)
+                - offset: Number of actions to skip (optional)
+                - includeLabels: Include action labels in response (optional)
+                - includeInputs: Include input details (optional)
+                - includeOutputs: Include output details (optional)
+            unfail: If true, request recovery for failed actions by adding 'unfail' label
+            originator: Originator identifier for the operation
+
+        Returns:
+            dict with keys:
+                - totalActions: Total number of failed actions
+                - actions: List of failed action objects
+
+        Raises:
+            InvalidParameterError: If parameters are invalid
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (listFailedActions)
+        """
+        # Validate args structure
+        if not isinstance(args, dict):
+            raise InvalidParameterError("args must be a dictionary")
+
+        # Create a copy of args to avoid modifying the original
+        vargs = dict(args)
+
+        # Add specOpFailedActions label to filter for failed actions
+        labels = vargs.get("labels", [])
+        if not isinstance(labels, list):
+            labels = [labels] if labels else []
+        labels.append(specOpFailedActions)
+
+        # If unfail is requested, add 'unfail' label for recovery
+        if unfail:
+            labels.append("unfail")
+
+        vargs["labels"] = labels
+
+        # Use existing list_actions method with modified args
+        return self.list_actions(vargs, originator)
+
+    def list_no_send_actions(
+        self, args: dict[str, Any], abort: bool = False, originator: str | None = None
+    ) -> dict[str, Any]:
+        """List actions with status 'nosend'. If abort is true, abort each action.
+
+        Uses listActions special operation to return only actions with status 'nosend'.
+        If abort is true, adds 'abort' label to request abortion of no-send actions.
+
+        Args:
+            args: Dictionary containing listActions arguments:
+                - labels: List of labels to filter by (optional)
+                - limit: Maximum number of actions to return (optional)
+                - offset: Number of actions to skip (optional)
+                - includeLabels: Include action labels in response (optional)
+                - includeInputs: Include input details (optional)
+                - includeOutputs: Include output details (optional)
+            abort: If true, abort each no-send action by adding 'abort' label
+            originator: Originator identifier for the operation
+
+        Returns:
+            dict with keys:
+                - totalActions: Total number of no-send actions
+                - actions: List of no-send action objects
+
+        Raises:
+            InvalidParameterError: If parameters are invalid
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (listNoSendActions)
+        """
+        # Validate args structure
+        if not isinstance(args, dict):
+            raise InvalidParameterError("args must be a dictionary")
+
+        # Create a copy of args to avoid modifying the original
+        vargs = dict(args)
+
+        # Add specOpNoSendActions label to filter for no-send actions
+        labels = vargs.get("labels", [])
+        if not isinstance(labels, list):
+            labels = [labels] if labels else []
+        labels.append(specOpNoSendActions)
+
+        # If abort is requested, add 'abort' label
+        if abort:
+            labels.append("abort")
+
+        vargs["labels"] = labels
+
+        # Use existing list_actions method with modified args
+        return self.list_actions(vargs, originator)
+
+    def set_wallet_change_params(self, count: int, satoshis: int, originator: str | None = None) -> None:
+        """Set wallet change parameters for UTXO management.
+
+        Uses listOutputs special operation to update wallet change parameters.
+        These parameters control how the wallet manages change outputs.
+
+        Args:
+            count: Number of desired UTXOs to maintain
+            satoshis: Target satoshi amount per UTXO
+            originator: Originator identifier for the operation
+
+        Raises:
+            InvalidParameterError: If parameters are invalid
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (setWalletChangeParams)
+        """
+        # Validate parameters
+        if not isinstance(count, int) or count <= 0:
+            raise InvalidParameterError("count must be a positive integer")
+        if not isinstance(satoshis, int) or satoshis <= 0:
+            raise InvalidParameterError("satoshis must be a positive integer")
+
+        # Use listOutputs with specOpSetWalletChangeParams basket and tags
+        args = {
+            "basket": specOpSetWalletChangeParams,
+            "tags": [str(count), str(satoshis)]
+        }
+
+        self.list_outputs(args, originator)
+
+    def sweep_to(self, to_wallet: "Wallet", originator: str | None = None) -> dict[str, Any]:
+        """Sweep all wallet funds to another wallet.
+
+        Creates an action that spends all available UTXOs to the target wallet
+        using BRC-29 derivation scheme for privacy.
+
+        NOTE: This is a placeholder implementation. Full BRC-29 support with
+        ScriptTemplateBRC29 is required for complete functionality.
+
+        Args:
+            to_wallet: Target wallet to sweep funds to
+            originator: Originator identifier for the operation
+
+        Returns:
+            dict containing the created action result
+
+        Raises:
+            NotImplementedError: Full BRC-29 implementation pending
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/Wallet.ts (sweepTo)
+        """
+        # TODO: Implement full BRC-29 sweep functionality
+        # This requires ScriptTemplateBRC29, key derivation, and proper BRC-29 protocol
+        raise NotImplementedError(
+            "sweep_to method requires full BRC-29 ScriptTemplateBRC29 implementation. "
+            "Currently a placeholder for interface compatibility."
+        )
+
 
 # ============================================================================
 # Helper Functions for Error Handling (TS Parity)
@@ -3139,7 +3310,7 @@ def throw_if_unsuccessful_internalize_action(result: dict[str, Any]) -> None:
 
 
 # ============================================================================
-# Helper Functions for Special Operations
+# Helper Functions for Error Handling (TS Parity)
 # ============================================================================
 
 
