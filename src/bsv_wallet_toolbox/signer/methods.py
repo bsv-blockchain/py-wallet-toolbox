@@ -764,7 +764,7 @@ def _make_signable_transaction_result(
         "tx": _make_signable_transaction_beef(prior.tx, prior.dcr.get("inputBeef", [])),
     }
 
-    wallet.pending_sign_actions[result.signable_transaction["reference"]] = prior
+    wallet.pending_sign_actions.set(result.signable_transaction["reference"], prior)
 
     return result
 

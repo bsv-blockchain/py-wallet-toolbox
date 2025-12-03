@@ -68,3 +68,19 @@ class WalletServicesOptions(TypedDict, total=False):
 
     # Advanced options (optional)
     chaintracks: Any | None  # ChaintracksClientApi instance
+
+    # Service method modifiers (Go parity)
+    # Functions to modify service behavior before execution
+    rawTxMethodModifier: Any | None  # Modifier for RawTx service calls
+    postBeefMethodModifier: Any | None  # Modifier for PostBEEF service calls
+    merklePathMethodModifier: Any | None  # Modifier for MerklePath service calls
+    findChainTipHeaderModifier: Any | None  # Modifier for FindChainTipHeader calls
+    isValidRootForHeightModifier: Any | None  # Modifier for IsValidRootForHeight calls
+    currentHeightModifier: Any | None  # Modifier for CurrentHeight calls
+    getScriptHashHistoryModifier: Any | None  # Modifier for GetScriptHashHistory calls
+    hashToHeaderModifier: Any | None  # Modifier for HashToHeader calls
+    chainHeaderByHeightModifier: Any | None  # Modifier for ChainHeaderByHeight calls
+    getStatusForTxIDsModifier: Any | None  # Modifier for GetStatusForTxIDs calls
+    getUtxoStatusModifier: Any | None  # Modifier for GetUtxoStatus calls
+    isUtxoModifier: Any | None  # Modifier for IsUtxo calls
+    bsvExchangeRateModifier: Any | None  # Modifier for BsvExchangeRate calls
