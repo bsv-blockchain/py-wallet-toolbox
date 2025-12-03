@@ -24,7 +24,7 @@ class TestChaintracks:
                describe('Chaintracks tests')
     """
 
-    def test_nodb_mainnet(self) -> None:
+    async def test_nodb_mainnet(self) -> None:
         """Given: Chaintracks with NoDb options for mainnet
            When: Make available and test basic operations
            Then: Successfully initializes without database
@@ -41,16 +41,16 @@ class TestChaintracks:
         c.make_available()
 
         # Test basic operations
-        info = c.get_info()
-        assert info.chain == chain
+        info = await c.get_info()
+        assert info["chain"] == chain
 
-        present_height = c.get_present_height()
+        present_height = await c.get_present_height()
         assert present_height > 0
 
         # Then
         c.destroy()
 
-    def test_nodb_testnet(self) -> None:
+    async def test_nodb_testnet(self) -> None:
         """Given: Chaintracks with NoDb options for testnet
            When: Make available and test basic operations
            Then: Successfully initializes without database
@@ -67,10 +67,10 @@ class TestChaintracks:
         c.make_available()
 
         # Test basic operations
-        info = c.get_info()
-        assert info.chain == chain
+        info = await c.get_info()
+        assert info["chain"] == chain
 
-        present_height = c.get_present_height()
+        present_height = await c.get_present_height()
         assert present_height > 0
 
         # Then

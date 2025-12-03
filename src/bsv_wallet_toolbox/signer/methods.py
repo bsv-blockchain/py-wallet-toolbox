@@ -65,6 +65,7 @@ class CreateActionResultX:
     txid: str | None = None
     tx: bytes | None = None
     no_send_change: list[str] | None = None
+    no_send_change_output_vouts: list[int] | None = None
     send_with_results: list[Any] | None = None
     signable_transaction: dict[str, Any] | None = None
     not_delayed_results: list[Any] | None = None
@@ -114,6 +115,7 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
             if prior.dcr.get("noSendChangeOutputVouts")
             else None
         )
+        result.no_send_change_output_vouts = prior.dcr.get("noSendChangeOutputVouts")
         if not vargs.get("options", {}).get("returnTxidOnly"):
             # BRC-100 spec: return raw transaction bytes, not BEEF
             result.tx = prior.tx.serialize()

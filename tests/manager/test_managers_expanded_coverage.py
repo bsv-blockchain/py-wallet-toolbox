@@ -7,13 +7,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-try:
-    from bsv_wallet_toolbox.manager.simple_wallet_manager import SimpleWalletManager
-    SIMPLE_IMPORT_SUCCESS = True
-except ImportError:
-    SIMPLE_IMPORT_SUCCESS = False
+from bsv_wallet_toolbox.manager.simple_wallet_manager import SimpleWalletManager
 
-@pytest.mark.skipif(not SIMPLE_IMPORT_SUCCESS, reason="SimpleWalletManager not available")
 class TestSimpleWalletManagerInitialization:
     """Test simple wallet manager initialization."""
 
@@ -43,7 +38,6 @@ class TestSimpleWalletManagerInitialization:
             pass
 
 
-@pytest.mark.skipif(not SIMPLE_IMPORT_SUCCESS, reason="SimpleWalletManager not available")
 class TestSimpleWalletManagerMethods:
     """Test simple wallet manager methods."""
 
@@ -110,7 +104,6 @@ class TestSimpleWalletManagerMethods:
         except (AttributeError, Exception):
             pass
 
-@pytest.mark.skipif(not SIMPLE_IMPORT_SUCCESS, reason="SimpleWalletManager not available")
 class TestSimpleWalletManagerOutputs:
     """Test output operations in simple manager."""
 
@@ -156,7 +149,6 @@ class TestSimpleWalletManagerOutputs:
         except (AttributeError, Exception):
             pass
 
-@pytest.mark.skipif(not SIMPLE_IMPORT_SUCCESS, reason="SimpleWalletManager not available")
 class TestSimpleWalletManagerAdvanced:
     """Advanced tests for simple wallet manager."""
 
@@ -185,7 +177,6 @@ class TestSimpleWalletManagerAdvanced:
             pass
 
 
-@pytest.mark.skipif(not SIMPLE_IMPORT_SUCCESS, reason="SimpleWalletManager not available")
 class TestSimpleWalletManagerCryptoMethods:
     """Test cryptographic methods in simple manager."""
 

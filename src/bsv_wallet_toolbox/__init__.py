@@ -6,6 +6,7 @@ WalletInterface, compatible with TypeScript and Go implementations.
 Reference: toolbox/ts-wallet-toolbox/src/
 """
 
+from .auth_fetch import AuthFetch
 from .errors import InvalidParameterError
 from .services import Services, WalletServices, WalletServicesOptions, create_default_options
 from .services.chaintracker.chaintracks.api import (
@@ -28,6 +29,7 @@ from .wallet import Wallet
 
 __version__ = "0.6.0"
 __all__ = [
+    "AuthFetch",
     "BaseBlockHeader",
     "BlockHeader",
     "BlockHeaderTypes",

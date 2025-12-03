@@ -401,7 +401,7 @@ class Services(WalletServices):
             ValueError: If height is negative
             RuntimeError: If unable to retrieve header
         """
-        return self.whatsonchain.get_header_bytes_for_height(height)
+        return self._run_async(self.whatsonchain.get_header_bytes_for_height(height))
 
     async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get a structured block header at a given height.
