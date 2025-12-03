@@ -159,13 +159,11 @@ def validate_list_outputs_args(args: dict[str, Any]) -> None:
         if limit > 10000:
             raise InvalidParameterError("limit", "at most 10000")
 
-    # offset - must be non-negative integer
+    # offset - can be any integer (negative = newest first)
     if "offset" in args:
         offset = args["offset"]
         if not isinstance(offset, int) or isinstance(offset, bool):
             raise InvalidParameterError("offset", "an integer")
-        if offset < 0:
-            raise InvalidParameterError("offset", "a non-negative integer")
 
     # knownTxids
     if "knownTxids" in args:
