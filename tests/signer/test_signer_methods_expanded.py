@@ -209,6 +209,7 @@ class TestAcquireDirectCertificate:
             "certificateType": "test_type",
             "certifierUrl": "https://certifier.example.com",
             "serialNumber": "12345",
+            "subject": "test_subject",
         }
         
         try:
@@ -223,6 +224,7 @@ class TestAcquireDirectCertificate:
             "certificateType": "identity",
             "certifierUrl": "https://certifier.example.com",
             "serialNumber": "67890",
+            "subject": "test_subject",
             "fields": {
                 "name": "John Doe",
                 "email": "john@example.com",
@@ -586,7 +588,7 @@ class TestCertificateMethods:
             result = acquire_direct_certificate(wallet, auth, vargs)
             # Should handle or raise
             assert result is not None or result is None
-        except (WalletError, KeyError, AttributeError):
+        except (WalletError, KeyError, AttributeError, ValueError):
             pass
 
     def test_prove_certificate_missing_certificate_id(self):

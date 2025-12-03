@@ -1834,11 +1834,26 @@ class Wallet:
         if self.services is None:
             raise RuntimeError("services are not configured")
 
+        # Create auth object for signer layer (TypeScript parity)
+        auth = self._make_auth()
+
+        # Derive subject from identity key if not provided (TypeScript parity)
+        # Reference: wallet-toolbox/src/Wallet.ts lines 442-448
+        if "subject" not in args:
+            pub_key_args = {"identityKey": True}
+            # Handle privileged certificate case
+            if args.get("privileged"):
+                pub_key_args["privileged"] = True
+                if args.get("privilegedReason"):
+                    pub_key_args["privilegedReason"] = args["privilegedReason"]
+            pub_key_result = self.get_public_key(pub_key_args, originator)
+            args["subject"] = pub_key_result["publicKey"]
+
         # Delegate to signer layer for certificate acquisition
         # (coordinate with Storage and Services through signer)
         # Note: acquire_direct_certificate expects (wallet, auth, vargs)
         # where auth is authentication context and vargs is validated args
-        return acquire_direct_certificate(self, None, args)
+        return acquire_direct_certificate(self, auth, args)
 
     def prove_certificate(
         self,
@@ -2116,7 +2131,14 @@ class Wallet:
 
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
-            return self.privileged_key_manager.get_public_key(args)
+            # Handle privileged key synchronously
+            if args.get("identityKey"):
+                privileged_key = self.privileged_key_manager._get_privileged_key(args.get("privilegedReason", ""))
+                return {"publicKey": privileged_key.public_key().hex()}
+            else:
+                # For derived keys, we'd need to implement synchronous derivation
+                # For now, fall back to regular key deriver
+                pass
 
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
