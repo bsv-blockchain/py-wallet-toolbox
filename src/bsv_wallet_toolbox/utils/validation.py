@@ -918,6 +918,11 @@ def validate_discover_by_identity_key_args(args: dict[str, Any]) -> None:
 
 
 def validate_discover_by_attributes_args(args: dict[str, Any]) -> None:
+    """Validate discover_by_attributes arguments.
+
+    Raises:
+        InvalidParameterError: If arguments are invalid
+    """
     """Validate DiscoverByAttributesArgs structure.
 
     Reference: wallet-toolbox/test/Wallet/certificate/discoverByAttributes.test.ts

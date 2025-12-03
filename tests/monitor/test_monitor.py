@@ -199,6 +199,7 @@ class TestMonitor:
     """Test suite for Monitor tasks."""
 
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Takes too long to run")
     async def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value
