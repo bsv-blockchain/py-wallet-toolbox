@@ -37,6 +37,7 @@ from collections.abc import Callable
 from time import time
 from typing import Any
 from unittest.mock import Mock
+from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
 from bsv.http_client import default_http_client
@@ -57,6 +58,39 @@ from .wallet_services_options import WalletServicesOptions
 MAXINT: int = 0xFFFFFFFF
 BLOCK_LIMIT: int = 500_000_000
 CACHE_TTL_MSECS: int = 120000  # 2-minute TTL for service caches
+
+# Test URL hostname patterns (checked against hostname only, not full URL)
+_TEST_HOSTNAME_PATTERNS = ('mock', 'test', 'localhost')
+_TEST_HOSTNAME_EXACT = ('example.com',)
+
+
+def _is_test_url(url: str) -> bool:
+    """Check if a URL is a test/mock URL by inspecting its hostname.
+
+    This safely parses the URL and checks only the hostname component,
+    avoiding false positives from test-like strings in query params or paths.
+
+    Args:
+        url: The URL to check
+
+    Returns:
+        True if the URL hostname indicates a test scenario
+    """
+    if not url:
+        return False
+    try:
+        parsed = urlparse(url)
+        hostname = (parsed.hostname or '').lower()
+        # Check exact matches
+        if hostname in _TEST_HOSTNAME_EXACT:
+            return True
+        # Check if hostname contains test patterns
+        for pattern in _TEST_HOSTNAME_PATTERNS:
+            if pattern in hostname:
+                return True
+        return False
+    except Exception:
+        return False
 
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
@@ -1167,14 +1201,10 @@ class Services(WalletServices):
         # Check if we're in a test scenario by looking for mock/test URLs or test indicators
         is_test_scenario = (
             hasattr(self, 'arc_gorillapool') and self.arc_gorillapool and
-            ('mock' in getattr(self.arc_gorillapool, 'url', '') or
-             'example.com' in getattr(self.arc_gorillapool, 'url', '') or
-             'test' in getattr(self.arc_gorillapool, 'url', ''))
+            _is_test_url(getattr(self.arc_gorillapool, 'url', ''))
         ) or (
             hasattr(self, 'arc_taal') and self.arc_taal and
-            ('mock' in getattr(self.arc_taal, 'url', '') or
-             'example.com' in getattr(self.arc_taal, 'url', '') or
-             'test' in getattr(self.arc_taal, 'url', ''))
+            _is_test_url(getattr(self.arc_taal, 'url', ''))
         )
         min_length = 2 if is_test_scenario else 4
         if len(beef.strip()) < min_length:
