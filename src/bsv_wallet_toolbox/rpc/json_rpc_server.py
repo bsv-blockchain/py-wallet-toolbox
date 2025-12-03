@@ -469,10 +469,10 @@ class JsonRpcServer:
             }
 
         except Exception as e:
-            logger.error(f"Unexpected error during request validation: {e}")
+            logger.error(f"Unexpected error during request validation: {e}", exc_info=True)
             return {
                 "jsonrpc": "2.0",
-                "error": JsonRpcInternalError(str(e)).to_dict(),
+                "error": JsonRpcInternalError().to_dict(),
                 "id": request_id,
             }
 
@@ -516,7 +516,7 @@ class JsonRpcServer:
             logger.warning(f"Invalid params for method {method}: {e}")
             return {
                 "jsonrpc": "2.0",
-                "error": JsonRpcInvalidParamsError(f"Invalid parameters: {e!s}").to_dict(),
+                "error": JsonRpcInvalidParamsError().to_dict(),
                 "id": request_id,
             }
 
@@ -525,7 +525,7 @@ class JsonRpcServer:
             logger.error(f"Internal error in method {method}: {e}", exc_info=True)
             return {
                 "jsonrpc": "2.0",
-                "error": JsonRpcInternalError(f"Internal error: {e!s}").to_dict(),
+                "error": JsonRpcInternalError().to_dict(),
                 "id": request_id,
             }
 
