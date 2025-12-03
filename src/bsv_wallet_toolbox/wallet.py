@@ -897,6 +897,8 @@ class Wallet:
             result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
         if signer_result.no_send_change is not None or vargs.get("options", {}).get("noSend"):
             result["noSendChange"] = signer_result.no_send_change or []
+        if signer_result.no_send_change_output_vouts is not None:
+            result["noSendChangeOutputVouts"] = signer_result.no_send_change_output_vouts
         if signer_result.signable_transaction is not None:
             result["signableTransaction"] = signer_result.signable_transaction
         # sendWithResults and notDelayedResults are internal - not included in BRC-100 result

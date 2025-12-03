@@ -45,7 +45,7 @@ async def test_adminstats_storageknex() -> None:
     pytest.skip("StorageKnex is Node.js/Knex specific - Python uses StorageMySQL")
 
 
-@pytest.mark.skip(reason="Waiting for StorageServer RPC, AuthFetch implementation")
+# Test enabled - AuthFetch implementation available
 @pytest.mark.asyncio
 async def test_adminstats_storageserver_via_rpc() -> None:
     """Given: StorageServer endpoint and authenticated wallet

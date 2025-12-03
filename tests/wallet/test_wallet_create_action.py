@@ -186,7 +186,6 @@ class TestWalletCreateAction:
         assert "reference" in result["signableTransaction"]
         assert "tx" in result["signableTransaction"]  # AtomicBEEF format
 
-    @pytest.mark.skip(reason="Fixture wallet_with_mocked_create_action not yet implemented")
     def test_create_action_defaults_options_and_returns_signable(self, wallet_with_mocked_create_action) -> None:
         wallet, _storage, call_log, user_id = wallet_with_mocked_create_action
 
@@ -210,7 +209,6 @@ class TestWalletCreateAction:
         assert result["signableTransaction"] == {"reference": "ref-456", "tx": [0xDE, 0xAD]}
         assert result["noSendChange"] == ["mock.txid.0"]
 
-    @pytest.mark.skip(reason="Fixture wallet_with_mocked_create_action not yet implemented")
     def test_create_action_sign_and_process_flow(self, wallet_with_mocked_create_action) -> None:
         wallet, _storage, call_log, _ = wallet_with_mocked_create_action
 

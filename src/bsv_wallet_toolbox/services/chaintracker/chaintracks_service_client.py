@@ -54,6 +54,8 @@ from typing import Any, Callable, Generic, TypeVar, cast
 import requests
 
 from ..wallet_services import Chain
+from .chaintracks.api import ChaintracksClientApi
+from .chaintracks.models import FiatExchangeRates
 
 T = TypeVar("T")
 
@@ -80,7 +82,7 @@ class ChaintracksServiceClientOptions:
         return ChaintracksServiceClientOptions(use_authrite=False)
 
 
-class ChaintracksServiceClient:
+class ChaintracksServiceClient(ChaintracksClientApi):
     """HTTP client for Chaintracks service.
 
     Connects to a ChaintracksService to implement ChaintracksClientApi.
@@ -201,7 +203,7 @@ class ChaintracksServiceClient:
         except Exception as e:
             raise Exception(json.dumps({"error": str(e)}))
 
-    def current_height(self) -> int:
+    async def current_height(self) -> int:
         """Get current blockchain height.
 
         Returns:
@@ -209,9 +211,9 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        return self.get_present_height()
+        return await self.get_present_height()
 
-    def is_valid_root_for_height(self, root: str, height: int) -> bool:
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
         """Verify if merkle root is valid for height.
 
         Args:
@@ -223,13 +225,13 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        header = self.find_header_for_height(height)
+        header = await self.find_header_for_height(height)
         if header is None:
             return False
         # TODO: Phase 4 - Add proper root comparison with encoding
         return root == header.get("merkleRoot", "")
 
-    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get block header at specified height.
 
         Args:
@@ -246,7 +248,7 @@ class ChaintracksServiceClient:
         except Exception:
             return None
 
-    def get_present_height(self) -> int:
+    async def get_present_height(self) -> int:
         """Get latest chain height.
 
         Returns:
@@ -279,7 +281,7 @@ class ChaintracksServiceClient:
                 pass
         return results
 
-    def subscribe_headers(self, listener: Any) -> str:
+    async def subscribe_headers(self, listener: Any) -> str:
         """Subscribe to header updates (WebSocket - Phase 4).
 
         Args:
@@ -307,7 +309,7 @@ class ChaintracksServiceClient:
         # For now, mark as not implemented but provide structure
         raise NotImplementedError("WebSocket subscriptions require Phase 4 ChainTracks server implementation")
 
-    def subscribe_reorgs(self, listener: Any) -> str:
+    async def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg updates (WebSocket - Phase 4).
 
         Args:
@@ -330,7 +332,7 @@ class ChaintracksServiceClient:
         # TODO: Establish WebSocket connection and register subscription
         raise NotImplementedError("WebSocket subscriptions require Phase 4 ChainTracks server implementation")
 
-    def unsubscribe(self, subscription_id: str) -> bool:
+    async def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a WebSocket subscription (Phase 4).
 
         Args:
@@ -350,6 +352,45 @@ class ChaintracksServiceClient:
             return True
 
         return False
+
+    async def get_fiat_exchange_rates(self) -> FiatExchangeRates:
+        """Get latest fiat currency exchange rates from the Chaintracks service.
+
+        Returns:
+            FiatExchangeRates with timestamp, rates, and base currency
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        path = "/getFiatExchangeRates"
+        return self.get_json(path)
+
+    async def get_headers(self, height: int, count: int) -> str:
+        """Get headers in serialized format starting at height.
+
+        Args:
+            height: Starting block height
+            count: Number of headers to retrieve
+
+        Returns:
+            Hex-encoded concatenated block headers
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        path = f"/getHeaders?height={height}&count={count}"
+        return self.get_json(path)
+
+    async def add_header(self, header: dict[str, Any]) -> None:
+        """Add a block header to the chaintracks service.
+
+        Args:
+            header: BaseBlockHeader to add
+
+        Returns:
+            None (void)
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        self.post_json("/addHeaderHex", header)
 
     def destroy(self) -> None:
         """Close all resources.
