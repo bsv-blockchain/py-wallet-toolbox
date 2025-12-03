@@ -42,8 +42,10 @@ class TaskSyncWhenIdle(WalletMonitorTask):
     def trigger(self, now: int) -> dict[str, bool]:
         """Determine if the task should run.
 
-        Matches TS behavior: returns run=False.
+        Run periodically based on trigger_msecs interval.
         """
+        if now - self.last_run_msecs_since_epoch > self.trigger_msecs:
+            return {"run": True}
         return {"run": False}
 
     def run_task(self) -> str:

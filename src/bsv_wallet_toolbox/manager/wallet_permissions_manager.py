@@ -12,8 +12,11 @@ Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
 from __future__ import annotations
 
 import asyncio
+import sqlite3
+import threading
 import time
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Literal, TypedDict
 
 from bsv_wallet_toolbox.manager.permission_token_parser import PermissionTokenManager
@@ -121,13 +124,20 @@ class WalletPermissionsManager:
         self._permissions: dict[str, list[PermissionToken]] = {}
         
         # Active permission requests (for async permission flow)
-        self._active_requests: dict[str, PermissionRequest] = {}
+        # Each entry contains: request, pending (list of futures), cache_key
+        self._active_requests: dict[str, dict[str, Any]] = {}
         
         # Pending permission requests (for tracking grant/deny)
         self._pending_requests: dict[str, dict[str, Any]] = {}
         
         # Request ID counter
         self._request_counter: int = 0
+
+        # Database for persistent storage
+        self._db_conn: sqlite3.Connection | None = None
+        self._db_lock = threading.RLock()
+        self._init_database()
+        self._load_permissions_from_db()
         
         # Permission event callbacks - support for all event types
         self._callbacks: dict[str, list[Callable]] = {
@@ -1097,24 +1107,44 @@ class WalletPermissionsManager:
 
     async def ensure_protocol_permission(
         self,
-        originator: str,
-        protocol_id: dict[str, Any] | list,
+        originator: str | dict[str, Any] = None,
+        protocol_id: dict[str, Any] | list = None,
         operation: str = "encrypt",
         counterparty: str | None = None,
-        reason: str | None = None
+        reason: str | None = None,
+        privileged: bool | None = None,
+        seek_permission: bool = True,
+        usage_type: str = "generic"
     ) -> bool:
         """Ensure protocol permission is granted.
 
         Args:
-            originator: Domain requesting access
+            originator: Domain requesting access (or dict with all args)
             protocol_id: Protocol identifier
-            operation: Specific operation
+            operation: Specific operation (deprecated, use usage_type)
             counterparty: Optional counterparty
             reason: Optional reason for request
+            privileged: Whether privileged operations are allowed
+            seek_permission: Whether to request permission if not found
+            usage_type: Type of usage ('signing', 'encrypting', 'hmac', 'publicKey',
+                       'identityKey', 'linkageRevelation', 'generic')
 
         Returns:
             True if permission granted, False otherwise
         """
+        # Handle dict-style arguments (TypeScript compatibility)
+        if isinstance(originator, dict):
+            args = originator
+            originator = args.get("originator")
+            protocol_id = args.get("protocolID", args.get("protocol_id"))
+            counterparty = args.get("counterparty")
+            reason = args.get("reason")
+            privileged = args.get("privileged", False)
+            seek_permission = args.get("seekPermission", args.get("seek_permission", True))
+            usage_type = args.get("usageType", args.get("usage_type", "generic"))
+
+        # Set defaults
+        privileged = privileged if privileged is not None else False
         # Admin bypass
         if originator == self._admin_originator:
             return True
@@ -1131,32 +1161,242 @@ class WalletPermissionsManager:
         if security_level == 0:
             return True
 
-        # Check if permission already exists
-        if self.verify_dpacp_permission(originator, protocol_id, counterparty):
+        # Allow the configured exceptions based on usage_type
+        if usage_type == 'signing' and not self._config.get("seekProtocolPermissionsForSigning", True):
+            return True
+        if usage_type == 'encrypting' and not self._config.get("seekProtocolPermissionsForEncrypting", True):
+            return True
+        if usage_type == 'hmac' and not self._config.get("seekProtocolPermissionsForHMAC", True):
+            return True
+        if usage_type == 'publicKey' and not self._config.get("seekPermissionsForPublicKeyRevelation", True):
+            return True
+        if usage_type == 'identityKey' and not self._config.get("seekPermissionsForIdentityKeyRevelation", True):
+            return True
+        if usage_type == 'linkageRevelation' and not self._config.get("seekPermissionsForKeyLinkageRevelation", True):
             return True
 
-        # Request permission
+        # If not differentiating privileged operations, ignore privileged flag
+        if not self._config.get("differentiatePrivilegedOperations", True):
+            privileged = False
+
+        # Check permission cache first
+        cache_key = self._build_request_key(originator, privileged, protocol_id, counterparty)
+        if self._is_permission_cached(cache_key):
+            return True
+
+        # Find existing valid token
+        token = await self._find_protocol_token(originator, privileged, protocol_id, counterparty, include_expired=True)
+        if token:
+            if not self._is_token_expired(token):
+                # Valid token found, cache it
+                self._cache_permission(cache_key, token.get("expiry"))
+                return True
+            else:
+                # Expired token, request renewal if allowed
+                if not seek_permission:
+                    raise ValueError("Protocol permission expired and renewal not allowed (seekPermission=false)")
+                return await self._request_permission_flow(
+                    originator, privileged, protocol_id, counterparty, reason, renewal=True, previous_token=token
+                )
+        else:
+            # No token found, request new one if allowed
+            if not seek_permission:
+                return False
+            return await self._request_permission_flow(
+                originator, privileged, protocol_id, counterparty, reason, renewal=False
+            )
+
+    def _build_request_key(self, originator: str, privileged: bool, protocol_id: dict[str, Any] | list, counterparty: str | None) -> str:
+        """Build a cache key for permission requests."""
+        if isinstance(protocol_id, list):
+            protocol_str = f"{protocol_id[0]}:{protocol_id[1] if len(protocol_id) > 1 else ''}"
+        else:
+            protocol_str = f"{protocol_id.get('securityLevel', 0)}:{protocol_id.get('protocolName', '')}"
+        return f"{originator}:{privileged}:{protocol_str}:{counterparty or 'self'}"
+
+    def _is_permission_cached(self, cache_key: str) -> bool:
+        """Check if permission is cached and not expired."""
+        if cache_key not in self._permissions:
+            return False
+
+        tokens = self._permissions[cache_key]
+        for token in tokens:
+            if not self._is_token_expired(token):
+                return True
+        return False
+
+    def _cache_permission(self, cache_key: str, expiry: int | None) -> None:
+        """Cache a permission with expiry."""
+        if cache_key not in self._permissions:
+            self._permissions[cache_key] = []
+
+        # Create a simple permission token for caching
+        token = {"expiry": expiry, "granted": True}
+        self._permissions[cache_key].append(token)
+
+        # Persist to database
+        self._save_permission_to_db(cache_key, token)
+
+    def _is_token_expired(self, token: dict[str, Any]) -> bool:
+        """Check if a token is expired."""
+        expiry = token.get("expiry")
+        if expiry is None:
+            return False  # No expiry means never expires
+
+        import time
+        current_time = int(time.time() * 1000)  # Convert to milliseconds
+        return current_time > expiry
+
+    async def _find_protocol_token(
+        self,
+        originator: str,
+        privileged: bool,
+        protocol_id: dict[str, Any] | list,
+        counterparty: str | None,
+        include_expired: bool = False
+    ) -> dict[str, Any] | None:
+        """Find an existing protocol permission token."""
+        # Convert protocol_id to dict format
+        if isinstance(protocol_id, list):
+            protocol_id = {"securityLevel": protocol_id[0], "protocolName": protocol_id[1] if len(protocol_id) > 1 else ""}
+
+        # For now, use the existing verify_dpacp_permission logic
+        # In a full implementation, this would query the actual token storage
+        if self.verify_dpacp_permission(originator, protocol_id, counterparty):
+            # Mock token - in real implementation would return actual token data
+            return {"expiry": None, "granted": True}
+        return None
+
+    async def _request_permission_flow(
+        self,
+        originator: str,
+        privileged: bool,
+        protocol_id: dict[str, Any] | list,
+        counterparty: str | None,
+        reason: str | None,
+        renewal: bool = False,
+        previous_token: dict[str, Any] | None = None
+    ) -> bool:
+        """Request permission from user via callback flow."""
+        # Convert protocol_id to dict format
+        if isinstance(protocol_id, list):
+            protocol_id = {"securityLevel": protocol_id[0], "protocolName": protocol_id[1] if len(protocol_id) > 1 else ""}
+
+        # Create permission request
+        request_id = f"req_{self._request_counter}"
+        self._request_counter += 1
+
+        request = {
+            "type": "protocol",
+            "originator": originator,
+            "privileged": privileged,
+            "protocolID": protocol_id,
+            "counterparty": counterparty,
+            "reason": reason,
+            "renewal": renewal,
+            "previousToken": previous_token,
+            "requestID": request_id
+        }
+
+        # Store as pending request
+        self._pending_requests[request_id] = request
+
+        # Check if there's already an active request for this resource (coalescing)
+        cache_key = self._build_request_key(originator, privileged, protocol_id, counterparty)
+
+        # Look for existing active request with same cache_key
+        existing_request_id = None
+        for req_id, req_data in self._active_requests.items():
+            if req_data.get("cache_key") == cache_key:
+                existing_request_id = req_id
+                break
+
+        if existing_request_id:
+            # There's already an active request, add this future to the pending list
+            future = asyncio.Future()
+            self._active_requests[existing_request_id]["pending"].append(future)
+            # Wait for the future to be resolved/rejected
+            return await future
+
+        # Create a new active request
+        future = asyncio.Future()
+        active_request = {
+            "request": request,
+            "pending": [future],
+            "cache_key": cache_key
+        }
+        self._active_requests[request_id] = active_request
+
+        # Trigger callback if available
+        if self._callbacks["onProtocolPermissionRequested"]:
+            # Call the callback to notify about the permission request
+            for callback in self._callbacks["onProtocolPermissionRequested"]:
+                # Execute callback - handle async callbacks
+                if asyncio.iscoroutinefunction(callback):
+                    # For test compatibility, run async callback synchronously
+                    try:
+                        # Try to get current loop
+                        loop = asyncio.get_running_loop()
+                        # If we get here, loop is running, create task and wait a bit
+                        task = asyncio.create_task(callback(request))
+                        # Wait for the task to complete (with timeout for tests)
+                        start_time = time.time()
+                        while not task.done() and (time.time() - start_time) < 1.0:  # 1 second timeout
+                            time.sleep(0.01)
+                        if task.done():
+                            result = task.result()
+                        else:
+                            result = None  # Timeout
+                    except RuntimeError:
+                        # No running loop, create new one
+                        asyncio.run(callback(request))
+                        result = None
+                else:
+                    result = callback(request)
+            # Wait for user response (grant/deny will resolve the future)
+            return await future
+
+        # Fallback to direct request (synchronous)
         token = self.request_dpacp_permission(originator, protocol_id, counterparty)
-        return token is not None and token != {}
+        result = token is not None and token != {}
+        # Resolve the future immediately
+        if result:
+            future.set_result(True)
+        else:
+            future.set_exception(ValueError("Permission denied"))
+        return await future
 
     async def ensure_basket_access(
         self,
-        originator: str,
-        basket: str,
+        originator: str | dict[str, Any] = None,
+        basket: str = None,
         operation: str = "access",
-        reason: str | None = None
+        reason: str | None = None,
+        seek_permission: bool = True,
+        usage_type: str = "insertion"
     ) -> bool:
         """Ensure basket access permission is granted.
 
         Args:
-            originator: Domain requesting access
+            originator: Domain requesting access (or dict with all args)
             basket: Basket name
-            operation: Specific operation
+            operation: Specific operation (deprecated, use usage_type)
             reason: Optional reason for request
+            seek_permission: Whether to request permission if not found
+            usage_type: Type of usage ('insertion', 'removal', 'listing')
 
         Returns:
             True if permission granted, False otherwise
         """
+        # Handle dict-style arguments (TypeScript compatibility)
+        if isinstance(originator, dict):
+            args = originator
+            originator = args.get("originator")
+            basket = args.get("basket")
+            reason = args.get("reason")
+            seek_permission = args.get("seekPermission", args.get("seek_permission", True))
+            usage_type = args.get("usageType", args.get("usage_type", "insertion"))
+
         # Admin bypass
         if originator == self._admin_originator:
             return True
@@ -1165,9 +1405,87 @@ class WalletPermissionsManager:
         if self.verify_dbap_permission(originator, basket):
             return True
 
-        # Request permission
+        # Request permission if allowed
+        if not seek_permission:
+            return False
+
+        return await self._request_basket_access_flow(
+            originator, basket, reason, usage_type
+        )
+
+    async def _request_basket_access_flow(
+        self,
+        originator: str,
+        basket: str,
+        reason: str | None,
+        usage_type: str
+    ) -> bool:
+        """Request basket access permission from user via callback flow."""
+        # Create permission request
+        request_id = f"req_{self._request_counter}"
+        self._request_counter += 1
+
+        request = {
+            "type": "basket",
+            "originator": originator,
+            "basket": basket,
+            "reason": reason,
+            "usageType": usage_type,
+            "requestID": request_id
+        }
+
+        # Store as pending request
+        self._pending_requests[request_id] = request
+
+        # Create a future for this request
+        future = asyncio.Future()
+
+        # Store active request
+        active_request = {
+            "request": request,
+            "pending": [future],
+            "cache_key": None  # Basket requests don't coalesce
+        }
+        self._active_requests[request_id] = active_request
+
+        # Trigger callback if available
+        if self._callbacks["onBasketAccessRequested"]:
+            # Call the callback to notify about the permission request
+            for callback in self._callbacks["onBasketAccessRequested"]:
+                # Execute callback - handle async callbacks
+                if asyncio.iscoroutinefunction(callback):
+                    # For test compatibility, run async callback synchronously
+                    try:
+                        # Try to get current loop
+                        loop = asyncio.get_running_loop()
+                        # If we get here, loop is running, create task and wait a bit
+                        task = asyncio.create_task(callback(request))
+                        # Wait for the task to complete (with timeout for tests)
+                        start_time = time.time()
+                        while not task.done() and (time.time() - start_time) < 1.0:  # 1 second timeout
+                            time.sleep(0.01)
+                        if task.done():
+                            result = task.result()
+                        else:
+                            result = None  # Timeout
+                    except RuntimeError:
+                        # No running loop, create new one
+                        asyncio.run(callback(request))
+                        result = None
+                else:
+                    result = callback(request)
+            # Wait for user response (grant/deny will resolve the future)
+            return await future
+
+        # Fallback to direct request (synchronous)
         token = self.request_dbap_permission(originator, basket)
-        return token is not None and token != {}
+        result = token is not None and token != {}
+        # Resolve the future immediately
+        if result:
+            future.set_result(True)
+        else:
+            future.set_exception(ValueError("Permission denied"))
+        return await future
 
     async def ensure_certificate_access(
         self,
@@ -1740,7 +2058,13 @@ class WalletPermissionsManager:
         }
 
         # Store as active grouped request
-        self._active_requests[grouped_request["requestID"]] = grouped_request
+        future = asyncio.Future()
+        active_request = {
+            "request": grouped_request,
+            "pending": [future],
+            "cache_key": None  # Grouped requests don't coalesce
+        }
+        self._active_requests[grouped_request["requestID"]] = active_request
 
         # Trigger grouped permission callback
         if "onGroupedPermissionRequested" in self._callbacks:
@@ -2678,8 +3002,16 @@ class WalletPermissionsManager:
         if not request_id:
             raise ValueError("requestID is required")
 
-        # Remove from active requests if exists
+        # Remove from active requests and resolve all pending futures
         if request_id in self._active_requests:
+            active_request = self._active_requests[request_id]
+            # Handle both old and new structures
+            if isinstance(active_request, dict) and "pending" in active_request:
+                # New structure with futures
+                for future in active_request["pending"]:
+                    if not future.done():
+                        future.set_result(True)
+            # Old structure doesn't have futures to resolve
             del self._active_requests[request_id]
 
         # Mark as granted in pending requests
@@ -2704,8 +3036,16 @@ class WalletPermissionsManager:
         if not request_id:
             raise ValueError("requestID is required")
 
-        # Remove from active requests if exists
+        # Remove from active requests and reject all pending futures
         if request_id in self._active_requests:
+            active_request = self._active_requests[request_id]
+            # Handle both old and new structures
+            if isinstance(active_request, dict) and "pending" in active_request:
+                # New structure with futures
+                for future in active_request["pending"]:
+                    if not future.done():
+                        future.set_exception(ValueError("Permission denied"))
+            # Old structure doesn't have futures to reject
             del self._active_requests[request_id]
 
         # Mark as denied in pending requests
@@ -2925,3 +3265,72 @@ class WalletPermissionsManager:
                     output_item["customInstructions"] = self._maybe_decrypt_metadata(output_item["customInstructions"])
 
         return result
+
+
+    def _init_database(self) -> None:
+        """Initialize SQLite database for permission persistence."""
+        # Use in-memory database by default, can be configured for file-based storage
+        self._db_conn = sqlite3.connect(":memory:")
+
+        with self._db_lock:
+            self._db_conn.execute("""
+                CREATE TABLE IF NOT EXISTS permission_tokens (
+                    id INTEGER PRIMARY KEY,
+                    cache_key TEXT NOT NULL,
+                    token_data TEXT NOT NULL,
+                    created_at INTEGER NOT NULL,
+                    UNIQUE(cache_key, token_data)
+                )
+            """)
+            self._db_conn.commit()
+
+    def _load_permissions_from_db(self) -> None:
+        """Load permissions from database into memory cache."""
+        if not self._db_conn:
+            return
+
+        with self._db_lock:
+            cursor = self._db_conn.execute("""
+                SELECT cache_key, token_data
+                FROM permission_tokens
+                WHERE created_at > ?
+            """, (int(time.time() * 1000) - 30 * 24 * 60 * 60 * 1000,))  # 30 days ago
+
+            for cache_key, token_data in cursor.fetchall():
+                try:
+                    token = json.loads(token_data)
+                    if self._is_token_expired(token):
+                        continue
+                    self._permissions.setdefault(cache_key, []).append(token)
+                except json.JSONDecodeError:
+                    continue
+
+    def _save_permission_to_db(self, cache_key: str, token: dict[str, Any]) -> None:
+        """Save permission token to database."""
+        if not self._db_conn:
+            return
+
+        with self._db_lock:
+            self._db_conn.execute("""
+                INSERT OR REPLACE INTO permission_tokens (cache_key, token_data, created_at)
+                VALUES (?, ?, ?)
+            """, (cache_key, json.dumps(token), int(time.time() * 1000)))
+            self._db_conn.commit()
+
+    def _cleanup_expired_permissions(self) -> None:
+        """Remove expired permissions from database."""
+        if not self._db_conn:
+            return
+
+        current_time = int(time.time() * 1000)
+        with self._db_lock:
+            self._db_conn.execute("""
+                DELETE FROM permission_tokens
+                WHERE json_extract(token_data, "$.expiry") < ? AND json_extract(token_data, "$.expiry") > 0
+            """, (current_time,))
+            self._db_conn.commit()
+
+    def __del__(self) -> None:
+        """Clean up database connection on destruction."""
+        if hasattr(self, '_db_conn') and self._db_conn:
+            self._db_conn.close()

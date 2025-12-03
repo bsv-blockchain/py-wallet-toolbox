@@ -1455,20 +1455,15 @@ class Wallet:
         """Return configured chain identifier ('main' | 'test').
 
         Summary:
-            If services are configured, defer to Services.get_chain; otherwise
-            return the wallet's local chain.
+            Return the wallet's configured chain.
 
         Returns:
             str: 'main' or 'test'
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/Wallet.ts (getChain)
-            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
         """
-        if self.services is None:
-            # Fallback to local chain if services not set
-            return self.chain
-        return self.services.get_chain()
+        return self.chain
 
     def find_chain_tip_header(self) -> dict[str, Any]:
         """Return structured header for the active chain tip.

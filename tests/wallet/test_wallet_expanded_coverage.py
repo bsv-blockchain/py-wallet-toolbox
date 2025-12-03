@@ -26,14 +26,8 @@ class TestWalletBlockchainMethods:
 
     def test_get_chain(self, wallet_with_storage: Wallet) -> None:
         """Test get_chain method."""
-        # Mock services property
-        mock_services = Mock()
-        mock_services.get_chain.return_value = "main"
-
-        with patch.object(wallet_with_storage, 'services', mock_services):
-            result = wallet_with_storage.get_chain()
-            assert result == "main"
-            mock_services.get_chain.assert_called_once()
+        result = wallet_with_storage.get_chain()
+        assert result == "main"
 
     def test_find_chain_tip_header(self, wallet_with_storage: Wallet) -> None:
         """Test find_chain_tip_header method."""

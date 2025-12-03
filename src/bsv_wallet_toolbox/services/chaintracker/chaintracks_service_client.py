@@ -45,9 +45,11 @@ Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/Chain
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
-from typing import Any, Generic, TypeVar, cast
+import uuid
+from typing import Any, Callable, Generic, TypeVar, cast
 
 import requests
 
@@ -106,6 +108,11 @@ class ChaintracksServiceClient:
         self.options: ChaintracksServiceClientOptions = options or ChaintracksServiceClientOptions.create_default()
         self.timeout: int = 30
         self.session: requests.Session = requests.Session()
+
+        # WebSocket subscription tracking
+        self._websocket_subscriptions: dict[str, dict[str, Any]] = {}
+        self._websocket_url: str | None = None
+        self._websocket_task: asyncio.Task | None = None
 
     def get_json_or_undefined(self, path: str) -> Any | None:
         """Fetch JSON from service with retry logic (blocking).
@@ -283,8 +290,22 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        # TODO: Phase 4 - Implement WebSocket subscription for headers
-        raise NotImplementedError("WebSocket subscriptions require Phase 4 implementation")
+        # WebSocket implementation requires running ChainTracks service with WebSocket support
+        # This is a Phase 4 feature that needs:
+        # 1. WebSocket server endpoint in ChainTracks service
+        # 2. Client-side WebSocket connection management
+        # 3. Real-time event forwarding
+
+        subscription_id = f"headers_{uuid.uuid4().hex[:8]}"
+        self._websocket_subscriptions[subscription_id] = {
+            "type": "headers",
+            "listener": listener,
+            "active": False  # Would be True if WebSocket connected
+        }
+
+        # TODO: Establish WebSocket connection and register subscription
+        # For now, mark as not implemented but provide structure
+        raise NotImplementedError("WebSocket subscriptions require Phase 4 ChainTracks server implementation")
 
     def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg updates (WebSocket - Phase 4).
@@ -297,8 +318,17 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        # TODO: Phase 4 - Implement WebSocket subscription for reorgs
-        raise NotImplementedError("WebSocket subscriptions require Phase 4 implementation")
+        # WebSocket implementation requires running ChainTracks service with WebSocket support
+
+        subscription_id = f"reorgs_{uuid.uuid4().hex[:8]}"
+        self._websocket_subscriptions[subscription_id] = {
+            "type": "reorgs",
+            "listener": listener,
+            "active": False  # Would be True if WebSocket connected
+        }
+
+        # TODO: Establish WebSocket connection and register subscription
+        raise NotImplementedError("WebSocket subscriptions require Phase 4 ChainTracks server implementation")
 
     def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a WebSocket subscription (Phase 4).
@@ -311,13 +341,28 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        # TODO: Phase 4 - Implement WebSocket unsubscription
-        raise NotImplementedError("WebSocket unsubscription requires Phase 4 implementation")
+        # Remove subscription from tracking
+        if subscription_id in self._websocket_subscriptions:
+            del self._websocket_subscriptions[subscription_id]
+
+            # TODO: Send unsubscription message over WebSocket if connected
+            # For now, just return success
+            return True
+
+        return False
 
     def destroy(self) -> None:
         """Close all resources.
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
+        # Clean up WebSocket subscriptions
+        self._websocket_subscriptions.clear()
+
+        # Cancel WebSocket task if running
+        if self._websocket_task and not self._websocket_task.done():
+            self._websocket_task.cancel()
+
+        # Close HTTP session
         if self.session:
             self.session.close()
