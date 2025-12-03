@@ -44,6 +44,7 @@ import asyncio
 import json
 import threading
 import time
+import logging
 from typing import Any, TypedDict
 
 from bsv_wallet_toolbox.errors import WalletError
@@ -195,7 +196,8 @@ class ChaintracksService:
                 header = self.chaintracks.find_header_for_height(height) if self.chaintracks else None
                 return header or {"error": "Header not found"}
             except Exception as e:
-                return {"error": str(e)}
+                logging.exception("Error in /header/height/{height} endpoint")
+                return {"error": "An internal server error occurred."}
 
         # Transaction endpoints
         @app.get("/tx/{txid}")
