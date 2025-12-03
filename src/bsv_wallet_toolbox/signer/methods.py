@@ -571,7 +571,12 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
         Certificate result dict
     """
     now = datetime.now(timezone.utc)
-    user_id = auth.get("user_id") if isinstance(auth, dict) else getattr(auth, "user_id", "")
+    user_id = auth.get("userId") if isinstance(auth, dict) else getattr(auth, "userId", None)
+
+    # Validate required fields before database insert
+    subject = vargs.get("subject")
+    if not user_id or not subject:
+        raise ValueError(f"Certificate acquisition failed: user_id={user_id}, subject={subject}. Both must be non-empty.")
 
     # Create certificate record (Python stores fields separately)
     # Note: vargs uses camelCase keys (from JSON), convert to snake_case for Python
@@ -580,7 +585,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
         "updated_at": now,
         "user_id": user_id,
         "type": vargs.get("type"),
-        "subject": vargs.get("subject"),
+        "subject": subject,
         "verifier": (
             vargs.get("certifier") if vargs.get("keyringRevealer") == "certifier" else vargs.get("keyringRevealer")
         ),
@@ -610,13 +615,13 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
             }
             wallet.storage.insert_certificate_field(field_data)
 
-    # Return result
+    # Return result (camelCase keys to match TypeScript API)
     result = {
         "type": vargs.get("type"),
-        "subject": vargs.get("subject"),
-        "serial_number": vargs.get("serial_number"),
+        "subject": subject,
+        "serialNumber": vargs.get("serialNumber"),
         "certifier": vargs.get("certifier"),
-        "revocation_outpoint": vargs.get("revocation_outpoint"),
+        "revocationOutpoint": vargs.get("revocationOutpoint"),
         "signature": vargs.get("signature"),
         "fields": vargs.get("fields", {}),
     }

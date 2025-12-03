@@ -1381,9 +1381,10 @@ class StorageProvider:
         """List certificates (TS-like minimal shape).
 
         Summary:
-            Return a minimal TS-like list result for certificates.
+            Return a minimal TS-like list result for certificates with encrypted fields.
         TS parity:
             Keys match TS list result: {totalCertificates, certificates[]}.
+            Includes encrypted fields for each certificate.
         Args:
             auth: Dict with 'userId'.
             args: Optional certificate filters.
@@ -1394,8 +1395,39 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        rows = self.find_certificates_auth(auth, args)
-        return {"totalCertificates": len(rows), "certificates": rows}
+        # Get basic certificate info
+        basic_certs = self.find_certificates_auth(auth, args)
+
+        # For each certificate, get the encrypted fields
+        user_id = int(auth["userId"])
+        certs_with_fields = []
+        for cert in basic_certs:
+            # Find certificate fields for this certificate
+            field_query = {
+                "certificateId": cert["certificateId"],
+                "userId": user_id
+            }
+            fields_rows = self.find_certificate_fields(field_query)
+
+            # Convert fields to dict format (fieldName -> fieldValue)
+            fields = {f["fieldName"]: f["fieldValue"] for f in fields_rows}
+            master_keyring = {f["fieldName"]: f["masterKey"] for f in fields_rows}
+
+            # Add fields and keyring to certificate
+            cert_with_fields = {
+                "type": cert["type"],
+                "subject": None,  # Will be populated if available
+                "serialNumber": cert["serialNumber"],
+                "certifier": cert["certifier"],
+                "revocationOutpoint": None,  # Will be populated if available
+                "signature": None,  # Will be populated if available
+                "fields": fields,
+                "verifier": None,  # Will be populated if available
+                "keyring": master_keyring
+            }
+            certs_with_fields.append(cert_with_fields)
+
+        return {"totalCertificates": len(certs_with_fields), "certificates": certs_with_fields}
 
     def list_actions(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """List actions with optional filters and detailed information.
