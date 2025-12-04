@@ -592,6 +592,7 @@ def pytest_collection_modifyitems(config: Any, items: list[Any]) -> None:
         # Bulk ingestor integration tests require missing test data files
         "test_default_options_cdn_files": "Requires local test data files (./test_data/chaintracks/cdnTest499/mainNet_*.headers)",
         "test_default_options_cdn_files_nodropall": "Requires local test data files (./test_data/chaintracks/cdnTest499/mainNet_*.headers)",
+        "test_should_create_a_token_if_ephemeral_false_so_subsequent_calls_do_not_re_trigger_if_unexpired": "Performance test - slow execution, can be skipped for faster test runs",
     }
 
     for item in items:

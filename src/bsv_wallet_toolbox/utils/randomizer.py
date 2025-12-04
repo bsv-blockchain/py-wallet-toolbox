@@ -86,7 +86,7 @@ class SecureRandomizer(Randomizer):
         return shuffled
 
 
-class TestRandomizer(Randomizer):
+class _TestRandomizer(Randomizer):
     """Deterministic randomizer for testing.
 
     Provides predictable, deterministic "random" values for testing.
@@ -135,7 +135,7 @@ class TestRandomizer(Randomizer):
 
 # Global instances for convenience
 secure_randomizer = SecureRandomizer()
-test_randomizer = TestRandomizer()
+test_randomizer = _TestRandomizer()
 
 # Default randomizer (can be changed for testing)
 _default_randomizer = secure_randomizer
@@ -163,7 +163,7 @@ def use_test_randomizer(seed: int = 42) -> None:
         seed: Seed for deterministic generation
     """
     global test_randomizer
-    test_randomizer = TestRandomizer(seed)
+    test_randomizer = _TestRandomizer(seed)
     set_default_randomizer(test_randomizer)
 
 

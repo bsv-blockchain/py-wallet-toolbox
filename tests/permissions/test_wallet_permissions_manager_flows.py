@@ -420,7 +420,7 @@ class TestWalletPermissionsManagerFlows:
         await p_call1
 
         # Then - call 2 should NOT re-trigger (token cached)
-        manager.ensure_protocol_permission(
+        await manager.ensure_protocol_permission(
             {
                 "originator": "appdomain.com",
                 "privileged": False,
