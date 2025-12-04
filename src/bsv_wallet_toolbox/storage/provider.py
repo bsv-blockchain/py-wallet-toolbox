@@ -2268,7 +2268,9 @@ class StorageProvider:
             # Convert camelCase column name to snake_case Python attribute
             pk_attr_name = StorageProvider._to_snake_case(pk_col.name)
             pk_value = getattr(obj, pk_attr_name)
-            # Expunge object to prevent session conflicts when querying in other sessions
+            # Expunge object to remove it from the current SQLAlchemy session,
+            # allowing safe re-querying in different sessions/transactions and
+            # preventing potential DetachedInstanceError.
             session.expunge(obj)
             if not trx:
                 session.commit()
