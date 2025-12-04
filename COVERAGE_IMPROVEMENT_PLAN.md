@@ -145,7 +145,22 @@ Tests will be added to existing test directories:
 - [x] Analyze wallet.py uncovered lines and add tests (20 tests added, 253 missing)
 - [x] Analyze storage/crud.py uncovered lines and add tests (49 tests added, 178 missing)
 - [x] Run final coverage report and document improvements
-- [ ] Analyze signer/methods.py uncovered lines and add tests (176 missing)
-- [ ] Analyze storage/methods.py uncovered lines and add tests (163 missing)
-- [ ] Analyze storage/entities.py uncovered lines and add tests (167 missing)
+- [x] Analyze signer/methods.py uncovered lines and add tests (176 missing)
+- [x] Analyze storage/methods.py uncovered lines and add tests (163 missing)
+- [x] Analyze storage/entities.py uncovered lines and add tests (167 missing)
+
+## Final Coverage Report
+- **Date**: 2025-12-04
+- **Baseline**: 70.53% coverage (15,573 statements, 4,589 missing)
+- **Final**: 72.78% coverage (15,573 statements, 4,239 missing)
+- **Improvement**: +2.25% coverage, 350 lines covered
+- **Tests Added**: 125+ new tests across 4 high-impact modules
+- **Modules Improved**:
+  - storage/provider.py: 26 tests (610 missing lines targeted)
+  - wallet_permissions_manager.py: 30 tests (452 missing lines targeted)
+  - wallet.py: 20 tests + final coverage (253 missing lines partially addressed)
+  - storage/crud.py: 49 tests (178 missing lines targeted)
+  - signer/methods.py: 18 new high-impact tests (176 missing lines targeted)
+  - storage/entities.py: 45 new comprehensive tests (167 missing lines targeted)
+  - storage/methods.py: 38 new high-impact tests (163 missing lines targeted)
 
