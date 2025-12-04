@@ -748,9 +748,6 @@ def _make_signable_transaction_result(
     """
     # inputBeef might be empty if there are no inputs or inputs are all change outputs
     # Don't enforce strict validation here - let the signing process handle it
-    # if not prior.dcr.get("inputBeef"):
-    #     raise WalletError("prior.dcr.inputBeef must be valid")
-
     txid = prior.tx.txid()
 
     result = CreateActionResultX()
