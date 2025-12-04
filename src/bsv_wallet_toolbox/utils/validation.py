@@ -164,8 +164,7 @@ def validate_list_outputs_args(args: dict[str, Any]) -> None:
         offset = args["offset"]
         if not isinstance(offset, int) or isinstance(offset, bool):
             raise InvalidParameterError("offset", "an integer")
-        if offset < 0:
-            raise InvalidParameterError("offset", "a non-negative integer")
+        # Negative offsets are allowed (negative = newest first), per docstring.
 
     # knownTxids
     if "knownTxids" in args:
