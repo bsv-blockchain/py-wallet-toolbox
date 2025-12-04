@@ -451,7 +451,7 @@ class TestWalletListCertificates:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_certificates(invalid_args)
 
-    def test_invalid_params_negative_offset_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_negative_offset_accepted(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with negative offset
            When: Call list_certificates
            Then: Returns result (negative offset is allowed)

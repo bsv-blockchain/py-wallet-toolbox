@@ -36,7 +36,6 @@ import inspect
 from collections.abc import Callable
 from time import time
 from typing import Any
-from unittest.mock import Mock
 from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
@@ -59,38 +58,6 @@ MAXINT: int = 0xFFFFFFFF
 BLOCK_LIMIT: int = 500_000_000
 CACHE_TTL_MSECS: int = 120000  # 2-minute TTL for service caches
 
-# Test URL hostname patterns (checked against hostname only, not full URL)
-_TEST_HOSTNAME_PATTERNS = ('mock', 'test', 'localhost')
-_TEST_HOSTNAME_EXACT = ('example.com',)
-
-
-def _is_test_url(url: str) -> bool:
-    """Check if a URL is a test/mock URL by inspecting its hostname.
-
-    This safely parses the URL and checks only the hostname component,
-    avoiding false positives from test-like strings in query params or paths.
-
-    Args:
-        url: The URL to check
-
-    Returns:
-        True if the URL hostname indicates a test scenario
-    """
-    if not url:
-        return False
-    try:
-        parsed = urlparse(url)
-        hostname = (parsed.hostname or '').lower()
-        # Check exact matches
-        if hostname in _TEST_HOSTNAME_EXACT:
-            return True
-        # Check if hostname contains test patterns
-        for pattern in _TEST_HOSTNAME_PATTERNS:
-            if pattern in hostname:
-                return True
-        return False
-    except Exception:
-        return False
 
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
@@ -747,30 +714,6 @@ class Services(WalletServices):
         result: dict[str, Any] = {"notes": []}
         last_error: dict[str, Any] | None = None
 
-        # Handle mocked service collections
-        if isinstance(services, Mock) or not hasattr(services, 'count') or isinstance(services.count, Mock):
-            # For tests, try to call the mocked service
-            try:
-                stc = services.service_to_call
-                r = stc.service(txid, self)
-                # Process the response like normal
-                if isinstance(r, dict) and r.get("notes"):
-                    result["notes"].extend(r["notes"])
-                if "name" not in result:
-                    result["name"] = r.get("name")
-                if isinstance(r, dict) and r.get("merklePath"):
-                    result["merklePath"] = r["merklePath"]
-                    result["header"] = r.get("header")
-                    result["name"] = r.get("name")
-                    result.pop("error", None)
-                    return result
-                # For responses without merklePath, return the result with notes
-                if result["notes"] or result.get("name"):
-                    return result
-            except Exception:
-                pass
-            return {"name": "<noservices>", "notes": []}
-
         for _tries in range(services.count):
             stc = services.service_to_call
             try:
@@ -972,10 +915,6 @@ class Services(WalletServices):
         if use_next:
             services.next()
 
-        # For mocked service collections (tests), return no services available
-        if isinstance(services, Mock) or not hasattr(services, 'count') or isinstance(services.count, Mock):
-            self.utxo_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
-            return result
 
         # Retry loop: up to 2 attempts
         for _retry in range(2):
@@ -1066,9 +1005,6 @@ class Services(WalletServices):
 
         # For mocked service collections (tests), return no services available
         # Allow mock to proceed if it has count set and service_to_call
-        if isinstance(services, Mock) and (not hasattr(services, 'count') or isinstance(services.count, Mock) or not hasattr(services, 'service_to_call')):
-            self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
-            return result
 
         # Failover loop
         for _tries in range(services.count):
@@ -1150,9 +1086,6 @@ class Services(WalletServices):
 
         # For mocked service collections (tests), return no services available
         # Allow mock to proceed if it has count set and service_to_call
-        if isinstance(services, Mock) and (not hasattr(services, 'count') or isinstance(services.count, Mock) or not hasattr(services, 'service_to_call')):
-            self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
-            return result
 
         # Failover loop
         for _tries in range(services.count):
@@ -1197,17 +1130,7 @@ class Services(WalletServices):
             raise InvalidParameterError("beef", "must not be empty")
         if len(beef) % 2 != 0:
             raise InvalidParameterError("beef", "hex string must have even length")
-        # Relax validation for test scenarios (allow minimal hex for mocking)
-        # Check if we're in a test scenario by looking for mock/test URLs or test indicators
-        is_test_scenario = (
-            hasattr(self, 'arc_gorillapool') and self.arc_gorillapool and
-            _is_test_url(getattr(self.arc_gorillapool, 'url', ''))
-        ) or (
-            hasattr(self, 'arc_taal') and self.arc_taal and
-            _is_test_url(getattr(self.arc_taal, 'url', ''))
-        )
-        min_length = 2 if is_test_scenario else 4
-        if len(beef.strip()) < min_length:
+        if len(beef.strip()) < 4:
             raise InvalidParameterError("beef", "too short")
         try:
             bytes.fromhex(beef)
@@ -1219,81 +1142,28 @@ class Services(WalletServices):
         tx = None
         txid = None
         txids = []
-
-        # Check if we're in a test scenario (mock URLs or mock services)
-        services = self.post_beef_services
-        is_test_scenario = (
-            isinstance(services, Mock) or
-            (hasattr(self, 'arc_gorillapool') and self.arc_gorillapool and
-             getattr(self.arc_gorillapool, 'url', '').endswith('arc.mock')) or
-            (hasattr(self, 'arc_taal') and self.arc_taal and
-             getattr(self.arc_taal, 'url', '').endswith('arc.mock'))
-        )
-
-        if is_test_scenario:
-            # Test scenario - use dummy data and create a dummy transaction and Beef
-            txid = "dummy_txid_for_test"
-            txids = [txid]
-            # Create a minimal dummy transaction for provider compatibility
-            tx = Transaction.from_hex("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100ffffffff0100f2052a010000001976a914000000000000000000000000000000000000000088ac00000000")
-            if tx is None:
-                # If even dummy fails, return error
-                return {"accepted": False, "txid": None, "message": "Failed to create dummy transaction"}
-
-            # Create a mock Beef object for providers that expect Beef
-            class MockBeef:
-                def __init__(self, tx, txid):
-                    self.tx = tx
-                    self.txid = txid
-
-                def find_transaction(self, txid):
-                    if txid == self.txid:
-                        return self.tx
-                    return None
-
-                def to_hex(self):
-                    return tx.to_hex() if hasattr(tx, 'to_hex') else str(tx)
-
-            beef_obj = MockBeef(tx, txid)
-        else:
-            # Parse BEEF data - try BEEF format first, fallback to raw transaction
-            beef_bytes = bytes.fromhex(beef)
+        # Parse BEEF data - try BEEF format first, fallback to raw transaction
+        beef_bytes = bytes.fromhex(beef)
+        try:
+            # Try to parse as BEEF format
+            beef_obj = parse_beef(beef_bytes)
+            # Get transaction IDs from BEEF
+            if hasattr(beef_obj, 'txs'):
+                txids = [tx.txid() if hasattr(tx, 'txid') else str(i) for i, tx in enumerate(beef_obj.txs)]
+                txid = txids[0] if txids else None
+            else:
+                txid = "unknown_txid"
+                txids = [txid]
+        except Exception:
+            # Fallback: try to parse as raw transaction hex
             try:
-                # Try to parse as BEEF format
-                beef_obj = parse_beef(beef_bytes)
-                # Get transaction IDs from BEEF
-                if hasattr(beef_obj, 'txs'):
-                    txids = [tx.txid() if hasattr(tx, 'txid') else str(i) for i, tx in enumerate(beef_obj.txs)]
-                    txid = txids[0] if txids else None
-                else:
-                    txid = "unknown_txid"
-                    txids = [txid]
-            except Exception:
-                # Fallback: try to parse as raw transaction hex
-                try:
-                    tx = Transaction.from_hex(beef)
-                    if tx is None:
-                        raise InvalidParameterError("beef", "invalid transaction hex")
-                    txid = tx.txid()
-                    txids = [txid]
-                except Exception as e:
-                    raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {e!s}") from e
-
-
-        # For test scenarios with mock HTTP client, return mock response
-        if hasattr(self, '_test_mock_http_client') and self._test_mock_http_client:
-            mock_response = self._test_mock_http_client.post.return_value
-            if mock_response and hasattr(mock_response, 'json'):
-                try:
-                    response_data = mock_response.json()
-                    return {
-                        "accepted": response_data.get("accepted", True),
-                        "txid": response_data.get("txid", txid),
-                        "message": response_data.get("message", "Mock response"),
-                        **response_data  # Include any other fields like doubleSpend
-                    }
-                except:
-                    pass
+                tx = Transaction.from_hex(beef)
+                if tx is None:
+                    raise InvalidParameterError("beef", "invalid transaction hex")
+                txid = tx.txid()
+                txids = [txid]
+            except Exception as e:
+                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {e!s}") from e
 
         # Try each provider in priority order
         last_error: str | None = None
