@@ -252,11 +252,7 @@ async def parse_results(lookup_result: dict[str, Any]) -> list[VerifiableCertifi
             decoded_output = PushDrop.decode(locking_script)
 
             # Parse certificate JSON from first field
-<<<<<<< HEAD
             cert_json_str = to_utf8(decoded_output["fields"][0])
-=======
-            cert_json_str = to_utf8(decoded_output.fields[0])
->>>>>>> 4c5c48c (Fixing pytest)
             certificate_data = json.loads(cert_json_str)
 
             # Create BsvVerifiableCertificate instance using py-sdk
