@@ -601,10 +601,6 @@ class Services(WalletServices):
         if use_next:
             services.next()
 
-        # For mocked service collections (tests), return None
-        # if isinstance(services, Mock) or not hasattr(services, 'count') or isinstance(services.count, Mock):
-        #     return None
-
         result: dict[str, Any] = {"txid": txid}
 
         for _tries in range(services.count):
