@@ -295,20 +295,20 @@ class TestWalletListActions:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.list_actions(invalid_args)
 
-    def test_invalid_params_negative_offset_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_negative_offset_accepted(self, wallet_with_storage: Wallet) -> None:
         """Given: ListActionsArgs with negative offset
            When: Call list_actions
-           Then: Raises InvalidParameterError
+           Then: Negative offset is accepted (negative = newest first)
         """
         # Given
-        invalid_args = {
+        args = {
             "labels": [],
             "offset": -1
         }
 
-        # When/Then
-        with pytest.raises((InvalidParameterError, ValueError)):
-            wallet_with_storage.list_actions(invalid_args)
+        # When/Then - Should not raise an error
+        result = wallet_with_storage.list_actions(args)
+        assert isinstance(result, dict)
 
     def test_invalid_params_wrong_limit_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListActionsArgs with wrong limit type

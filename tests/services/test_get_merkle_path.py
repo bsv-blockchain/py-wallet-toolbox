@@ -7,7 +7,7 @@ Reference: wallet-toolbox/src/services/__tests/getMerklePath.test.ts
 
 import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch, AsyncMock, PropertyMock
 
 try:
     from bsv_wallet_toolbox.services import Services
@@ -37,11 +37,17 @@ def mock_services(valid_services_config):
     """Fixture providing mock services instance."""
     with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
         mock_instance = Mock()
+        # Set count property to return 1 (number of mock services)
+        type(mock_instance).count = PropertyMock(return_value=1)
+        # Set service_to_call to return a mock with service attribute
+        mock_stc = Mock()
+        mock_instance.service_to_call = mock_stc
+        mock_instance.next = Mock()  # No-op for next()
         mock_service_collection.return_value = mock_instance
 
         with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=Mock()):
             services = Services(valid_services_config)
-            yield services, mock_instance
+            yield services, mock_instance, mock_stc
 
 
 @pytest.fixture
@@ -175,7 +181,7 @@ class TestGetMerklePath:
            When: Call get_merkle_path with invalid txids
            Then: Handles invalid formats appropriately
         """
-        services, _ = mock_services
+        services, _, _ = mock_services
 
         for invalid_txid in invalid_txids:
             # Should handle invalid txid formats gracefully
@@ -188,13 +194,13 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles server error appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock service to return error
         async def mock_get_merkle_path_error(txid, services=None):
             raise Exception("HTTP 500: Internal Server Error")
 
-        mock_instance.get_merkle_path = mock_get_merkle_path_error
+        mock_stc.service = mock_get_merkle_path_error
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -206,14 +212,14 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles timeout appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock service to timeout
         async def mock_get_merkle_path_timeout(txid, services=None):
             await asyncio.sleep(0.1)  # Simulate timeout
             raise asyncio.TimeoutError("Connection timeout")
 
-        mock_instance.get_merkle_path = mock_get_merkle_path_timeout
+        mock_stc.service = mock_get_merkle_path_timeout
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -225,13 +231,13 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles rate limiting appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock service to return rate limit error
         async def mock_get_merkle_path_rate_limit(txid, services=None):
             raise Exception("HTTP 429: Rate limit exceeded")
 
-        mock_instance.get_merkle_path = mock_get_merkle_path_rate_limit
+        mock_stc.service = mock_get_merkle_path_rate_limit
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -243,13 +249,13 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles not found appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock service to return 404
         async def mock_get_merkle_path_not_found(txid, services=None):
             raise Exception("HTTP 404: Transaction not found")
 
-        mock_instance.get_merkle_path = mock_get_merkle_path_not_found
+        mock_stc.service = mock_get_merkle_path_not_found
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -261,13 +267,13 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles malformed response appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock service to return malformed data
         async def mock_get_merkle_path_malformed(txid, services=None):
             raise Exception("Invalid JSON response")
 
-        mock_instance.get_merkle_path = mock_get_merkle_path_malformed
+        mock_stc.service = mock_get_merkle_path_malformed
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -279,13 +285,13 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles connection error appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock service to raise connection error
         async def mock_get_merkle_path_connection_error(txid, services=None):
             raise ConnectionError("Network is unreachable")
 
-        mock_instance.get_merkle_path = mock_get_merkle_path_connection_error
+        mock_stc.service = mock_get_merkle_path_connection_error
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -297,12 +303,10 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Returns the merkle path data
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Set up the mocked service
-        mock_service_to_call = Mock()
-        mock_service_to_call.service = Mock(return_value=valid_merkle_path_response)
-        mock_instance.service_to_call = mock_service_to_call
+        mock_stc.service = Mock(return_value=valid_merkle_path_response)
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -314,16 +318,14 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Returns merkle path data
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Mock successful response
         def mock_get_merkle_path_success(txid, services_obj):
             return valid_merkle_path_response
 
         # Set up the mocked service
-        mock_service_to_call = Mock()
-        mock_service_to_call.service = mock_get_merkle_path_success
-        mock_instance.service_to_call = mock_service_to_call
+        mock_stc.service = mock_get_merkle_path_success
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -335,7 +337,7 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles different chains appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         test_cases = [
             ("main", "d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805"),
@@ -349,9 +351,7 @@ class TestGetMerklePath:
                 return response
 
             # Set up the mocked service
-            mock_service_to_call = Mock()
-            mock_service_to_call.service = mock_get_merkle_path_chain
-            mock_instance.service_to_call = mock_service_to_call
+            mock_stc.service = mock_get_merkle_path_chain
 
             result = await services.get_merkle_path(txid)
             assert isinstance(result, dict)
@@ -364,7 +364,7 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles large response appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Create large merkle path response (simulate complex merkle tree)
         large_response = {
@@ -399,9 +399,7 @@ class TestGetMerklePath:
             return large_response
 
         # Set up the mocked service
-        mock_service_to_call = Mock()
-        mock_service_to_call.service = mock_get_merkle_path_large
-        mock_instance.service_to_call = mock_service_to_call
+        mock_stc.service = mock_get_merkle_path_large
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -414,7 +412,7 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles gracefully
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
        # Even though txids are hex, test unicode handling
         unicode_txid = "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"
@@ -423,9 +421,7 @@ class TestGetMerklePath:
             return valid_merkle_path_response
 
         # Set up the mocked service
-        mock_service_to_call = Mock()
-        mock_service_to_call.service = mock_get_merkle_path_unicode
-        mock_instance.service_to_call = mock_service_to_call
+        mock_stc.service = mock_get_merkle_path_unicode
 
         result = await services.get_merkle_path(unicode_txid)
         assert isinstance(result, dict)
@@ -437,7 +433,7 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Handles empty path appropriately
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         empty_response = {
             "name": "WoCTsc",
@@ -448,9 +444,7 @@ class TestGetMerklePath:
             return empty_response
 
         # Set up the mocked service
-        mock_service_to_call = Mock()
-        mock_service_to_call.service = mock_get_merkle_path_empty
-        mock_instance.service_to_call = mock_service_to_call
+        mock_stc.service = mock_get_merkle_path_empty
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
@@ -463,16 +457,14 @@ class TestGetMerklePath:
            When: Call get_merkle_path
            Then: Successfully falls back to working provider
         """
-        services, mock_instance = mock_services
+        services, mock_instance, mock_stc = mock_services
 
         # Simulate provider list with fallback - simplified for mocked environment
         def mock_multi_provider_fallback(txid, services_obj):
             return valid_merkle_path_response
 
         # Set up the mocked service
-        mock_service_to_call = Mock()
-        mock_service_to_call.service = mock_multi_provider_fallback
-        mock_instance.service_to_call = mock_service_to_call
+        mock_stc.service = mock_multi_provider_fallback
 
         result = await services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)

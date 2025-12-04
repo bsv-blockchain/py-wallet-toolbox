@@ -170,20 +170,20 @@ class TestWalletListOutputs:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_outputs(invalid_args)
 
-    def test_invalid_params_negative_offset(self, wallet_with_storage: Wallet) -> None:
+    def test_negative_offset_accepted(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with negative offset
            When: Call list_outputs
-           Then: Raises InvalidParameterError
+           Then: Negative offset is accepted (negative = newest first)
 
         Reference: wallet-toolbox/test/wallet/list/listOutputs.test.ts
                    test('0 invalid params with originator')
         """
         # Given
-        invalid_args = {"basket": "default", "offset": -1}  # Negative offset
+        args = {"basket": "default", "offset": -1}  # Negative offset
 
-        # When / Then
-        with pytest.raises(InvalidParameterError):
-            wallet_with_storage.list_outputs(invalid_args)
+        # When / Then - Should not raise an error
+        result = wallet_with_storage.list_outputs(args)
+        assert isinstance(result, dict)
 
     def test_invalid_originator_too_long(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid args but originator exceeding 250 characters

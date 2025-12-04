@@ -203,8 +203,11 @@ def validate_list_actions_args(args: dict[str, Any] | None) -> None:
 
     if "offset" in args:
         offset = args["offset"]
-        if not isinstance(offset, int) or offset < 0 or offset > MAX_PAGINATION_OFFSET:
-            raise InvalidParameterError("offset", f"must be 0..{MAX_PAGINATION_OFFSET}")
+        if not isinstance(offset, int) or isinstance(offset, bool):
+            raise InvalidParameterError("offset", "an integer")
+        # Negative offsets are allowed (negative = newest first)
+        if offset > MAX_PAGINATION_OFFSET:
+            raise InvalidParameterError("offset", f"must be <= {MAX_PAGINATION_OFFSET}")
 
     if "labelQueryMode" in args:
         lqm = args["labelQueryMode"]
