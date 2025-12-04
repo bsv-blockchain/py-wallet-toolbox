@@ -42,6 +42,8 @@ from src import (
     demo_get_height,
     demo_get_header_for_height,
     demo_wait_for_authentication,
+    # transactions
+    demo_internalize_action,
 )
 
 
@@ -150,9 +152,12 @@ class WalletDemo:
         print(" 23. Discover by identity key")
         print(" 24. Discover by attributes")
         print()
+        print("[Transactions]")
+        print(" 25. Internalize external transaction")
+        print()
         print("[Blockchain info]")
-        print(" 25. Get block height")
-        print(" 26. Get block header for height")
+        print(" 26. Get block height")
+        print(" 27. Get block header for height")
         print()
         print("  0. Exit demo")
         print("=" * 70)
@@ -176,7 +181,7 @@ class WalletDemo:
 
         while True:
             self.show_menu()
-            choice = input("\nSelect a menu option (0-26): ").strip()
+            choice = input("\nSelect a menu option (0-27): ").strip()
 
             if choice == "0":
                 print("\n" + "=" * 70)
@@ -322,16 +327,22 @@ class WalletDemo:
                 if not self.wallet:
                     print("\n❌ Wallet is not initialized.")
                 else:
-                    demo_get_height(self.wallet)
+                    demo_internalize_action(self.wallet, self.network)
 
             elif choice == "26":
+                if not self.wallet:
+                    print("\n❌ Wallet is not initialized.")
+                else:
+                    demo_get_height(self.wallet)
+
+            elif choice == "27":
                 if not self.wallet:
                     print("\n❌ Wallet is not initialized.")
                 else:
                     demo_get_header_for_height(self.wallet)
 
             else:
-                print("\n❌ Invalid choice. Please type a number between 0 and 26.")
+                print("\n❌ Invalid choice. Please type a number between 0 and 27.")
 
             input("\nPress Enter to continue...")
 
