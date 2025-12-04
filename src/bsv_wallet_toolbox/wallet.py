@@ -616,17 +616,12 @@ class Wallet:
         
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
-<<<<<<< HEAD
         auth = args.get("auth")
         if not auth:
             auth = self._make_auth()
             # Avoid mutating caller's dict
             args = {**args, "auth": auth}
 
-=======
-        # Use provided auth or generate from wallet's identity
-        auth = args.get("auth") if "auth" in args else self._make_auth()
->>>>>>> cd2ec07 (BRC-100 compatibility implemented and tested, 215 failures remaing)
         return self.storage.list_outputs(auth, args)
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
