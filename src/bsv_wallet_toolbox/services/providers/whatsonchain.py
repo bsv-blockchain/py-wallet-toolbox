@@ -14,6 +14,7 @@ Reference:
     - toolbox/ts-wallet-toolbox/src/services/providers/SdkWhatsOnChain.ts
 """
 
+import asyncio
 from typing import Any
 from urllib.parse import urlencode
 
@@ -28,6 +29,7 @@ from ..chaintracker.chaintracks.api import (
     ReorgListener,
 )
 from ..wallet_services import Chain
+from ..merkle_path_utils import convert_proof_to_merkle_path
 
 
 class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
@@ -356,26 +358,80 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
+        result: dict[str, Any] = {"name": "WoCTsc", "notes": []}
+        headers = WhatsOnChainTracker.get_headers(self)
+        request_options = {"method": "GET", "headers": headers}
+        url = f"{self.URL}/tx/{txid}/proof/tsc"
+
         try:
-            request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
-            # Endpoint path is not critical; tests will monkeypatch fetch()
-            response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/merklepath", request_options)
-            if response.ok:
-                body = response.json() or {}
-                return body
-            if response.status_code == 404:
-                # Match TS tests expected empty result shape
-                return {
-                    "name": "WoCTsc",
-                    "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}],
-                }
-            raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
-        except Exception:
-            # Handle connection errors - return no data result
-            return {
+            response = await self.http_client.fetch(url, request_options)
+            note_base = {
                 "name": "WoCTsc",
-                "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}],
+                "txid": txid,
+                "url": url,
+                "status": response.status_code,
+                "statusText": getattr(response, "status_text", None),
             }
+
+            if response.status_code == 429:
+                result["notes"].append({**note_base, "what": "getMerklePathRetry"})
+                await asyncio.sleep(2)
+                response = await self.http_client.fetch(url, request_options)
+                note_base["status"] = response.status_code
+                note_base["statusText"] = getattr(response, "status_text", None)
+
+            if response.status_code == 404:
+                result["notes"].append({**note_base, "what": "getMerklePathNotFound"})
+                return result
+
+            if not response.ok or response.status_code != 200:
+                result["notes"].append({**note_base, "what": "getMerklePathBadStatus"})
+                result["error"] = {
+                    "message": f"Unexpected WhatsOnChain status {response.status_code}",
+                    "code": "HTTP_ERROR",
+                }
+                return result
+
+            body = response.json() or {}
+            payload = body.get("data") if isinstance(body, dict) else body
+            if not payload:
+                result["notes"].append({**note_base, "what": "getMerklePathNoData"})
+                return result
+
+            proofs = payload if isinstance(payload, list) else [payload]
+            proof_entry = proofs[0] if proofs else None
+            if not proof_entry:
+                result["notes"].append({**note_base, "what": "getMerklePathNoData"})
+                return result
+
+            proof_target = proof_entry.get("target")
+            header = None
+            if proof_target and hasattr(services, "hash_to_header_async"):
+                try:
+                    header = await services.hash_to_header_async(proof_target)
+                except Exception as exc:  # noqa: PERF203
+                    result["notes"].append({**note_base, "what": "getMerklePathNoHeader", "error": str(exc)})
+
+            proof_dict = {
+                "index": proof_entry.get("index", 0),
+                "nodes": proof_entry.get("nodes") or [],
+                "height": header.get("height") if isinstance(header, dict) else getattr(header, "height", None),
+            }
+
+            merkle_path = convert_proof_to_merkle_path(txid, proof_dict)
+            result["merklePath"] = {
+                "index": merkle_path.index,
+                "nodes": merkle_path.nodes,
+                "height": merkle_path.height,
+            }
+            if header:
+                result["header"] = header
+            result["notes"].append({**note_base, "what": "getMerklePathSuccess"})
+            return result
+        except Exception as exc:  # noqa: PERF203
+            result["notes"].append({"name": "WoCTsc", "what": "getMerklePathCatch", "error": str(exc)})
+            result["error"] = {"message": str(exc), "code": "NETWORK_ERROR"}
+            return result
 
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Fetch the current BSV/USD exchange rate (TS-compatible shape).
