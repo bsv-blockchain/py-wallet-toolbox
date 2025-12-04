@@ -44,6 +44,7 @@ from .chaintracks_service_client import ChaintracksServiceClient
 from .chaintracks_storage import ChaintracksStorage, ChaintracksStorageMemory
 from .chaintracks.models import FiatExchangeRates
 from .chaintracks.bulk_manager import BulkManager
+from .chaintracks_chain_tracker import ChaintracksChainTracker
 
 __all__ = [
     "ChaintracksService",
@@ -52,4 +53,5 @@ __all__ = [
     "ChaintracksStorageMemory",
     "FiatExchangeRates",
     "BulkManager",
+    "ChaintracksChainTracker",
 ]

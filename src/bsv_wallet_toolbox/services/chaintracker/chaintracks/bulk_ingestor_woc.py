@@ -1,168 +1,138 @@
-"""Bulk ingestor for WhatsOnChain bulk header data.
+"""WhatsOnChain bulk ingestor for blockchain headers.
 
-Downloads and processes bulk header files from WhatsOnChain CDN
-following the Go implementation pattern.
+Provides bulk ingestion of blockchain headers from WhatsOnChain API.
 
 Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/bulk_ingestor_woc.go
 """
 
-import asyncio
 import logging
-from typing import Any
+from typing import List, Tuple, Callable, Any, Optional, Dict
+import asyncio
+import re
 
-from .ingest import BulkIngestor
-from .models import HeightRange
-from .util.height_range import HeightRange as HeightRangeUtil
+from .bulk_ingestor_interface import BulkIngestor, BulkHeaderMinimumInfo
+from .woc_client import WOCClient
+from ...wallet_services import Chain
+
 
 logger = logging.getLogger(__name__)
 
 
-class BulkIngestorWOCOptions:
-    """Options for WhatsOnChain bulk ingestor."""
-
-    def __init__(
-        self,
-        bulk_files_url: str = "https://headers.chaintracks.io/bulk-files",
-        max_concurrent_downloads: int = 3,
-        chunk_size: int = 1000,
-    ):
-        self.bulk_files_url = bulk_files_url
-        self.max_concurrent_downloads = max_concurrent_downloads
-        self.chunk_size = chunk_size
-
-
 class BulkIngestorWOC(BulkIngestor):
-    """Bulk ingestor that downloads header data from WhatsOnChain CDN.
+    """Bulk ingestor that downloads headers from WhatsOnChain API."""
 
-    Downloads bulk header files in parallel and processes them into
-    block header data for storage.
-
-    Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/bulk_ingestor_woc.go
-    """
-
-    def __init__(self, options: BulkIngestorWOCOptions | None = None):
+    def __init__(self, chain: Chain, api_key: Optional[str] = None):
         """Initialize WOC bulk ingestor.
 
         Args:
-            options: Configuration options for the ingestor
+            chain: Blockchain network
+            api_key: Optional WhatsOnChain API key
         """
-        self.options = options or BulkIngestorWOCOptions()
-        self.logger = logging.getLogger(f"{__name__}.BulkIngestorWOC")
+        self.chain = chain
+        self.api_key = api_key
+        self.woc_client = WOCClient(chain, api_key)
 
-    async def synchronize(
-        self,
-        present_height: int,
-        missing_range: HeightRange
-    ) -> list[Any]:
-        """Synchronize bulk header data for missing height range.
+        logger.info(f"BulkIngestorWOC initialized for {chain} chain")
 
-        Downloads bulk header files from WOC CDN and processes them
-        into block header data.
+    async def synchronize(self, present_height: int, range_to_fetch: Any) \
+            -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
+        """Synchronize bulk headers for the given height range.
 
         Args:
             present_height: Current blockchain height
-            missing_range: Range of heights that need data
+            range_to_fetch: HeightRange to synchronize
 
         Returns:
-            List of block header data
+            Tuple of (file_infos, downloader_func)
+
+        Raises:
+            Exception: If synchronization fails
         """
-        self.logger.info(f"Synchronizing bulk headers for range {missing_range}")
+        try:
+            # Fetch available bulk files
+            all_files = await asyncio.get_event_loop().run_in_executor(
+                None, self._fetch_bulk_header_files_info
+            )
 
-        # Convert HeightRange to HeightRangeUtil for processing
-        height_range_util = HeightRangeUtil(missing_range.start, missing_range.end)
+            if not all_files:
+                raise Exception("No bulk header files available from WhatsOnChain")
 
-        # Calculate which bulk files we need
-        bulk_files_needed = self._calculate_bulk_files_needed(height_range_util)
+            # Filter files that overlap with requested range
+            needed_files = []
+            for file_info in all_files:
+                if file_info['height_range'].overlaps(range_to_fetch):
+                    needed_files.append(file_info)
 
-        # Download bulk files in parallel (with concurrency limit)
-        semaphore = asyncio.Semaphore(self.options.max_concurrent_downloads)
-        tasks = []
+            # Convert to BulkHeaderMinimumInfo
+            result = []
+            for file_info in needed_files:
+                hr = file_info['height_range']
+                result.append(BulkHeaderMinimumInfo(
+                    first_height=hr.min_height,
+                    count=hr.length(),
+                    file_name=file_info['filename'],
+                    source_url=file_info['url']
+                ))
 
-        for file_info in bulk_files_needed:
-            task = asyncio.create_task(self._download_and_process_bulk_file(file_info, semaphore))
-            tasks.append(task)
+            return result, self._bulk_file_downloader()
 
-        # Wait for all downloads to complete
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        except Exception as e:
+            raise Exception(f"Failed to synchronize bulk headers: {e}") from e
 
-        # Process results and handle errors
-        all_headers = []
-        for result in results:
-            if isinstance(result, Exception):
-                self.logger.error(f"Bulk file download failed: {result}")
-                continue
-            all_headers.extend(result)
-
-        self.logger.info(f"Downloaded {len(all_headers)} headers from {len(bulk_files_needed)} bulk files")
-        return all_headers
-
-    def _calculate_bulk_files_needed(self, height_range: HeightRangeUtil) -> list[dict[str, Any]]:
-        """Calculate which bulk files are needed for the height range.
-
-        Args:
-            height_range: Range of heights needed
+    def _fetch_bulk_header_files_info(self) -> List[Dict[str, Any]]:
+        """Fetch metadata about available bulk header files.
 
         Returns:
-            List of bulk file information
+            List of file info dictionaries
         """
-        # Bulk files are typically organized by height ranges (e.g., 0-10000, 10001-20000, etc.)
-        # This is a simplified implementation - real implementation would query available files
-        bulk_files = []
+        files = self.woc_client.get_headers_resource_list()
 
-        chunk_size = 10000  # Typical bulk file size
-        start_chunk = (height_range.start // chunk_size) * chunk_size
-        end_chunk = ((height_range.end // chunk_size) + 1) * chunk_size
+        result = []
+        # Parse filenames like "mainNet_0.headers", "testNet_4.headers"
+        pattern = r'^(main|test)Net_(\d+)\.headers$'
 
-        for chunk_start in range(start_chunk, end_chunk, chunk_size):
-            chunk_end = min(chunk_start + chunk_size - 1, height_range.end)
-            if chunk_start > height_range.end:
-                break
+        for filename in files:
+            match = re.match(pattern, filename)
+            if match:
+                network = match.group(1)
+                file_id = int(match.group(2))
 
-            bulk_files.append({
-                "start_height": chunk_start,
-                "end_height": chunk_end,
-                "filename": "03d",
-                "url": f"{self.options.bulk_files_url}/{chunk_start:06d}_{chunk_end:06d}.bulk"
-            })
+                # Skip if network doesn't match our chain
+                if network == 'main' and self.chain != 'main':
+                    continue
+                if network == 'test' and self.chain != 'test':
+                    continue
 
-        return bulk_files
+                # Calculate height range (assuming 100,000 headers per file like Go implementation)
+                headers_per_file = 100000
+                first_height = file_id * headers_per_file
+                count = headers_per_file
 
-    async def _download_and_process_bulk_file(
-        self,
-        file_info: dict[str, Any],
-        semaphore: asyncio.Semaphore
-    ) -> list[dict[str, Any]]:
-        """Download and process a single bulk header file.
+                # Create download URL
+                url = f"{self.woc_client._get_base_url()}/block/headers/download/{filename}"
 
-        Args:
-            file_info: Information about the bulk file to download
-            semaphore: Semaphore for concurrency control
+                from .util.height_range import HeightRange
+                height_range = HeightRange.new_height_range(first_height, first_height + count - 1)
+
+                result.append({
+                    'filename': filename,
+                    'url': url,
+                    'height_range': height_range,
+                    'file_id': file_id
+                })
+
+        return result
+
+    def _bulk_file_downloader(self) -> Callable:
+        """Create bulk file downloader function.
 
         Returns:
-            List of processed block headers
+            Function that downloads bulk files
         """
-        async with semaphore:
-            url = file_info["url"]
-            start_height = file_info["start_height"]
-            end_height = file_info["end_height"]
+        def downloader(file_info: BulkHeaderMinimumInfo) -> bytes:
+            if not file_info.source_url:
+                raise Exception("SourceURL is required for WhatsOnChain bulk file downloader")
+            logger.info(f"Downloading bulk header file {file_info.file_name}")
+            return self.woc_client.download_header_file(file_info.source_url)
 
-            try:
-                self.logger.debug(f"Downloading bulk file: {url}")
-
-                # TODO: Implement actual HTTP download
-                # For now, return mock data structure
-                headers = []
-                for height in range(start_height, end_height + 1):
-                    headers.append({
-                        "height": height,
-                        "hash": "02x",  # Mock hash
-                        "header": "080",  # Mock 80-byte header
-                        "timestamp": 1234567890,  # Mock timestamp
-                    })
-
-                self.logger.debug(f"Processed {len(headers)} headers from {url}")
-                return headers
-
-            except Exception as e:
-                self.logger.error(f"Failed to download/process bulk file {url}: {e}")
-                raise
+        return downloader
