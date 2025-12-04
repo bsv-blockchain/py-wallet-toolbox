@@ -3,7 +3,7 @@
 import pytest
 
 from bsv_wallet_toolbox.utils.randomizer import (
-    Randomizer, SecureRandomizer, TestRandomizer,
+    Randomizer, SecureRandomizer, _TestRandomizer,
     get_default_randomizer, set_default_randomizer,
     use_test_randomizer, use_secure_randomizer
 )
@@ -53,8 +53,8 @@ class TestTestRandomizer:
 
     def test_deterministic_bytes(self):
         """Test that test randomizer produces deterministic results."""
-        rand1 = TestRandomizer(seed=42)
-        rand2 = TestRandomizer(seed=42)
+        rand1 = _TestRandomizer(seed=42)
+        rand2 = _TestRandomizer(seed=42)
 
         bytes1 = rand1.random_bytes(10)
         bytes2 = rand2.random_bytes(10)
@@ -63,8 +63,8 @@ class TestTestRandomizer:
 
     def test_deterministic_int(self):
         """Test that test randomizer produces deterministic integers."""
-        rand1 = TestRandomizer(seed=123)
-        rand2 = TestRandomizer(seed=123)
+        rand1 = _TestRandomizer(seed=123)
+        rand2 = _TestRandomizer(seed=123)
 
         for _ in range(5):
             assert rand1.random_int(0, 100) == rand2.random_int(0, 100)
@@ -73,8 +73,8 @@ class TestTestRandomizer:
         """Test that test randomizer produces deterministic shuffles."""
         original = [1, 2, 3, 4, 5]
 
-        rand1 = TestRandomizer(seed=99)
-        rand2 = TestRandomizer(seed=99)
+        rand1 = _TestRandomizer(seed=99)
+        rand2 = _TestRandomizer(seed=99)
 
         shuffled1 = rand1.shuffle(original.copy())
         shuffled2 = rand2.shuffle(original.copy())
@@ -91,7 +91,7 @@ class TestRandomizerManagement:
         original = get_default_randomizer()
 
         # Set a test randomizer
-        test_rand = TestRandomizer()
+        test_rand = _TestRandomizer()
         set_default_randomizer(test_rand)
         assert get_default_randomizer() is test_rand
 
@@ -106,7 +106,7 @@ class TestRandomizerManagement:
         use_test_randomizer(seed=42)
         current = get_default_randomizer()
 
-        assert isinstance(current, TestRandomizer)
+        assert isinstance(current, _TestRandomizer)
         assert current.seed == 42
 
         # Restore

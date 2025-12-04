@@ -344,13 +344,13 @@ class TestExchangeRates:
     def test_update_exchange_rates_empty_currency_list(self, mock_services) -> None:
         """Given: Empty currency list
            When: Call update_exchange_rates
-           Then: Handles empty list appropriately
+           Then: Raises InvalidParameterError appropriately
         """
         services, _ = mock_services
 
-        # Should handle empty currency list
-        result = update_exchangeratesapi([], services.options)
-        assert result is not None or isinstance(result, dict)
+        # Should reject empty currency list with InvalidParameterError
+        with pytest.raises(InvalidParameterError, match="target_currencies must be a non-empty list"):
+            asyncio.run(update_exchangeratesapi([], services.options))
 
     @pytest.mark.asyncio
     async def test_update_exchange_rates_single_currency(self, mock_services, valid_currencies) -> None:
@@ -387,7 +387,7 @@ class TestExchangeRates:
 
         # Should handle lowercase currencies (may convert to uppercase or reject)
         try:
-            result = update_exchangeratesapi(lowercase_currencies, services.options)
+            result = asyncio.run(update_exchangeratesapi(lowercase_currencies, services.options))
             assert result is not None or isinstance(result, dict)
         except (InvalidParameterError, ValueError):
             # Expected if lowercase is not supported
@@ -406,7 +406,7 @@ class TestExchangeRates:
             invalid_options["exchangeratesapi_key"] = invalid_key
 
             try:
-                result = update_exchangeratesapi(valid_currencies, invalid_options)
+                result = asyncio.run(update_exchangeratesapi(valid_currencies, invalid_options))
                 # Should handle invalid API key gracefully
                 assert result is not None or isinstance(result, dict)
             except Exception:
@@ -424,9 +424,9 @@ class TestExchangeRates:
         async def mock_malformed_response(currencies, options):
             raise Exception("Invalid JSON response")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi', side_effect=mock_malformed_response):
+        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=Exception("Invalid JSON response")):
             try:
-                result = update_exchangeratesapi(valid_currencies, services.options)
+                result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle malformed response gracefully
                 assert result is not None or isinstance(result, dict)
             except Exception:
@@ -445,9 +445,13 @@ class TestExchangeRates:
             await asyncio.sleep(0.1)
             raise asyncio.TimeoutError("Connection timeout")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi', side_effect=mock_timeout_response):
+        async def mock_timeout_io(api_key):
+            await asyncio.sleep(0.1)
+            raise asyncio.TimeoutError("Connection timeout")
+
+        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=mock_timeout_io):
             try:
-                result = update_exchangeratesapi(valid_currencies, services.options)
+                result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle timeout gracefully
                 assert result is not None or isinstance(result, dict)
             except asyncio.TimeoutError:
@@ -465,9 +469,9 @@ class TestExchangeRates:
         async def mock_rate_limit_response(currencies, options):
             raise Exception("HTTP 429: Rate limit exceeded")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi', side_effect=mock_rate_limit_response):
+        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=Exception("HTTP 429: Rate limit exceeded")):
             try:
-                result = update_exchangeratesapi(valid_currencies, services.options)
+                result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle rate limiting gracefully
                 assert result is not None or isinstance(result, dict)
             except Exception:
@@ -485,9 +489,9 @@ class TestExchangeRates:
         async def mock_connection_error_response(currencies, options):
             raise ConnectionError("Network is unreachable")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi', side_effect=mock_connection_error_response):
+        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=ConnectionError("Network is unreachable")):
             try:
-                result = update_exchangeratesapi(valid_currencies, services.options)
+                result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle connection error gracefully
                 assert result is not None or isinstance(result, dict)
             except ConnectionError:
@@ -505,7 +509,7 @@ class TestExchangeRates:
         duplicate_currencies = valid_currencies[:2] + valid_currencies[:2]
 
         try:
-            result = update_exchangeratesapi(duplicate_currencies, services.options)
+            result = asyncio.run(update_exchangeratesapi(duplicate_currencies, services.options))
             # Should handle duplicates gracefully
             assert result is not None or isinstance(result, dict)
         except Exception:
@@ -523,7 +527,7 @@ class TestExchangeRates:
         many_currencies = [f"CUR{i:03d}" for i in range(100)]
 
         try:
-            result = update_exchangeratesapi(many_currencies, services.options)
+            result = asyncio.run(update_exchangeratesapi(many_currencies, services.options))
             # Should handle large requests gracefully
             assert result is not None or isinstance(result, dict)
         except Exception:

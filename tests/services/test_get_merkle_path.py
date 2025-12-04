@@ -197,7 +197,7 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return error
-        async def mock_get_merkle_path_error(txid, services=None):
+        def mock_get_merkle_path_error(txid, services=None):
             raise Exception("HTTP 500: Internal Server Error")
 
         mock_stc.service = mock_get_merkle_path_error
@@ -215,8 +215,7 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to timeout
-        async def mock_get_merkle_path_timeout(txid, services=None):
-            await asyncio.sleep(0.1)  # Simulate timeout
+        def mock_get_merkle_path_timeout(txid, services=None):
             raise asyncio.TimeoutError("Connection timeout")
 
         mock_stc.service = mock_get_merkle_path_timeout
@@ -234,7 +233,7 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return rate limit error
-        async def mock_get_merkle_path_rate_limit(txid, services=None):
+        def mock_get_merkle_path_rate_limit(txid, services=None):
             raise Exception("HTTP 429: Rate limit exceeded")
 
         mock_stc.service = mock_get_merkle_path_rate_limit
@@ -252,7 +251,7 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return 404
-        async def mock_get_merkle_path_not_found(txid, services=None):
+        def mock_get_merkle_path_not_found(txid, services=None):
             raise Exception("HTTP 404: Transaction not found")
 
         mock_stc.service = mock_get_merkle_path_not_found
@@ -270,7 +269,7 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return malformed data
-        async def mock_get_merkle_path_malformed(txid, services=None):
+        def mock_get_merkle_path_malformed(txid, services=None):
             raise Exception("Invalid JSON response")
 
         mock_stc.service = mock_get_merkle_path_malformed
@@ -288,7 +287,7 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to raise connection error
-        async def mock_get_merkle_path_connection_error(txid, services=None):
+        def mock_get_merkle_path_connection_error(txid, services=None):
             raise ConnectionError("Network is unreachable")
 
         mock_stc.service = mock_get_merkle_path_connection_error
