@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 """Token definition for PushDrop example."""
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 from bsv.keys import PublicKey
 

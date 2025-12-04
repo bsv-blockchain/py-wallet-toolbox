@@ -7,7 +7,7 @@ Handles configuration loading, wallet initialization, and environment setup.
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 import yaml
 from dotenv import load_dotenv
@@ -126,8 +126,6 @@ class Setup:
             # Also remove db file if it's a temporary test run? 
             # Go example doesn't seem to delete it automatically in cleanup based on snippet,
             # but `userWallet.Close` is called.
-            pass
-
         show.info("CreateWallet", self.identity_key.hex())
         return user_wallet, cleanup
 

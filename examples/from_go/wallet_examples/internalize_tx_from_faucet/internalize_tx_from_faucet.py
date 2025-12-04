@@ -7,7 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 This example demonstrates how to internalize a transaction from the faucet into the wallet database.
 """
 
-import sys
 
 from internal import services_helpers, setup, show
 from bsv_wallet_toolbox.wallet import Wallet

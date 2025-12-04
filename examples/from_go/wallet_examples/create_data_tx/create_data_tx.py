@@ -7,8 +7,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 This example demonstrates how to create and send a Bitcoin transaction with an OP_RETURN data output using Alice's wallet.
 """
 
-import sys
-
 from bsv.script.type import OpReturn
 from internal import setup, show
 

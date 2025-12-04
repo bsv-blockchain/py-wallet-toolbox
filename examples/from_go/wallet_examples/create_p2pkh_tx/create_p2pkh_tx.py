@@ -10,7 +10,6 @@ The wallet automatically selects UTXOs, creates change outputs, calculates fees,
 
 from bsv.script.type import P2PKH
 from bsv.keys import PublicKey
-from bsv.script import Script
 from internal import setup, show
 
 # RecipientAddress is the address to send satoshis to (P2PKH address)

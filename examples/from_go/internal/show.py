@@ -3,8 +3,7 @@
 Replicates the functionality of Go's internal/show package for consistent output.
 """
 
-import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, List
 
 # ANSI color codes
 COLOR_RESET = "\033[0m"

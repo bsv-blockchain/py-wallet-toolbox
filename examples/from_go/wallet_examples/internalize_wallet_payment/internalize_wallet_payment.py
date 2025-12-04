@@ -9,7 +9,6 @@ AtomicBeefHex, IdentityKey, Prefix, and Suffix are required to internalize a tra
 """
 
 import base64
-from bsv.keys import PublicKey
 from internal import setup, show
 
 # AtomicBeefHex is the transaction data in atomic beef hex format
@@ -50,7 +49,6 @@ def main() -> None:
             # SDK InternalizeActionArgs struct has DerivationPrefix []byte
             # Python SDK InternalizeActionArgs validation checks for base64 string.
             # So we keep it as base64 string.
-            pass
         except Exception as e:
             raise ValueError(f"failed to decode derivation prefix: {e}")
 
