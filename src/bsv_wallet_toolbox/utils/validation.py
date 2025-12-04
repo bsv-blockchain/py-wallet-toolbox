@@ -319,7 +319,7 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
         InvalidParameterError: If validation fails
     """
     if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
+        raise InvalidParameterError("args", "a dict")
 
     # Validate description: 5-2000 bytes
     desc = args.get("description")
