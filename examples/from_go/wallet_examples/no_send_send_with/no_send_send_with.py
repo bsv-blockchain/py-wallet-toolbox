@@ -26,7 +26,7 @@ def random_key_id() -> str:
 
 def mint(alice: setup.Setup, alice_wallet, key_id: str) -> token.Tokens:
     """Mint multiple tokens."""
-    prev_no_sent_change = []
+    prev_no_send_change = []
     tokens = token.Tokens()
 
     show.step("Mint multiple tokens", "all mints are done with noSend = true, so they are not broadcasted immediately")
@@ -40,11 +40,11 @@ def mint(alice: setup.Setup, alice_wallet, key_id: str) -> token.Tokens:
             alice_wallet,
             data_field,
             key_id,
-            prev_no_sent_change,
+            prev_no_send_change,
         )
 
         tokens.append(tok)
-        prev_no_sent_change = no_send_change_outpoints
+        prev_no_send_change = no_send_change_outpoints
 
         show.info("Minted Token", tok.tx_id)
 
@@ -63,18 +63,18 @@ def redeem(tokens: token.Tokens, alice_wallet) -> None:
     # Redeem multiple tokens with noSend = true, each time passing the change from the previous redeem as noSendChange to the next redeem
     # This way we ensure that all redeems will be broadcasted in a single batch
     # We also collect the txIDs of all redeems to use them in sendWith later
-    prev_no_sent_change = []
+    prev_no_send_change = []
     redeemed = []
     
     for tok in tokens:
         redeemed_tx_id, no_send_change = token.redeem_push_drop_token(
             alice_wallet,
             tok,
-            prev_no_sent_change,
+            prev_no_send_change,
         )
 
         redeemed.append(redeemed_tx_id)
-        prev_no_sent_change = no_send_change
+        prev_no_send_change = no_send_change
 
     show.step("Broadcast all redeems in a single batch using sendWith", "all redeems are now broadcasted in a single batch using sendWith")
     # Now send all the redeems in a single batch using sendWith
