@@ -158,3 +158,29 @@ class TTLCache:
     def __contains__(self, key: str) -> bool:
         """Check if key exists and is not expired."""
         return self.get(key) is not None
+
+    def __getitem__(self, key: str) -> Any:
+        """Get value from cache using dict-style access.
+
+        Args:
+            key: Cache key
+
+        Returns:
+            Cached value
+
+        Raises:
+            KeyError: If key not found or expired
+        """
+        value = self.get(key)
+        if value is None:
+            raise KeyError(key)
+        return value
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set value in cache using dict-style assignment.
+
+        Args:
+            key: Cache key
+            value: Value to cache
+        """
+        self.set(key, value)
