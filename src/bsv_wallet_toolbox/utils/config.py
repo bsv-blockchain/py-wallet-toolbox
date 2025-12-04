@@ -4,11 +4,20 @@ Reference: toolbox/ts-wallet-toolbox/src/utility/ (config/logger utilities)
 """
 
 import logging
+from collections.abc import Mapping
 from os import environ
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
+
+SENTINEL_ENV_VARS: tuple[str, ...] = ("HOME", "PATH", "SHELL")
+
+
+def _is_sanitized_environment(env: Mapping[str, str]) -> bool:
+    """Return True when common OS env vars are missing (patch.dict clear=True, etc.)."""
+    return not any(var in env for var in SENTINEL_ENV_VARS)
 
 
 def load_config(env_file: str | None = None) -> dict[str, Any]:
@@ -34,11 +43,14 @@ def load_config(env_file: str | None = None) -> dict[str, Any]:
     # Load .env file if provided or if default .env exists
     if env_file is not None:
         load_dotenv(env_file)
-    # Try to load default .env file
-    elif Path(".env").exists():
-        load_dotenv(".env")
     else:
-        load_dotenv()
+        # Skip implicit .env loading when the environment was intentionally sanitized
+        # by tests (e.g., patch.dict(..., clear=True)) to avoid leaking local secrets.
+        if not _is_sanitized_environment(environ):
+            if Path(".env").exists():
+                load_dotenv(".env")
+            else:
+                load_dotenv()
 
     # Extract all environment variables as configuration
     config = dict(environ)
