@@ -53,24 +53,27 @@ You will see an interactive menu similar to this:
 
 ```
 [Basics]            [Wallet]           [Keys]
-1. Init wallet      4. Show info       5. Get public key
-2. Show basics                         6. Sign data
-3. Wait auth                          7. Verify signature
-                                       8. Create HMAC
-[Actions]                               9. Verify HMAC
-13. Create action                      10. Encrypt / decrypt
-15. List actions                       11. Reveal counterparty linkage
-16. Abort action                       12. Reveal specific linkage
+1. Init wallet      4. Show info ->    5. Get public key -> getPublicKey
+   (setup only)        getPublicKey    6. Sign data -> createSignature
+2. Show basics ->                      7. Verify signature -> verifySignature
+   isAuthenticated /                   8. Create HMAC -> createHmac
+   getNetwork / getVersion             9. Verify HMAC -> verifyHmac
+3. Wait auth ->                        10. Encrypt / decrypt -> encrypt / decrypt
+   waitForAuthentication               11. Reveal counterparty linkage -> revealCounterpartyKeyLinkage
+                                       12. Reveal specific linkage -> revealSpecificKeyLinkage
 
-[Outputs]          [Certificates]      [Identity]         [Transactions]
-17. List outputs   19. Acquire cert    23. Discover by key 25. Internalize action
-18. Relinquish     20. List certs      24. Discover attr
-                   21. Relinquish
-                   22. Prove cert
+[Actions]          [Outputs]          [Certificates]
+13. Create action -> createAction      17. List outputs -> listOutputs
+    (+ signAction)                     18. Relinquish output -> relinquishOutput
+14. -- signAction is inside 13         19. Acquire cert -> acquireCertificate (+ proveCertificate)
+15. List actions -> listActions        20. List certs -> listCertificates
+16. Abort action -> abortAction        21. Relinquish cert -> relinquishCertificate
+                                       22. -- proveCertificate handled in 19
 
-[Blockchain]
-26. Get height
-27. Get header
+[Identity]         [Transactions]      [Blockchain]
+23. Discover by key -> discoverByIdentityKey  25. Internalize action -> internalizeAction
+24. Discover attr -> discoverByAttributes     26. Get height -> getHeight
+                                               27. Get header -> getHeaderForHeight
 
 0. Exit
 ```
@@ -156,7 +159,7 @@ See [`STORAGE_GUIDE.md`](STORAGE_GUIDE.md) for deep details.
 
 1. Fund the wallet (option **4** shows the receive address; faucets like <https://scrypt.io/faucet/> work great on testnet).
 2. After the faucet broadcasts its TX, copy the TXID from an explorer (e.g., Whatsonchain).
-3. Choose menu option **25. Internalize external transaction**.
+3. Choose menu option **25. Internalize external transaction -> internalizeAction**.
 4. Either paste Atomic BEEF hex (from another tool) or press Enter so the demo downloads the BEEF via Wallet Services.
 5. Provide the output indexes that belong to you (comma-separated). By default, index `0` is selected.
 6. Finish the prompts to tag/basket the outputs and run `internalize_action`.

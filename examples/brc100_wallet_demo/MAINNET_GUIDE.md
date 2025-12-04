@@ -76,7 +76,7 @@ Always double-check the address before confirming.
 If you receive BSV from an external wallet or faucet and want the toolbox to track that UTXO:
 
 1. Locate the TXID on <https://whatsonchain.com/>.
-2. Choose menu **25. Internalize external transaction** inside the demo.
+2. Choose menu **25. Internalize external transaction -> internalizeAction** inside the demo.
 3. Paste Atomic BEEF hex (if you already built it) **or** press Enter so the demo downloads the necessary data via Wallet Services.
 4. Specify the output indexes that belong to you and keep the default basket unless you have a custom one.
 5. Finish the prompts—the wallet will run `internalize_action`, sync the outputs, and they will appear under menu **17. List outputs**.
