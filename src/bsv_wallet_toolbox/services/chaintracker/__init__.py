@@ -42,10 +42,14 @@ Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/
 from .chaintracks_service import ChaintracksService
 from .chaintracks_service_client import ChaintracksServiceClient
 from .chaintracks_storage import ChaintracksStorage, ChaintracksStorageMemory
+from .chaintracks.models import FiatExchangeRates
+from .chaintracks.bulk_manager import BulkManager
 
 __all__ = [
     "ChaintracksService",
     "ChaintracksServiceClient",
     "ChaintracksStorage",
     "ChaintracksStorageMemory",
+    "FiatExchangeRates",
+    "BulkManager",
 ]

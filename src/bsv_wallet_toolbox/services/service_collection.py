@@ -34,7 +34,7 @@ Reference Implementation: ts-wallet-toolbox/src/services/ServiceCollection.ts
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
@@ -66,8 +66,8 @@ class ResetCount:
     success: int = 0
     failure: int = 0
     error: int = 0
-    since: datetime = field(default_factory=datetime.utcnow)
-    until: datetime = field(default_factory=datetime.utcnow)
+    since: datetime = field(default_factory=lambda: datetime.now(UTC))
+    until: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -159,7 +159,7 @@ class ServiceCollection(Generic[T]):
         self.service_name = service_name
         self.services: list[dict[str, Any]] = services or []
         self._index = 0
-        self.since = datetime.utcnow()
+        self.since = datetime.now(UTC)
         self._history_by_provider: dict[str, ProviderCallHistory] = {}
 
     def add(self, service_entry: dict[str, Any]) -> ServiceCollection[T]:
@@ -204,7 +204,7 @@ class ServiceCollection(Generic[T]):
         provider_name = self.services[index].get("name", "unknown")
         service = self.services[index].get("service")
         call = ServiceCall(
-            when=datetime.utcnow(),
+            when=datetime.now(UTC),
             msecs=0,
             success=False,
             result=None,
@@ -288,7 +288,7 @@ class ServiceCollection(Generic[T]):
         Returns:
             Updated provider call history.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         history = self._history_by_provider.get(provider_name)
 
         if not history:
@@ -322,7 +322,7 @@ class ServiceCollection(Generic[T]):
         Returns:
             Duration in milliseconds.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         delta = now - since
         return int(delta.total_seconds() * 1000)
 
@@ -409,7 +409,7 @@ class ServiceCollection(Generic[T]):
         Returns:
             ServiceCallHistory with serialized records.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         history = ServiceCallHistory(service_name=self.service_name)
 
         for provider_name, prov_history in self._history_by_provider.items():

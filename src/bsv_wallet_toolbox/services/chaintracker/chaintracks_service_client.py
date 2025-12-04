@@ -45,13 +45,17 @@ Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/Chain
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time
-from typing import Any, Generic, TypeVar, cast
+import uuid
+from typing import Any, Callable, Generic, TypeVar, cast
 
 import requests
 
 from ..wallet_services import Chain
+from .chaintracks.api import ChaintracksClientApi
+from .chaintracks.models import FiatExchangeRates
 
 T = TypeVar("T")
 
@@ -78,7 +82,7 @@ class ChaintracksServiceClientOptions:
         return ChaintracksServiceClientOptions(use_authrite=False)
 
 
-class ChaintracksServiceClient:
+class ChaintracksServiceClient(ChaintracksClientApi):
     """HTTP client for Chaintracks service.
 
     Connects to a ChaintracksService to implement ChaintracksClientApi.
@@ -106,6 +110,11 @@ class ChaintracksServiceClient:
         self.options: ChaintracksServiceClientOptions = options or ChaintracksServiceClientOptions.create_default()
         self.timeout: int = 30
         self.session: requests.Session = requests.Session()
+
+        # WebSocket subscription tracking
+        self._websocket_subscriptions: dict[str, dict[str, Any]] = {}
+        self._websocket_url: str | None = None
+        self._websocket_task: asyncio.Task | None = None
 
     def get_json_or_undefined(self, path: str) -> Any | None:
         """Fetch JSON from service with retry logic (blocking).
@@ -194,7 +203,7 @@ class ChaintracksServiceClient:
         except Exception as e:
             raise Exception(json.dumps({"error": str(e)}))
 
-    def current_height(self) -> int:
+    async def current_height(self) -> int:
         """Get current blockchain height.
 
         Returns:
@@ -202,9 +211,9 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        return self.get_present_height()
+        return await self.get_present_height()
 
-    def is_valid_root_for_height(self, root: str, height: int) -> bool:
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
         """Verify if merkle root is valid for height.
 
         Args:
@@ -216,13 +225,13 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        header = self.find_header_for_height(height)
+        header = await self.find_header_for_height(height)
         if header is None:
             return False
         # TODO: Phase 4 - Add proper root comparison with encoding
         return root == header.get("merkleRoot", "")
 
-    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get block header at specified height.
 
         Args:
@@ -239,7 +248,7 @@ class ChaintracksServiceClient:
         except Exception:
             return None
 
-    def get_present_height(self) -> int:
+    async def get_present_height(self) -> int:
         """Get latest chain height.
 
         Returns:
@@ -272,7 +281,7 @@ class ChaintracksServiceClient:
                 pass
         return results
 
-    def subscribe_headers(self, listener: Any) -> str:
+    async def subscribe_headers(self, listener: Any) -> str:
         """Subscribe to header updates (WebSocket - Phase 4).
 
         Args:
@@ -283,10 +292,24 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        # TODO: Phase 4 - Implement WebSocket subscription for headers
-        raise NotImplementedError("WebSocket subscriptions require Phase 4 implementation")
+        # WebSocket implementation requires running ChainTracks service with WebSocket support
+        # This is a Phase 4 feature that needs:
+        # 1. WebSocket server endpoint in ChainTracks service
+        # 2. Client-side WebSocket connection management
+        # 3. Real-time event forwarding
 
-    def subscribe_reorgs(self, listener: Any) -> str:
+        subscription_id = f"headers_{uuid.uuid4().hex[:8]}"
+        self._websocket_subscriptions[subscription_id] = {
+            "type": "headers",
+            "listener": listener,
+            "active": False  # Would be True if WebSocket connected
+        }
+
+        # TODO: Establish WebSocket connection and register subscription
+        # For now, mark as not implemented but provide structure
+        raise NotImplementedError("WebSocket subscriptions require Phase 4 ChainTracks server implementation")
+
+    async def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg updates (WebSocket - Phase 4).
 
         Args:
@@ -297,10 +320,19 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        # TODO: Phase 4 - Implement WebSocket subscription for reorgs
-        raise NotImplementedError("WebSocket subscriptions require Phase 4 implementation")
+        # WebSocket implementation requires running ChainTracks service with WebSocket support
 
-    def unsubscribe(self, subscription_id: str) -> bool:
+        subscription_id = f"reorgs_{uuid.uuid4().hex[:8]}"
+        self._websocket_subscriptions[subscription_id] = {
+            "type": "reorgs",
+            "listener": listener,
+            "active": False  # Would be True if WebSocket connected
+        }
+
+        # TODO: Establish WebSocket connection and register subscription
+        raise NotImplementedError("WebSocket subscriptions require Phase 4 ChainTracks server implementation")
+
+    async def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a WebSocket subscription (Phase 4).
 
         Args:
@@ -311,13 +343,67 @@ class ChaintracksServiceClient:
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
-        # TODO: Phase 4 - Implement WebSocket unsubscription
-        raise NotImplementedError("WebSocket unsubscription requires Phase 4 implementation")
+        # Remove subscription from tracking
+        if subscription_id in self._websocket_subscriptions:
+            del self._websocket_subscriptions[subscription_id]
+
+            # TODO: Send unsubscription message over WebSocket if connected
+            # For now, just return success
+            return True
+
+        return False
+
+    async def get_fiat_exchange_rates(self) -> FiatExchangeRates:
+        """Get latest fiat currency exchange rates from the Chaintracks service.
+
+        Returns:
+            FiatExchangeRates with timestamp, rates, and base currency
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        path = "/getFiatExchangeRates"
+        return self.get_json(path)
+
+    async def get_headers(self, height: int, count: int) -> str:
+        """Get headers in serialized format starting at height.
+
+        Args:
+            height: Starting block height
+            count: Number of headers to retrieve
+
+        Returns:
+            Hex-encoded concatenated block headers
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        path = f"/getHeaders?height={height}&count={count}"
+        return self.get_json(path)
+
+    async def add_header(self, header: dict[str, Any]) -> None:
+        """Add a block header to the chaintracks service.
+
+        Args:
+            header: BaseBlockHeader to add
+
+        Returns:
+            None (void)
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        self.post_json("/addHeaderHex", header)
 
     def destroy(self) -> None:
         """Close all resources.
 
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
         """
+        # Clean up WebSocket subscriptions
+        self._websocket_subscriptions.clear()
+
+        # Cancel WebSocket task if running
+        if self._websocket_task and not self._websocket_task.done():
+            self._websocket_task.cancel()
+
+        # Close HTTP session
         if self.session:
             self.session.close()

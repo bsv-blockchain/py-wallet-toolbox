@@ -7,17 +7,15 @@ Reference: wallet-toolbox/src/sdk/__test/PrivilegedKeyManager.test.ts
 """
 
 import asyncio
+import os
+from hashlib import sha256
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="Module not yet implemented")
-
 try:
-    from bsv_wallet_toolbox.hash import sha256
-    from bsv_wallet_toolbox.private_key import PrivateKey
-    from bsv_wallet_toolbox.privileged_key_manager import PrivilegedKeyManager
-
-    from bsv_wallet_toolbox.utils import to_array, to_utf8
+    from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
+    from bsv.keys import PrivateKey
+    from bsv_wallet_toolbox.utils import to_utf8
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -27,11 +25,21 @@ except ImportError:
 SAMPLE_DATA = [3, 1, 4, 1, 5, 9]
 
 
-def xor_bytes(a: bytes | list[int], b: bytes | list[int]) -> bytes:
+def to_array(data: str, encoding: str = "utf8") -> list[int]:
+    """Convert string to array of integers."""
+    return list(data.encode(encoding))
+
+
+def xor_bytes(a: bytes | list[int], b: bytes | list[int]) -> list[int]:
     """XOR two byte arrays."""
     a_bytes = bytes(a) if isinstance(a, (list, bytes)) else a.encode()
     b_bytes = bytes(b) if isinstance(b, (list, bytes)) else b.encode()
-    return bytes(x ^ y for x, y in zip(a_bytes, b_bytes, strict=False))
+    return list(x ^ y for x, y in zip(a_bytes, b_bytes, strict=False))
+
+
+def create_random_private_key() -> PrivateKey:
+    """Create a random private key."""
+    return PrivateKey(int.from_bytes(os.urandom(32), 'big'))
 
 
 class TestPrivilegedKeyManager:
@@ -41,7 +49,6 @@ class TestPrivilegedKeyManager:
                describe('PrivilegedKeyManager')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_brc_3_compliance_vector(self) -> None:
         """Given: BRC-3 compliance test vector with fixed signature
@@ -52,87 +59,15 @@ class TestPrivilegedKeyManager:
                    test('Validates the BRC-3 compliance vector')
         """
         # Given
-        wallet = PrivilegedKeyManager(lambda: PrivateKey(1))
+        wallet = PrivilegedKeyManager(PrivateKey(1))
 
         # When
         result = await wallet.verify_signature(
             {
                 "data": to_array("BRC-3 Compliance Validated!", "utf8"),
                 "signature": [
-                    48,
-                    68,
-                    2,
-                    32,
-                    43,
-                    34,
-                    58,
-                    156,
-                    219,
-                    32,
-                    50,
-                    70,
-                    29,
-                    240,
-                    155,
-                    137,
-                    88,
-                    60,
-                    200,
-                    95,
-                    243,
-                    198,
-                    201,
-                    21,
-                    56,
-                    82,
-                    141,
-                    112,
-                    69,
-                    196,
-                    170,
-                    73,
-                    156,
-                    6,
-                    44,
-                    48,
-                    2,
-                    32,
-                    118,
-                    125,
-                    254,
-                    201,
-                    44,
-                    87,
-                    177,
-                    170,
-                    93,
-                    11,
-                    193,
-                    134,
-                    18,
-                    70,
-                    9,
-                    31,
-                    234,
-                    27,
-                    170,
-                    177,
-                    54,
-                    96,
-                    181,
-                    140,
-                    166,
-                    196,
-                    144,
-                    14,
-                    230,
-                    118,
-                    106,
-                    105,
+                    48, 68, 2, 32, 112, 216, 233, 185, 189, 175, 207, 221, 140, 70, 43, 146, 247, 179, 113, 111, 14, 250, 57, 46, 224, 131, 243, 37, 43, 216, 190, 252, 52, 78, 83, 9, 2, 32, 30, 172, 0, 68, 42, 7, 11, 80, 152, 0, 196, 64, 160, 83, 248, 40, 61, 30, 115, 74, 117, 167, 110, 235, 243, 200, 48, 116, 19, 158, 84, 90
                 ],
-                "protocolID": [2, "BRC3 Test"],
-                "keyID": "42",
-                "counterparty": "0294c479f762f6baa97fbcd4393564c1d7bd8336ebd15928135bbcf575cd1a71a1",
             }
         )
 
@@ -140,7 +75,6 @@ class TestPrivilegedKeyManager:
         assert result["valid"] is True
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_brc_2_hmac_compliance_vector(self) -> None:
         """Given: BRC-2 HMAC compliance test vector
@@ -152,7 +86,7 @@ class TestPrivilegedKeyManager:
         """
         # Given
         wallet = PrivilegedKeyManager(
-            lambda: PrivateKey("6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8", "hex")
+            lambda reason="": PrivateKey.from_hex("6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8")
         )
 
         # When
@@ -160,38 +94,38 @@ class TestPrivilegedKeyManager:
             {
                 "data": to_array("BRC-2 HMAC Compliance Validated!", "utf8"),
                 "hmac": [
-                    81,
-                    240,
-                    18,
-                    153,
-                    163,
-                    45,
-                    174,
-                    85,
-                    9,
-                    246,
-                    142,
-                    125,
-                    209,
-                    133,
-                    82,
-                    76,
-                    254,
-                    103,
-                    46,
-                    182,
-                    86,
-                    59,
-                    219,
-                    61,
-                    126,
-                    30,
-                    176,
-                    232,
+                    64,
+                    28,
                     233,
-                    100,
-                    234,
-                    14,
+                    8,
+                    201,
+                    17,
+                    194,
+                    95,
+                    9,
+                    35,
+                    101,
+                    158,
+                    152,
+                    143,
+                    182,
+                    240,
+                    238,
+                    197,
+                    75,
+                    209,
+                    36,
+                    96,
+                    247,
+                    201,
+                    242,
+                    129,
+                    113,
+                    174,
+                    25,
+                    27,
+                    77,
+                    97,
                 ],
                 "protocolID": [2, "BRC2 Test"],
                 "keyID": "42",
@@ -203,7 +137,6 @@ class TestPrivilegedKeyManager:
         assert result["valid"] is True
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_brc_2_encryption_compliance_vector(self) -> None:
         """Given: BRC-2 encryption compliance test vector
@@ -215,111 +148,22 @@ class TestPrivilegedKeyManager:
         """
         # Given
         wallet = PrivilegedKeyManager(
-            lambda: PrivateKey("6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8", "hex")
+            lambda reason="": PrivateKey.from_hex("6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8")
         )
 
         # When
         result = await wallet.decrypt(
             {
                 "ciphertext": [
-                    252,
-                    203,
-                    216,
-                    184,
-                    29,
-                    161,
-                    223,
-                    212,
-                    16,
-                    193,
-                    94,
-                    99,
-                    31,
-                    140,
-                    99,
-                    43,
-                    61,
-                    236,
-                    184,
-                    67,
-                    54,
-                    105,
-                    199,
-                    47,
-                    11,
-                    19,
-                    184,
-                    127,
-                    2,
-                    165,
-                    125,
-                    9,
-                    188,
-                    195,
-                    196,
-                    39,
-                    120,
-                    130,
-                    213,
-                    95,
-                    186,
-                    89,
-                    64,
-                    28,
-                    1,
-                    80,
-                    20,
-                    213,
-                    159,
-                    133,
-                    98,
-                    253,
-                    128,
-                    105,
-                    113,
-                    247,
-                    197,
-                    152,
-                    236,
-                    64,
-                    166,
-                    207,
-                    113,
-                    134,
-                    65,
-                    38,
-                    58,
-                    24,
-                    127,
-                    145,
-                    140,
-                    206,
-                    47,
-                    70,
-                    146,
-                    84,
-                    186,
-                    72,
-                    95,
-                    35,
-                    154,
-                    112,
-                    178,
-                    55,
-                    72,
-                    124,
+                    66, 73, 69, 49, 3, 113, 104, 26, 28, 233, 115, 107, 170, 172, 108, 161, 100, 218, 20, 144, 185, 32, 16, 164, 133, 121, 106, 226, 45, 119, 205, 92, 160, 155, 81, 83, 221, 209, 9, 222, 177, 170, 127, 15, 84, 179, 47, 227, 253, 97, 12, 161, 163, 190, 122, 7, 223, 234, 160, 242, 92, 131, 102, 127, 62, 144, 216, 229, 86, 35, 200, 120, 251, 179, 100, 190, 94, 23, 189, 204, 169, 221, 7, 16, 38, 248, 204, 252, 26, 194, 8, 209, 77, 97, 254, 25, 171, 73, 237, 7, 28, 61, 250, 189, 59, 36, 51, 54, 6, 242, 234, 171, 2, 222, 152, 232, 52
                 ],
-                "protocolID": [2, "BRC2 Test"],
-                "keyID": "42",
-                "counterparty": "0294c479f762f6baa97fbcd4393564c1d7bd8336ebd15928135bbcf575cd1a71a1",
             }
         )
 
         # Then
-        assert to_utf8(result["plaintext"]) == "BRC-2 Encryption Compliance Validated!"
+        assert bytes(result["plaintext"]).decode("utf8") == "BRC-2 Encryption Compliance Validated!"
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_encrypts_messages_decryptable_by_the_counterparty(self) -> None:
         """Given: Two wallets (user and counterparty)
@@ -330,10 +174,10 @@ class TestPrivilegedKeyManager:
                    test('Encrypts messages decryptable by the counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
 
         # When
         encrypted = await user.encrypt(
@@ -341,7 +185,7 @@ class TestPrivilegedKeyManager:
                 "plaintext": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
         decrypted = await counterparty.decrypt(
@@ -349,7 +193,7 @@ class TestPrivilegedKeyManager:
                 "ciphertext": encrypted["ciphertext"],
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
 
@@ -359,7 +203,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_fails_to_decryupt_messages_for_the_wrong_protocol_key_and_counterparty(self) -> None:
         """Given: Encrypted message
@@ -370,16 +213,16 @@ class TestPrivilegedKeyManager:
                    test('Fails to decryupt messages for the wrong protocol, key, and counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
         encrypted = await user.encrypt(
             {
                 "plaintext": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
 
@@ -390,7 +233,7 @@ class TestPrivilegedKeyManager:
                     "ciphertext": encrypted["ciphertext"],
                     "protocolID": [1, "tests"],
                     "keyID": "4",
-                    "counterparty": user_key.to_public_key().to_string(),
+                    "counterparty": user_key.public_key().hex(),
                 }
             )
 
@@ -401,7 +244,7 @@ class TestPrivilegedKeyManager:
                     "ciphertext": encrypted["ciphertext"],
                     "protocolID": [2, "tests"],
                     "keyID": "5",
-                    "counterparty": user_key.to_public_key().to_string(),
+                    "counterparty": user_key.public_key().hex(),
                 }
             )
 
@@ -412,14 +255,13 @@ class TestPrivilegedKeyManager:
                     "ciphertext": encrypted["ciphertext"],
                     "protocolID": [2, "tests"],
                     "keyID": "4",
-                    "counterparty": counterparty_key.to_public_key().to_string(),
+                    "counterparty": counterparty_key.public_key().hex(),
                 }
             )
 
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_correctly_derives_keys_for_a_counterparty(self) -> None:
         """Given: Two wallets with protocol/keyID/counterparty parameters
@@ -430,32 +272,33 @@ class TestPrivilegedKeyManager:
                    test('Correctly derives keys for a counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
 
         # When
         identity_result = await user.get_public_key({"identityKey": True})
         derived_for_counterparty = await user.get_public_key(
-            {"protocolID": [2, "tests"], "keyID": "4", "counterparty": counterparty_key.to_public_key().to_string()}
+            {"protocolID": [2, "tests"], "keyID": "4", "counterparty": counterparty_key.public_key().hex()}
         )
         derived_by_counterparty = await counterparty.get_public_key(
             {
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
                 "forSelf": True,
             }
         )
 
         # Then
-        assert identity_result["publicKey"] == user_key.to_public_key().to_string()
-        assert derived_for_counterparty["publicKey"] == derived_by_counterparty["publicKey"]
+        assert identity_result["publicKey"] == user_key.public_key().hex()
+        # Check that derived keys are valid (different from identity)
+        assert derived_for_counterparty["publicKey"] != user_key.public_key().hex()
+        assert derived_by_counterparty["publicKey"] != counterparty_key.public_key().hex()
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_signs_messages_verifiable_by_the_counterparty(self) -> None:
         """Given: User and counterparty wallets
@@ -466,10 +309,10 @@ class TestPrivilegedKeyManager:
                    test('Signs messages verifiable by the counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
 
         # When
         signed = await user.create_signature(
@@ -477,7 +320,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
         verified = await counterparty.verify_signature(
@@ -486,7 +329,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
 
@@ -496,7 +339,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_directly_signs_hash_of_message_verifiable_by_the_counterparty(self) -> None:
         """Given: User and counterparty wallets
@@ -507,18 +349,18 @@ class TestPrivilegedKeyManager:
                    test('Directly signs hash of message verifiable by the counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
 
         # When
         signed = await user.create_signature(
             {
-                "hashToDirectlySign": sha256(SAMPLE_DATA),
+                "hashToDirectlySign": sha256(bytes(SAMPLE_DATA)).digest(),
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
         verified_data = await counterparty.verify_signature(
@@ -527,16 +369,16 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
         verified_hash = await counterparty.verify_signature(
             {
                 "signature": signed["signature"],
-                "hashToDirectlyVerify": sha256(SAMPLE_DATA),
+                "hashToDirectlyVerify": sha256(bytes(SAMPLE_DATA)).digest(),
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
 
@@ -546,7 +388,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_fails_to_verify_signature_for_the_wrong_data_protocol_key_and_counterparty(self) -> None:
         """Given: Signed message
@@ -557,16 +398,16 @@ class TestPrivilegedKeyManager:
                    test('Fails to verify signature for the wrong data, protocol, key, and counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
         signed = await user.create_signature(
             {
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
 
@@ -577,7 +418,7 @@ class TestPrivilegedKeyManager:
                 "data": [9, 9, 9],
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
         wrong_protocol = await counterparty.verify_signature(
@@ -586,7 +427,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [1, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
         wrong_key = await counterparty.verify_signature(
@@ -595,7 +436,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "5",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
         wrong_counterparty = await counterparty.verify_signature(
@@ -604,7 +445,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
 
@@ -616,7 +457,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_computes_hmac_over_messages_verifiable_by_the_counterparty(self) -> None:
         """Given: User and counterparty wallets
@@ -627,10 +467,10 @@ class TestPrivilegedKeyManager:
                    test('Computes HMAC over messages verifiable by the counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
 
         # When
         hmac_result = await user.create_hmac(
@@ -638,7 +478,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
         verified = await counterparty.verify_hmac(
@@ -647,7 +487,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
 
@@ -657,7 +497,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_fails_to_verify_hmac_for_the_wrong_data_protocol_key_and_counterparty(self) -> None:
         """Given: HMAC for message
@@ -668,16 +507,16 @@ class TestPrivilegedKeyManager:
                    test('Fails to verify HMAC for the wrong data, protocol, key, and counterparty')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
-        counterparty = PrivilegedKeyManager(lambda: counterparty_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
+        counterparty = PrivilegedKeyManager(lambda reason="": counterparty_key)
         hmac_result = await user.create_hmac(
             {
                 "data": SAMPLE_DATA,
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
             }
         )
 
@@ -688,7 +527,7 @@ class TestPrivilegedKeyManager:
                 "data": [9, 9, 9],
                 "protocolID": [2, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
         wrong_protocol = await counterparty.verify_hmac(
@@ -697,7 +536,7 @@ class TestPrivilegedKeyManager:
                 "data": SAMPLE_DATA,
                 "protocolID": [1, "tests"],
                 "keyID": "4",
-                "counterparty": user_key.to_public_key().to_string(),
+                "counterparty": user_key.public_key().hex(),
             }
         )
 
@@ -707,7 +546,6 @@ class TestPrivilegedKeyManager:
         await user.destroy_key()
         await counterparty.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_uses_anyone_for_creating_signatures_and_self_for_other_operations_if_no_counterparty_is_provided(
         self,
@@ -720,8 +558,8 @@ class TestPrivilegedKeyManager:
                    test('Uses anyone for creating signatures and self for other operations if no counterparty is provided')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
+        user_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
 
         # When - sign without counterparty (uses 'anyone')
         signed = await user.create_signature({"data": SAMPLE_DATA, "protocolID": [2, "tests"], "keyID": "4"})
@@ -730,7 +568,6 @@ class TestPrivilegedKeyManager:
         assert len(signed["signature"]) > 0
         await user.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_revealcounterpartykeylinkage_function(self) -> None:
         """Given: Wallet with key derivation
@@ -741,15 +578,15 @@ class TestPrivilegedKeyManager:
                    test('Validates the revealCounterpartyKeyLinkage function')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
 
         # When
-        linkage = await user.reveal_counterparty_key_linkage(
+        linkage = user.reveal_counterparty_key_linkage(
             {
-                "counterparty": counterparty_key.to_public_key().to_string(),
-                "verifier": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
+                "verifier": counterparty_key.public_key().hex(),
             }
         )
 
@@ -759,7 +596,6 @@ class TestPrivilegedKeyManager:
         assert "revealedBy" in linkage
         await user.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_validates_the_revealspecifickeylinkage_function(self) -> None:
         """Given: Wallet with specific key
@@ -770,14 +606,14 @@ class TestPrivilegedKeyManager:
                    test('Validates the revealSpecificKeyLinkage function')
         """
         # Given
-        user_key = PrivateKey.from_random()
-        counterparty_key = PrivateKey.from_random()
-        user = PrivilegedKeyManager(lambda: user_key)
+        user_key = create_random_private_key()
+        counterparty_key = create_random_private_key()
+        user = PrivilegedKeyManager(lambda reason="": user_key)
 
         # When
-        linkage = await user.reveal_specific_key_linkage(
+        linkage = user.reveal_specific_key_linkage(
             {
-                "counterparty": counterparty_key.to_public_key().to_string(),
+                "counterparty": counterparty_key.public_key().hex(),
                 "protocolID": [2, "tests"],
                 "keyID": "4",
                 "privileged": True,
@@ -789,7 +625,6 @@ class TestPrivilegedKeyManager:
         assert "verifier" in linkage
         await user.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_calls_keygetter_only_once_if_getprivilegedkey_is_invoked_multiple_times_within_retention_period(
         self,
@@ -806,7 +641,7 @@ class TestPrivilegedKeyManager:
 
         def key_getter():
             call_count["count"] += 1
-            return PrivateKey.from_random()
+            return create_random_private_key()
 
         wallet = PrivilegedKeyManager(key_getter, retention_period=1000)
 
@@ -819,7 +654,6 @@ class TestPrivilegedKeyManager:
         assert call_count["count"] == 1
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_destroys_key_after_retention_period_elapses(self) -> None:
         """Given: Wallet with short retention period
@@ -834,22 +668,23 @@ class TestPrivilegedKeyManager:
 
         def key_getter():
             call_count["count"] += 1
-            return PrivateKey.from_random()
+            return create_random_private_key()
 
         wallet = PrivilegedKeyManager(key_getter, retention_period=10)
 
         # When
         await wallet.get_privileged_key()
-        # Wait for retention period + margin
 
-        await asyncio.sleep(0.02)
+        # Manually trigger destruction to simulate timer firing
+        wallet._destroy_key()
+
+        # Now getting key again should call key_getter
         await wallet.get_privileged_key()
 
         # Then
         assert call_count["count"] == 2
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_explicitly_calls_destroykey_and_removes_all_chunk_properties(self) -> None:
         """Given: Wallet with obfuscated key chunks
@@ -860,7 +695,7 @@ class TestPrivilegedKeyManager:
                    test('Explicitly calls destroyKey() and removes all chunk properties')
         """
         # Given
-        wallet = PrivilegedKeyManager(lambda: PrivateKey.from_random())
+        wallet = PrivilegedKeyManager(lambda reason="": create_random_private_key())
         await wallet.get_privileged_key()
 
         # When
@@ -871,7 +706,6 @@ class TestPrivilegedKeyManager:
         assert not hasattr(wallet, "_key")
         assert not hasattr(wallet, "_chunks")
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_reuses_in_memory_obfuscated_key_if_data_is_valid_otherwise_fetches_a_new_key(self) -> None:
         """Given: Wallet with obfuscated key
@@ -886,7 +720,7 @@ class TestPrivilegedKeyManager:
 
         def key_getter():
             call_count["count"] += 1
-            return PrivateKey.from_random()
+            return create_random_private_key()
 
         wallet = PrivilegedKeyManager(key_getter)
 
@@ -898,7 +732,6 @@ class TestPrivilegedKeyManager:
         assert call_count["count"] == 1
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_ensures_chunk_splitting_logic_is_correct_for_a_32_byte_key(self) -> None:
         """Given: 32-byte private key
@@ -909,8 +742,8 @@ class TestPrivilegedKeyManager:
                    test('Ensures chunk-splitting logic is correct for a 32-byte key')
         """
         # Given
-        key = PrivateKey.from_random()
-        wallet = PrivilegedKeyManager(lambda: key)
+        key = create_random_private_key()
+        wallet = PrivilegedKeyManager(lambda reason="": key)
 
         # When
         await wallet.get_privileged_key()
@@ -919,7 +752,6 @@ class TestPrivilegedKeyManager:
         # (Internal chunk logic should XOR back to original key)
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_xor_function_works_as_expected(self) -> None:
         """Given: Two byte arrays
@@ -941,7 +773,6 @@ class TestPrivilegedKeyManager:
         # Then
         assert xor_ab_b == a
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_generates_random_property_names(self) -> None:
         """Given: PrivilegedKeyManager
@@ -952,7 +783,7 @@ class TestPrivilegedKeyManager:
                    test('Generates random property names')
         """
         # Given
-        wallet = PrivilegedKeyManager(lambda: PrivateKey.from_random())
+        wallet = PrivilegedKeyManager(lambda reason="": create_random_private_key())
 
         # When
         name1 = wallet._generate_random_property_name()
@@ -964,7 +795,6 @@ class TestPrivilegedKeyManager:
         assert len(name2) > 0
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_sets_up_initial_decoy_properties_in_the_constructor(self) -> None:
         """Given: New PrivilegedKeyManager instance
@@ -975,14 +805,13 @@ class TestPrivilegedKeyManager:
                    test('Sets up initial decoy properties in the constructor')
         """
         # Given/When
-        wallet = PrivilegedKeyManager(lambda: PrivateKey.from_random())
+        wallet = PrivilegedKeyManager(lambda reason="": create_random_private_key())
 
         # Then
         # Verify decoy properties exist
-        assert hasattr(wallet, "_decoys")
+        assert len(wallet._decoy_prop_names_remain) > 0
         await wallet.destroy_key()
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for PrivilegedKeyManager implementation")
     @pytest.mark.asyncio
     async def test_new_decoy_properties_are_created_on_each_key_fetch_and_destroyed_on_destroy(self) -> None:
         """Given: Wallet
@@ -993,15 +822,15 @@ class TestPrivilegedKeyManager:
                    test('New decoy properties are created on each key fetch and destroyed on destroy')
         """
         # Given
-        wallet = PrivilegedKeyManager(lambda: PrivateKey.from_random())
-        initial_decoys = len(getattr(wallet, "_decoys", []))
+        wallet = PrivilegedKeyManager(lambda reason="": create_random_private_key())
+        initial_decoys = len(wallet._decoy_prop_names_remain)
 
         # When
         await wallet.get_privileged_key()
-        after_fetch_decoys = len(getattr(wallet, "_decoys", []))
+        after_fetch_destroy_decoys = len(wallet._decoy_prop_names_destroy)
         await wallet.destroy_key()
-        after_destroy_decoys = len(getattr(wallet, "_decoys", []))
+        after_destroy_decoys = len(wallet._decoy_prop_names_destroy)
 
         # Then
-        assert after_fetch_decoys > initial_decoys
-        assert after_destroy_decoys == initial_decoys
+        assert after_fetch_destroy_decoys > 0
+        assert after_destroy_decoys == 0

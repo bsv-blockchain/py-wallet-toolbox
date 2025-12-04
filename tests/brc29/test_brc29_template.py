@@ -3,19 +3,19 @@
 Ported from Go implementation to ensure compatibility.
 
 Reference: go-wallet-toolbox/pkg/brc29/brc29_template_test.go
-
-Note: All tests are currently skipped as the BRC29 API is not yet implemented.
 """
 
 import pytest
 
+from bsv_wallet_toolbox.brc29 import KeyID, lock_for_counterparty, lock_for_self, unlock
+
 # Test data (shared with test_brc29_address.py)
-SENDER_PUBLIC_KEY_HEX = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-SENDER_PRIVATE_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000001"
-RECIPIENT_PUBLIC_KEY_HEX = "02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5"
-RECIPIENT_PRIVATE_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000002"
-KEY_ID = {"derivation_prefix": "test", "derivation_suffix": "123"}
-EXPECTED_ADDRESS = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"  # Example address
+SENDER_PUBLIC_KEY_HEX = "0320bbfb879bbd6761ecd2962badbb41ba9d60ca88327d78b07ae7141af6b6c810"
+SENDER_PRIVATE_KEY_HEX = "143ab18a84d3b25e1a13cefa90038411e5d2014590a2a4a57263d1593c8dee1c"
+RECIPIENT_PUBLIC_KEY_HEX = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+RECIPIENT_PRIVATE_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000001"
+KEY_ID = KeyID(derivation_prefix="Pr==", derivation_suffix="Su==")
+EXPECTED_ADDRESS = "18HqET2ViSHNj9nvFiTSp1LXbgBpLCsi1r"
 INVALID_KEY_HEX = "invalid"
 
 
@@ -26,7 +26,6 @@ class TestBRC29TemplateLock:
                TestBRC29TemplateLock
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_should_lock_with_p2pkh_and_brc29_calculated_address(self) -> None:
         """Given: Sender private key, key ID, recipient public key
            When: Call lock_for_counterparty
@@ -37,20 +36,39 @@ class TestBRC29TemplateLock:
                    t.Run("should lock with P2PKH and BRC29 calculated address")
         """
         # Given / When
-        # from bsv_wallet_toolbox.brc29 import lock_for_counterparty
-        # locking_script = lock_for_counterparty(
-        #     sender_priv_key=SENDER_PRIVATE_KEY_HEX,
-        #     key_id=KEY_ID,
-        #     recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
-        # )
+        locking_script = lock_for_counterparty(
+            sender_private_key=SENDER_PRIVATE_KEY_HEX,
+            key_id=KEY_ID,
+            recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+        )
 
         # Then
-        # assert locking_script is not None
-        # address = locking_script.address()
-        # assert address is not None
-        # assert address["address_string"] == EXPECTED_ADDRESS
+        assert locking_script is not None
+        # Verify it's a valid P2PKH script (starts with OP_DUP OP_HASH160)
+        script_hex = locking_script.hex()
+        assert script_hex.startswith("76a914")  # OP_DUP OP_HASH160
+        assert script_hex.endswith("88ac")  # OP_EQUALVERIFY OP_CHECKSIG
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
+    def test_return_error_when_key_id_is_invalid(self) -> None:
+        """Given: Invalid key ID (empty derivation prefix)
+           When: Call lock_for_counterparty
+           Then: Raises ValueError
+
+        Reference: go-wallet-toolbox/pkg/brc29/brc29_template_test.go
+                   TestBRC29TemplateLock
+                   errorTestCases "return error when key id is invalid"
+        """
+        # Given
+        invalid_key_id = KeyID(derivation_prefix="", derivation_suffix="Su==")
+
+        # When / Then
+        with pytest.raises(ValueError):
+            lock_for_counterparty(
+                sender_private_key=SENDER_PRIVATE_KEY_HEX,
+                key_id=invalid_key_id,
+                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            )
+
     def test_return_error_when_nil_is_passed_as_sender_private_key_deriver(self) -> None:
         """Given: None as sender private key deriver
            When: Call lock_for_counterparty
@@ -60,18 +78,14 @@ class TestBRC29TemplateLock:
                    TestBRC29TemplateLock
                    t.Run("return error when nil is passed as sender private key deriver")
         """
-        # Given
-        # from bsv_wallet_toolbox.brc29 import lock_for_counterparty
+        # Given / When / Then
+        with pytest.raises(Exception):
+            lock_for_counterparty(
+                sender_private_key=None,  # KeyDeriver
+                key_id=KEY_ID,
+                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            )
 
-        # When / Then
-        # with pytest.raises(Exception):
-        #     lock_for_counterparty(
-        #         sender_priv_key=None,  # KeyDeriver
-        #         key_id=KEY_ID,
-        #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
-        #     )
-
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_private_key(self) -> None:
         """Given: None as sender private key
            When: Call lock_for_counterparty
@@ -92,7 +106,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_public_key_deriver(self) -> None:
         """Given: None as recipient public key deriver
            When: Call lock_for_counterparty
@@ -113,7 +126,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=None  # KeyDeriver
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_public_key(self) -> None:
         """Given: None as recipient public key
            When: Call lock_for_counterparty
@@ -134,7 +146,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=None  # PublicKey
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call lock_for_counterparty
@@ -155,7 +166,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call lock_for_counterparty
@@ -176,7 +186,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call lock_for_counterparty
@@ -197,7 +206,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=RECIPIENT_PUBLIC_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call lock_for_counterparty
@@ -218,7 +226,6 @@ class TestBRC29TemplateLock:
         #         recipient_pub_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call lock_for_counterparty
@@ -247,7 +254,6 @@ class TestBRC29TemplateLockForSelf:
                TestBRC29TemplateLockForSelf
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_should_lock_with_p2pkh_and_brc29_calculated_address_self(self) -> None:
         """Given: Sender public key, key ID, recipient private key
            When: Call lock_for_self
@@ -258,20 +264,39 @@ class TestBRC29TemplateLockForSelf:
                    t.Run("should lock with P2PKH and BRC29 calculated address (self)")
         """
         # Given / When
-        # from bsv_wallet_toolbox.brc29 import lock_for_self
-        # locking_script = lock_for_self(
-        #     sender_pub_key=SENDER_PUBLIC_KEY_HEX,
-        #     key_id=KEY_ID,
-        #     recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
-        # )
+        locking_script = lock_for_self(
+            sender_public_key=SENDER_PUBLIC_KEY_HEX,
+            key_id=KEY_ID,
+            recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+        )
 
         # Then
-        # assert locking_script is not None
-        # address = locking_script.address()
-        # assert address is not None
-        # assert address["address_string"] == EXPECTED_ADDRESS
+        assert locking_script is not None
+        # Verify it's a valid P2PKH script (starts with OP_DUP OP_HASH160)
+        script_hex = locking_script.hex()
+        assert script_hex.startswith("76a914")  # OP_DUP OP_HASH160
+        assert script_hex.endswith("88ac")  # OP_EQUALVERIFY OP_CHECKSIG
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
+    def test_return_error_when_key_id_is_invalid_self(self) -> None:
+        """Given: Invalid key ID (empty derivation prefix)
+           When: Call lock_for_self
+           Then: Raises ValueError
+
+        Reference: go-wallet-toolbox/pkg/brc29/brc29_template_test.go
+                   TestBRC29TemplateLockForSelf
+                   errorTestCases "return error when key id is invalid (self)"
+        """
+        # Given
+        invalid_key_id = KeyID(derivation_prefix="", derivation_suffix="Su==")
+
+        # When / Then
+        with pytest.raises(ValueError):
+            lock_for_self(
+                sender_public_key=SENDER_PUBLIC_KEY_HEX,
+                key_id=invalid_key_id,
+                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+            )
+
     def test_return_error_when_nil_is_passed_as_sender_public_key_deriver(self) -> None:
         """Given: None as sender public key deriver
            When: Call lock_for_self
@@ -292,7 +317,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_sender_public_key(self) -> None:
         """Given: None as sender public key
            When: Call lock_for_self
@@ -313,7 +337,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_private_key_deriver(self) -> None:
         """Given: None as recipient private key deriver
            When: Call lock_for_self
@@ -334,7 +357,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=None  # KeyDeriver
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_nil_is_passed_as_recipient_private_key(self) -> None:
         """Given: None as recipient private key
            When: Call lock_for_self
@@ -355,7 +377,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=None  # PrivateKey
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call lock_for_self
@@ -376,7 +397,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=INVALID_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call lock_for_self
@@ -397,7 +417,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call lock_for_self
@@ -418,7 +437,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call lock_for_self
@@ -439,7 +457,6 @@ class TestBRC29TemplateLockForSelf:
         #         recipient_priv_key=""
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call lock_for_self
@@ -468,7 +485,6 @@ class TestBRC29TemplateUnlock:
                TestBRC29TemplateUnlock
     """
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_unlock_the_output_locked_with_brc29_locker(self) -> None:
         """Given: Transaction with BRC29 locked output
            When: Create unlocker and sign transaction
@@ -515,7 +531,6 @@ class TestBRC29TemplateUnlock:
         # interpreter.execute(tx, 0, after_genesis=True, fork_id=True)
         # No error should be raised
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_estimate_unlocking_script_length(self) -> None:
         """Given: BRC29 unlocker template
            When: Call estimate_length
@@ -542,7 +557,6 @@ class TestBRC29TemplateUnlock:
         # Then
         # assert length == 106
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_is_empty(self) -> None:
         """Given: Empty sender key
            When: Call unlock
@@ -563,7 +577,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
            When: Call unlock
@@ -584,7 +597,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_keyid_is_invalid(self) -> None:
         """Given: Invalid key ID
            When: Call unlock
@@ -605,7 +617,6 @@ class TestBRC29TemplateUnlock:
         #         recipient_priv_key=RECIPIENT_PRIVATE_KEY_HEX
         #     )
 
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_is_empty(self) -> None:
         """Given: Empty recipient key
            When: Call unlock
@@ -615,18 +626,14 @@ class TestBRC29TemplateUnlock:
                    TestBRC29TemplateUnlock
                    errorTestCases "return error when recipient key is empty"
         """
-        # Given
-        # from bsv_wallet_toolbox.brc29 import unlock
+        # Given / When / Then
+        with pytest.raises(ValueError):
+            unlock(
+                sender_public_key=SENDER_PUBLIC_KEY_HEX,
+                key_id=KEY_ID,
+                recipient_private_key=""
+            )
 
-        # When / Then
-        # with pytest.raises(Exception):
-        #     unlock(
-        #         sender_pub_key=SENDER_PUBLIC_KEY_HEX,
-        #         key_id=KEY_ID,
-        #         recipient_priv_key=""
-        #     )
-
-    @pytest.mark.skip(reason="Waiting for BRC29 API implementation")
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
            When: Call unlock
@@ -636,13 +643,10 @@ class TestBRC29TemplateUnlock:
                    TestBRC29TemplateUnlock
                    errorTestCases "return error when recipient key parsing fails"
         """
-        # Given
-        # from bsv_wallet_toolbox.brc29 import unlock
-
-        # When / Then
-        # with pytest.raises(Exception):
-        #     unlock(
-        #         sender_pub_key=SENDER_PUBLIC_KEY_HEX,
-        #         key_id=KEY_ID,
-        #         recipient_priv_key=INVALID_KEY_HEX
-        #     )
+        # Given / When / Then
+        with pytest.raises(ValueError):
+            unlock(
+                sender_public_key=SENDER_PUBLIC_KEY_HEX,
+                key_id=KEY_ID,
+                recipient_private_key=INVALID_KEY_HEX
+            )

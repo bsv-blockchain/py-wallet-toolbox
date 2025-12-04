@@ -23,7 +23,7 @@ class TestUniversalVectorsGetNetwork:
     """
 
     def test_getnetwork_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
         """Given: Universal Test Vector input for getNetwork
            When: Call getNetwork with empty args on mainnet wallet
@@ -33,7 +33,7 @@ class TestUniversalVectorsGetNetwork:
         """
         # Given
         args_data, result_data = load_test_vectors("getNetwork-simple")
-        wallet = Wallet(chain="main")  # Mainnet wallet
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)  # Mainnet wallet
 
         # When
         result = wallet.get_network(args_data["json"], originator=None)
@@ -42,16 +42,31 @@ class TestUniversalVectorsGetNetwork:
         assert result == result_data["json"]
         assert result["network"] == "mainnet"
 
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
     def test_getnetwork_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
     ) -> None:
-        """ABI (wire) test - skipped because TypeScript doesn't test this.
+        """ABI wire format test for getNetwork.
 
-        This test would verify:
-        1. Deserialize wire input: "1b00" -> method + args
-        2. Execute getNetwork
-        3. Serialize result -> matches "0000"
-
-        Following the principle: "If TypeScript skips it, we skip it too."
+        Verifies:
+        1. Deserialize wire input to method call
+        2. Execute getNetwork method
+        3. Serialize result matches expected wire output
         """
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
+
+        # Given
+        args_data, result_data = load_test_vectors("getNetwork-simple")
+        wire_input = bytes.fromhex(args_data["wire"])
+        expected_wire_output = bytes.fromhex(result_data["wire"])
+
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
+
+        # When
+        method_name, args = deserialize_request(wire_input)
+        assert method_name == "getNetwork"
+
+        result = wallet.get_network(args, originator=None)
+        wire_output = serialize_response(result)
+
+        # Then
+        assert wire_output == expected_wire_output

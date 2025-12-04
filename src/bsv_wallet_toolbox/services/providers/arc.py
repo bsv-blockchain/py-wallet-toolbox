@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -205,6 +205,22 @@ class ARC:
 
         return headers
 
+    def broadcast(self, tx: Any) -> PostTxResultForTxid:
+        """Broadcast a Transaction object via ARC.
+        
+        Args:
+            tx: Transaction object with to_hex() and txid() methods.
+            
+        Returns:
+            PostTxResultForTxid with broadcast result.
+        """
+        if hasattr(tx, 'to_hex') and hasattr(tx, 'txid'):
+            return self.post_raw_tx(tx.to_hex(), [tx.txid()])
+        else:
+            # Fallback for other transaction formats
+            tx_hex = str(tx)
+            return self.post_raw_tx(tx_hex, None)
+
     def post_raw_tx(
         self,
         raw_tx: str,
@@ -241,7 +257,7 @@ class ARC:
 
         headers = self.request_headers()
         url = f"{self.url}/v1/tx"
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
@@ -293,7 +309,12 @@ class ARC:
                 else:
                     result.notes.append({**nn, **nnr, "what": "postRawTxSuccess"})
             else:
-                result.status = "error"
+                # Check for rate limiting specifically
+                if response.status_code == 429:
+                    result.status = "rate_limited"
+                    result.rate_limited = True
+                else:
+                    result.status = "error"
                 result.service_error = True
 
                 nnr = {}
@@ -362,7 +383,7 @@ class ARC:
         """
         result = PostBeefResult(name=self.name, status="success", txid_results=[])
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
@@ -466,3 +487,53 @@ class ARC:
             pass
 
         return None
+
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+        """Get transaction status for a given txid (TS-compatible response shape).
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+            use_next: Provider selection hint (ignored; kept for parity with TS)
+
+        Returns:
+            dict: A dictionary describing the transaction status with "name" and "status" fields.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
+        """
+        headers = self.request_headers()
+        url = f"{self.url}/v1/tx/{txid}"
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            if response.status_code == 200:
+                data = response.json()
+                status = data.get("txStatus", "unknown")
+                return {
+                    "name": "ARC",
+                    "status": status,
+                    "txid": txid,
+                    "blockHeight": data.get("blockHeight"),
+                    "blockHash": data.get("blockHash"),
+                    "timestamp": data.get("timestamp"),
+                }
+            elif response.status_code == 404:
+                return {
+                    "name": "ARC",
+                    "status": "not_found",
+                    "txid": txid,
+                }
+            elif response.status_code == 500:
+                raise RuntimeError("ARC server error (500)")
+            elif response.status_code == 429:
+                raise RuntimeError("ARC rate limit exceeded (429)")
+            else:
+                raise RuntimeError(f"ARC HTTP error {response.status_code}")
+        except requests.exceptions.Timeout:
+            raise RuntimeError("ARC request timeout")
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError("ARC connection error")
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"ARC network error: {str(e)}")
+        except Exception as e:
+            raise RuntimeError(f"ARC error: {str(e)}")

@@ -19,8 +19,7 @@ class TestGetKnownTxids:
                getKnownTxids Tests
     """
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
-    def test_returns_empty_array_when_no_txids_provided(self) -> None:
+    def test_returns_empty_array_when_no_txids_provided(self, test_key_deriver) -> None:
         """Given: Wallet with no txids registered
            When: Call get_known_txids with no arguments
            Then: Returns empty list
@@ -29,7 +28,7 @@ class TestGetKnownTxids:
                    test('0 should return an empty array when no txids are provided')
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_known_txids()
@@ -37,8 +36,7 @@ class TestGetKnownTxids:
         # Then
         assert result == []
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
-    def test_adds_new_known_txids(self) -> None:
+    def test_adds_new_known_txids(self, test_key_deriver) -> None:
         """Given: Wallet with no txids registered
            When: Add txids and retrieve them
            Then: Returns the added txids
@@ -47,7 +45,7 @@ class TestGetKnownTxids:
                    test('1 should add new known txids')
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
         txids = ["txid1"]
 
         # When
@@ -60,8 +58,7 @@ class TestGetKnownTxids:
         # Then
         assert result_after == txids
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
-    def test_avoids_duplicating_txids(self) -> None:
+    def test_avoids_duplicating_txids(self, test_key_deriver) -> None:
         """Given: Wallet with some txids already registered
            When: Add a duplicate txid
            Then: Txid list remains unique (no duplicates)
@@ -73,7 +70,7 @@ class TestGetKnownTxids:
               Python implementation should handle this correctly.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
         txids = ["txid1", "txid2"]
         wallet.get_known_txids(txids)
 
@@ -87,8 +84,7 @@ class TestGetKnownTxids:
         # Then - Ensure no duplicates are added
         assert result_after == txids
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
-    def test_returns_sorted_txids(self) -> None:
+    def test_returns_sorted_txids(self, test_key_deriver) -> None:
         """Given: Wallet with unsorted txids added
            When: Retrieve known txids
            Then: Returns txids in sorted order
@@ -100,7 +96,7 @@ class TestGetKnownTxids:
               but sorting is expected to work.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
         unsorted_txids = ["txid3", "txid1", "txid2"]
         wallet.get_known_txids(unsorted_txids)
 
@@ -110,8 +106,7 @@ class TestGetKnownTxids:
         # Then - Ensure txids are sorted
         assert result == ["txid1", "txid2", "txid3"]
 
-    @pytest.mark.skip(reason="Waiting for get_known_txids API implementation")
-    def test_handles_invalid_txids_gracefully(self) -> None:
+    def test_handles_invalid_txids_gracefully(self, test_key_deriver) -> None:
         """Given: Mix of valid and invalid txids
            When: Add them to wallet
            Then: All txids are stored (validation is permissive)
@@ -123,7 +118,7 @@ class TestGetKnownTxids:
               Python implementation should follow the same permissive behavior.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
         invalid_txids = ["invalid_txid"]
         valid_txids = ["txid1", "txid2", "txid3"]
         input_txids = valid_txids + invalid_txids

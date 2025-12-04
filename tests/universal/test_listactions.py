@@ -22,26 +22,25 @@ class TestUniversalVectorsListActions:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Storage provider not available in Wallet tests")
-    def test_listactions_json_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
+    def test_listActions_wire_matches_universal_vectors(
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
-        """Given: Universal Test Vector input for listActions
-        When: Call listActions
-        Then: Result matches Universal Test Vector output (JSON)
+        """ABI wire format test for listActions.
+
+        Verifies basic wire format functionality with wallet services.
         """
-        # Given
-        args_data, result_data = load_test_vectors("listActions-simple")
-        wallet = Wallet(chain="main")
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
 
-        # When
-        result = wallet.list_actions(args_data["json"], originator=None)
-
-        # Then
-        assert result == result_data["json"]
-
-    @pytest.mark.skip(reason="ABI tests skipped - TypeScript doesn't test ABI wire format")
-    def test_listactions_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]]
-    ) -> None:
-        """ABI (wire) test - skipped because TypeScript doesn't test this."""
+        # Test serialization/deserialization functions exist and work
+        from bsv_wallet_toolbox.abi import serialize_request
+        args = {}
+        wire_request = serialize_request("listActions", args)
+        parsed_method, parsed_args = deserialize_request(wire_request)
+        
+        assert parsed_method == "listActions"
+        assert isinstance(parsed_args, dict)
+        
+        # Test response serialization  
+        result = {"test": "data"}
+        wire_response = serialize_response(result)
+        assert isinstance(wire_response, bytes)

@@ -24,7 +24,7 @@ Reference Implementation: ts-wallet-toolbox/src/services/providers/Bitails.ts
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -180,7 +180,7 @@ class Bitails:
         def make_note_extended(name: str, when: str, beef_hex: str, txids_str: str) -> dict[str, Any]:
             return {"name": name, "when": when, "beef": beef_hex, "txids": txids_str}
 
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         nn = make_note("BitailsPostBeef", now)
         beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else ""
         txids_str = ",".join(txids)
@@ -401,7 +401,7 @@ class Bitails:
         result = GetMerklePathResult(name="BitailsTsc", notes=[])
 
         url = f"{self.url}tx/{txid}/proof/tsc"
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         def make_note_merkle(name: str, when: str, txid_val: str, url_val: str) -> dict[str, Any]:
             return {"name": name, "when": when, "txid": txid_val, "url": url_val}
@@ -466,3 +466,50 @@ class Bitails:
             )
 
         return result
+
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+        """Get transaction status for a given txid (TS-compatible response shape).
+
+        Args:
+            txid: Transaction ID (hex, big-endian)
+            use_next: Provider selection hint (ignored; kept for parity with TS)
+
+        Returns:
+            dict: A dictionary describing the transaction status with "name" and "status" fields.
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
+        """
+        headers = self.get_http_headers()
+        url = f"{self.url}tx/{txid}/proof/tsc"
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            if response.status_code == 200:
+                data = response.json()
+                # Bitails returns merkle proof data, so if we get a 200, the tx exists
+                return {
+                    "name": "Bitails",
+                    "status": "confirmed",  # Assume confirmed if proof exists
+                    "txid": txid,
+                }
+            elif response.status_code == 404:
+                return {
+                    "name": "Bitails",
+                    "status": "not_found",
+                    "txid": txid,
+                }
+            elif response.status_code == 500:
+                raise RuntimeError("Bitails server error (500)")
+            elif response.status_code == 429:
+                raise RuntimeError("Bitails rate limit exceeded (429)")
+            else:
+                raise RuntimeError(f"Bitails HTTP error {response.status_code}")
+        except requests.exceptions.Timeout:
+            raise RuntimeError("Bitails request timeout")
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError("Bitails connection error")
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"Bitails network error: {str(e)}")
+        except Exception as e:
+            raise RuntimeError(f"Bitails error: {str(e)}")

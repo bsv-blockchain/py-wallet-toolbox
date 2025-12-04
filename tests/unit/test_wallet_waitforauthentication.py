@@ -1,8 +1,6 @@
 """Unit tests for Wallet.wait_for_authentication method.
 
 Note: TypeScript does not have dedicated unit tests for base Wallet.waitForAuthentication
-      (only tested through manager implementations in src/__tests/CWIStyleWalletManager.test.ts).
-
       This Python test verifies basic functionality to ensure the method works as expected,
       even though no direct TypeScript equivalent exists for the base Wallet class.
 """
@@ -16,7 +14,7 @@ class TestWaitForAuthentication:
     Note: Python-specific test (no TypeScript equivalent for base Wallet class).
     """
 
-    def test_eventually_resolves(self) -> None:
+    def test_eventually_resolves(self, test_key_deriver) -> None:
         """Given: Wallet instance
            When: Call waitForAuthentication
            Then: Returns authenticated=true
@@ -25,7 +23,7 @@ class TestWaitForAuthentication:
               Base Wallet class returns immediately since it's always authenticated.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
 
         # When
         result = wallet.wait_for_authentication({}, originator="normal.com")

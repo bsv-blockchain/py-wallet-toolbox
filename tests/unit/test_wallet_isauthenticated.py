@@ -1,7 +1,6 @@
 """Unit tests for Wallet.is_authenticated method.
 
 Note: TypeScript does not have dedicated unit tests for base Wallet.isAuthenticated
-      (only tested through manager implementations in src/__tests/CWIStyleWalletManager.test.ts).
 
       This Python test verifies basic functionality to ensure the method works as expected,
       even though no direct TypeScript equivalent exists for the base Wallet class.
@@ -16,7 +15,7 @@ class TestIsAuthenticated:
     Note: Python-specific test (no TypeScript equivalent for base Wallet class).
     """
 
-    def test_resolves_with_authenticated_true(self) -> None:
+    def test_resolves_with_authenticated_true(self, test_key_deriver) -> None:
         """Given: Wallet instance
            When: Call isAuthenticated with normal originator
            Then: Returns authenticated=true
@@ -25,7 +24,7 @@ class TestIsAuthenticated:
               We test the successful case with normal originator.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
 
         # When
         result = wallet.is_authenticated({}, originator="normal.com")

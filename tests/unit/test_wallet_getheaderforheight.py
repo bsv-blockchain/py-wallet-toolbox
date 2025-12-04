@@ -25,7 +25,7 @@ BLOCK_HEADER_HEX_LENGTH = 160  # 80 bytes * 2 hex chars per byte
 class TestGetHeaderForHeightBasic:
     """Basic functionality tests for getHeaderForHeight method."""
 
-    def test_returns_valid_header_string(self) -> None:
+    def test_returns_valid_header_string(self, test_key_deriver) -> None:
         """Given: Wallet with mock services
            When: Call getHeaderForHeight with valid height
            Then: Returns header as non-empty hex string
@@ -36,7 +36,7 @@ class TestGetHeaderForHeightBasic:
         # Given
         header_bytes = bytes.fromhex(GENESIS_HEADER_HEX)
         services = MockWalletServices(height=EXPECTED_HEIGHT, header=header_bytes)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_header_for_height({"height": 1})
@@ -48,7 +48,7 @@ class TestGetHeaderForHeightBasic:
         # Block header is 80 bytes = 160 hex characters
         assert len(result["header"]) == BLOCK_HEADER_HEX_LENGTH
 
-    def test_requires_services_configured(self) -> None:
+    def test_requires_services_configured(self, test_key_deriver) -> None:
         """Given: Wallet without services
         When: Call getHeaderForHeight
         Then: Raises RuntimeError
@@ -57,7 +57,7 @@ class TestGetHeaderForHeightBasic:
               This test verifies Python's error handling when services are not configured.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
 
         # When / Then
         with pytest.raises(RuntimeError, match="Services must be configured"):
@@ -67,7 +67,7 @@ class TestGetHeaderForHeightBasic:
 class TestGetHeaderForHeightValidation:
     """Parameter validation tests for getHeaderForHeight method."""
 
-    def test_raises_error_for_negative_height(self) -> None:
+    def test_raises_error_for_negative_height(self, test_key_deriver) -> None:
         """Given: Wallet with services and negative height
            When: Call getHeaderForHeight with height: -1
            Then: Raises InvalidParameterError
@@ -77,13 +77,13 @@ class TestGetHeaderForHeightValidation:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
             wallet.get_header_for_height({"height": -1})
 
-    def test_raises_error_for_missing_height(self) -> None:
+    def test_raises_error_for_missing_height(self, test_key_deriver) -> None:
         """Given: Wallet with services and missing height parameter
            When: Call getHeaderForHeight without height
            Then: Raises InvalidParameterError
@@ -93,13 +93,13 @@ class TestGetHeaderForHeightValidation:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
             wallet.get_header_for_height({})
 
-    def test_raises_error_for_invalid_height_type(self) -> None:
+    def test_raises_error_for_invalid_height_type(self, test_key_deriver) -> None:
         """Given: Wallet with services and non-integer height
            When: Call getHeaderForHeight with invalid height type
            Then: Raises InvalidParameterError
@@ -109,14 +109,14 @@ class TestGetHeaderForHeightValidation:
         """
         # Given
         services = MockWalletServices(height=EXPECTED_HEIGHT)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
         invalid_height = "not_a_number"
 
         # When / Then
         with pytest.raises(InvalidParameterError, match="height"):
             wallet.get_header_for_height({"height": invalid_height})
 
-    def test_accepts_zero_height(self) -> None:
+    def test_accepts_zero_height(self, test_key_deriver) -> None:
         """Given: Wallet with services and height 0 (genesis block)
            When: Call getHeaderForHeight with height: 0
            Then: Returns valid header (genesis block)
@@ -127,7 +127,7 @@ class TestGetHeaderForHeightValidation:
         # Given
         header_bytes = bytes.fromhex(GENESIS_HEADER_HEX)
         services = MockWalletServices(height=EXPECTED_HEIGHT, header=header_bytes)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_header_for_height({"height": 0})
@@ -140,7 +140,7 @@ class TestGetHeaderForHeightValidation:
 class TestGetHeaderForHeightIntegration:
     """Integration tests for getHeaderForHeight method."""
 
-    def test_returns_correct_header_format(self) -> None:
+    def test_returns_correct_header_format(self, test_key_deriver) -> None:
         """Given: Wallet with mock services returning known header
            When: Call getHeaderForHeight
            Then: Returns header matching expected format
@@ -151,7 +151,7 @@ class TestGetHeaderForHeightIntegration:
         # Given
         header_bytes = bytes.fromhex(GENESIS_HEADER_HEX)
         services = MockWalletServices(height=EXPECTED_HEIGHT, header=header_bytes)
-        wallet = Wallet(chain="test", services=services)
+        wallet = Wallet(chain="test", services=services, key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_header_for_height({"height": 9999})

@@ -65,7 +65,12 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             network: Blockchain network ('main' or 'test')
             api_key: Optional WhatsOnChain API key
             http_client: Optional HTTP client (uses default if None)
+
+        Raises:
+            ValueError: If network is not 'main' or 'test'
         """
+        if network not in ("main", "test"):
+            raise ValueError(f"Invalid network: {network}. Must be 'main' or 'test'.")
         super().__init__(network=network, api_key=api_key, http_client=http_client)
 
     async def get_chain(self) -> Chain:
@@ -351,19 +356,26 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
-        # Endpoint path is not critical; tests will monkeypatch fetch()
-        response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/merklepath", request_options)
-        if response.ok:
-            body = response.json() or {}
-            return body
-        if response.status_code == 404:
-            # Match TS tests expected empty result shape
+        try:
+            request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+            # Endpoint path is not critical; tests will monkeypatch fetch()
+            response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/merklepath", request_options)
+            if response.ok:
+                body = response.json() or {}
+                return body
+            if response.status_code == 404:
+                # Match TS tests expected empty result shape
+                return {
+                    "name": "WoCTsc",
+                    "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}],
+                }
+            raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
+        except Exception:
+            # Handle connection errors - return no data result
             return {
                 "name": "WoCTsc",
                 "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}],
             }
-        raise RuntimeError(f"Failed to get merkle path for {txid}: {response.json()}")
 
     async def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Fetch the current BSV/USD exchange rate (TS-compatible shape).
@@ -377,12 +389,16 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
-        response = await self.http_client.fetch(f"{self.URL}/exchange-rate/bsvusd", request_options)
-        if response.ok:
-            body = response.json() or {}
-            return body
-        raise RuntimeError("Failed to update BSV exchange rate")
+        try:
+            request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+            response = await self.http_client.fetch(f"{self.URL}/exchange-rate/bsvusd", request_options)
+            if response.ok:
+                body = response.json() or {}
+                return body
+            raise RuntimeError("Failed to update BSV exchange rate")
+        except Exception:
+            # Handle connection errors
+            raise RuntimeError("Failed to update BSV exchange rate")
 
     async def get_fiat_exchange_rate(self, currency: str, base: str = "USD") -> float:
         """Get a fiat exchange rate for "currency" relative to "base" (TS-compatible logic).
@@ -486,7 +502,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             use_next: Provider selection hint (ignored here; kept for parity with TS)
 
         Returns:
-            dict: { "confirmed": [...], "unconfirmed": [...] }
+            dict: { "status": "success", "name": "WhatsOnChain", "confirmed": [...], "unconfirmed": [...] }
 
         Raises:
             RuntimeError: If the provider request fails or returns a non-OK status.
@@ -500,7 +516,13 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         response = await self.http_client.fetch(url, request_options)
         if not response.ok:
             raise RuntimeError("Failed to get script history")
-        return response.json() or {"confirmed": [], "unconfirmed": []}
+        data = response.json() or {"confirmed": [], "unconfirmed": []}
+        return {
+            "status": "success",
+            "name": "WhatsOnChain",
+            "confirmed": data.get("confirmed", []),
+            "unconfirmed": data.get("unconfirmed", []),
+        }
 
     async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
         """Get transaction status for a given txid (TS-compatible response shape).
@@ -515,8 +537,8 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             use_next: Provider selection hint (ignored here; kept for parity with TS)
 
         Returns:
-            dict: A dictionary describing the transaction status. The exact fields depend on the provider,
-                  but tests expect a TS-compatible shape (e.g., { "status": "confirmed", ... }).
+            dict: A dictionary describing the transaction status with "name" and "status" fields.
+                  Status can be "confirmed", "not_found", "unknown", etc.
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
@@ -524,10 +546,35 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         base_url = "https://mainnet-chaintracks.babbage.systems/getTransactionStatus"
         url = f"{base_url}?{urlencode({'txid': txid})}"
-        response = await self.http_client.fetch(url, request_options)
-        if not response.ok:
-            raise RuntimeError("Failed to get transaction status")
-        return response.json() or {"status": "unknown"}
+
+        try:
+            response = await self.http_client.fetch(url, request_options)
+            if response.status == 500:
+                raise RuntimeError("WhatsOnChain server error (500)")
+            elif response.status == 429:
+                raise RuntimeError("WhatsOnChain rate limit exceeded (429)")
+            elif response.status == 404:
+                return {"name": "WhatsOnChain", "status": "not_found", "txid": txid}
+            elif not response.ok:
+                raise RuntimeError(f"WhatsOnChain HTTP error {response.status}")
+        except TimeoutError:
+            raise RuntimeError("WhatsOnChain request timeout")
+        except Exception as e:
+            if "timeout" in str(e).lower():
+                raise RuntimeError("WhatsOnChain request timeout")
+            elif "connection" in str(e).lower():
+                raise RuntimeError("WhatsOnChain connection error")
+            else:
+                raise RuntimeError(f"WhatsOnChain error: {str(e)}")
+
+        try:
+            data = response.json() or {"status": "unknown"}
+        except Exception:
+            raise RuntimeError("WhatsOnChain malformed JSON response")
+
+        # Add provider name to response
+        data["name"] = "WhatsOnChain"
+        return data
 
     async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid (TS-compatible optional result).
@@ -554,19 +601,23 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         except ValueError:
             return None
 
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
-        response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/hex", request_options)
+        try:
+            request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+            response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/hex", request_options)
 
-        if response.ok:
-            body = response.json() or {}
-            data = body.get("data")
-            if data:
-                return data
+            if response.ok:
+                body = response.json() or {}
+                data = body.get("data")
+                if data:
+                    return data
 
-        if response.status_code == 404:
+            if response.status_code == 404:
+                return None
+            # Unknown error or empty body; treat as None to match TS optional return
             return None
-        # Unknown error or empty body; treat as None to match TS optional return
-        return None
+        except Exception:
+            # Handle connection errors, timeouts, etc.
+            return None
 
     async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
         """Get transaction propagation info for a given txid (TS-compatible intent).

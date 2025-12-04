@@ -1053,6 +1053,22 @@ class ProvenTxReq:
             self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
             self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
 
+    @classmethod
+    def from_storage_txid(cls, storage, txid: str):
+        """Find a ProvenTxReq by txid.
+
+        Args:
+            storage: Storage provider instance
+            txid: Transaction ID to search for
+
+        Returns:
+            ProvenTxReq instance or None if not found
+        """
+        reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
+        if reqs:
+            return cls(reqs[0])
+        return None
+
     @property
     def id(self) -> int:
         return self.proven_tx_req_id

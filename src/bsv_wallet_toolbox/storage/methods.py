@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from bsv.transaction import Transaction
@@ -282,10 +282,10 @@ def generate_change(
 
     for change in selected_change:
         # Create lock record for this output
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         # Calculate expiration: default 1 hour lock timeout
         lock_timeout_seconds = 3600  # 1 hour
-        locked_until = (datetime.utcnow() + timedelta(seconds=lock_timeout_seconds)).isoformat()
+        locked_until = (datetime.now(timezone.utc) + timedelta(seconds=lock_timeout_seconds)).isoformat()
 
         output_lock_record = {
             "txid": change.get("txid") if hasattr(change, "get") else getattr(change, "txid", ""),
@@ -354,7 +354,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
     labels = args.labels or []
 
     # Initialize result structure
-    result = {"total_actions": 0, "actions": []}
+    result = {"totalActions": 0, "actions": []}
 
     # Step 1: Separate regular labels from SpecOp operations
     spec_op = None
@@ -427,7 +427,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
 
     # Step 4: Count total matching transactions
     if len(transactions) < limit:
-        result["total_actions"] = len(transactions)
+        result["totalActions"] = len(transactions)
     else:
         # Need to count all matching records
         total_count = storage.count(
@@ -439,7 +439,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
                 },
             },
         )
-        result["total_actions"] = total_count
+        result["totalActions"] = total_count
 
     # Step 5: Build action objects from transaction records
     for tx in transactions:
@@ -550,7 +550,7 @@ def list_outputs(storage: Any, auth: dict[str, Any], args: ListOutputsArgs) -> d
     basket = getattr(args, "basket", None)
 
     # Initialize result structure
-    result = {"total_outputs": 0, "outputs": []}
+    result = {"totalOutputs": 0, "outputs": []}
 
     # Step 1: Build query filters
     query_filter = {
@@ -579,11 +579,11 @@ def list_outputs(storage: Any, auth: dict[str, Any], args: ListOutputsArgs) -> d
 
     # Step 5: Count total matching outputs
     if len(outputs) < limit:
-        result["total_outputs"] = len(outputs)
+        result["totalOutputs"] = len(outputs)
     else:
         # Need to count all matching records
         total_count = storage.count("Output", query_filter)
-        result["total_outputs"] = total_count
+        result["totalOutputs"] = total_count
 
     # Step 6: Build output objects from records
     for output in outputs:
@@ -671,18 +671,18 @@ def list_certificates(storage: Any, auth: dict[str, Any], limit: int = 100, offs
         raise WalletError("userId is required in auth context")
 
     # Initialize result structure
-    result = {"total_certificates": 0, "certificates": []}
+    result = {"totalCertificates": 0, "certificates": []}
 
     # Step 1: Query certificate records
     certificates = storage.find("Certificate", {"userId": user_id, "isDeleted": False}, limit=limit, offset=offset)
 
     # Step 2: Count total matching certificates
     if len(certificates) < limit:
-        result["total_certificates"] = len(certificates)
+        result["totalCertificates"] = len(certificates)
     else:
         # Need to count all matching records
         total_count = storage.count("Certificate", {"userId": user_id, "isDeleted": False})
-        result["total_certificates"] = total_count
+        result["totalCertificates"] = total_count
 
     # Step 3: Build certificate objects from records
     for cert in certificates:
@@ -1213,7 +1213,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
             {"txid": txid, "userId": user_id},
             {
                 "status": post_status,
-                "lastUpdate": datetime.utcnow().isoformat(),
+                "lastUpdate": datetime.now(timezone.utc).isoformat(),
             },
         )
 
@@ -1222,7 +1222,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
         result["results"][txid] = {
             "status": "success",
             "message": "Posted to network",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     return result
@@ -1289,7 +1289,7 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
                     {"txid": txid, "userId": user_id},
                     {
                         "status": blockchain_status,
-                        "updatedAt": datetime.utcnow().isoformat(),
+                        "updatedAt": datetime.now(timezone.utc).isoformat(),
                     },
                 )
         except Exception:
@@ -1423,7 +1423,7 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     # Step 5: Delete old request records
     # Filter by retention period (recommend 7 days)
     retention_days = 7  # Default retention period
-    cutoff_date = (datetime.utcnow() - timedelta(days=retention_days)).isoformat()
+    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
 
     deleted_reqs = (
         storage.delete("ProvenTxReq", {"status": {"$in": ["sent", "complete"]}, "createdAt": {"$lt": cutoff_date}}) or 0
@@ -1595,7 +1595,7 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         result["nextChunkId"] = chunk_offset + chunk_size
 
     # Store sync state update
-    now_timestamp = datetime.utcnow().isoformat()
+    now_timestamp = datetime.now(timezone.utc).isoformat()
     next_version = (sync_state.get("syncVersion", 0) + 1) if sync_state else 1
 
     if sync_state:

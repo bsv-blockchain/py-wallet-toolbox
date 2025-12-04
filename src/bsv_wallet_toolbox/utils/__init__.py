@@ -10,7 +10,12 @@ from types import SimpleNamespace
 
 from dotenv import load_dotenv
 
-from bsv_wallet_toolbox.utils.aggregate_results import aggregate_action_results
+from bsv_wallet_toolbox.utils.aggregate_results import (
+    aggregate_action_results,
+    aggregate_results,
+    combine_results,
+    merge_result_arrays,
+)
 from bsv_wallet_toolbox.utils.buffer_utils import (
     as_array,
     as_buffer,
@@ -20,7 +25,10 @@ from bsv_wallet_toolbox.utils.buffer_utils import (
 from bsv_wallet_toolbox.utils.config import (
     configure_logger,
     create_action_tx_assembler,
+    get_config_value,
     load_config,
+    set_config_value,
+    validate_config,
 )
 from bsv_wallet_toolbox.utils.format_utils import Format
 from bsv_wallet_toolbox.utils.generate_change_sdk import generate_change_sdk
@@ -132,8 +140,19 @@ def max_date(d1: object | None, d2: object | None) -> object | None:
 
 
 def to_wallet_network(chain: str) -> str:
-    """Convert chain to wallet network."""
+    """Convert chain to wallet network.
+    
+    Args:
+        chain: Chain identifier ('main', 'test', 'mainnet', 'testnet', 'regtest')
+        
+    Returns:
+        Network name ('mainnet', 'testnet', 'regtest')
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - toWalletNetwork
+    """
     chain_map = {
+        "main": "mainnet",
+        "test": "testnet",
         "mainnet": "mainnet",
         "testnet": "testnet",
         "regtest": "regtest",
@@ -141,53 +160,165 @@ def to_wallet_network(chain: str) -> str:
     return chain_map.get(chain, chain)
 
 
-def verify_truthy(value: object, description: str | None = None) -> None:
-    """Verify that a value is truthy, raising an error if not."""
+def verify_truthy(value: object, description: str | None = None) -> object:
+    """Verify that a value is truthy, raising an error if not.
+    
+    Args:
+        value: Value to verify
+        description: Optional error description
+        
+    Returns:
+        The value if truthy
+        
+    Raises:
+        ValueError: If value is falsy
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyTruthy
+    """
     if not value:
-        msg = description or f"Value {value} is not truthy"
-        raise AssertionError(msg)
+        msg = description or f"Value must be truthy"
+        raise ValueError(msg)
+    return value
 
 
-def verify_hex_string(value: str, description: str | None = None) -> None:
-    """Verify that a value is a valid hex string."""
+def verify_hex_string(value: str, description: str | None = None) -> str:
+    """Verify that a value is a valid hex string, trim and lowercase it.
+    
+    Args:
+        value: String to verify and normalize
+        description: Optional error description
+        
+    Returns:
+        Trimmed and lowercased hex string
+        
+    Raises:
+        ValueError: If value is not a valid hex string
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyHexString
+    """
     if not isinstance(value, str):
-        msg = description or f"Value {value} is not a string"
-        raise AssertionError(msg)
+        msg = description or f"Value must be a string"
+        raise ValueError(msg)
+    # Trim whitespace and lowercase
+    normalized = value.strip().lower()
+    # Verify it's valid hex
     try:
-        int(value, 16)
+        int(normalized, 16)
     except ValueError as e:
-        msg = description or f"Value {value} is not a valid hex string"
-        raise AssertionError(msg) from e
+        msg = description or f"Value is not a valid hex string"
+        raise ValueError(msg) from e
+    return normalized
 
 
-def verify_id(value: object, description: str | None = None) -> None:
-    """Verify that a value is a valid ID."""
-    verify_truthy(value, description or f"Value {value} is not a valid ID")
+def verify_id(value: int, description: str | None = None) -> int:
+    """Verify that a value is a valid ID (positive integer).
+    
+    Args:
+        value: Value to verify
+        description: Optional error description
+        
+    Returns:
+        The ID value
+        
+    Raises:
+        ValueError: If value is not a positive integer
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyId
+    """
+    verify_integer(value, description)
+    if value <= 0:
+        msg = description or f"ID must be positive (> 0), got {value}"
+        raise ValueError(msg)
+    return value
 
 
-def verify_integer(value: object, description: str | None = None) -> None:
-    """Verify that a value is an integer."""
+def verify_integer(value: int, description: str | None = None) -> int:
+    """Verify that a value is an integer.
+    
+    Args:
+        value: Value to verify
+        description: Optional error description
+        
+    Returns:
+        The integer value
+        
+    Raises:
+        ValueError: If value is not an integer
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyInteger
+    """
     if not isinstance(value, int) or isinstance(value, bool):
-        msg = description or f"Value {value} is not an integer"
-        raise AssertionError(msg)
+        msg = description or f"Value must be an integer, got {type(value).__name__}"
+        raise ValueError(msg)
+    return value
 
 
-def verify_number(value: object, description: str | None = None) -> None:
-    """Verify that a value is a number."""
+def verify_number(value: int | float, description: str | None = None) -> int | float:
+    """Verify that a value is a number.
+    
+    Args:
+        value: Value to verify
+        description: Optional error description
+        
+    Returns:
+        The number value
+        
+    Raises:
+        ValueError: If value is not a number
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyNumber
+    """
     if not isinstance(value, (int, float)) or isinstance(value, bool):
-        msg = description or f"Value {value} is not a number"
-        raise AssertionError(msg)
+        msg = description or f"Value must be a number, got {type(value).__name__}"
+        raise ValueError(msg)
+    return value
 
 
-def verify_one(value: object, description: str | None = None) -> None:
-    """Verify that a value is truthy (similar to verify_truthy)."""
-    verify_truthy(value, description)
+def verify_one(results: list, description: str | None = None) -> object:
+    """Verify that a list contains exactly one element and return it.
+    
+    Args:
+        results: List to verify
+        description: Optional error description
+        
+    Returns:
+        The single element in the list
+        
+    Raises:
+        ValueError: If list is empty or has multiple elements
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyOne
+    """
+    if len(results) == 0:
+        msg = description or "Expected exactly one result to exist, found none"
+        raise ValueError(msg)
+    if len(results) > 1:
+        msg = description or f"Expected unique result, found {len(results)}"
+        raise ValueError(msg)
+    return results[0]
 
 
-def verify_one_or_none(value: object, description: str | None = None) -> None:
-    """Verify that a value is truthy or None."""
-    if value is not None:
-        verify_truthy(value, description)
+def verify_one_or_none(results: list, description: str | None = None) -> object | None:
+    """Verify that a list contains at most one element and return it or None.
+    
+    Args:
+        results: List to verify
+        description: Optional error description
+        
+    Returns:
+        The single element in the list, or None if list is empty
+        
+    Raises:
+        ValueError: If list has multiple elements
+        
+    Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyOneOrNone
+    """
+    if len(results) == 0:
+        return None
+    if len(results) > 1:
+        msg = description or f"Expected unique result, found {len(results)}"
+        raise ValueError(msg)
+    return results[0]
 
 
 __all__ = [
@@ -197,19 +328,23 @@ __all__ = [
     "Setup",
     "TestUtils",
     "aggregate_action_results",
+    "aggregate_results",
     "arrays_equal",
     "as_array",
     "as_buffer",
     "as_string",
     "as_uint8array",
+    "combine_results",
     "configure_logger",
     "convert_proof_to_merkle_path",
     "create_action_tx_assembler",
     "double_sha256_be",
     "double_sha256_le",
     "generate_change_sdk",
+    "get_config_value",
     "load_config",
     "max_date",
+    "merge_result_arrays",
     "optional_arrays_equal",
     "parse_results",
     "parse_tx_script_offsets",
@@ -228,10 +363,12 @@ __all__ = [
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",
+    "set_config_value",
     "sha256_hash",
     "to_wallet_network",
     "transform_verifiable_certificates_with_trust",
     "validate_basket_config",
+    "validate_config",
     "validate_create_action_args",
     "validate_internalize_action_args",
     "validate_originator",

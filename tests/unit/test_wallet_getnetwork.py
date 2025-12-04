@@ -11,7 +11,7 @@ from bsv_wallet_toolbox import Wallet
 class TestWalletGetNetwork:
     """Test suite for Wallet.get_network method."""
 
-    def test_returns_testnet_for_test_chain(self) -> None:
+    def test_returns_testnet_for_test_chain(self, test_key_deriver) -> None:
         """Given: Wallet with chain='test'
            When: Call getNetwork
            Then: Returns 'testnet'
@@ -22,7 +22,7 @@ class TestWalletGetNetwork:
         Note: TypeScript tests use chain='test' by default in test environment.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_network({})
@@ -30,7 +30,7 @@ class TestWalletGetNetwork:
         # Then
         assert result == {"network": "testnet"}
 
-    def test_returns_mainnet_for_main_chain(self) -> None:
+    def test_returns_mainnet_for_main_chain(self, test_key_deriver) -> None:
         """Given: Wallet with chain='main'
            When: Call getNetwork
            Then: Returns 'mainnet'
@@ -41,7 +41,7 @@ class TestWalletGetNetwork:
               Both chain values ('main' and 'test') should be tested for completeness.
         """
         # Given
-        wallet = Wallet(chain="main")
+        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
         result = wallet.get_network({})

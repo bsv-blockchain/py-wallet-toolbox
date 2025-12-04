@@ -26,7 +26,6 @@ class TestLiveIngestorWhatsOnChainPoll:
                describe('LiveIngestorWhatsOnChainPoll tests')
     """
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LiveIngestorWhatsOnChainPoll implementation")
     def test_listen_for_first_new_header(self) -> None:
         """Given: LiveIngestorWhatsOnChainPoll with mainnet options
            When: Start listening for new headers
@@ -35,6 +34,9 @@ class TestLiveIngestorWhatsOnChainPoll:
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/LiveIngestorWhatsOnChainPoll.test.ts
                    test('0 listen for first new header')
         """
+        if not IMPORTS_AVAILABLE:
+            pytest.skip("LiveIngestorWhatsOnChainPoll not available")
+        
         # Given
         live_headers: list[BlockHeader] = []
         options = LiveIngestorWhatsOnChainPoll.create_live_ingestor_whats_on_chain_options("main")

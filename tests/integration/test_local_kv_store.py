@@ -6,8 +6,9 @@ Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
 """
 
 import asyncio
-
 import pytest
+from bsv.keys import PrivateKey
+from bsv.wallet import KeyDeriver
 
 try:
     from bsv_wallet_toolbox.local_kv_store import LocalKVStore
@@ -18,6 +19,8 @@ try:
 except ImportError:
     IMPORTS_AVAILABLE = False
 
+root_key = PrivateKey(bytes.fromhex("6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8"))
+key_deriver = KeyDeriver(root_key)
 
 class TestLocalKVStore:
     """Test suite for LocalKVStore.
@@ -25,8 +28,6 @@ class TestLocalKVStore:
     Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
                 describe('LocalKVStore tests')
     """
-
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_get_non_existent(self) -> None:
         """Given: LocalKVStore with empty storage
@@ -36,8 +37,8 @@ class TestLocalKVStore:
         Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
                    test('0 get non-existent')
         """
-        # Given
-        wallet = Wallet(chain="test")
+        
+        wallet = Wallet(chain="test", key_deriver=key_deriver)
         context = "test kv store"
         kv_store = LocalKVStore(wallet, context, False, None, True)
 
@@ -47,7 +48,6 @@ class TestLocalKVStore:
         # Then
         assert value is None
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_set_get(self) -> None:
         """Given: LocalKVStore instance
@@ -61,7 +61,7 @@ class TestLocalKVStore:
               Python implements it but skips until LocalKVStore is available.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=key_deriver)
         context = "test kv store"
         kv_store = LocalKVStore(wallet, context, False, None, True)
 
@@ -72,7 +72,6 @@ class TestLocalKVStore:
         # Then
         assert value == "value1"
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_set_x_4_get(self) -> None:
         """Given: LocalKVStore instance
@@ -86,7 +85,7 @@ class TestLocalKVStore:
               Python implements it but skips until LocalKVStore is available.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=key_deriver)
         context = "test kv store"
         kv_store = LocalKVStore(wallet, context, False, None, True)
 
@@ -106,7 +105,6 @@ class TestLocalKVStore:
     #       It tests Jest's fake timers, not LocalKVStore functionality.
     #       Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
 
-    @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="Waiting for LocalKVStore implementation")
     @pytest.mark.asyncio
     async def test_set_x_4_get_set_x_4_get(self) -> None:
         """Given: LocalKVStore instance
@@ -120,7 +118,7 @@ class TestLocalKVStore:
               Python implements it but skips until LocalKVStore is available.
         """
         # Given
-        wallet = Wallet(chain="test")
+        wallet = Wallet(chain="test", key_deriver=key_deriver)
         context = "test kv store"
         kv_store = LocalKVStore(wallet, context, False, None, True)
 
