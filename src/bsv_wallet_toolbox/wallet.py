@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from bsv.keys import PublicKey
 from bsv.transaction import Beef
-from bsv.transaction.beef import parse_beef, parse_beef_ex
+from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
@@ -237,7 +237,8 @@ class Wallet:
             # Get the public key from key_deriver if available
             if self.key_deriver is not None:
                 # Try to get the client change key pair's public key for user party identification
-                pub_key = self.key_deriver.public_key
+                key_pair = self.get_client_change_key_pair()
+                pub_key = key_pair["publicKey"]
                 self.user_party = f"user {pub_key}"
         except Exception:
             # If unable to retrieve public key, set generic user party
@@ -245,8 +246,9 @@ class Wallet:
 
         # Initialize Beef instance (BeefParty equivalent - aggregates all BEEF data)
         # TS: this.beef = new BeefParty([this.userParty])
+        # TS/Go parity: Use BEEF_V2 as default version (BRC-96)
         try:
-            self.beef: Any = Beef()
+            self.beef: Any = Beef(version=BEEF_V2)
         except Exception:
             # Fallback if Beef initialization fails
             self.beef = None
@@ -279,6 +281,37 @@ class Wallet:
         # TS parity: TypeScript wallet ensures defaults exist on initialization
         if self.storage is not None:
             self._ensure_defaults()
+
+    def get_client_change_key_pair(self) -> dict[str, str]:
+        """Get the client change key pair (root key).
+
+        Returns a dict with privateKey and publicKey (both as hex strings).
+
+        TS Parity: Wallet.ts getClientChangeKeyPair()
+        Reference: ts-wallet-toolbox/src/Wallet.ts
+
+        Note: py-sdk's KeyDeriver should expose a public_key property
+        similar to TS: keyDeriver.rootKey.toPublicKey()
+        Currently uses internal _root_public_key as a workaround.
+
+        Returns:
+            dict with 'privateKey' and 'publicKey' (both hex strings)
+
+        Raises:
+            RuntimeError: If key_deriver is not available
+        """
+        if not self.key_deriver:
+            raise RuntimeError("key_deriver is required for get_client_change_key_pair()")
+
+        # WORKAROUND: py-sdk KeyDeriver should expose a public_key property
+        # Ideally: pub_key = self.key_deriver.public_key
+        # Current: Use internal _root_public_key attribute
+        pub_key = self.key_deriver._root_public_key
+
+        return {
+            "privateKey": str(self.key_deriver._root_private_key),
+            "publicKey": str(pub_key),
+        }
 
     def _ensure_defaults(self) -> None:
         """Ensure default labels and baskets exist in storage.

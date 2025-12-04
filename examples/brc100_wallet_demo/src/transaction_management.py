@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from pprint import pprint
 from bsv.merkle_path import MerklePath as PyMerklePath
 from bsv.transaction.beef import BEEF_V2, Beef
 from bsv.transaction.beef_builder import merge_bump, merge_raw_tx
@@ -126,16 +127,26 @@ def _parse_output_indexes(raw: str) -> list[int]:
 def _build_atomic_beef_for_txid(chain: Chain, txid: str) -> bytes:
     services = Services(chain)
 
+    print(f"\n🔎 Fetching raw transaction via Services for txid={txid} (chain={chain})")
     raw_hex = services.get_raw_tx(txid)
     if not raw_hex:
+        print("⚠️  Services.get_raw_tx returned None. Call history snapshot:")
+        call_history = services.get_services_call_history()
+        pprint(call_history.get("getRawTx"), width=120)
         raise RuntimeError("Unable to locate raw transaction data.")
 
-    merkle_result = asyncio.run(services.get_merkle_path_for_transaction(txid))
+    print(f"✅ Raw transaction fetched ({len(raw_hex)} hex chars). Building Merkle data...")
+    merkle_result = services.get_merkle_path_for_transaction(txid)
+    if not merkle_result:
+        print("⚠️  get_merkle_path_for_transaction returned empty result.")
     merkle_path = _convert_merkle_result(txid, merkle_result)
+    if not merkle_path:
+        print("⚠️  Unable to convert merkle path result. Continuing without BUMP info.")
 
     beef = Beef(version=BEEF_V2)
     bump_index = merge_bump(beef, merkle_path) if merkle_path else None
     merge_raw_tx(beef, bytes.fromhex(raw_hex), bump_index)
+    print("✅ Atomic BEEF built successfully.")
     return to_binary_atomic(beef, txid)
 
 

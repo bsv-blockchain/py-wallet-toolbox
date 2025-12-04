@@ -39,13 +39,14 @@ from typing import Any
 from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
-from bsv.http_client import default_http_client
 from bsv.transaction import Transaction
 from bsv.transaction.beef import parse_beef
 
 from ..errors import InvalidParameterError
+from ..utils.random_utils import double_sha256_be
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
+from .http_client import ToolboxHttpClient
 from .providers.arc import ARC, ArcConfig
 from .providers.bitails import Bitails, BitailsConfig
 from .providers.whatsonchain import WhatsOnChain
@@ -304,7 +305,7 @@ class Services(WalletServices):
         Returns:
             HTTP client instance with fetch method for making HTTP requests.
         """
-        return default_http_client()
+        return ToolboxHttpClient()
 
     def get_services_call_history(self, reset: bool = False) -> dict[str, Any]:
         """Get complete call history across all services with optional reset.
@@ -607,28 +608,43 @@ class Services(WalletServices):
             stc = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                r = self._run_async(stc.service(txid, self.chain))
+                # Note: get_raw_tx takes only txid, unlike get_merkle_path which also takes services
+                r = self._run_async(stc.service(txid))
 
-                if isinstance(r, dict) and r.get("rawTx"):
-                    # Validate transaction hash matches
-                    computed_txid = r.get("computedTxid")
-                    if computed_txid and computed_txid.lower() == txid.lower():
-                        # Match found
-                        result["rawTx"] = r["rawTx"]
-                        result["name"] = r.get("name")
-                        result.pop("error", None)
-                        services.add_service_call_success(stc)
-                        return r["rawTx"]
+                if isinstance(r, dict):
+                    raw_tx_hex = r.get("rawTx")
+                    if raw_tx_hex:
+                        try:
+                            raw_tx_bytes = bytes.fromhex(raw_tx_hex)
+                            computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
+                        except (ValueError, TypeError):
+                            r["error"] = {"message": "provider returned invalid rawTx data", "code": "INVALID_DATA"}
+                            r.pop("rawTx", None)
+                        else:
+                            # Validate transaction hash matches
+                            if computed_txid.lower() == txid.lower():
+                                # Match found
+                                result["rawTx"] = raw_tx_hex
+                                result["name"] = r.get("name")
+                                result.pop("error", None)
+                                services.add_service_call_success(stc)
+                                return raw_tx_hex
+
+                            # Hash mismatch - mark as error
+                            r["error"] = {
+                                "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
+                                "code": "TXID_MISMATCH",
+                            }
+                            r.pop("rawTx", None)
+
+                    if r.get("error"):
+                        services.add_service_call_error(stc, r["error"])
+                        if "error" not in result:
+                            result["error"] = r["error"]
+                    elif not r.get("rawTx"):
+                        services.add_service_call_success(stc, "not found")
                     else:
-                        # Hash mismatch - mark as error
-                        error_msg = f"computed txid {computed_txid} doesn't match requested value {txid}"
-                        result["error"] = {"message": error_msg, "code": "TXID_MISMATCH"}
-                        services.add_service_call_error(stc, error_msg)
-                # No rawTx found
-                elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
-                    if "error" not in result:
-                        result["error"] = r["error"]
+                        services.add_service_call_failure(stc)
                 else:
                     services.add_service_call_success(stc, "not found")
 

@@ -576,7 +576,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         data["name"] = "WhatsOnChain"
         return data
 
-    async def get_raw_tx(self, txid: str) -> str | None:
+    async def get_raw_tx(self, txid: str) -> dict[str, Any] | None:
         """Get raw transaction hex for a given txid (TS-compatible optional result).
 
         Behavior:
@@ -593,31 +593,40 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
+        result: dict[str, Any] = {"txid": txid, "name": "WhatsOnChain"}
+
         if not isinstance(txid, str) or len(txid) != 64:
-            return None
+            result["error"] = {"message": "Invalid txid length", "code": "INVALID_TXID"}
+            return result
         try:
-            # Validate hex
             bytes.fromhex(txid)
         except ValueError:
-            return None
+            result["error"] = {"message": "Invalid txid hex", "code": "INVALID_TXID"}
+            return result
 
         try:
             request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
             response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/hex", request_options)
 
-            if response.ok:
+            if response.status_code == 200:
                 body = response.json() or {}
                 data = body.get("data")
                 if data:
-                    return data
+                    result["rawTx"] = data
+                    return result
 
             if response.status_code == 404:
                 return None
-            # Unknown error or empty body; treat as None to match TS optional return
-            return None
-        except Exception:
+            # Unexpected status or empty body
+            result["error"] = {
+                "message": f"Unexpected WhatsOnChain response status={response.status_code}",
+                "code": "HTTP_ERROR",
+            }
+            return result
+        except Exception as exc:
             # Handle connection errors, timeouts, etc.
-            return None
+            result["error"] = {"message": str(exc), "code": "NETWORK_ERROR"}
+            return result
 
     async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
         """Get transaction propagation info for a given txid (TS-compatible intent).
