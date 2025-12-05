@@ -6,11 +6,12 @@ import re
 import secrets
 from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Callable
 
 from bsv.merkle_path import MerklePath
 from bsv.transaction import Transaction
 from bsv.transaction import Transaction as BsvTransaction
+from bsv.transaction.beef import parse_beef_ex
 from sqlalchemy import func, inspect, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -55,6 +56,18 @@ from .models import (
 from .models import (
     Transaction as TransactionModel,
 )
+
+if TYPE_CHECKING:
+    from .crud import (
+        CertifierAccessor,
+        CommissionAccessor,
+        KnownTxAccessor,
+        OutputAccessor,
+        OutputBasketAccessor,
+        TransactionAccessor,
+        TxNoteAccessor,
+        UserAccessor,
+    )
 
 # Special case mappings for camelCase/snake_case conversions
 # For cases where regex conversion would be ambiguous (e.g., "UTXOs")
@@ -1664,7 +1677,7 @@ class StorageProvider:
                     "isOutgoing": bool(tx.is_outgoing),
                     "description": tx.description or "",
                     "version": tx.version or 0,
-                    "lockTime": tx.lock_time or 0,
+                    "lockTime": tx.locktime or 0,
                 }
 
                 # Optionally add labels (TS lines 167-168)
@@ -4192,7 +4205,7 @@ class InternalizeActionContext:
     def setup(self) -> None:
         """Execute all setup (synchronous implementation of TS asyncSetup)."""
         # Step 1: Parse and validate BEEF
-        self.txid, self.tx = self._validate_atomic_beef(self.args.get("tx", []))
+        self.txid, self.tx = self._validate_atomic_beef(self.vargs.get("tx", b""))
         self.result["txid"] = self.txid
 
         # Step 2: Parse outputs and classify
@@ -4208,26 +4221,31 @@ class InternalizeActionContext:
         # Step 5: Calculate satoshis impact
         self._calculate_satoshis_impact()
 
-    def _validate_atomic_beef(self, atomic_beef: list[int]) -> tuple[str, Any]:
+    def _validate_atomic_beef(self, atomic_beef: bytes | bytearray | list[int]) -> tuple[str, Any]:
         """Parse and validate AtomicBEEF binary format. (TS lines 255-278)"""
         if not atomic_beef or len(atomic_beef) < 4:
             raise InvalidParameterError("tx", "valid AtomicBEEF with minimum 4 bytes")
 
         try:
-            beef_bytes = bytes(atomic_beef)
+            beef_bytes = bytes(atomic_beef) if isinstance(atomic_beef, (bytes, bytearray)) else bytes(atomic_beef)
+        except (TypeError, ValueError):
+            raise InvalidParameterError("tx", "valid AtomicBEEF byte sequence")
 
-            # Parse BEEF (simplified - full BEEF verification skipped for now)
-            tx_obj = BsvTransaction.from_hex(beef_bytes)
-            txid = tx_obj.txid()
+        try:
+            beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
+        except Exception as exc:  # noqa: PERF203
+            raise InvalidParameterError("tx", f"valid AtomicBEEF: {exc!s}") from exc
 
-            return txid, tx_obj
-        except Exception as e:
-            raise InvalidParameterError("tx", f"valid AtomicBEEF: {e!s}")
+        if not subject_txid or subject_tx is None:
+            raise InvalidParameterError("tx", "AtomicBEEF must include subject transaction data")
+
+        self.beef_obj = beef_obj
+        return subject_txid, subject_tx
 
     def _parse_outputs(self) -> None:
         """Parse outputs and classify (TS lines 155-189)."""
-        for output_spec in self.args.get("outputs", []):
-            output_index = output_spec.get("outputIndex", -1)
+        for output_spec in self.vargs.get("outputs", []):
+            output_index = output_spec.get("output_index", output_spec.get("outputIndex", -1))
             protocol = output_spec.get("protocol", "")
 
             if output_index < 0 or output_index >= len(self.tx.outputs):
@@ -4385,9 +4403,9 @@ class InternalizeActionContext:
                 txid=self.txid,
                 status="unproven",
                 satoshis=self.result["satoshis"],
-                description=self.args.get("description", ""),
+                description=self.vargs.get("description", ""),
                 version=self.tx.version if self.tx else 2,
-                lock_time=self.tx.lock_time if self.tx else 0,
+                lock_time=self.tx.locktime if self.tx else 0,
                 reference=base64.b64encode(secrets.token_bytes(7)).decode(),
                 is_outgoing=False,
                 created_at=now,
@@ -4437,17 +4455,15 @@ class InternalizeActionContext:
         now = datetime.now(UTC)
         txo = payment["txo"]
 
+        locking_script_bytes = txo.locking_script.serialize()
+
         output_record = Output(
             created_at=now,
             updated_at=now,
             transaction_id=transaction_id,
             user_id=self.user_id,
             spendable=True,
-            locking_script=(
-                txo.locking_script.to_binary()
-                if hasattr(txo.locking_script, "to_binary")
-                else bytes(txo.locking_script)
-            ),
+            locking_script=locking_script_bytes,
             vout=payment["vout"],
             basket_id=self.change_basket.basket_id,
             satoshis=txo.satoshis,
@@ -4500,17 +4516,15 @@ class InternalizeActionContext:
             session.add(target_basket)
             session.flush()
 
+        locking_script_bytes = txo.locking_script.serialize()
+
         output_record = Output(
             created_at=now,
             updated_at=now,
             transaction_id=transaction_id,
             user_id=self.user_id,
             spendable=True,
-            locking_script=(
-                txo.locking_script.to_binary()
-                if hasattr(txo.locking_script, "to_binary")
-                else bytes(txo.locking_script)
-            ),
+            locking_script=locking_script_bytes,
             vout=basket["vout"],
             basket_id=target_basket.basket_id,
             satoshis=txo.satoshis,

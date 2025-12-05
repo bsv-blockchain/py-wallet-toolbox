@@ -22,7 +22,7 @@ from typing import Any
 from bsv.auth.master_certificate import MasterCertificate
 from bsv.script import P2PKH, Script
 from bsv.transaction import Beef, Transaction, TransactionInput, TransactionOutput
-from bsv.transaction.beef import parse_beef
+from bsv.transaction.beef import parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
@@ -513,23 +513,29 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     vargs = args
 
     # Validate and extract atomic BEEF
-    ab = parse_beef(vargs.get("tx", b"")) if vargs.get("tx") else Beef(version=1)
+    tx_bytes = vargs.get("tx")
+    ab: Beef
+    subject_txid: str | None = None
+    subject_tx: Transaction | None = None
+    if tx_bytes:
+        try:
+            ab, subject_txid, subject_tx = parse_beef_ex(tx_bytes)
+        except Exception as exc:  # noqa: PERF203
+            raise WalletError("tx is not valid AtomicBEEF") from exc
+    else:
+        ab = Beef(version=1)
 
     # Note: Known txids (BRC-95 SpecOp support) are available in vargs.get("knownTxids", [])
     # They can be used for proof validation if needed
 
     # Verify the BEEF and find the target transaction
-    txid = ab.atomic_txid
+    txid = subject_txid or getattr(ab, "atomic_txid", None)
     if not txid:
         raise WalletError(f"tx is not valid AtomicBEEF: {ab.to_log_string()}")
 
-    btx = ab.find_txid(txid)
-    if not btx:
+    tx = subject_tx or _find_transaction_in_beef(ab, txid)
+    if tx is None:
         raise WalletError(f"tx is not valid AtomicBEEF with newest txid of {txid}")
-
-    tx = btx.get("tx")
-    if not tx:
-        raise WalletError("Could not extract transaction from BEEF")
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]
@@ -552,8 +558,18 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
             raise WalletError(f"unexpected protocol {protocol}")
 
     # Pass to storage layer
-    result = wallet.storage.internalize_action(vargs)
+    result = wallet.storage.internalize_action(auth, vargs)
     return result
+
+
+def _find_transaction_in_beef(beef: Beef, txid: str) -> Transaction | None:
+    """Locate a Transaction object inside a py-sdk Beef structure."""
+    if not hasattr(beef, "find_transaction"):
+        return None
+    btx = beef.find_transaction(txid)
+    if not btx:
+        return None
+    return getattr(btx, "tx_obj", None)
 
 
 def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) -> dict[str, Any]:

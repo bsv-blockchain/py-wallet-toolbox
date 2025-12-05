@@ -90,6 +90,7 @@ def demo_internalize_action(wallet: Wallet, chain: Chain) -> None:
 
     print("\n🚀 Internalizing transaction...")
     try:
+
         result = wallet.internalize_action(internalize_args)
     except Exception as err:  # noqa: BLE001
         print(f"❌ InternalizeAction failed: {err}")
