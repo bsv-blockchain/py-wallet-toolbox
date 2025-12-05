@@ -27,6 +27,7 @@ from .blockchain_info import (
     demo_get_header_for_height,
     demo_wait_for_authentication,
 )
+from .transaction_management import demo_internalize_action
 
 __all__ = [
     # address & wallet info
@@ -63,6 +64,7 @@ __all__ = [
     "demo_list_outputs",
     "demo_relinquish_output",
     "demo_relinquish_certificate",
+    "demo_internalize_action",
     # blockchain info
     "demo_get_height",
     "demo_get_header_for_height",

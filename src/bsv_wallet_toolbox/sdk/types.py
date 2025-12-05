@@ -6,14 +6,14 @@ Reference: ts-wallet-toolbox/src/sdk/types.ts
 # Special operation basket names for storage layer optimizations
 # These are used to indicate special operations to the storage layer
 
-specOpWalletBalance = "wallet-balance"  # noqa: N816
+specOpWalletBalance = "893b7646de0e1c9f741bd6e9169b76a8847ae34adef7bef1e6a285371206d2e8"  # noqa: N816
 """Special operation basket name for wallet balance computation.
 
 Signals to storage layer to use optimized balance calculation.
 Used in listOutputs() to efficiently compute wallet balance.
 """
 
-specOpInvalidChange = "invalid-change"  # noqa: N816
+specOpInvalidChange = "5a76fd430a311f8bc0553859061710a4475c19fed46e2ff95969aa918e612e57"  # noqa: N816
 """Special operation basket name for detecting invalid change outputs.
 
 Signals to storage layer to identify outputs that are not valid UTXOs

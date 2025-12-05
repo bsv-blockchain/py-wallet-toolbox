@@ -33,19 +33,21 @@ Phase 4 Implementation Status:
 
 import asyncio
 import inspect
+import threading
 from collections.abc import Callable
 from time import time
 from typing import Any
 from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
-from bsv.http_client import default_http_client
 from bsv.transaction import Transaction
-from bsv.transaction.beef import parse_beef
+from bsv.transaction.beef import parse_beef, parse_beef_ex
 
 from ..errors import InvalidParameterError
+from ..utils.random_utils import double_sha256_be
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
+from .http_client import ToolboxHttpClient
 from .providers.arc import ARC, ArcConfig
 from .providers.bitails import Bitails, BitailsConfig
 from .providers.whatsonchain import WhatsOnChain
@@ -116,6 +118,26 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
         arcUrl=arc_url,
         arcGorillaPoolUrl=arc_gorillapool_url,
     )
+
+
+class _AsyncRunner:
+    """Background event loop runner for executing coroutines synchronously."""
+
+    def __init__(self) -> None:
+        self._loop = asyncio.new_event_loop()
+        self._loop_thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._loop_thread.start()
+
+    def _run_loop(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_forever()
+
+    def run(self, coro: Any) -> Any:
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result()
+
+
+_ASYNC_RUNNER = _AsyncRunner()
 
 
 class Services(WalletServices):
@@ -304,7 +326,7 @@ class Services(WalletServices):
         Returns:
             HTTP client instance with fetch method for making HTTP requests.
         """
-        return default_http_client()
+        return ToolboxHttpClient()
 
     def get_services_call_history(self, reset: bool = False) -> dict[str, Any]:
         """Get complete call history across all services with optional reset.
@@ -341,8 +363,7 @@ class Services(WalletServices):
             The result, running the coroutine if needed
         """
         if inspect.iscoroutine(coro_or_result):
-            # Run the coroutine using asyncio.run (creates new event loop)
-            return asyncio.run(coro_or_result)
+            return _ASYNC_RUNNER.run(coro_or_result)
         return coro_or_result
 
     def get_chain_tracker(self) -> ChainTracker:
@@ -355,7 +376,7 @@ class Services(WalletServices):
         """
         return self.whatsonchain
 
-    async def get_height(self) -> int | None:
+    def get_height(self) -> int | None:
         """Get current blockchain height from WhatsOnChain.
 
         Equivalent to TypeScript's Services.getHeight()
@@ -368,11 +389,11 @@ class Services(WalletServices):
             RuntimeError: If unable to retrieve height due to other errors
         """
         try:
-            return await self.whatsonchain.current_height()
+            return self._run_async(self.whatsonchain.current_height())
         except (ConnectionError, TimeoutError):
             return None
 
-    async def get_present_height(self) -> int:
+    def get_present_height(self) -> int:
         """Get latest chain height (provider's present height).
 
         TS parity:
@@ -384,7 +405,53 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
         """
-        return await self.whatsonchain.get_present_height()
+        return self._run_async(self.whatsonchain.get_present_height())
+
+    async def hash_to_header_async(self, block_hash: str) -> dict[str, Any]:
+        """Async helper to resolve a block header for the given block hash."""
+        if not isinstance(block_hash, str):
+            raise InvalidParameterError("hash", "a string")
+        if len(block_hash) != 64:
+            raise InvalidParameterError("hash", "64 hex characters")
+        try:
+            int(block_hash, 16)
+        except ValueError as exc:
+            raise InvalidParameterError("hash", "a valid hexadecimal string") from exc
+
+        header: Any | None = None
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                header = await chaintracks.find_header_for_block_hash(block_hash)
+            except Exception:  # noqa: PERF203
+                header = None
+
+        if not header:
+            try:
+                header = await self.whatsonchain.find_header_for_block_hash(block_hash)
+            except Exception:  # noqa: PERF203
+                header = None
+
+        if not header:
+            raise InvalidParameterError("hash", f"valid blockhash '{block_hash}' on chain {self.chain}")
+
+        if isinstance(header, dict):
+            return header
+
+        return {
+            "version": getattr(header, "version", None),
+            "previousHash": getattr(header, "previousHash", None),
+            "merkleRoot": getattr(header, "merkleRoot", None),
+            "time": getattr(header, "time", None),
+            "bits": getattr(header, "bits", None),
+            "nonce": getattr(header, "nonce", None),
+            "height": getattr(header, "height", None),
+            "hash": getattr(header, "hash", block_hash),
+        }
+
+    def hash_to_header(self, block_hash: str) -> dict[str, Any]:
+        """Resolve a block header for the given block hash (synchronous wrapper)."""
+        return self._run_async(self.hash_to_header_async(block_hash))
 
     def get_header_for_height(self, height: int) -> bytes:
         """Get block header at specified height from WhatsOnChain.
@@ -404,7 +471,7 @@ class Services(WalletServices):
         """
         return self._run_async(self.whatsonchain.get_header_bytes_for_height(height))
 
-    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get a structured block header at a given height.
 
         Args:
@@ -416,7 +483,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
         """
-        h = await self.whatsonchain.find_header_for_height(height)
+        h = self._run_async(self.whatsonchain.find_header_for_height(height))
         if h is None:
             return None
         return {
@@ -430,13 +497,13 @@ class Services(WalletServices):
             "hash": h.hash,
         }
 
-    async def get_chain(self) -> str:
+    def get_chain(self) -> str:
         """Return configured chain identifier ('main' | 'test').
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
         """
-        return await self.whatsonchain.get_chain()
+        return self._run_async(self.whatsonchain.get_chain())
 
     def get_info(self) -> dict[str, Any]:
         """Get provider configuration/state summary (if available).
@@ -444,7 +511,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getInfo
         """
-        return self.whatsonchain.get_info()  # may raise NotImplementedError
+        return self._run_async(self.whatsonchain.get_info())  # may raise NotImplementedError
 
     def get_headers(self, height: int, count: int) -> str:
         """Get serialized headers starting at height (provider-dependent).
@@ -455,39 +522,39 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getHeaders
         """
-        return self.whatsonchain.get_headers(height, count)
+        return self._run_async(self.whatsonchain.get_headers(height, count))
 
     def add_header(self, header: Any) -> None:
         """Submit a possibly new header (if provider supports it)."""
-        return self.whatsonchain.add_header(header)
+        return self._run_async(self.whatsonchain.add_header(header))
 
     def start_listening(self) -> None:
         """Start listening for new headers (if provider supports it)."""
-        return self.whatsonchain.start_listening()
+        return self._run_async(self.whatsonchain.start_listening())
 
     def listening(self) -> None:
         """Wait for listening state (if provider supports it)."""
-        return self.whatsonchain.listening()
+        return self._run_async(self.whatsonchain.listening())
 
     def is_listening(self) -> bool:
         """Whether provider is actively listening (event stream)."""
-        return self.whatsonchain.is_listening()
+        return self._run_async(self.whatsonchain.is_listening())
 
     def is_synchronized(self) -> bool:
         """Whether provider is synchronized (no local lag)."""
-        return self.whatsonchain.is_synchronized()
+        return self._run_async(self.whatsonchain.is_synchronized())
 
     def subscribe_headers(self, listener: Any) -> str:
         """Subscribe to header events (if supported)."""
-        return self.whatsonchain.subscribe_headers(listener)
+        return self._run_async(self.whatsonchain.subscribe_headers(listener))
 
-    async def subscribe_reorgs(self, listener: Any) -> str:
+    def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg events (if supported)."""
-        return await self.whatsonchain.subscribe_reorgs(listener)
+        return self._run_async(self.whatsonchain.subscribe_reorgs(listener))
 
     def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a subscription (if supported)."""
-        return self.whatsonchain.unsubscribe(subscription_id)
+        return self._run_async(self.whatsonchain.unsubscribe(subscription_id))
 
     #
     # WalletServices local-calculation methods (no external API calls)
@@ -507,7 +574,7 @@ class Services(WalletServices):
         """
         return utils_hash_output_script(script_hex)
 
-    async def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
+    def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
         """Determine if an nLockTime value (or transaction) is final.
 
         Logic matches TypeScript Services.nLockTimeIsFinal:
@@ -556,8 +623,8 @@ class Services(WalletServices):
             return n_lock_time < now_sec
 
         try:
-            height = await self.get_height()
-            return n_lock_time < int(height)
+            height = self.get_height()
+            return height is not None and n_lock_time < int(height)
         except Exception:
             # If height check fails, consider not final
             return False
@@ -607,28 +674,43 @@ class Services(WalletServices):
             stc = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                r = self._run_async(stc.service(txid, self.chain))
+                # Note: get_raw_tx takes only txid, unlike get_merkle_path which also takes services
+                r = self._run_async(stc.service(txid))
 
-                if isinstance(r, dict) and r.get("rawTx"):
-                    # Validate transaction hash matches
-                    computed_txid = r.get("computedTxid")
-                    if computed_txid and computed_txid.lower() == txid.lower():
-                        # Match found
-                        result["rawTx"] = r["rawTx"]
-                        result["name"] = r.get("name")
-                        result.pop("error", None)
-                        services.add_service_call_success(stc)
-                        return r["rawTx"]
+                if isinstance(r, dict):
+                    raw_tx_hex = r.get("rawTx")
+                    if raw_tx_hex:
+                        try:
+                            raw_tx_bytes = bytes.fromhex(raw_tx_hex)
+                            computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
+                        except (ValueError, TypeError):
+                            r["error"] = {"message": "provider returned invalid rawTx data", "code": "INVALID_DATA"}
+                            r.pop("rawTx", None)
+                        else:
+                            # Validate transaction hash matches
+                            if computed_txid.lower() == txid.lower():
+                                # Match found
+                                result["rawTx"] = raw_tx_hex
+                                result["name"] = r.get("name")
+                                result.pop("error", None)
+                                services.add_service_call_success(stc)
+                                return raw_tx_hex
+
+                            # Hash mismatch - mark as error
+                            r["error"] = {
+                                "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
+                                "code": "TXID_MISMATCH",
+                            }
+                            r.pop("rawTx", None)
+
+                    if r.get("error"):
+                        services.add_service_call_error(stc, r["error"])
+                        if "error" not in result:
+                            result["error"] = r["error"]
+                    elif not r.get("rawTx"):
+                        services.add_service_call_success(stc, "not found")
                     else:
-                        # Hash mismatch - mark as error
-                        error_msg = f"computed txid {computed_txid} doesn't match requested value {txid}"
-                        result["error"] = {"message": error_msg, "code": "TXID_MISMATCH"}
-                        services.add_service_call_error(stc, error_msg)
-                # No rawTx found
-                elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
-                    if "error" not in result:
-                        result["error"] = r["error"]
+                        services.add_service_call_failure(stc)
                 else:
                     services.add_service_call_success(stc, "not found")
 
@@ -655,13 +737,13 @@ class Services(WalletServices):
         Returns:
             True if the Merkle root matches the header's merkleRoot at the height
         """
-        return self.whatsonchain.is_valid_root_for_height(root, height)
+        return self._run_async(self.whatsonchain.is_valid_root_for_height(root, height))
 
-    async def get_merkle_path(self, txid: str, use_next: bool = False) -> dict[str, Any]:
+    def get_merkle_path(self, txid: str, use_next: bool = False) -> dict[str, Any]:
         """Alias for get_merkle_path_for_transaction for test compatibility."""
-        return await self.get_merkle_path_for_transaction(txid, use_next)
+        return self.get_merkle_path_for_transaction(txid, use_next)
 
-    async def get_merkle_path_for_transaction(self, txid: str, use_next: bool = False) -> dict[str, Any]:
+    def get_merkle_path_for_transaction(self, txid: str, use_next: bool = False) -> dict[str, Any]:
         """Get the Merkle path for a transaction with multi-provider failover and caching.
 
         Uses ServiceCollection-based multi-provider failover strategy:
@@ -713,8 +795,8 @@ class Services(WalletServices):
         for _tries in range(services.count):
             stc = services.service_to_call
             try:
-                # Call service
-                r = stc.service(txid, self)
+                # Call service (handle async if needed)
+                r = self._run_async(stc.service(txid, self))
 
                 # Collect notes from all providers
                 if isinstance(r, dict) and r.get("notes"):
@@ -769,7 +851,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findChainTipHeader)
         """
-        h = self.whatsonchain.find_chain_tip_header()
+        h = self._run_async(self.whatsonchain.find_chain_tip_header())
         return {
             "version": h.version,
             "previousHash": h.previousHash,
@@ -783,7 +865,7 @@ class Services(WalletServices):
 
     def find_chain_tip_hash(self) -> str:
         """Return the active chain tip hash (hex string)."""
-        return self.whatsonchain.find_chain_tip_hash()
+        return self._run_async(self.whatsonchain.find_chain_tip_hash())
 
     def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
         """Get a structured block header by its block hash.
@@ -797,7 +879,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findHeaderForBlockHash)
         """
-        h = self.whatsonchain.find_header_for_block_hash(block_hash)
+        h = self._run_async(self.whatsonchain.find_header_for_block_hash(block_hash))
         if h is None:
             return None
         return {
@@ -1033,7 +1115,7 @@ class Services(WalletServices):
         self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
         return result
 
-    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status via provider with multi-provider failover and 2-minute caching.
 
         Uses ServiceCollection-based multi-provider failover strategy:
@@ -1088,10 +1170,7 @@ class Services(WalletServices):
             stc = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                if asyncio.iscoroutinefunction(stc.service):
-                    r = await stc.service(txid, use_next)
-                else:
-                    r = stc.service(txid, use_next)
+                r = self._run_async(stc.service(txid, use_next))
 
                 # For transaction status, any response with transaction data or valid status is success
                 if isinstance(r, dict) and ("status" in r or "txid" in r) and not r.get("error"):
@@ -1115,8 +1194,8 @@ class Services(WalletServices):
         self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
         return result
 
-    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
-        return await self.whatsonchain.get_tx_propagation(txid)
+    def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+        return self._run_async(self.whatsonchain.get_tx_propagation(txid))
 
     def post_beef(self, beef: str) -> dict[str, Any]:
         # Validate beef input
@@ -1133,33 +1212,37 @@ class Services(WalletServices):
         except ValueError as e:
             raise InvalidParameterError("beef", f"must be valid hex: {e}") from e
 
-        # Parse BEEF data
         beef_obj = None
-        tx = None
-        txid = None
-        txids = []
-        # Parse BEEF data - try BEEF format first, fallback to raw transaction
+        tx: Transaction | None = None
+        txid: str | None = None
+        txids: list[str] = []
         beef_bytes = bytes.fromhex(beef)
+
+        parse_error: Exception | None = None
         try:
-            # Try to parse as BEEF format
-            beef_obj = parse_beef(beef_bytes)
-            # Get transaction IDs from BEEF
-            if hasattr(beef_obj, 'txs'):
-                txids = [tx.txid() if hasattr(tx, 'txid') else str(i) for i, tx in enumerate(beef_obj.txs)]
-                txid = txids[0] if txids else None
+            beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
+        except Exception as exc:
+            parse_error = exc
+        else:
+            tx = subject_tx
+            txid = subject_txid
+            if beef_obj is not None:
+                if hasattr(beef_obj, "txs"):
+                    txids = [t.txid() for t in beef_obj.txs if hasattr(t, "txid")]
+            if txid:
+                if txid not in txids:
+                    txids.append(txid)
             else:
-                txid = "unknown_txid"
-                txids = [txid]
-        except Exception:
-            # Fallback: try to parse as raw transaction hex
+                txids = [t.txid() for t in beef_obj.txs if hasattr(t, "txid")] if beef_obj else []
+
+        if tx is None:
             try:
                 tx = Transaction.from_hex(beef)
-                if tx is None:
-                    raise InvalidParameterError("beef", "invalid transaction hex")
                 txid = tx.txid()
                 txids = [txid]
-            except Exception as e:
-                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {e!s}") from e
+            except Exception as exc:
+                detail = f"{parse_error!s}; {exc!s}" if parse_error else str(exc)
+                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
         # Try each provider in priority order
         last_error: str | None = None
@@ -1168,6 +1251,8 @@ class Services(WalletServices):
         if self.arc_gorillapool:
             try:
                 # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
                 res = self._run_async(self.arc_gorillapool.broadcast(tx))
 
                 if getattr(res, "status", "") == "success":
@@ -1196,6 +1281,8 @@ class Services(WalletServices):
         if self.arc_taal:
             try:
                 # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
                 res = self._run_async(self.arc_taal.broadcast(tx))
 
                 if getattr(res, "status", "") == "success":
@@ -1242,7 +1329,7 @@ class Services(WalletServices):
         # Otherwise return failure
         return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
 
-    async def verify_beef(self, beef: str | bytes) -> bool:
+    def verify_beef(self, beef: str | bytes) -> bool:
         """Verify BEEF data using the chaintracker.
 
         Parses the BEEF data and verifies it against the blockchain using
@@ -1279,7 +1366,7 @@ class Services(WalletServices):
 
         # Verify using chaintracker
         chaintracker = self.get_chain_tracker()
-        return await beef_obj.verify(chaintracker, True)
+        return self._run_async(beef_obj.verify(chaintracker, True))
 
     def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).

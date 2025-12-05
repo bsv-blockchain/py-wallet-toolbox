@@ -482,6 +482,15 @@ def validate_internalize_action_args(args: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(o, dict):
             raise InvalidParameterError("outputs", "list of dicts")
 
+        output_index = o.get("output_index")
+        if output_index is None:
+            output_index = o.get("outputIndex")
+        if not isinstance(output_index, int):
+            raise InvalidParameterError("outputIndex", "an integer")
+        if output_index < 0:
+            raise InvalidParameterError("outputIndex", "must be >= 0")
+        o["output_index"] = output_index
+
         # protocol: required, must be one of the known types
         protocol = o.get("protocol")
         if not isinstance(protocol, str) or len(protocol) == 0:

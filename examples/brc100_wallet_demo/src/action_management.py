@@ -14,36 +14,57 @@ def demo_create_action(wallet: Wallet) -> None:
         message_bytes = message.encode()
         hex_data = message_bytes.hex()
         length = len(message_bytes)
-        script = f"006a{length:02x}{hex_data}"
+        locking_script = f"006a{length:02x}{hex_data}"
 
-        action = wallet.create_action(
-            {
-                "description": f"Store message: {message}",
-                "inputs": {},
-                "outputs": [
-                    {
-                        "script": script,
-                        "satoshis": 0,
-                        "description": "Message output",
-                    }
-                ],
-            }
-        )
+        create_args = {
+            "description": f"Store message: {message}",
+            "outputs": [
+                {
+                    "lockingScript": locking_script,
+                    "satoshis": 0,
+                    "outputDescription": "Message output",
+                    "tags": ["demo", "opreturn"],
+                }
+            ],
+            "labels": ["demo:create_action"],
+            "options": {
+                # Broadcast immediately after signAction completes (TS parity)
+                "acceptDelayedBroadcast": False,
+            },
+        }
+
+        action = wallet.create_action(create_args)
 
         print("\n✅ Action created")
-        print(f"   Reference : {action['reference']}")
-        print(f"   Desc      : {action['description']}")
-        print(f"   Needs sig : {action['signActionRequired']}")
+        signable = action.get("signableTransaction")
+        sign_required = signable is not None
+        print(f"   Needs sig : {sign_required}")
 
-        if action["signActionRequired"]:
+        if sign_required:
+            reference = signable.get("reference")
+            if not reference:
+                print("❌ Missing reference in signableTransaction; cannot sign.")
+                return
+
             print("\n✍️  Signing action...")
-            signed = wallet.sign_action(
-                {
-                    "reference": action["reference"],
-                    "accept": True,
-                }
-            )
-            print("✅ Action signed")
+            signed = wallet.sign_action({"reference": reference, "accept": True})
+            print("✅ Action signed & broadcast requested")
+
+            txid = signed.get("txid")
+            if txid:
+                print(f"   TxID   : {txid}")
+            send_with_results = signed.get("sendWithResults") or []
+            if send_with_results:
+                status = send_with_results[0].get("status", "unknown")
+                print(f"   Network: {status}")
+            else:
+                print("   Network: (no sendWithResults returned)")
+        else:
+            txid = action.get("txid")
+            if txid:
+                print(f"   TxID   : {txid}")
+            else:
+                print("   TxID   : (not returned)")
 
     except Exception as err:
         print(f"❌ Failed to create action: {err}")

@@ -53,20 +53,27 @@ You will see an interactive menu similar to this:
 
 ```
 [Basics]            [Wallet]           [Keys]
-1. Init wallet      4. Show info       5. Get public key
-2. Show basics                         6. Sign data
-3. Wait auth                          7. Verify signature
-                                       8. Create HMAC
-[Actions]                               9. Verify HMAC
-13. Create action                      10. Encrypt / decrypt
-15. List actions                       11. Reveal counterparty linkage
-16. Abort action                       12. Reveal specific linkage
+1. Init wallet      4. Show info ->    5. Get public key -> getPublicKey
+   (setup only)        getPublicKey    6. Sign data -> createSignature
+2. Show basics ->                      7. Verify signature -> verifySignature
+   isAuthenticated /                   8. Create HMAC -> createHmac
+   getNetwork / getVersion             9. Verify HMAC -> verifyHmac
+3. Wait auth ->                        10. Encrypt / decrypt -> encrypt / decrypt
+   waitForAuthentication               11. Reveal counterparty linkage -> revealCounterpartyKeyLinkage
+                                       12. Reveal specific linkage -> revealSpecificKeyLinkage
 
-[Outputs]          [Certificates]      [Identity]         [Blockchain]
-17. List outputs   19. Acquire cert    23. Discover by key 25. Get height
-18. Relinquish     20. List certs      24. Discover attr   26. Get header
-                   21. Relinquish
-                   22. Prove cert
+[Actions]          [Outputs]          [Certificates]
+13. Create action -> createAction      17. List outputs -> listOutputs
+    (+ signAction)                     18. Relinquish output -> relinquishOutput
+14. -- signAction is inside 13         19. Acquire cert -> acquireCertificate (+ proveCertificate)
+15. List actions -> listActions        20. List certs -> listCertificates
+16. Abort action -> abortAction        21. Relinquish cert -> relinquishCertificate
+                                       22. -- proveCertificate handled in 19
+
+[Identity]         [Transactions]      [Blockchain]
+23. Discover by key -> discoverByIdentityKey  25. Internalize action -> internalizeAction
+24. Discover attr -> discoverByAttributes     26. Get height -> getHeight
+                                               27. Get header -> getHeaderForHeight
 
 0. Exit
 ```
@@ -109,7 +116,8 @@ brc100_wallet_demo/
     ├── crypto_operations.py
     ├── key_linkage.py
     ├── advanced_management.py
-    └── blockchain_info.py
+    ├── blockchain_info.py
+    └── transaction_management.py
 ```
 
 ---
@@ -132,7 +140,7 @@ If you do not specify `BSV_MNEMONIC`, the demo generates a 12-word mnemonic and 
 - SQLite storage is **enabled by default**.
 - Testnet data → `wallet_test.db`  
   Mainnet data → `wallet_main.db`
-- All StorageProvider-dependent methods (actions, outputs, certificates, `internalize_action`, etc.) work immediately.
+- All StorageProvider-dependent flows (actions, outputs, certificates, `internalize_action`, etc.) work immediately.
 - Database files are ignored by git. Back them up manually if needed.
 
 To use a different database, override `get_storage_provider()` in `src/config.py`:
@@ -144,6 +152,19 @@ To use a different database, override `get_storage_provider()` in `src/config.py
 | PostgreSQL | `postgresql://user:pass@host/db` | Production-ready option |
 
 See [`STORAGE_GUIDE.md`](STORAGE_GUIDE.md) for deep details.
+
+---
+
+## 🔄 Internalize External Transactions
+
+1. Fund the wallet (option **4** shows the receive address; faucets like <https://scrypt.io/faucet/> work great on testnet).
+2. After the faucet broadcasts its TX, copy the TXID from an explorer (e.g., Whatsonchain).
+3. Choose menu option **25. Internalize external transaction -> internalizeAction**.
+4. Either paste Atomic BEEF hex (from another tool) or press Enter so the demo downloads the BEEF via Wallet Services.
+5. Provide the output indexes that belong to you (comma-separated). By default, index `0` is selected.
+6. Finish the prompts to tag/basket the outputs and run `internalize_action`.
+
+The helper automatically builds the Atomic BEEF using the multi-provider `Services` layer, so no extra scripting is required. For advanced payment remittance flows, refer to the `from_go/wallet_examples/internalize_*` samples.
 
 ---
 

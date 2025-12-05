@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """BSV Wallet Toolbox - BRC-100 Interactive Demo."""
 
+import os
 import sys
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.services import Services, create_default_options
+from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
 
 from src import (
     # configuration helpers
@@ -42,6 +48,8 @@ from src import (
     demo_get_height,
     demo_get_header_for_height,
     demo_wait_for_authentication,
+    # transactions
+    demo_internalize_action,
 )
 
 
@@ -50,6 +58,7 @@ class WalletDemo:
 
     def __init__(self) -> None:
         """Prepare shared dependencies."""
+        load_dotenv(dotenv_path=Path(__file__).parent / ".env")
         self.wallet: Wallet | None = None
         self.network = get_network()
         self.key_deriver = get_key_deriver()
@@ -66,8 +75,10 @@ class WalletDemo:
         print()
 
         try:
+            services = self._build_services()
             self.wallet = Wallet(
                 chain=self.network,
+                services=services,
                 key_deriver=self.key_deriver,
                 storage_provider=self.storage_provider,
             )
@@ -85,6 +96,20 @@ class WalletDemo:
         except Exception as err:
             print(f"❌ Failed to initialize wallet: {err}")
             self.wallet = None
+
+    def _build_services(self) -> Services:
+        """Create a Services instance configured to prioritize TAAL ARC."""
+        options: WalletServicesOptions = create_default_options(self.network)
+
+        # Prefer TAAL ARC, avoid Bitails / GorillaPool unless explicitly configured
+        options["arcApiKey"] = os.getenv("TAAL_ARC_API_KEY") or options.get("arcApiKey")
+        options["arcHeaders"] = options.get("arcHeaders")
+        options["bitailsApiKey"] = None
+        options["arcGorillaPoolUrl"] = None
+        options["arcGorillaPoolApiKey"] = None
+        options["arcGorillaPoolHeaders"] = None
+
+        return Services(options)
 
     def show_basic_info(self) -> None:
         """Display core metadata (auth/network/version)."""
@@ -113,46 +138,49 @@ class WalletDemo:
         print("=" * 70)
         print()
         print("[Basics]")
-        print("  1. Initialize wallet")
-        print("  2. Show wallet basics (isAuthenticated / network / version)")
-        print("  3. Wait for authentication")
+        print("  1. Initialize wallet (setup helper)")
+        print("  2. Show wallet basics -> isAuthenticated / getNetwork / getVersion")
+        print("  3. Wait for authentication -> waitForAuthentication")
         print()
         print("[Wallet info]")
-        print("  4. Show receive address & balance")
+        print("  4. Show receive address & balance -> getPublicKey (+ balance helper)")
         print()
         print("[Keys & signatures]")
-        print("  5. Get public key")
-        print("  6. Sign data")
-        print("  7. Verify signature")
-        print("  8. Create HMAC")
-        print("  9. Verify HMAC")
-        print(" 10. Encrypt / decrypt data")
-        print(" 11. Reveal counterparty key linkage")
-        print(" 12. Reveal specific key linkage")
+        print("  5. Get public key -> getPublicKey")
+        print("  6. Sign data -> createSignature")
+        print("  7. Verify signature -> verifySignature")
+        print("  8. Create HMAC -> createHmac")
+        print("  9. Verify HMAC -> verifyHmac")
+        print(" 10. Encrypt / decrypt data -> encrypt / decrypt")
+        print(" 11. Reveal counterparty key linkage -> revealCounterpartyKeyLinkage")
+        print(" 12. Reveal specific key linkage -> revealSpecificKeyLinkage")
         print()
         print("[Actions]")
-        print(" 13. Create action (includes signAction)")
+        print(" 13. Create action -> createAction (+ signAction)")
         print(" 14. -- signAction (handled inside option 13)")
-        print(" 15. List actions")
-        print(" 16. Abort action")
+        print(" 15. List actions -> listActions")
+        print(" 16. Abort action -> abortAction")
         print()
         print("[Outputs]")
-        print(" 17. List outputs")
-        print(" 18. Relinquish output")
+        print(" 17. List outputs -> listOutputs")
+        print(" 18. Relinquish output -> relinquishOutput")
         print()
         print("[Certificates]")
-        print(" 19. Acquire certificate (includes proveCertificate)")
-        print(" 20. List certificates")
-        print(" 21. Relinquish certificate")
+        print(" 19. Acquire certificate -> acquireCertificate (+ proveCertificate)")
+        print(" 20. List certificates -> listCertificates")
+        print(" 21. Relinquish certificate -> relinquishCertificate")
         print(" 22. -- proveCertificate (handled inside option 19)")
         print()
         print("[Identity discovery]")
-        print(" 23. Discover by identity key")
-        print(" 24. Discover by attributes")
+        print(" 23. Discover by identity key -> discoverByIdentityKey")
+        print(" 24. Discover by attributes -> discoverByAttributes")
+        print()
+        print("[Transactions]")
+        print(" 25. Internalize external transaction -> internalizeAction")
         print()
         print("[Blockchain info]")
-        print(" 25. Get block height")
-        print(" 26. Get block header for height")
+        print(" 26. Get block height -> getHeight")
+        print(" 27. Get block header for height -> getHeaderForHeight")
         print()
         print("  0. Exit demo")
         print("=" * 70)
@@ -176,7 +204,7 @@ class WalletDemo:
 
         while True:
             self.show_menu()
-            choice = input("\nSelect a menu option (0-26): ").strip()
+            choice = input("\nSelect a menu option (0-27): ").strip()
 
             if choice == "0":
                 print("\n" + "=" * 70)
@@ -322,16 +350,22 @@ class WalletDemo:
                 if not self.wallet:
                     print("\n❌ Wallet is not initialized.")
                 else:
-                    demo_get_height(self.wallet)
+                    demo_internalize_action(self.wallet, self.network)
 
             elif choice == "26":
+                if not self.wallet:
+                    print("\n❌ Wallet is not initialized.")
+                else:
+                    demo_get_height(self.wallet)
+
+            elif choice == "27":
                 if not self.wallet:
                     print("\n❌ Wallet is not initialized.")
                 else:
                     demo_get_header_for_height(self.wallet)
 
             else:
-                print("\n❌ Invalid choice. Please type a number between 0 and 26.")
+                print("\n❌ Invalid choice. Please type a number between 0 and 27.")
 
             input("\nPress Enter to continue...")
 
