@@ -305,6 +305,18 @@ class TestDeserializeDict:
         with pytest.raises(ValueError, match="Extended length data truncated"):
             _deserialize_dict(data)
 
+    def test_deserialize_key_data_truncated(self) -> None:
+        """Given: Valid key length but insufficient data for key content
+           When: Call _deserialize_dict
+           Then: Raises ValueError for key data truncated
+        """
+        # Given - Key length = 5, but only 3 bytes of data after length
+        data = bytes([0x05, 0x00, 0x00, 0x00])  # Length=5, but only 3 bytes follow
+
+        # When/Then
+        with pytest.raises(ValueError, match="Key data truncated"):
+            _deserialize_dict(data)
+
 
 class TestSerializeValue:
     """Test suite for _serialize_value function."""
@@ -551,6 +563,54 @@ class TestDeserializeValue:
 
         # When/Then
         with pytest.raises(ValueError):
+            _deserialize_value(data, 0)
+
+    def test_deserialize_value_data_truncated(self) -> None:
+        """Given: Empty data at start of value deserialization
+           When: Call _deserialize_value
+           Then: Raises ValueError for value data truncated
+        """
+        # Given
+        data = b""  # Empty data
+
+        # When/Then
+        with pytest.raises(ValueError, match="Value data truncated"):
+            _deserialize_value(data, 0)
+
+    def test_deserialize_string_data_truncated(self) -> None:
+        """Given: String type with valid length but insufficient string data
+           When: Call _deserialize_value
+           Then: Raises ValueError for string data truncated
+        """
+        # Given - String type (0x01), length=5, but only 3 bytes of string data
+        data = bytes([0x01, 0x05, 0x00, 0x00, 0x00])  # Type=1, length=5, but only 3 bytes
+
+        # When/Then
+        with pytest.raises(ValueError, match="String data truncated"):
+            _deserialize_value(data, 0)
+
+    def test_deserialize_boolean_data_truncated(self) -> None:
+        """Given: Boolean type but no data byte
+           When: Call _deserialize_value
+           Then: Raises ValueError for boolean data truncated
+        """
+        # Given - Boolean type (0x02) but no boolean byte
+        data = bytes([0x02])
+
+        # When/Then
+        with pytest.raises(ValueError, match="Boolean data truncated"):
+            _deserialize_value(data, 0)
+
+    def test_deserialize_array_data_truncated(self) -> None:
+        """Given: Byte array type with valid length but insufficient array data
+           When: Call _deserialize_value
+           Then: Raises ValueError for array data truncated
+        """
+        # Given - Array type (0x04), length=5, but only 3 bytes of array data
+        data = bytes([0x04, 0x05, 0x00, 0x00, 0x00])  # Type=4, length=5, but only 3 bytes
+
+        # When/Then
+        with pytest.raises(ValueError, match="Array data truncated"):
             _deserialize_value(data, 0)
 
 

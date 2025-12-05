@@ -183,6 +183,38 @@ class TestVerifyHexString:
             with pytest.raises(Exception):
                 verify_hex_string(value)
 
+    def test_raises_error_for_invalid_hex_string(self) -> None:
+        """Given: String that is not valid hex
+           When: Call verify_hex_string
+           Then: Raises ValueError with descriptive message
+
+        Reference: wallet-toolbox/src/utility/utilityHelpers.ts
+                   verifyHexString function
+        """
+        # Given
+        invalid_hex_values = ["xyz", "123g", "abc!", "  invalid  "]
+
+        # When/Then
+        for value in invalid_hex_values:
+            with pytest.raises(ValueError, match="Value is not a valid hex string"):
+                verify_hex_string(value)
+
+    def test_raises_error_for_invalid_hex_with_custom_description(self) -> None:
+        """Given: Invalid hex string with custom description
+           When: Call verify_hex_string
+           Then: Raises ValueError with custom description
+
+        Reference: wallet-toolbox/src/utility/utilityHelpers.ts
+                   verifyHexString function
+        """
+        # Given
+        invalid_value = "not_hex"
+        custom_description = "Transaction ID must be valid hex"
+
+        # When/Then
+        with pytest.raises(ValueError, match=custom_description):
+            verify_hex_string(invalid_value, custom_description)
+
 
 class TestVerifyNumber:
     """Test suite for verify_number function.

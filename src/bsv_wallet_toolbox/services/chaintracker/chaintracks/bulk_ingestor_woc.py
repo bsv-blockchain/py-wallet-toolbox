@@ -69,7 +69,7 @@ class BulkIngestorWOC(BulkIngestor):
                 hr = file_info['height_range']
                 result.append(BulkHeaderMinimumInfo(
                     first_height=hr.min_height,
-                    count=hr.length(),
+                    count=hr.length,
                     file_name=file_info['filename'],
                     source_url=file_info['url']
                 ))
@@ -85,13 +85,22 @@ class BulkIngestorWOC(BulkIngestor):
         Returns:
             List of file info dictionaries
         """
-        files = self.woc_client.get_headers_resource_list()
+        try:
+            files = self.woc_client.get_headers_resource_list()
+        except Exception:
+            # Return empty list on any API error
+            return []
+
+        if not isinstance(files, list):
+            return []
 
         result = []
         # Parse filenames like "mainNet_0.headers", "testNet_4.headers"
         pattern = r'^(main|test)Net_(\d+)\.headers$'
 
         for filename in files:
+            if not isinstance(filename, str):
+                continue
             match = re.match(pattern, filename)
             if match:
                 network = match.group(1)

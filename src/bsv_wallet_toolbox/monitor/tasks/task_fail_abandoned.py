@@ -80,7 +80,7 @@ class TaskFailAbandoned(WalletMonitorTask):
                     except Exception as e:
                         log_lines.append(f"failed to update tx {tx_id}: {e!s}")
 
-        if count > 0:
+        if log_lines:
             return "\n".join(log_lines)
         return ""
 
