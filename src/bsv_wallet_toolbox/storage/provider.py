@@ -2070,14 +2070,24 @@ class StorageProvider:
             s.add(transaction)
             s.flush()
 
-            # Create ProvenTxReq (TS line 271)
-            # Note: Simplified - requires EntityProvenTxReq logic
-            new_req = ProvenTxReq(
-                txid=txid,
-                status=new_req_status,
-                raw_tx=raw_tx,
-            )
-            s.add(new_req)
+            # Create or update ProvenTxReq (TS line 271)
+            existing_req_stmt = select(ProvenTxReq).where(ProvenTxReq.txid == txid)
+            existing_req = s.execute(existing_req_stmt).scalar_one_or_none()
+            if existing_req:
+                existing_req.status = new_req_status
+                existing_req.raw_tx = raw_tx
+                existing_req.attempts = 0
+                existing_req.notified = False
+                existing_req.history = "{}"
+                existing_req.notify = "{}"
+                s.add(existing_req)
+            else:
+                new_req = ProvenTxReq(
+                    txid=txid,
+                    status=new_req_status,
+                    raw_tx=raw_tx,
+                )
+                s.add(new_req)
             s.flush()
 
             log = util_stamp_log(log, f"... storage processActionSdk tx processed {txid}")
