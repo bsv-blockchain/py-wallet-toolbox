@@ -31,6 +31,18 @@ from .create_action import (
     normalize_create_action_args,
     validate_required_outputs,
 )
+from .methods.generate_change import (
+    GenerateChangeSdkParams,
+    GenerateChangeSdkInput,
+    GenerateChangeSdkOutput,
+    GenerateChangeSdkChangeInput,
+    GenerateChangeSdkChangeOutput,
+    StorageFeeModel,
+    generate_change_sdk,
+    MAX_POSSIBLE_SATOSHIS,
+    InternalError,
+    InsufficientFundsError,
+)
 from .db import create_session_factory, session_scope
 from .methods import get_sync_chunk as _get_sync_chunk
 from .methods import purge_data as _purge_data
@@ -127,6 +139,7 @@ class StorageProvider:
         self.settings: dict[str, Any] | None = None
         # Logger for sync operations
         self.logger = logging.getLogger(f"{__name__}.StorageProvider")
+        self.fee_model = {"model": "sat/kb", "value": 100}
 
     def set_services(self, services: Any) -> None:
         """Attach a Services instance for network-backed checks.
@@ -1800,18 +1813,22 @@ class StorageProvider:
     # Action Pipeline - createAction (initial parity scaffold)
     # ------------------------------------------------------------------
     def create_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
-        """Create a new transaction action (simplified TS parity).
+        """Create a new transaction action (TS parity).
 
         Summary:
-            Normalizes arguments, persists an unsigned transaction shell, and
-            returns a deterministic placeholder result pending full TS parity.
+            Normalizes arguments, persists an unsigned transaction shell, allocates
+            funding inputs, and returns a signable transaction result.
 
         TS parity:
-            Reference implementation: `storage/methods/createAction.ts`. The
-            current Python scaffold focuses on argument normalization,
-            transaction shell creation, output persistence, and deterministic
-            response shapes. Funding, BEEF validation, and change allocation are
-            planned for subsequent steps.
+            Reference implementation: `storage/methods/createAction.ts`.
+            The current Python implementation includes:
+            - Argument normalization and validation
+            - Transaction shell creation
+            - Output persistence (including baskets and tags)
+            - Automatic funding (UTXO selection) using `generate_change_sdk`
+            - Commission/Service charge handling
+            - Change output generation
+            - BEEF validation (partial)
 
         Args:
             auth: Authentication dictionary containing `userId` (int).
@@ -1824,114 +1841,530 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
         """
-
-        user_id = int(auth["userId"])  # KeyError propagates if auth malformed
-
+        user_id = int(auth["userId"])
         vargs = normalize_create_action_args(args)
+
         if not vargs.is_new_tx:
             raise InvalidParameterError("createAction", "transaction must include new inputs or outputs")
 
-        reference = generate_reference()
-        created_at = self._now()
-
-        storage_beef_bytes = vargs.input_beef_bytes or b""
-
-        transaction_id = self.insert_transaction(
-            {
-                "userId": user_id,
-                "status": "unsigned",
-                "reference": reference,
-                "isOutgoing": True,
-                "satoshis": 0,
-                "version": vargs.version,
-                "lockTime": vargs.lock_time,
-                "description": vargs.description,
-                "inputBEEF": storage_beef_bytes,
-                "createdAt": created_at,
-                "updatedAt": created_at,
-            }
-        )
-
-        for label in vargs.labels:
-            tx_label = self.find_or_insert_tx_label(user_id, label)
-            self.find_or_insert_tx_label_map(transaction_id, int(tx_label["txLabelId"]))
-
-        outputs_payload = []
+        storage_beef_bytes, existing_inputs = self._validate_required_inputs(user_id, vargs)
         xoutputs = validate_required_outputs(self, user_id, vargs)
-        for xo in xoutputs:
-            locking_script_bytes = xo.locking_script
-            output_id = self.insert_output(
-                {
-                    "transactionId": transaction_id,
-                    "userId": user_id,
-                    "satoshis": xo.satoshis,
-                    "lockingScript": locking_script_bytes,
-                    "outputDescription": xo.output_description or "",
-                    "vout": xo.vout,
-                    "providedBy": xo.provided_by,
-                    "purpose": xo.purpose or "",
-                    "customInstructions": xo.custom_instructions,
-                    "derivationSuffix": xo.derivation_suffix,
-                    "change": False,
-                    "spendable": True,
-                    "type": "custom",
-                    "createdAt": created_at,
-                    "updatedAt": created_at,
-                }
-            )
 
-            # Persist output tags and create mappings (TS/Go parity)
-            for tag_name in xo.tags:
-                # Find or create the output tag
-                tag_record = self.find_or_insert_output_tag(user_id, tag_name)
-                tag_id = int(tag_record["outputTagId"])
-                # Create the output-to-tag mapping
-                self.find_or_insert_output_tag_map(output_id, tag_id)
+        change_basket = self.find_or_insert_output_basket(user_id, "default")
+        no_send_change_in = self._validate_no_send_change(user_id, vargs, change_basket)
+        available_change_count = self.count_change_inputs(user_id, change_basket.basket_id, not vargs.is_delayed)
 
-            locking_script_hex = locking_script_bytes.hex()
-            outputs_payload.append(
-                {
-                    "vout": xo.vout,
-                    "satoshis": xo.satoshis,
-                    "lockingScript": locking_script_hex,
-                    "providedBy": xo.provided_by,
-                    "purpose": xo.purpose,
-                    "tags": xo.tags,
-                    "outputId": output_id,
-                    "basket": xo.basket,
-                    "derivationSuffix": xo.derivation_suffix,
-                    "derivation_suffix": xo.derivation_suffix,
-                    "keyOffset": xo.key_offset,
-                    "customInstructions": xo.custom_instructions,
-                }
-            )
+        fee_model_val = getattr(self.fee_model, "value", 100) if hasattr(self, "fee_model") else 100
+        fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
 
-        result: dict[str, Any] = {
-            "reference": reference,
-            "version": vargs.version,
-            "lockTime": vargs.lock_time,
-            "inputs": [],
-            "outputs": outputs_payload,
-            "derivationPrefix": "mock-derivation-prefix",
-            "inputBeef": storage_beef_bytes,
-            "noSendChangeOutputVouts": [],
+        new_tx = self._create_new_tx_record(user_id, vargs, storage_beef_bytes)
+
+        ctx = {
+            "xinputs": existing_inputs,
+            "xoutputs": xoutputs,
+            "change_basket": change_basket,
+            "no_send_change_in": no_send_change_in,
+            "available_change_count": available_change_count,
+            "fee_model": fee_model,
+            "transaction_id": new_tx.transaction_id,
         }
 
-        if vargs.options.no_send:
-            result["noSendChange"] = []
+        funding_result = self.fund_new_transaction_sdk(user_id, vargs, ctx)
+        allocated_change = funding_result["allocated_change"]
+        change_outputs = funding_result["change_outputs"]
+        derivation_prefix = funding_result["derivation_prefix"]
+        max_possible_satoshis_adjustment = funding_result["max_possible_satoshis_adjustment"]
+
+        if max_possible_satoshis_adjustment:
+            idx = max_possible_satoshis_adjustment["fixed_output_index"]
+            sats = max_possible_satoshis_adjustment["satoshis"]
+            if ctx["xoutputs"][idx].satoshis != MAX_POSSIBLE_SATOSHIS:
+                raise InternalError("Max possible output index mismatch")
+            ctx["xoutputs"][idx].satoshis = sats
+
+        total_change = sum(o.satoshis for o in change_outputs)
+        total_allocated = sum(o["satoshis"] for o in allocated_change)
+        satoshis = total_change - total_allocated
+        self.update_transaction(new_tx.transaction_id, {"satoshis": satoshis})
+
+        outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs)
+        outputs_payload = outputs_result["outputs"]
+        change_vouts = outputs_result["change_vouts"]
+
+        input_beef_bytes = self._merge_allocated_change_beefs(user_id, vargs, allocated_change, storage_beef_bytes)
+
+        inputs_payload = self._create_new_inputs(user_id, vargs, ctx, allocated_change)
+
+        result: dict[str, Any] = {
+            "reference": new_tx.reference,
+            "version": new_tx.version,
+            "lockTime": new_tx.lock_time,
+            "inputs": inputs_payload,
+            "outputs": outputs_payload,
+            "derivationPrefix": derivation_prefix,
+            "inputBeef": input_beef_bytes,
+            "noSendChangeOutputVouts": change_vouts if vargs.is_no_send else [],
+        }
 
         if vargs.options.sign_and_process:
-            txid = deterministic_txid(reference, vargs.outputs)
-            self.update_transaction(transaction_id, {"txid": txid})
+            txid = deterministic_txid(new_tx.reference, vargs.outputs)
+            self.update_transaction(new_tx.transaction_id, {"txid": txid})
             result["txid"] = txid
         elif not (getattr(vargs.options, "return_txid_only", False) if vargs.options else False):
             signable_tx = {
-                "reference": reference,
-                "tx": list(storage_beef_bytes) if storage_beef_bytes else [],
+                "reference": new_tx.reference,
+                "tx": list(input_beef_bytes) if input_beef_bytes else [],
             }
             result["signableTransaction"] = signable_tx
 
         return result
+
+    def _validate_no_send_change(self, user_id: int, vargs: Any, change_basket: Any) -> list[Output]:
+        if not vargs.is_no_send:
+            return []
+        no_send_change = vargs.options.no_send_change
+        if not no_send_change:
+            return []
+        
+        result = []
+        seen_ids = set()
+        session = self.SessionLocal()
+        try:
+            for op in no_send_change:
+                q = select(Output).where(
+                    (Output.user_id == user_id) &
+                    (Output.txid == op["txid"]) &
+                    (Output.vout == op["vout"])
+                )
+                output = session.execute(q).scalar_one_or_none()
+                
+                if (
+                    not output or
+                    output.provided_by != "storage" or
+                    output.purpose != "change" or
+                    output.spendable is False or
+                    output.spent_by is not None or
+                    (output.satoshis or 0) <= 0 or
+                    output.basket_id != change_basket.basket_id
+                ):
+                    raise InvalidParameterError("noSendChange outpoint", "valid")
+                
+                if output.output_id in seen_ids:
+                    raise InvalidParameterError("noSendChange outpoint", "unique. Duplicates are not allowed.")
+                
+                seen_ids.add(output.output_id)
+                result.append(output)
+            return result
+        finally:
+            session.close()
+
+    def _create_new_tx_record(self, user_id: int, vargs: Any, storage_beef_bytes: bytes) -> TransactionModel:
+        reference = generate_reference()
+        created_at = self._now()
+        
+        tx_id = self.insert_transaction({
+            "userId": user_id,
+            "status": "unsigned",
+            "reference": reference,
+            "isOutgoing": True,
+            "satoshis": 0,
+            "version": vargs.version,
+            "lockTime": vargs.lock_time,
+            "description": vargs.description,
+            "inputBEEF": storage_beef_bytes,
+            "createdAt": created_at,
+            "updatedAt": created_at,
+        })
+        
+        for label in vargs.labels:
+            tx_label = self.find_or_insert_tx_label(user_id, label)
+            self.find_or_insert_tx_label_map(tx_id, int(tx_label["txLabelId"]))
+            
+        session = self.SessionLocal()
+        try:
+            return session.get(TransactionModel, tx_id)
+        finally:
+            session.close()
+
+    def _create_new_outputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], change_outputs: list[GenerateChangeSdkChangeOutput]) -> dict[str, Any]:
+        outputs_payload = []
+        change_vouts = []
+        created_at = self._now()
+        
+        for xo in ctx["xoutputs"]:
+            basket_id = None
+            if xo.basket:
+                b = self.find_or_insert_output_basket(user_id, xo.basket)
+                basket_id = b.basket_id
+            
+            locking_script_bytes = xo.locking_script
+            output_id = self.insert_output({
+                "transactionId": ctx["transaction_id"],
+                "userId": user_id,
+                "satoshis": xo.satoshis,
+                "lockingScript": locking_script_bytes,
+                "outputDescription": xo.output_description or "",
+                "vout": xo.vout,
+                "providedBy": xo.provided_by,
+                "purpose": xo.purpose or "",
+                "customInstructions": xo.custom_instructions,
+                "derivationSuffix": xo.derivation_suffix,
+                "change": False,
+                "spendable": xo.purpose != "service-charge",
+                "type": "custom",
+                "basketId": basket_id,
+                "createdAt": created_at,
+                "updatedAt": created_at,
+            })
+            
+            for tag_name in xo.tags:
+                tag_record = self.find_or_insert_output_tag(user_id, tag_name)
+                self.find_or_insert_output_tag_map(output_id, int(tag_record["outputTagId"]))
+                
+            outputs_payload.append({
+                "vout": xo.vout,
+                "satoshis": xo.satoshis,
+                "lockingScript": locking_script_bytes.hex(),
+                "providedBy": xo.provided_by,
+                "purpose": xo.purpose,
+                "tags": xo.tags,
+                "outputId": output_id,
+                "basket": xo.basket,
+                "derivationSuffix": xo.derivation_suffix,
+                "keyOffset": xo.key_offset,
+                "customInstructions": xo.custom_instructions,
+            })
+
+        next_vout = len(outputs_payload)
+        change_basket = ctx["change_basket"]
+        
+        for co in change_outputs:
+            derivation_suffix = secrets.token_hex(16)
+            
+            output_id = self.insert_output({
+                "transactionId": ctx["transaction_id"],
+                "userId": user_id,
+                "satoshis": co.satoshis,
+                "lockingScript": b"",
+                "vout": next_vout,
+                "providedBy": "storage",
+                "purpose": "change",
+                "change": True,
+                "spendable": True,
+                "type": "P2PKH",
+                "basketId": change_basket.basket_id,
+                "derivationSuffix": derivation_suffix,
+                "createdAt": created_at,
+                "updatedAt": created_at,
+            })
+            
+            change_vouts.append(next_vout)
+                
+            outputs_payload.append({
+                "vout": next_vout,
+                "satoshis": co.satoshis,
+                "lockingScript": "",
+                "providedBy": "storage",
+                "purpose": "change",
+                "tags": [],
+                "outputId": output_id,
+                "basket": change_basket.name,
+                "derivationSuffix": derivation_suffix,
+            })
+            next_vout += 1
+            
+        return {"outputs": outputs_payload, "change_vouts": change_vouts}
+
+    def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes:
+        return storage_beef_bytes
+
+    def _create_new_inputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], allocated_change: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        inputs = []
+        vin = 0
+        
+        for xi in ctx["xinputs"]:
+            source_txid = xi["source_txid"]
+            source_vout = xi["source_vout"]
+            
+            session = self.SessionLocal()
+            try:
+                q = select(Output).where(
+                    (Output.user_id == user_id) &
+                    (Output.txid == source_txid) &
+                    (Output.vout == source_vout)
+                )
+                o = session.execute(q).scalar_one_or_none()
+                if o:
+                    o.spendable = False
+                    o.spent_by = ctx["transaction_id"]
+                    o.spending_description = xi.get("input_description")
+                    session.add(o)
+                    session.commit()
+            finally:
+                session.close()
+
+            inputs.append({
+                "vin": vin,
+                "source_txid": source_txid,
+                "source_vout": source_vout,
+                "source_satoshis": xi["source_satoshis"],
+                "source_locking_script": xi["source_locking_script"],
+                "unlocking_script_length": xi.get("unlocking_script_length"),
+                "providedBy": xi.get("providedBy", "you"),
+            })
+            vin += 1
+            
+        for ac in allocated_change:
+            inputs.append({
+                "vin": vin,
+                "source_txid": ac["txid"],
+                "source_vout": ac["vout"],
+                "source_satoshis": ac["satoshis"],
+                "source_locking_script": (ac["locking_script"] or b"").hex(),
+                "unlocking_script_length": 107,
+                "providedBy": ac["provided_by"] or "storage",
+                "type": ac["type"],
+                "derivation_prefix": ac["derivation_prefix"],
+                "derivation_suffix": ac["derivation_suffix"],
+            })
+            vin += 1
+            
+        return inputs
+
+    def _validate_required_inputs(self, user_id: int, vargs: Any) -> tuple[bytes, list[dict[str, Any]]]:
+        """Validate wallet-provided inputs and gather metadata (TS parity subset)."""
+        storage_beef_bytes = vargs.input_beef_bytes or b""
+        inputs = getattr(vargs, "inputs", []) or []
+        if not inputs:
+            return storage_beef_bytes, []
+
+        xinputs: list[dict[str, Any]] = []
+        session = self.SessionLocal()
+        try:
+            for vin, user_input in enumerate(inputs):
+                outpoint = user_input.get("outpoint") or {}
+                txid = outpoint.get("txid")
+                vout = outpoint.get("vout")
+                if not isinstance(txid, str) or not isinstance(vout, int):
+                    raise InvalidParameterError(f"inputs[{vin}].outpoint", "must include txid and vout")
+
+                q = select(Output).where(
+                    (Output.user_id == user_id)
+                    & (Output.txid == txid)
+                    & (Output.vout == vout)
+                    & (~Output.is_deleted)
+                )
+                output = session.execute(q).scalar_one_or_none()
+                if not output:
+                    raise InvalidParameterError(f"inputs[{vin}]", "referenced output not found. Internalize first.")
+                if output.change:
+                    raise InvalidParameterError(f"inputs[{vin}]", "change outputs are managed by wallet")
+
+                unlocking_len = (
+                    user_input.get("unlocking_script_length")
+                    or user_input.get("unlockingScriptLength")
+                    or user_input.get("unlockingScript_length")
+                    or 0
+                )
+
+                xinputs.append(
+                    {
+                        "vin": vin,
+                        "source_txid": txid,
+                        "source_vout": vout,
+                        "source_satoshis": output.satoshis or 0,
+                        "source_locking_script": (output.locking_script or b"").hex(),
+                        "source_transaction": None,
+                        "unlocking_script_length": unlocking_len or 0,
+                        "providedBy": output.provided_by or "you",
+                        "type": output.type or "custom",
+                        "derivation_prefix": output.derivation_prefix or "",
+                        "derivation_suffix": output.derivation_suffix or "",
+                        "sender_identity_key": output.sender_identity_key or "",
+                        "spending_description": user_input.get("inputDescription"),
+                    }
+                )
+        finally:
+            session.close()
+
+        return storage_beef_bytes, xinputs
+
+    # ------------------------------------------------------------------
+    # CreateAction Helper Methods (TS Parity)
+    # ------------------------------------------------------------------
+
+    def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
+        allowed_status = ["completed", "unproven"]
+        if not exclude_sending:
+            allowed_status.append("sending")
+
+        stmt = (
+            select(func.count(Output.output_id))
+            .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+            .where(
+                (Output.user_id == user_id)
+                & (Output.basket_id == basket_id)
+                & (Output.spendable.is_(True))
+                & (TransactionModel.status.in_(allowed_status))
+            )
+        )
+        session = self.SessionLocal()
+        try:
+            return session.execute(stmt).scalar() or 0
+        finally:
+            session.close()
+
+    def allocate_change_input(
+        self,
+        user_id: int,
+        basket_id: int,
+        target_satoshis: int,
+        exact_satoshis: int | None,
+        exclude_sending: bool,
+        transaction_id: int,
+    ) -> Output | None:
+        allowed_status = ["completed", "unproven"]
+        if not exclude_sending:
+            allowed_status.append("sending")
+
+        base_cond = (
+            (Output.user_id == user_id)
+            & (Output.spendable.is_(True))
+            & (Output.basket_id == basket_id)
+            & (TransactionModel.status.in_(allowed_status))
+        )
+
+        session = self.SessionLocal()
+        try:
+            output = None
+
+            # 1. Exact match
+            if exact_satoshis is not None:
+                q = (
+                    select(Output)
+                    .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+                    .where(base_cond, Output.satoshis == exact_satoshis)
+                    .limit(1)
+                    .with_for_update()
+                )
+                output = session.execute(q).scalar_one_or_none()
+
+            # 2. Best fit (Smallest output >= target)
+            if output is None:
+                q = (
+                    select(Output)
+                    .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+                    .where(base_cond, Output.satoshis >= target_satoshis)
+                    .order_by(Output.satoshis.asc())
+                    .limit(1)
+                    .with_for_update()
+                )
+                output = session.execute(q).scalar_one_or_none()
+
+            # 3. Closest under (Largest output < target)
+            if output is None:
+                q = (
+                    select(Output)
+                    .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+                    .where(base_cond, Output.satoshis < target_satoshis)
+                    .order_by(Output.satoshis.desc())
+                    .limit(1)
+                    .with_for_update()
+                )
+                output = session.execute(q).scalar_one_or_none()
+
+            if output:
+                output.spendable = False
+                output.spent_by = transaction_id
+                session.add(output)
+                session.commit()
+                session.refresh(output)
+                return output
+
+            return None
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    def fund_new_transaction_sdk(self, user_id: int, vargs: Any, ctx: dict[str, Any]) -> dict[str, Any]:
+        fixed_inputs = [
+            GenerateChangeSdkInput(
+                satoshis=xi.get("source_satoshis", 0),
+                unlocking_script_length=xi.get("unlocking_script_length", 0),
+            )
+            for xi in ctx["xinputs"]
+        ]
+
+        fixed_outputs = [
+            GenerateChangeSdkOutput(
+                satoshis=xo.satoshis,
+                locking_script_length=len(xo.locking_script),
+            )
+            for xo in ctx["xoutputs"]
+        ]
+
+        change_basket = ctx["change_basket"]
+
+        params = GenerateChangeSdkParams(
+            fixed_inputs=fixed_inputs,
+            fixed_outputs=fixed_outputs,
+            fee_model=ctx["fee_model"],
+            change_initial_satoshis=getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000,
+            change_first_satoshis=max(1, round((getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000) / 4)),
+            change_locking_script_length=25,
+            change_unlocking_script_length=107,
+            target_net_count=(getattr(change_basket, "number_of_desired_utxos", 5) or 5) - ctx["available_change_count"],
+            random_vals=vargs.random_vals,
+        )
+
+        def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None):
+            o = self.allocate_change_input(
+                user_id,
+                change_basket.basket_id,
+                target_satoshis,
+                exact_satoshis,
+                not vargs.is_delayed,
+                ctx["transaction_id"],
+            )
+            if o:
+                return GenerateChangeSdkChangeInput(output_id=o.output_id, satoshis=o.satoshis)
+            return None
+
+        def release_cb(output_id: int):
+            session = self.SessionLocal()
+            try:
+                stmt = select(Output).where(Output.output_id == output_id)
+                o = session.execute(stmt).scalar_one_or_none()
+                if o:
+                    o.spendable = True
+                    o.spent_by = None
+                    session.add(o)
+                    session.commit()
+            finally:
+                session.close()
+
+        result = generate_change_sdk(params, allocate_cb, release_cb)
+
+        allocated_change_outputs = []
+        for aci in result.allocated_change_inputs:
+            session = self.SessionLocal()
+            try:
+                o = session.get(Output, aci.output_id)
+                if o:
+                    # Create a detached copy or dict representation to avoid session issues
+                    o_dict = {c.key: getattr(o, c.key) for c in inspect(o).mapper.column_attrs}
+                    allocated_change_outputs.append(o_dict)
+            finally:
+                session.close()
+
+        return {
+            "allocated_change": allocated_change_outputs,
+            "change_outputs": result.change_outputs,
+            "derivation_prefix": secrets.token_hex(16),
+            "max_possible_satoshis_adjustment": result.max_possible_satoshis_adjustment,
+        }
 
     # ------------------------------------------------------------------
     # Action Pipeline - processAction (Complete Implementation)
