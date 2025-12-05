@@ -1,155 +1,126 @@
 """AuthFetch - Authenticated HTTP client for BSV wallet operations.
 
-Provides authenticated HTTP requests using wallet-based authentication.
-Equivalent to Go's AuthFetch from go-sdk/auth/clients/authhttp.
+Provides BRC-104 compliant authenticated HTTP requests using wallet-based authentication.
+This module wraps py-sdk's AuthFetch implementation.
 
-Reference: toolbox/go-wallet-toolbox/pkg/storage/client.go
+Reference:
+  - py-sdk/bsv/auth/clients/auth_fetch.py
+  - wallet-toolbox/src/storage/remoting/StorageClient.ts
 """
 
 from __future__ import annotations
 
-import asyncio
 from typing import Any, Optional
 
-import requests
+# Re-export from py-sdk for full BRC-104 authentication
+from bsv.auth.clients.auth_fetch import (
+    AuthFetch as _AuthFetch,
+    AuthPeer,
+    SimplifiedFetchRequestOptions,
+    p2pkh_locking_script_from_pubkey,
+)
+from bsv.auth.session_manager import DefaultSessionManager
+from bsv.auth.requested_certificate_set import RequestedCertificateSet
 
-from .wallet import Wallet
 
+class AuthFetch:
+    """Authenticated HTTP client using py-sdk BRC-104 implementation.
 
-class SimplifiedFetchRequestOptions:
-    """Options for authenticated HTTP requests.
+    This class wraps py-sdk's AuthFetch to provide authenticated HTTP requests
+    for BSV wallet operations, following the same pattern as TypeScript StorageClient.
 
-    Reference: go-sdk/auth/clients/authhttp SimplifiedFetchRequestOptions
+    Reference: wallet-toolbox/src/storage/remoting/StorageClient.ts
+
+    Usage:
+        >>> from bsv_wallet_toolbox import AuthFetch, Wallet
+        >>> wallet = Wallet(...)
+        >>> auth_client = AuthFetch(wallet)
+        >>> response = auth_client.fetch("https://api.example.com/data", options)
     """
 
     def __init__(
         self,
-        method: str = "GET",
-        headers: Optional[dict[str, str]] = None,
-        body: Optional[bytes | str] = None,
+        wallet: Any,
+        requested_certificates: Optional[RequestedCertificateSet] = None,
+        session_manager: Optional[DefaultSessionManager] = None,
     ):
-        """Initialize request options.
-
-        Args:
-            method: HTTP method
-            headers: HTTP headers
-            body: Request body
-        """
-        self.method = method
-        self.headers = headers or {}
-        self.body = body
-
-
-class AuthFetch:
-    """Authenticated HTTP client for BSV wallet operations.
-
-    Makes HTTP requests with wallet-based authentication.
-    Currently implements basic HTTP client - authentication to be added.
-
-    Reference: go-sdk/auth/clients/authhttp AuthFetch
-    """
-
-    def __init__(self, wallet: Wallet, options: Optional[dict[str, Any]] = None):
         """Initialize AuthFetch.
 
         Args:
-            wallet: Wallet instance for authentication
-            options: Client options (http_client, logger, etc.)
+            wallet: Wallet instance implementing BRC-100 WalletInterface.
+                    Must have get_public_key(), create_signature(), and create_action() methods.
+            requested_certificates: Optional certificate requirements for mutual auth.
+            session_manager: Optional session manager for auth sessions (defaults to DefaultSessionManager).
         """
-        self.wallet = wallet
-        self.options = options or {}
+        self._impl = _AuthFetch(
+            wallet=wallet,
+            requested_certs=requested_certificates,
+            session_manager=session_manager,
+        )
 
-        # Create HTTP client
-        http_client = self.options.get("http_client")
-        if http_client:
-            self.client = http_client
-        else:
-            self.client = requests.Session()
-            self.client.headers.update({"User-Agent": "bsv-wallet-toolbox"})
-
-    async def fetch(
+    def fetch(
         self,
         url: str,
-        options: SimplifiedFetchRequestOptions,
-    ) -> requests.Response:
+        config: Optional[SimplifiedFetchRequestOptions] = None,
+    ):
         """Make authenticated HTTP request.
+
+        Handles BRC-104 mutual authentication and 402 Payment Required responses
+        automatically when the wallet supports create_action().
 
         Args:
             url: Request URL
-            options: Request options
+            config: Request options (method, headers, body)
 
         Returns:
-            HTTP response
+            requests.Response object
 
         Raises:
-            Exception: On request failure
+            Exception: On request failure or authentication error
         """
-        # Prepare request
-        method = options.method
-        headers = options.headers.copy() if options.headers else {}
+        return self._impl.fetch(url, config)
 
-        # Add authentication headers (TODO: implement wallet-based auth)
-        # For now, this is a basic HTTP client
+    def send_certificate_request(
+        self,
+        base_url: str,
+        certificates_to_request: Any,
+    ):
+        """Request certificates from a peer.
 
-        # Prepare body
-        json_data = None
-        data = None
+        Args:
+            base_url: Base URL of the peer
+            certificates_to_request: Certificate requirements
 
-        if options.body:
-            if isinstance(options.body, (bytes, str)):
-                # Assume JSON string or bytes
-                if isinstance(options.body, str):
-                    data = options.body
-                else:
-                    data = options.body.decode('utf-8')
-                json_data = data  # requests will handle JSON parsing
-            else:
-                # Assume dict/object to be JSON serialized
-                json_data = options.body
+        Returns:
+            List of received certificates
+        """
+        return self._impl.send_certificate_request(base_url, certificates_to_request)
 
-            # Set content-type if not specified
-            if 'content-type' not in [h.lower() for h in headers.keys()]:
-                headers['Content-Type'] = 'application/json'
+    def consume_received_certificates(self):
+        """Consume and return certificates received during fetch operations.
 
-        # Make request in thread pool to maintain async interface
-        loop = asyncio.get_event_loop()
+        Returns:
+            List of VerifiableCertificate objects received since last call
+        """
+        return self._impl.consume_received_certificates()
 
-        def _make_request():
-            if json_data is not None and not isinstance(json_data, (str, bytes)):
-                return self.client.request(
-                    method=method,
-                    url=url,
-                    headers=headers,
-                    json=json_data,
-                )
-            else:
-                return self.client.request(
-                    method=method,
-                    url=url,
-                    headers=headers,
-                    data=data,
-                )
+    @property
+    def certificates_received(self):
+        """Access list of received certificates."""
+        return self._impl.certificates_received
 
-        try:
-            response = await loop.run_in_executor(None, _make_request)
+    @property
+    def peers(self):
+        """Access peer connections."""
+        return self._impl.peers
 
-            # Raise for HTTP errors
-            response.raise_for_status()
 
-            return response
-
-        except requests.RequestException as e:
-            raise Exception(f"HTTP request failed: {e}") from e
-
-    async def close(self) -> None:
-        """Close the HTTP client."""
-        if hasattr(self.client, 'close'):
-            self.client.close()
-
-    async def __aenter__(self) -> AuthFetch:
-        """Async context manager entry."""
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Async context manager exit."""
-        await self.close()
+# Re-export for convenience
+__all__ = [
+    "AuthFetch",
+    "AuthPeer",
+    "SimplifiedFetchRequestOptions",
+    "RequestedCertificateSet",
+    "DefaultSessionManager",
+    "p2pkh_locking_script_from_pubkey",
+]
