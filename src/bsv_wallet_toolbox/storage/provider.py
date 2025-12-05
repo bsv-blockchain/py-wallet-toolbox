@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Callable
 from bsv.merkle_path import MerklePath
 from bsv.transaction import Transaction
 from bsv.transaction import Transaction as BsvTransaction
-from bsv.transaction.beef import parse_beef_ex
+from bsv.transaction.beef import Beef, BEEF_V2, parse_beef, parse_beef_ex
 from sqlalchemy import func, inspect, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -2041,6 +2041,14 @@ class StorageProvider:
             if not transaction:
                 raise InvalidParameterError("reference", "transaction not found")
 
+            input_beef_bytes = None
+            if transaction.input_beef:
+                input_beef_bytes = (
+                    transaction.input_beef.tobytes()
+                    if hasattr(transaction.input_beef, "tobytes")
+                    else bytes(transaction.input_beef)
+                )
+
             # Verify transaction status (TS lines 250-251)
             if transaction.status not in ("unsigned", "unprocessed"):
                 raise InvalidParameterError("reference", f"invalid transaction status {transaction.status}")
@@ -2076,6 +2084,7 @@ class StorageProvider:
             if existing_req:
                 existing_req.status = new_req_status
                 existing_req.raw_tx = raw_tx
+                existing_req.input_beef = input_beef_bytes
                 existing_req.attempts = 0
                 existing_req.notified = False
                 existing_req.history = "{}"
@@ -2086,6 +2095,7 @@ class StorageProvider:
                     txid=txid,
                     status=new_req_status,
                     raw_tx=raw_tx,
+                    input_beef=input_beef_bytes,
                 )
                 s.add(new_req)
             s.flush()
@@ -2097,17 +2107,139 @@ class StorageProvider:
             if is_new_tx and not is_no_send:
                 txids_to_send.append(txid)
 
-            if txids_to_send:
-                # Send to network (simplified - full impl requires shareReqsWithWorld)
-                result["sendWithResults"] = [{"txid": tid, "status": "sending"} for tid in txids_to_send]
-
-                if not is_delayed:
-                    result["notDelayedResults"] = [{"status": "success", "txid": tid} for tid in txids_to_send]
-
             log = util_stamp_log(log, "end storage processActionSdk")
             s.commit()
 
+        if txids_to_send:
+            swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
+            result["sendWithResults"] = swr
+            result["notDelayedResults"] = ndr
+
         return result
+
+    def _share_reqs_with_world(
+        self,
+        auth: dict[str, Any],
+        txids: list[str],
+        is_delayed: bool,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]] | None]:
+        """Broadcast prepared ProvenTxReq records (TS shareReqsWithWorld parity)."""
+        txids = [tid for tid in dict.fromkeys(txids) if isinstance(tid, str) and tid]
+        swr: list[dict[str, Any]] = []
+        ndr: list[dict[str, Any]] | None = None if is_delayed else []
+
+        if not txids:
+            return swr, ndr
+
+        session = self.SessionLocal()
+        try:
+            reqs = (
+                session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids)))
+                .scalars()
+                .all()
+            )
+            req_map = {req.txid: req for req in reqs}
+
+            tx_records = (
+                session.execute(select(TransactionModel).where(TransactionModel.txid.in_(txids)))
+                .scalars()
+                .all()
+            )
+            tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
+
+            if is_delayed:
+                for txid in txids:
+                    req = req_map.get(txid)
+                    if not req:
+                        swr.append({"txid": txid, "status": "failed"})
+                        continue
+                    req.status = "unsent"
+                    tx_model = tx_map.get(txid)
+                    if tx_model:
+                        tx_model.status = "unprocessed"
+                    swr.append({"txid": txid, "status": "sending"})
+                session.commit()
+                return swr, None
+
+            try:
+                services = self.get_services()
+            except RuntimeError:
+                services = None
+
+            for txid in txids:
+                req = req_map.get(txid)
+                tx_model = tx_map.get(txid)
+                if not req:
+                    swr.append({"txid": txid, "status": "failed"})
+                    if ndr is not None:
+                        ndr.append({"txid": txid, "status": "error", "message": "missing ProvenTxReq"})
+                    continue
+
+                raw_bytes = None
+                if req.raw_tx:
+                    raw_bytes = req.raw_tx
+                elif req.input_beef:
+                    try:
+                        beef = parse_beef(req.input_beef)
+                        tx_entry = beef.find_transaction(txid) if hasattr(beef, "find_transaction") else None
+                        raw_bytes = getattr(tx_entry, "tx_bytes", None)
+                    except Exception:
+                        raw_bytes = None
+
+                if not raw_bytes:
+                    swr.append({"txid": txid, "status": "failed"})
+                    if ndr is not None:
+                        ndr.append({"txid": txid, "status": "error", "message": "no raw transaction available"})
+                    continue
+
+                status = "failed"
+                note: dict[str, Any] = {"txid": txid, "status": "error"}
+                broadcast_ok = False
+                message: str | None = None
+
+                if services is not None:
+                    try:
+                        if req.input_beef:
+                            beef_payload_hex = req.input_beef.hex()
+                        else:
+                            try:
+                                beef_builder = Beef(version=BEEF_V2)
+                                beef_builder.merge_raw_tx(raw_bytes)
+                                beef_payload_hex = beef_builder.to_binary_atomic(txid).hex()
+                            except Exception:
+                                beef_payload_hex = raw_bytes.hex()
+
+                        broadcast_result = services.post_beef(beef_payload_hex)
+                        if broadcast_result.get("accepted"):
+                            status = "unproven"
+                            broadcast_ok = True
+                            message = broadcast_result.get("message")
+                        else:
+                            message = broadcast_result.get("message", "broadcast failed")
+                    except Exception as exc:
+                        message = str(exc)
+                else:
+                    message = "Services not configured"
+
+                if broadcast_ok:
+                    req.status = "unmined"
+                    req.attempts = (req.attempts or 0) + 1
+                    if tx_model:
+                        tx_model.status = "unproven"
+                    swr.append({"txid": txid, "status": status})
+                    if ndr is not None:
+                        ndr.append({"txid": txid, "status": "success", "message": message or "broadcasted"})
+                else:
+                    req.status = "unsent"
+                    req.attempts = (req.attempts or 0) + 1
+                    swr.append({"txid": txid, "status": "failed"})
+                    if ndr is not None:
+                        ndr.append({"txid": txid, "status": "error", "message": message})
+
+            session.commit()
+            return swr, ndr
+        finally:
+            session.close()
 
     def internalize_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """Internalize a transaction action (take ownership of outputs in pre-existing transaction).

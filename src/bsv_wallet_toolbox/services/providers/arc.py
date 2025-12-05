@@ -207,19 +207,17 @@ class ARC:
 
     def broadcast(self, tx: Any) -> PostTxResultForTxid:
         """Broadcast a Transaction object via ARC.
-        
+
         Args:
-            tx: Transaction object with to_hex() and txid() methods.
+            tx: Transaction object with hex() and txid() methods.
             
         Returns:
             PostTxResultForTxid with broadcast result.
         """
-        if hasattr(tx, 'to_hex') and hasattr(tx, 'txid'):
-            return self.post_raw_tx(tx.to_hex(), [tx.txid()])
-        else:
-            # Fallback for other transaction formats
-            tx_hex = str(tx)
-            return self.post_raw_tx(tx_hex, None)
+        if hasattr(tx, "hex") and hasattr(tx, "txid"):
+            return self.post_raw_tx(tx.hex(), [tx.txid()])
+        # Non-Transaction payloads (e.g., raw hex or BEEF) are not supported for ARC broadcast
+        raise ValueError("ARC broadcast expects a Transaction object")
 
     def post_raw_tx(
         self,
@@ -250,7 +248,7 @@ class ARC:
             txid = txids[-1]  # Use last txid if list provided
         else:
             raw_bytes = bytes.fromhex(raw_tx)
-            txid = double_sha256_be(raw_bytes).hex()
+            txid = bytes(double_sha256_be(raw_bytes)).hex()
             txids = [txid]
 
         result = PostTxResultForTxid(txid=txid, status="success", notes=[])

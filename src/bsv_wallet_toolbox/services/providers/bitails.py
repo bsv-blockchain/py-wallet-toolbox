@@ -238,7 +238,7 @@ class Bitails:
         for raw in raws:
             # Decode hex to bytes and compute SHA256(SHA256)
             raw_bytes = bytes.fromhex(raw)
-            txid = double_sha256_be(raw_bytes).hex()
+            txid = bytes(double_sha256_be(raw_bytes)).hex()
             raw_txids.append(txid)
 
             # Pre-populate results for requested txids

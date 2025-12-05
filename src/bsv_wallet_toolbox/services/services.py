@@ -41,7 +41,7 @@ from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
-from bsv.transaction.beef import parse_beef
+from bsv.transaction.beef import parse_beef, parse_beef_ex
 
 from ..errors import InvalidParameterError
 from ..utils.random_utils import double_sha256_be
@@ -1212,33 +1212,37 @@ class Services(WalletServices):
         except ValueError as e:
             raise InvalidParameterError("beef", f"must be valid hex: {e}") from e
 
-        # Parse BEEF data
         beef_obj = None
-        tx = None
-        txid = None
-        txids = []
-        # Parse BEEF data - try BEEF format first, fallback to raw transaction
+        tx: Transaction | None = None
+        txid: str | None = None
+        txids: list[str] = []
         beef_bytes = bytes.fromhex(beef)
+
+        parse_error: Exception | None = None
         try:
-            # Try to parse as BEEF format
-            beef_obj = parse_beef(beef_bytes)
-            # Get transaction IDs from BEEF
-            if hasattr(beef_obj, 'txs'):
-                txids = [tx.txid() if hasattr(tx, 'txid') else str(i) for i, tx in enumerate(beef_obj.txs)]
-                txid = txids[0] if txids else None
+            beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
+        except Exception as exc:
+            parse_error = exc
+        else:
+            tx = subject_tx
+            txid = subject_txid
+            if beef_obj is not None:
+                if hasattr(beef_obj, "txs"):
+                    txids = [t.txid() for t in beef_obj.txs if hasattr(t, "txid")]
+            if txid:
+                if txid not in txids:
+                    txids.append(txid)
             else:
-                txid = "unknown_txid"
-                txids = [txid]
-        except Exception:
-            # Fallback: try to parse as raw transaction hex
+                txids = [t.txid() for t in beef_obj.txs if hasattr(t, "txid")] if beef_obj else []
+
+        if tx is None:
             try:
                 tx = Transaction.from_hex(beef)
-                if tx is None:
-                    raise InvalidParameterError("beef", "invalid transaction hex")
                 txid = tx.txid()
                 txids = [txid]
-            except Exception as e:
-                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {e!s}") from e
+            except Exception as exc:
+                detail = f"{parse_error!s}; {exc!s}" if parse_error else str(exc)
+                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
         # Try each provider in priority order
         last_error: str | None = None
@@ -1247,6 +1251,8 @@ class Services(WalletServices):
         if self.arc_gorillapool:
             try:
                 # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
                 res = self._run_async(self.arc_gorillapool.broadcast(tx))
 
                 if getattr(res, "status", "") == "success":
@@ -1275,6 +1281,8 @@ class Services(WalletServices):
         if self.arc_taal:
             try:
                 # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
                 res = self._run_async(self.arc_taal.broadcast(tx))
 
                 if getattr(res, "status", "") == "success":

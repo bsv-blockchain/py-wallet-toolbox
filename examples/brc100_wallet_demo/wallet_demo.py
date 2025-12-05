@@ -3,7 +3,7 @@
 
 import sys
 
-from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox import Wallet, Services
 
 from src import (
     # configuration helpers
@@ -68,8 +68,10 @@ class WalletDemo:
         print()
 
         try:
+            services = Services(self.network)
             self.wallet = Wallet(
                 chain=self.network,
+                services=services,
                 key_deriver=self.key_deriver,
                 storage_provider=self.storage_provider,
             )
