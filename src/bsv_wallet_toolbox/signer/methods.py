@@ -172,7 +172,7 @@ def build_signable_transaction(
         if vout != out.get("vout"):
             raise WalletError(f"output.vout must equal array index. {out.get('vout')} !== {vout}")
 
-        is_change = out.get("provided_by") == "storage" and out.get("purpose") == "change"
+        is_change = out.get("providedBy") == "storage" and out.get("purpose") == "change"
 
         locking_script = (
             _make_change_lock(out, dctr, args, change_keys, wallet)

@@ -1888,14 +1888,21 @@ class StorageProvider:
                 # Create the output-to-tag mapping
                 self.find_or_insert_output_tag_map(output_id, tag_id)
 
+            locking_script_hex = locking_script_bytes.hex()
             outputs_payload.append(
                 {
                     "vout": xo.vout,
                     "satoshis": xo.satoshis,
+                    "lockingScript": locking_script_hex,
                     "providedBy": xo.provided_by,
                     "purpose": xo.purpose,
                     "tags": xo.tags,
                     "outputId": output_id,
+                    "basket": xo.basket,
+                    "derivationSuffix": xo.derivation_suffix,
+                    "derivation_suffix": xo.derivation_suffix,
+                    "keyOffset": xo.key_offset,
+                    "customInstructions": xo.custom_instructions,
                 }
             )
 

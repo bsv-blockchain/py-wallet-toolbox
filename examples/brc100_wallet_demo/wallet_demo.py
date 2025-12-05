@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """BSV Wallet Toolbox - BRC-100 Interactive Demo."""
 
+import os
 import sys
+from pathlib import Path
 
-from bsv_wallet_toolbox import Wallet, Services
+from dotenv import load_dotenv
+
+from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.services import Services, create_default_options
+from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
 
 from src import (
     # configuration helpers
@@ -52,6 +58,7 @@ class WalletDemo:
 
     def __init__(self) -> None:
         """Prepare shared dependencies."""
+        load_dotenv(dotenv_path=Path(__file__).parent / ".env")
         self.wallet: Wallet | None = None
         self.network = get_network()
         self.key_deriver = get_key_deriver()
@@ -68,7 +75,7 @@ class WalletDemo:
         print()
 
         try:
-            services = Services(self.network)
+            services = self._build_services()
             self.wallet = Wallet(
                 chain=self.network,
                 services=services,
@@ -89,6 +96,20 @@ class WalletDemo:
         except Exception as err:
             print(f"❌ Failed to initialize wallet: {err}")
             self.wallet = None
+
+    def _build_services(self) -> Services:
+        """Create a Services instance configured to prioritize TAAL ARC."""
+        options: WalletServicesOptions = create_default_options(self.network)
+
+        # Prefer TAAL ARC, avoid Bitails / GorillaPool unless explicitly configured
+        options["arcApiKey"] = os.getenv("TAAL_ARC_API_KEY") or options.get("arcApiKey")
+        options["arcHeaders"] = options.get("arcHeaders")
+        options["bitailsApiKey"] = None
+        options["arcGorillaPoolUrl"] = None
+        options["arcGorillaPoolApiKey"] = None
+        options["arcGorillaPoolHeaders"] = None
+
+        return Services(options)
 
     def show_basic_info(self) -> None:
         """Display core metadata (auth/network/version)."""
