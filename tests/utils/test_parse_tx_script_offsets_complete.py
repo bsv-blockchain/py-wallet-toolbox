@@ -109,6 +109,21 @@ class TestReadVarint:
         value3, bytes_read3 = _read_varint(data, 4)
         assert value3 == 0
 
+    def test_read_varint_all_byte_values_covered(self) -> None:
+        """Test that all possible byte values are handled by _read_varint conditions.
+
+        This ensures the fallback return at line 138 is unreachable.
+        """
+        # Test all possible byte values (0x00 to 0xFF)
+        for byte_val in range(256):
+            data = [byte_val, 0, 0, 0, 0, 0, 0, 0, 0, 0]  # Sufficient data for all cases
+
+            # This should never raise and should always return valid results
+            value, bytes_read = _read_varint(data, 0)
+
+            # Verify bytes_read is always 1, 3, 5, or 9 (valid varint lengths)
+            assert bytes_read in [1, 3, 5, 9], f"Invalid bytes_read {bytes_read} for byte 0x{byte_val:02x}"
+            assert isinstance(value, int)
 
 
 class TestParseTxScriptOffsetsEmpty:

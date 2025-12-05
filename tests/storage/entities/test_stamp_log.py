@@ -149,3 +149,31 @@ class TeststampLog:
         for input_val in non_string_inputs:
             result = stamp_log_format(input_val)
             assert result == ""
+
+    def test_formats_empty_log_string(self) -> None:
+        """Given: Empty string log
+           When: Call stamp_log_format
+           Then: Returns empty string
+        """
+        # Given
+        log = ""
+
+        # When
+        result = stamp_log_format(log)
+
+        # Then
+        assert result == ""
+
+    def test_formats_log_with_no_spaced_lines(self) -> None:
+        """Given: Log string with lines that have no spaces (no timestamps)
+           When: Call stamp_log_format
+           Then: Returns empty string
+        """
+        # Given - log with lines that have no spaces, so they are skipped
+        log = "Event1\nEvent2\nEvent3"
+
+        # When
+        result = stamp_log_format(log)
+
+        # Then
+        assert result == ""

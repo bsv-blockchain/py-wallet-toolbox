@@ -204,35 +204,39 @@ def build_signable_transaction(
 
     # Add inputs
     for input_data in inputs:
-        storage_input = input_data["storage_input"]
-        args_input = input_data["args_input"]
+            storage_input = input_data["storage_input"]
+            args_input = input_data["args_input"]
 
-        if args_input:
-            # Type 1: User supplied input
-            has_unlock = args_input.get("unlockingScript") is not None
-            unlock = Script.from_hex(args_input.get("unlockingScript", "")) if has_unlock else Script()
+            # Skip inputs that are handled via BEEF (they don't need explicit input processing)
+            if storage_input.get("beef"):
+                continue
 
-            source_transaction = None
-            if args.get("isSignAction") and input_beef:
-                txid = args_input.get("outpoint", {}).get("txid")
-                if txid:
-                    tx_data = input_beef.find_txid(txid)
-                    if tx_data:
-                        source_transaction = tx_data.get("tx")
+            if args_input:
+                # Type 1: User supplied input
+                has_unlock = args_input.get("unlockingScript") is not None
+                unlock = Script.from_hex(args_input.get("unlockingScript", "")) if has_unlock else Script()
 
-            tx.add_input(
-                TransactionInput(
-                    source_txid=args_input.get("outpoint", {}).get("txid", ""),
-                    source_output_index=args_input.get("outpoint", {}).get("vout", 0),
-                    source_transaction=source_transaction,
-                    unlocking_script=unlock,
-                    sequence=args_input.get("sequence_number", 0xFFFFFFFF),
+                source_transaction = None
+                if args.get("isSignAction") and input_beef:
+                    txid = args_input.get("outpoint", {}).get("txid")
+                    if txid:
+                        tx_data = input_beef.find_txid(txid)
+                        if tx_data:
+                            source_transaction = tx_data.get("tx")
+
+                tx.add_input(
+                    TransactionInput(
+                        source_txid=args_input.get("outpoint", {}).get("txid", ""),
+                        source_output_index=args_input.get("outpoint", {}).get("vout", 0),
+                        source_transaction=source_transaction,
+                        unlocking_script=unlock,
+                        sequence=args_input.get("sequence_number", 0xFFFFFFFF),
+                    )
                 )
-            )
-        else:
-            # Type 2: SABPPP protocol inputs
-            if storage_input.get("type") != "P2PKH":
-                raise WalletError(f'vin {storage_input.get("vin")}, ' f'"{storage_input.get("type")}" is not supported')
+            else:
+                # Type 2: SABPPP protocol inputs
+                if storage_input.get("type") != "P2PKH":
+                    raise WalletError(f'vin {storage_input.get("vin")}, ' f'"{storage_input.get("type")}" is not supported')
 
             pending_storage_inputs.append(
                 PendingStorageInput(
@@ -311,9 +315,9 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 f"exceeds expected length {create_input['unlocking_script_length']}"
             )
 
-        input_data["unlocking_script"] = Script.from_hex(unlock_script_hex)
-        if "sequence_number" in spend:
-            input_data["sequence"] = spend["sequence_number"]
+            input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
+            if "sequence_number" in spend:
+                input_data.sequence = spend["sequence_number"]
 
     # Insert SABPPP unlock templates for wallet-signed inputs
     # These are wallet-signed inputs that use BRC-29 protocol for authentication
@@ -421,14 +425,24 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
     Returns:
         Process action results
     """
+    if prior is None:
+        # Create new transaction for processing
+        prior = _create_new_tx(wallet, auth, vargs)
+
+        # Build signable transaction
+        tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
+
+        # Complete signed transaction
+        prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
+
     storage_args = {
         "isNewTx": vargs.get("isNewTx"),
         "isSendWith": vargs.get("isSendWith"),
         "isNoSend": vargs.get("isNoSend"),
         "isDelayed": vargs.get("isDelayed"),
-        "reference": prior.reference if prior else None,
-        "txid": prior.tx.txid() if prior else None,
-        "rawTx": prior.tx.serialize() if prior else None,
+        "reference": prior.reference,
+        "txid": prior.tx.txid(),
+        "rawTx": prior.tx.serialize(),
         "sendWith": vargs.get("options", {}).get("sendWith", []) if vargs.get("isSendWith") else [],
     }
 

@@ -320,6 +320,16 @@ class TestEdgeCases:
         except (NameError, TypeError):
             pass
 
+    def test_validate_non_dict_config(self) -> None:
+        """Test validating non-dict config types."""
+        try:
+            invalid_configs = ["string", 123, [], True]
+            for config in invalid_configs:
+                result = validate_config(config)
+                assert result is False, f"Expected False for {type(config).__name__} config"
+        except (NameError, TypeError):
+            pass
+
     def test_config_circular_reference(self) -> None:
         """Test config with circular reference."""
         try:

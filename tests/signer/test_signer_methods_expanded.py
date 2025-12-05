@@ -426,6 +426,14 @@ class TestErrorPaths:
         wallet = Mock()
         wallet.storage = Mock()
         wallet.storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
+        # Set up storage mock to return proper structure
+        wallet.storage.create_action.return_value = {
+            "inputs": [],
+            "outputs": [],
+            "txid": "test_txid",
+            "reference": "test_ref"
+        }
+        wallet.get_client_change_key_pair.return_value = Mock()
         auth = {"userId": 1}
         vargs = {
             "isNewTx": False,  # Set to False to avoid needing outputs

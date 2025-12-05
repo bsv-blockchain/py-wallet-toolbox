@@ -106,6 +106,15 @@ class TestCreateAction:
             "isSignAction": False,
         }
 
+        # Set up storage mock to return proper structure
+        mock_wallet.storage.create_action.return_value = {
+            "inputs": [],
+            "outputs": [],
+            "txid": "test_txid",
+            "reference": "test_ref"
+        }
+        mock_wallet.get_client_change_key_pair.return_value = Mock()
+
         result = create_action(mock_wallet, mock_auth, vargs)
 
         assert isinstance(result, CreateActionResultX)
@@ -114,6 +123,15 @@ class TestCreateAction:
         """Test that create_action validates inputs properly."""
         # Missing required fields
         vargs = {}
+
+        # Set up storage mock to return proper structure
+        mock_wallet.storage.create_action.return_value = {
+            "inputs": [],
+            "outputs": [],
+            "txid": "test_txid",
+            "reference": "test_ref"
+        }
+        mock_wallet.get_client_change_key_pair.return_value = Mock()
 
         # Should not raise but return empty result
         result = create_action(mock_wallet, mock_auth, vargs)
@@ -384,6 +402,15 @@ class TestCreateActionAdvanced:
             "description": "Test transaction",
         }
 
+        # Set up storage mock to return proper structure
+        mock_wallet.storage.create_action.return_value = {
+            "inputs": [],
+            "outputs": [],
+            "txid": "test_txid",
+            "reference": "test_ref"
+        }
+        mock_wallet.get_client_change_key_pair.return_value = Mock()
+
         result = create_action(mock_wallet, mock_auth, vargs)
         assert isinstance(result, CreateActionResultX)
 
@@ -394,6 +421,15 @@ class TestCreateActionAdvanced:
             "isSignAction": False,
             "labels": ["label1", "label2"],
         }
+
+        # Set up storage mock to return proper structure
+        mock_wallet.storage.create_action.return_value = {
+            "inputs": [],
+            "outputs": [],
+            "txid": "test_txid",
+            "reference": "test_ref"
+        }
+        mock_wallet.get_client_change_key_pair.return_value = Mock()
 
         result = create_action(mock_wallet, mock_auth, vargs)
         assert isinstance(result, CreateActionResultX)
@@ -565,6 +601,15 @@ class TestSignerMethodsIntegration:
         wallet.storage = Mock()
         wallet.key_deriver = Mock()
         auth = {"userId": 1, "identityKey": "test_key"}
+
+        # Set up storage mock to return proper structure
+        wallet.storage.create_action.return_value = {
+            "inputs": [],
+            "outputs": [],
+            "txid": "test_txid",
+            "reference": "test_ref"
+        }
+        wallet.get_client_change_key_pair.return_value = Mock()
 
         # Create action
         create_args = {
