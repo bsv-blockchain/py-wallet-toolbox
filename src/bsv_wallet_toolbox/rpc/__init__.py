@@ -1,10 +1,14 @@
-"""JSON-RPC 2.0 library for wallet storage provider communication.
+"""Storage client and server for wallet storage provider communication.
 
 This package provides JSON-RPC 2.0 compliant client and server implementations
 for communicating with wallet storage providers.
 
+Equivalent to TypeScript:
+    - ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
+    - ts-wallet-toolbox/src/storage/remoting/StorageServer.ts
+
 Modules:
-    json_rpc_client: JSON-RPC client implementation
+    storage_client: StorageClient implementation
         - Synchronous HTTPS communication via requests
         - Automatic authentication header attachment from Wallet instance
         - Thread-safe request ID management
@@ -12,7 +16,7 @@ Modules:
         - Connection pooling for performance
         - 22 WalletStorageProvider method implementations
 
-    json_rpc_server: JSON-RPC server base class
+    storage_server: StorageServer base class
         - Method registration via decorator
         - Automatic request dispatch
         - Request validation and parameter checking
@@ -20,17 +24,17 @@ Modules:
         - Batch request support
 
 Client usage:
-    >>> from bsv_wallet_toolbox import JsonRpcClient, Wallet
+    >>> from bsv_wallet_toolbox import StorageClient, Wallet
     >>> wallet = Wallet(...)
-    >>> client = JsonRpcClient(wallet, "https://storage.example.com/wallet")
+    >>> client = StorageClient(wallet, "https://storage.example.com/wallet")
     >>> result = client.create_action(auth, args)
 
 Server usage:
     >>> from flask import Flask, request, jsonify
-    >>> from bsv_wallet_toolbox.rpc import JsonRpcServer
+    >>> from bsv_wallet_toolbox.rpc import StorageServer
     >>>
     >>> app = Flask(__name__)
-    >>> server = JsonRpcServer()
+    >>> server = StorageServer()
     >>>
     >>> @server.register_method("wallet_create_action")
     >>> def create_action(auth: dict, args: dict) -> dict:
@@ -52,30 +56,37 @@ For additional examples and customization, see the documentation and reference
 implementations in Flask and FastAPI frameworks.
 """
 
-from bsv_wallet_toolbox.rpc.json_rpc_client import (
-    JsonRpcClient,
+from bsv_wallet_toolbox.rpc.storage_client import (
+    JsonRpcClient,  # Backward compatibility alias
     JsonRpcError,
+    StorageClient,
 )
-from bsv_wallet_toolbox.rpc.json_rpc_server import (
+from bsv_wallet_toolbox.rpc.storage_server import (
     JsonRpcError as JsonRpcServerError,
 )
-from bsv_wallet_toolbox.rpc.json_rpc_server import (
+from bsv_wallet_toolbox.rpc.storage_server import (
     JsonRpcInternalError,
     JsonRpcInvalidParamsError,
     JsonRpcInvalidRequestError,
     JsonRpcMethodNotFoundError,
     JsonRpcParseError,
-    JsonRpcServer,
+    JsonRpcServer,  # Backward compatibility alias
+    StorageServer,
 )
 
 __all__ = [
+    # New names (TS parity)
+    "StorageClient",
+    "StorageServer",
+    # Backward compatibility aliases
     "JsonRpcClient",
+    "JsonRpcServer",
+    # Error classes
     "JsonRpcError",
     "JsonRpcInternalError",
     "JsonRpcInvalidParamsError",
     "JsonRpcInvalidRequestError",
     "JsonRpcMethodNotFoundError",
     "JsonRpcParseError",
-    "JsonRpcServer",
     "JsonRpcServerError",
 ]

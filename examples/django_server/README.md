@@ -41,6 +41,7 @@ The server will start at `http://127.0.0.1:8000/`
 ## API Endpoints
 
 ### JSON-RPC Endpoint
+
 - **URL**: `POST /` (TypeScript StorageServer parity)
 - **Content-Type**: `application/json`
 - **Protocol**: JSON-RPC 2.0
@@ -149,7 +150,7 @@ mypy .
 wallet_server/
 ├── wallet_app/
 │   ├── views.py      # JSON-RPC endpoint
-│   ├── services.py   # JsonRpcServer integration
+│   ├── services.py   # StorageServer integration
 │   └── urls.py       # URL configuration
 ├── settings.py       # Django configuration
 └── urls.py          # Main URL routing

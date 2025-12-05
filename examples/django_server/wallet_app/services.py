@@ -2,7 +2,9 @@
 Services for wallet_app.
 
 This module provides service layer integration with py-wallet-toolbox,
-specifically the JsonRpcServer for handling JSON-RPC requests.
+specifically the StorageServer for handling JSON-RPC requests.
+
+Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageServer.ts
 """
 
 import logging
@@ -10,29 +12,29 @@ import os
 from typing import Optional
 
 from sqlalchemy import create_engine
-from bsv_wallet_toolbox.rpc import JsonRpcServer
+from bsv_wallet_toolbox.rpc import StorageServer
 from bsv_wallet_toolbox.storage import StorageProvider
 
 logger = logging.getLogger(__name__)
 
-# Global JsonRpcServer instance
-_json_rpc_server: Optional[JsonRpcServer] = None
+# Global StorageServer instance
+_storage_server: Optional[StorageServer] = None
 
 
-def get_json_rpc_server() -> JsonRpcServer:
+def get_storage_server() -> StorageServer:
     """
-    Get or create the global JsonRpcServer instance.
+    Get or create the global StorageServer instance.
 
-    This function ensures we have a single JsonRpcServer instance
+    This function ensures we have a single StorageServer instance
     that is configured with StorageProvider methods.
 
     Returns:
-        JsonRpcServer: Configured JSON-RPC server instance
+        StorageServer: Configured storage server instance
     """
-    global _json_rpc_server
+    global _storage_server
 
-    if _json_rpc_server is None:
-        logger.info("Initializing JsonRpcServer with StorageProvider")
+    if _storage_server is None:
+        logger.info("Initializing StorageServer with StorageProvider")
 
         # Initialize StorageProvider with SQLite database
         # Create database file in the project directory
@@ -57,20 +59,32 @@ def get_json_rpc_server() -> JsonRpcServer:
         except Exception as e:
             logger.warning(f"StorageProvider make_available failed (may already be initialized): {e}")
 
-        # Create JsonRpcServer with StorageProvider auto-registration
-        _json_rpc_server = JsonRpcServer(storage_provider=storage_provider)
+        # Create StorageServer with StorageProvider auto-registration
+        _storage_server = StorageServer(storage_provider=storage_provider)
 
-        logger.info(f"JsonRpcServer initialized with SQLite database: {db_path}")
+        logger.info(f"StorageServer initialized with SQLite database: {db_path}")
 
-    return _json_rpc_server
+    return _storage_server
 
 
-def reset_json_rpc_server():
+# Backward compatibility alias
+def get_json_rpc_server() -> StorageServer:
+    """Backward compatibility alias for get_storage_server()."""
+    return get_storage_server()
+
+
+def reset_storage_server():
     """
-    Reset the global JsonRpcServer instance.
+    Reset the global StorageServer instance.
 
     Useful for testing or reconfiguration.
     """
-    global _json_rpc_server
-    _json_rpc_server = None
-    logger.info("JsonRpcServer instance reset")
+    global _storage_server
+    _storage_server = None
+    logger.info("StorageServer instance reset")
+
+
+# Backward compatibility alias
+def reset_json_rpc_server():
+    """Backward compatibility alias for reset_storage_server()."""
+    reset_storage_server()

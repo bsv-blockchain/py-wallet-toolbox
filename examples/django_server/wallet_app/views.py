@@ -2,6 +2,8 @@
 Views for wallet_app.
 
 This module provides JSON-RPC endpoints for BRC-100 wallet operations.
+
+Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageServer.ts
 """
 
 import json
@@ -11,7 +13,7 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import BadRequest
 
-from .services import get_json_rpc_server
+from .services import get_storage_server
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ def json_rpc_endpoint(request):
     """
     JSON-RPC 2.0 endpoint for wallet operations.
 
-    Accepts JSON-RPC requests and forwards them to the JsonRpcServer.
+    Accepts JSON-RPC requests and forwards them to the StorageServer.
 
     Request format:
     {
@@ -54,8 +56,8 @@ def json_rpc_endpoint(request):
                 "id": None
             }, status=400)
 
-        # Get JsonRpcServer instance
-        server = get_json_rpc_server()
+        # Get StorageServer instance
+        server = get_storage_server()
 
         # Process JSON-RPC request
         response_data = server.handle_json_rpc_request(request_data)
