@@ -1690,7 +1690,8 @@ class StorageProvider:
                     "isOutgoing": bool(tx.is_outgoing),
                     "description": tx.description or "",
                     "version": tx.version or 0,
-                    "lockTime": tx.locktime or 0,
+                    "lockTime": tx.lock_time or 0,
+                    "reference": tx.reference or "",
                 }
 
                 # Optionally add labels (TS lines 167-168)
@@ -1851,8 +1852,9 @@ class StorageProvider:
         xoutputs = validate_required_outputs(self, user_id, vargs)
 
         change_basket = self.find_or_insert_output_basket(user_id, "default")
+        change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
         no_send_change_in = self._validate_no_send_change(user_id, vargs, change_basket)
-        available_change_count = self.count_change_inputs(user_id, change_basket.basket_id, not vargs.is_delayed)
+        available_change_count = self.count_change_inputs(user_id, change_basket_id, not vargs.is_delayed)
 
         fee_model_val = getattr(self.fee_model, "value", 100) if hasattr(self, "fee_model") else 100
         fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
@@ -1863,6 +1865,7 @@ class StorageProvider:
             "xinputs": existing_inputs,
             "xoutputs": xoutputs,
             "change_basket": change_basket,
+            "change_basket_id": change_basket_id,
             "no_send_change_in": no_send_change_in,
             "available_change_count": available_change_count,
             "fee_model": fee_model,
@@ -1926,6 +1929,9 @@ class StorageProvider:
         if not no_send_change:
             return []
         
+        # Handle both dict and object forms of change_basket
+        change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
+        
         result = []
         seen_ids = set()
         session = self.SessionLocal()
@@ -1945,7 +1951,7 @@ class StorageProvider:
                     output.spendable is False or
                     output.spent_by is not None or
                     (output.satoshis or 0) <= 0 or
-                    output.basket_id != change_basket.basket_id
+                    output.basket_id != change_basket_id
                 ):
                     raise InvalidParameterError("noSendChange outpoint", "valid")
                 
@@ -1990,12 +1996,13 @@ class StorageProvider:
         outputs_payload = []
         change_vouts = []
         created_at = self._now()
+        change_basket_id = ctx["change_basket_id"]
         
         for xo in ctx["xoutputs"]:
             basket_id = None
             if xo.basket:
                 b = self.find_or_insert_output_basket(user_id, xo.basket)
-                basket_id = b.basket_id
+                basket_id = b["basketId"] if isinstance(b, dict) else b.basket_id
             
             locking_script_bytes = xo.locking_script
             output_id = self.insert_output({
@@ -2052,7 +2059,7 @@ class StorageProvider:
                 "change": True,
                 "spendable": True,
                 "type": "P2PKH",
-                "basketId": change_basket.basket_id,
+                "basketId": change_basket_id,
                 "derivationSuffix": derivation_suffix,
                 "createdAt": created_at,
                 "updatedAt": created_at,
@@ -2060,6 +2067,7 @@ class StorageProvider:
             
             change_vouts.append(next_vout)
                 
+            change_basket_name = change_basket["name"] if isinstance(change_basket, dict) else change_basket.name
             outputs_payload.append({
                 "vout": next_vout,
                 "satoshis": co.satoshis,
@@ -2068,7 +2076,7 @@ class StorageProvider:
                 "purpose": "change",
                 "tags": [],
                 "outputId": output_id,
-                "basket": change_basket.name,
+                "basket": change_basket_name,
                 "derivationSuffix": derivation_suffix,
             })
             next_vout += 1
@@ -2152,7 +2160,6 @@ class StorageProvider:
                     (Output.user_id == user_id)
                     & (Output.txid == txid)
                     & (Output.vout == vout)
-                    & (~Output.is_deleted)
                 )
                 output = session.execute(q).scalar_one_or_none()
                 if not output:
@@ -2306,30 +2313,36 @@ class StorageProvider:
         ]
 
         change_basket = ctx["change_basket"]
+        # Handle both dict and object forms of change_basket
+        change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
+        min_utxo_value = change_basket.get("minimumDesiredUtxoValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
 
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
             fixed_outputs=fixed_outputs,
             fee_model=ctx["fee_model"],
-            change_initial_satoshis=getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000,
-            change_first_satoshis=max(1, round((getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000) / 4)),
+            change_initial_satoshis=min_utxo_value,
+            change_first_satoshis=max(1, round(min_utxo_value / 4)),
             change_locking_script_length=25,
             change_unlocking_script_length=107,
-            target_net_count=(getattr(change_basket, "number_of_desired_utxos", 5) or 5) - ctx["available_change_count"],
+            target_net_count=(change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5) - ctx["available_change_count"],
             random_vals=vargs.random_vals,
         )
 
         def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None):
             o = self.allocate_change_input(
                 user_id,
-                change_basket.basket_id,
+                change_basket_id,
                 target_satoshis,
                 exact_satoshis,
                 not vargs.is_delayed,
                 ctx["transaction_id"],
             )
             if o:
-                return GenerateChangeSdkChangeInput(output_id=o.output_id, satoshis=o.satoshis)
+                # Handle both dict and object forms
+                output_id = o["outputId"] if isinstance(o, dict) else o.output_id
+                satoshis = o["satoshis"] if isinstance(o, dict) else o.satoshis
+                return GenerateChangeSdkChangeInput(output_id=output_id, satoshis=satoshis)
             return None
 
         def release_cb(output_id: int):
@@ -3833,7 +3846,7 @@ class StorageProvider:
             query = select(Output).where(
                 (Output.user_id == user_id)
                 & (Output.basket_id == basket_id)
-                & (~Output.is_deleted)
+                & (Output.spendable.is_(True))
                 & (Output.spent_by.is_(None))
             )
 
@@ -3877,7 +3890,7 @@ class StorageProvider:
             query = select(Output).where(
                 (Output.user_id == user_id)
                 & (Output.basket_id == basket_id)
-                & (~Output.is_deleted)
+                & (Output.spendable.is_(True))
                 & (Output.spent_by.is_(None))
             )
 
@@ -4173,7 +4186,7 @@ class StorageProvider:
         """
         session = self.SessionLocal()
         try:
-            query = select(Output).where((~Output.is_deleted) & (Output.spent_by.is_(None)))
+            query = select(Output).where((Output.spendable.is_(True)) & (Output.spent_by.is_(None)))
             result = session.execute(query)
             outputs = result.scalars().all()
 

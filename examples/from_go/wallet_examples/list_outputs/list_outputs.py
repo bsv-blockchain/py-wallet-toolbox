@@ -16,14 +16,11 @@ DEFAULT_LIMIT = 100
 # DefaultOffset is the default starting position for pagination.
 DEFAULT_OFFSET = 0
 
-# DefaultOriginator specifies the originator domain or FQDN used to identify the source of the output listing request.
-DEFAULT_ORIGINATOR = "example.com"
-
 # DefaultIncludeLabels is the default value for including labels in the response.
 DEFAULT_INCLUDE_LABELS = True
 
-# DefaultBasket is the default basket to list outputs from, if empty it will list from all baskets.
-DEFAULT_BASKET = ""
+# DefaultBasket is the default basket to list outputs from.
+DEFAULT_BASKET = "default"
 
 # DefaultTags is the default tags to list outputs from.
 DEFAULT_TAGS = []
@@ -58,8 +55,7 @@ def main() -> None:
         show.separator()
 
         # Retrieve paginated list of wallet outputs
-        # outputs, err := aliceWallet.ListOutputs(ctx, args, DefaultOriginator)
-        outputs = alice_wallet.list_outputs(args, DEFAULT_ORIGINATOR)
+        outputs = alice_wallet.list_outputs(args)
 
         show.info("Outputs", outputs)
         show.process_complete("List Outputs")

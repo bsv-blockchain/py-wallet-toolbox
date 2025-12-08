@@ -9,9 +9,6 @@ This example demonstrates how to get the balance of a wallet.
 
 from internal import setup, show
 
-# ORIGINATOR specifies the originator domain or FQDN used to identify the source of the request.
-ORIGINATOR = "example.com"
-
 
 def main() -> None:
     show.process_start("Get Wallet Balance")
@@ -23,10 +20,10 @@ def main() -> None:
     try:
         show.step("Alice", "Getting balance")
 
-        # balance, err := aliceWallet.GetBalance(ctx, originator)
-        balance = alice_wallet.get_balance(ORIGINATOR)
+        # Use the balance() method which uses specOpWalletBalance internally
+        balance = alice_wallet.balance()
 
-        show.wallet_success("GetBalance", None, balance)
+        show.wallet_success("Balance", None, balance)
         show.process_complete("Get Wallet Balance")
 
     finally:

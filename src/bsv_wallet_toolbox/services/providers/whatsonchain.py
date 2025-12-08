@@ -104,15 +104,32 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self.current_height()
 
-    async def get_headers(self, height: int, count: int) -> str:
-        """Get headers in serialized format.
+    async def get_bulk_headers(self, height: int, count: int) -> str:
+        """Get headers in serialized format (bulk).
 
         Not implemented: WoC lacks bulk header endpoint required for this.
+        
+        Note: Renamed from get_headers to avoid collision with parent class's
+        get_headers() which returns HTTP headers dict.
 
         Raises:
             NotImplementedError: Always (no bulk header API)
         """
-        raise NotImplementedError("get_headers() is not supported by WhatsOnChain provider")
+        raise NotImplementedError("get_bulk_headers() is not supported by WhatsOnChain provider")
+    
+    def _get_http_headers(self) -> dict[str, str]:
+        """Get HTTP headers for API requests.
+        
+        This method provides HTTP headers (Authorization, etc.) for WhatsOnChain API calls.
+        Named to avoid collision with get_bulk_headers().
+        
+        Returns:
+            dict: HTTP headers including API key if configured
+        """
+        headers: dict[str, str] = {}
+        if self.api_key:
+            headers["Authorization"] = self.api_key
+        return headers
 
     async def find_chain_tip_header(self) -> BlockHeader:
         """Get the active chain tip header.
@@ -153,7 +170,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         if height < 0:
             raise ValueError(f"Height {height} must be a non-negative integer")
 
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
 
         response = await self.http_client.fetch(f"{self.URL}/block/{height}/header", request_options)
         if response.ok:
@@ -206,7 +223,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         if not isinstance(hash, str) or len(hash) != 64:
             return None
 
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
 
         response = await self.http_client.fetch(f"{self.URL}/block/hash/{hash}", request_options)
         if response.ok:
@@ -323,14 +340,41 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         if height < 0:
             raise ValueError(f"Height {height} must be a non-negative integer")
 
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
 
         response = await self.http_client.fetch(f"{self.URL}/block/{height}/header", request_options)
         if response.ok:
-            header_hex = response.json()["data"].get("header")
-            if not header_hex:
+            data = response.json().get("data", {})
+            if not data:
                 raise RuntimeError(f"No header found for height {height}")
-            return bytes.fromhex(header_hex)
+            
+            # WhatsOnChain returns header fields, not serialized bytes.
+            # We need to serialize them into 80-byte block header format:
+            # version (4) + prevHash (32) + merkleRoot (32) + time (4) + bits (4) + nonce (4) = 80 bytes
+            import struct
+            
+            version = data.get("version", 0)
+            prev_hash = data.get("previousblockhash", "0" * 64)
+            merkle_root = data.get("merkleroot", "0" * 64)
+            timestamp = data.get("time", 0)
+            bits_hex = data.get("bits", "00000000")
+            nonce = data.get("nonce", 0)
+            
+            # Serialize to 80-byte header
+            # version: 4 bytes little-endian
+            header = struct.pack("<I", version)
+            # previousblockhash: 32 bytes (reversed from big-endian hex)
+            header += bytes.fromhex(prev_hash)[::-1]
+            # merkleroot: 32 bytes (reversed from big-endian hex)
+            header += bytes.fromhex(merkle_root)[::-1]
+            # time: 4 bytes little-endian
+            header += struct.pack("<I", timestamp)
+            # bits: 4 bytes little-endian (from hex string like "1d00ffff")
+            header += bytes.fromhex(bits_hex)[::-1]
+            # nonce: 4 bytes little-endian
+            header += struct.pack("<I", nonce)
+            
+            return header
         elif response.status_code == 404:
             raise RuntimeError(f"No header found for height {height}")
         else:
@@ -359,7 +403,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
         result: dict[str, Any] = {"name": "WoCTsc", "notes": []}
-        headers = WhatsOnChainTracker.get_headers(self)
+        headers = self._get_http_headers()
         request_options = {"method": "GET", "headers": headers}
         url = f"{self.URL}/tx/{txid}/proof/tsc"
 
@@ -446,7 +490,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             - toolbox/ts-wallet-toolbox/src/services/providers/WhatsOnChain.ts
         """
         try:
-            request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+            request_options = {"method": "GET", "headers": self._get_http_headers()}
             response = await self.http_client.fetch(f"{self.URL}/exchange-rate/bsvusd", request_options)
             if response.ok:
                 body = response.json() or {}
@@ -479,7 +523,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getFiatExchangeRate
         """
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
         # Chaintracks fiat endpoint (tests will mock this URL)
         url = "https://mainnet-chaintracks.babbage.systems/getFiatExchangeRates"
         response = await self.http_client.fetch(url, request_options)
@@ -531,7 +575,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getUtxoStatus
         """
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
         # Chaintracks-like endpoint (tests will mock this)
         base_url = "https://mainnet-chaintracks.babbage.systems/getUtxoStatus"
         params = {"output": output}
@@ -566,7 +610,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getScriptHistory
         """
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
         base_url = "https://mainnet-chaintracks.babbage.systems/getScriptHistory"
         url = f"{base_url}?{urlencode({'hash': script_hash})}"
         response = await self.http_client.fetch(url, request_options)
@@ -599,7 +643,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getTransactionStatus
         """
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
         base_url = "https://mainnet-chaintracks.babbage.systems/getTransactionStatus"
         url = f"{base_url}?{urlencode({'txid': txid})}"
 
@@ -661,7 +705,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return result
 
         try:
-            request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+            request_options = {"method": "GET", "headers": self._get_http_headers()}
             response = await self.http_client.fetch(f"{self.URL}/tx/{txid}/hex", request_options)
 
             if response.status_code == 200:
@@ -706,7 +750,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         if not isinstance(txid, str) or len(txid) != 64:
             raise ValueError("invalid txid length; expected 64 hex characters")
-        request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
         url = f"{self.URL}/tx/{txid}/propagation"
         response = await self.http_client.fetch(url, request_options)
         if not response.ok:

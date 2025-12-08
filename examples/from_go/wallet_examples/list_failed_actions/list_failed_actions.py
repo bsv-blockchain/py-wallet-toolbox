@@ -15,9 +15,6 @@ DEFAULT_LIMIT = 100
 # DefaultOffset is the default starting position for pagination
 DEFAULT_OFFSET = 0
 
-# DefaultOriginator specifies the originator domain or FQDN used to identify the source of the request.
-DEFAULT_ORIGINATOR = "example.com"
-
 # DefaultIncludeLabels determines whether to include labels in the response
 DEFAULT_INCLUDE_LABELS = True
 
@@ -49,10 +46,7 @@ def main() -> None:
         show.separator()
 
         # Retrieve paginated list of failed wallet actions
-        # actions, err := aliceWallet.ListFailedActions(ctx, args, DefaultUnfail, DefaultOriginator)
-        # Go SDK: ListFailedActions(ctx, args, unfail, originator)
-        # Python SDK: likely list_failed_actions(args, unfail, originator)
-        actions = alice_wallet.list_failed_actions(args, DEFAULT_UNFAIL, DEFAULT_ORIGINATOR)
+        actions = alice_wallet.list_failed_actions(args, DEFAULT_UNFAIL)
 
         show.info("FailedActions", actions)
         show.process_complete("List Failed Actions")

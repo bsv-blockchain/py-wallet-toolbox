@@ -15,10 +15,6 @@ from internal import setup, show
 # keyID is the key ID for the decryption key.
 KEY_ID = "key-id"
 
-# originator specifies the originator domain or FQDN used to identify the source of the decryption request.
-# NOTE: Replace "example.com" with the actual originator domain or FQDN in real usage.
-ORIGINATOR = "example.com"
-
 # protocolID is the protocol ID for the decryption.
 PROTOCOL_ID = "encryption"
 
@@ -39,21 +35,22 @@ def main() -> None:
     try:
         show.step("Alice", "Decrypting")
 
+        # Python SDK expects flat structure (not wrapped in encryptionArgs)
+        # protocolID format: [securityLevel, protocolName] as list/tuple
         args = {
-            "encryptionArgs": {
-                "protocolID": {"protocol": PROTOCOL_ID},
-                "keyID": KEY_ID,
-                "counterparty": {},
-            },
-            "ciphertext": CIPHERTEXT,
+            "ciphertext": list(CIPHERTEXT),
+            "protocolID": [0, PROTOCOL_ID],
+            "keyID": KEY_ID,
+            "counterparty": "self",
         }
         show.info("DecryptArgs", args)
         show.separator()
 
-        # decrypted, err := aliceWallet.Decrypt(ctx, args, originator)
-        decrypted = alice_wallet.decrypt(args, ORIGINATOR)
+        decrypted = alice_wallet.decrypt(args)
 
-        show.info("Decrypted", decrypted.get("plaintext").decode("utf-8"))
+        # Python SDK returns dict with 'plaintext' as list of bytes
+        plaintext_bytes = bytes(decrypted.get("plaintext", []))
+        show.info("Decrypted", plaintext_bytes.decode("utf-8"))
         show.process_complete("Decrypt")
 
     finally:

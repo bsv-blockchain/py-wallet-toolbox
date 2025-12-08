@@ -20,10 +20,6 @@ OUTPUT_DESCRIPTION = "Data output"
 # TransactionDescription describes the purpose of this transaction
 TRANSACTION_DESCRIPTION = "Create Data Transaction Example"
 
-# Originator specifies the originator domain or FQDN used to identify the source of the action request
-# NOTE: Replace "example.com" with the actual originator domain or FQDN in real usage
-ORIGINATOR = "example.com"
-
 
 def main() -> None:
     show.process_start("Create Data Transaction")
@@ -66,8 +62,7 @@ def main() -> None:
         show.info("Transaction description", TRANSACTION_DESCRIPTION)
         show.info("Output description", OUTPUT_DESCRIPTION)
 
-        # result, err := aliceWallet.CreateAction(ctx, createArgs, Originator)
-        result = alice_wallet.create_action(create_args, ORIGINATOR)
+        result = alice_wallet.create_action(create_args)
 
         show.wallet_success("CreateAction", create_args, result)
 

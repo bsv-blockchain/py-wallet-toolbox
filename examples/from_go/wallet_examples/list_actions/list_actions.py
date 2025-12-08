@@ -15,9 +15,6 @@ DEFAULT_LIMIT = 100
 # DefaultOffset is the default starting position for pagination
 DEFAULT_OFFSET = 0
 
-# DefaultOriginator specifies the originator domain or FQDN used to identify the source of the action listing request.
-DEFAULT_ORIGINATOR = "example.com"
-
 # DefaultIncludeLabels determines whether to include labels in the response
 DEFAULT_INCLUDE_LABELS = True
 
@@ -45,8 +42,7 @@ def main() -> None:
         show.separator()
 
         # Retrieve paginated list of wallet actions
-        # actions, err := aliceWallet.ListActions(ctx, args, DefaultOriginator)
-        actions = alice_wallet.list_actions(args, DEFAULT_ORIGINATOR)
+        actions = alice_wallet.list_actions(args)
 
         show.info("Actions", actions)
         show.process_complete("List Actions")

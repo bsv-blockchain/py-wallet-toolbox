@@ -377,27 +377,53 @@ class Services(WalletServices):
         return self.whatsonchain
 
     def get_height(self) -> int | None:
-        """Get current blockchain height from WhatsOnChain.
+        """Get current blockchain height with provider fallback.
 
         Equivalent to TypeScript's Services.getHeight()
-        Uses py-sdk's WhatsOnChainTracker.current_height() (SDK method)
+        
+        Provider priority (matching TS/Go implementation):
+        1. Chaintracks (if configured) - chaintracks.currentHeight()
+        2. WhatsOnChain - whatsonchain.current_height()
 
         Returns:
-            Current blockchain height or None if network failure occurs
+            Current blockchain height or None if all providers fail
 
-        Raises:
-            RuntimeError: If unable to retrieve height due to other errors
+        Reference:
+            - ts-wallet-toolbox/src/services/Services.ts#getHeight
+            - go-wallet-toolbox/pkg/services/services.go#CurrentHeight
         """
+        return self._run_async(self._get_height_async())
+
+    async def _get_height_async(self) -> int | None:
+        """Async implementation of get_height with provider fallback."""
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                # TS: chaintracks.currentHeight()
+                # Go: chaintracks.GetPresentHeight()
+                if hasattr(chaintracks, "current_height"):
+                    return await chaintracks.current_height()
+                elif hasattr(chaintracks, "get_present_height"):
+                    return await chaintracks.get_present_height()
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
         try:
-            return self._run_async(self.whatsonchain.current_height())
+            return await self.whatsonchain.current_height()
         except (ConnectionError, TimeoutError):
             return None
 
     def get_present_height(self) -> int:
-        """Get latest chain height (provider's present height).
+        """Get latest chain height with provider fallback.
 
         TS parity:
-            Mirrors Services.getPresentHeight by delegating to provider.
+            Mirrors Services.getPresentHeight with Chaintracks priority.
+
+        Provider priority:
+        1. Chaintracks (if configured)
+        2. WhatsOnChain
 
         Returns:
             int: Latest chain height
@@ -405,7 +431,23 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
         """
-        return self._run_async(self.whatsonchain.get_present_height())
+        return self._run_async(self._get_present_height_async())
+
+    async def _get_present_height_async(self) -> int:
+        """Async implementation of get_present_height with provider fallback."""
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                if hasattr(chaintracks, "get_present_height"):
+                    return await chaintracks.get_present_height()
+                elif hasattr(chaintracks, "current_height"):
+                    return await chaintracks.current_height()
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
+        return await self.whatsonchain.get_present_height()
 
     async def hash_to_header_async(self, block_hash: str) -> dict[str, Any]:
         """Async helper to resolve a block header for the given block hash."""
@@ -454,10 +496,13 @@ class Services(WalletServices):
         return self._run_async(self.hash_to_header_async(block_hash))
 
     def get_header_for_height(self, height: int) -> bytes:
-        """Get block header at specified height from WhatsOnChain.
+        """Get block header at specified height with provider fallback.
 
         Equivalent to TypeScript's Services.getHeaderForHeight()
-        Uses WhatsOnChain.get_header_bytes_for_height() helper method
+        
+        Provider priority (matching TS/Go implementation):
+        1. Chaintracks (if configured) - chaintracks.findHeaderForHeight()
+        2. WhatsOnChain - whatsonchain.get_header_bytes_for_height()
 
         Args:
             height: Block height (must be non-negative)
@@ -467,12 +512,41 @@ class Services(WalletServices):
 
         Raises:
             ValueError: If height is negative
-            RuntimeError: If unable to retrieve header
+            RuntimeError: If unable to retrieve header from any provider
+
+        Reference:
+            - ts-wallet-toolbox/src/services/Services.ts#getHeaderForHeight
+            - go-wallet-toolbox/pkg/services/services.go#ChainHeaderByHeight
         """
-        return self._run_async(self.whatsonchain.get_header_bytes_for_height(height))
+        return self._run_async(self._get_header_for_height_async(height))
+
+    async def _get_header_for_height_async(self, height: int) -> bytes:
+        """Async implementation of get_header_for_height with provider fallback."""
+        from .chaintracker.chaintracks.util.block_header_utilities import serialize_base_block_header
+        
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                # TS: chaintracks.findHeaderForHeight(height)
+                # Go: services.ChainHeaderByHeight(ctx, height)
+                if hasattr(chaintracks, "find_header_for_height"):
+                    header = await chaintracks.find_header_for_height(height)
+                    if header:
+                        # Convert BlockHeader dict to 80-byte serialized format
+                        return serialize_base_block_header(header)
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
+        return await self.whatsonchain.get_header_bytes_for_height(height)
 
     def find_header_for_height(self, height: int) -> dict[str, Any] | None:
-        """Get a structured block header at a given height.
+        """Get a structured block header at a given height with provider fallback.
+
+        Provider priority:
+        1. Chaintracks (if configured)
+        2. WhatsOnChain
 
         Args:
             height: Block height (non-negative)
@@ -483,18 +557,50 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
         """
-        h = self._run_async(self.whatsonchain.find_header_for_height(height))
+        return self._run_async(self._find_header_for_height_async(height))
+
+    async def _find_header_for_height_async(self, height: int) -> dict[str, Any] | None:
+        """Async implementation of find_header_for_height with provider fallback."""
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                if hasattr(chaintracks, "find_header_for_height"):
+                    header = await chaintracks.find_header_for_height(height)
+                    if header:
+                        return self._normalize_header(header, height)
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
+        h = await self.whatsonchain.find_header_for_height(height)
         if h is None:
             return None
+        return self._normalize_header(h, height)
+
+    def _normalize_header(self, header: Any, height: int) -> dict[str, Any]:
+        """Normalize header response to consistent dict format."""
+        if isinstance(header, dict):
+            return {
+                "version": header.get("version"),
+                "previousHash": header.get("previousHash"),
+                "merkleRoot": header.get("merkleRoot"),
+                "time": header.get("time"),
+                "bits": header.get("bits"),
+                "nonce": header.get("nonce"),
+                "height": header.get("height", height),
+                "hash": header.get("hash"),
+            }
+        # Object with attributes (BlockHeader class instance)
         return {
-            "version": h.version,
-            "previousHash": h.previousHash,
-            "merkleRoot": h.merkleRoot,
-            "time": h.time,
-            "bits": h.bits,
-            "nonce": h.nonce,
-            "height": h.height,
-            "hash": h.hash,
+            "version": getattr(header, "version", None),
+            "previousHash": getattr(header, "previousHash", None),
+            "merkleRoot": getattr(header, "merkleRoot", None),
+            "time": getattr(header, "time", None),
+            "bits": getattr(header, "bits", None),
+            "nonce": getattr(header, "nonce", None),
+            "height": getattr(header, "height", height),
+            "hash": getattr(header, "hash", None),
         }
 
     def get_chain(self) -> str:
@@ -522,7 +628,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getHeaders
         """
-        return self._run_async(self.whatsonchain.get_headers(height, count))
+        return self._run_async(self.whatsonchain.get_bulk_headers(height, count))
 
     def add_header(self, header: Any) -> None:
         """Submit a possibly new header (if provider supports it)."""

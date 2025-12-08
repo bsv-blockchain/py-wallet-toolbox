@@ -15,10 +15,6 @@ from internal import setup, show
 # keyID is the key ID for the encryption key.
 KEY_ID = "key-id"
 
-# originator specifies the originator domain or FQDN used to identify the source of the encryption request.
-# NOTE: Replace "example.com" with the actual originator domain or FQDN in real usage.
-ORIGINATOR = "example.com"
-
 # protocolID is the default protocol ID for the encryption.
 PROTOCOL_ID = "encryption"
 
@@ -38,26 +34,20 @@ def main() -> None:
     try:
         show.step("Alice", "Encrypting")
 
+        # Python SDK expects flat structure (not wrapped in encryptionArgs)
+        # protocolID format: [securityLevel, protocolName] as list/tuple
         args = {
-            "encryptionArgs": {
-                "protocolID": {"protocol": PROTOCOL_ID},
-                "keyID": KEY_ID,
-                "counterparty": {},
-            },
-            "plaintext": PLAINTEXT.encode("utf-8"),
+            "plaintext": list(PLAINTEXT.encode("utf-8")),
+            "protocolID": [0, PROTOCOL_ID],
+            "keyID": KEY_ID,
+            "counterparty": "self",
         }
         show.info("EncryptArgs", args)
         show.separator()
 
-        # encrypted, err := aliceWallet.Encrypt(ctx, args, originator)
-        encrypted = alice_wallet.encrypt(args, ORIGINATOR)
+        encrypted = alice_wallet.encrypt(args)
 
-        # Go SDK Encrypt returns []byte directly, but Python SDK might follow TS structure.
-        # Checking parity: TS returns EncryptResult { ciphertext: Uint8Array, ... } or just ciphertext?
-        # Let's assume it returns dict similar to Decrypt or just bytes.
-        # Based on bsv_wallet_toolbox/wallet.py: return self.wallet_permissions_manager.encrypt(args, originator)
-        # which likely returns the result structure.
-        
+        # Python SDK returns dict with 'ciphertext' key
         show.info("Encrypted", encrypted)
         show.process_complete("Encrypt")
 

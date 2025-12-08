@@ -14,10 +14,6 @@ from internal import setup, show
 # AtomicBeefHex is the transaction data in atomic beef hex format
 ATOMIC_BEEF_HEX = ""  # example: 01010101c8c06c5fac63510b2b02ccab974a6ef0b0a4910dd8e881c06964f2b52d7ff4150200beef...
 
-# Originator specifies the originator domain or FQDN used to identify the source of the action listing request.
-# NOTE: Replace "example.com" with the actual originator domain or FQDN in real usage.
-ORIGINATOR = "example.com"
-
 # Prefix is the derivation prefix for the payment remittance
 PREFIX = ""  # example: SfKxPIJNgdI=
 
@@ -80,7 +76,7 @@ def main() -> None:
         show.step("Alice", "Internalizing transaction")
 
         # Execute the internalization to add external transaction to wallet history
-        result = alice_wallet.internalize_action(internalize_args, ORIGINATOR)
+        result = alice_wallet.internalize_action(internalize_args)
 
         show.wallet_success("InternalizeAction", internalize_args, result)
         show.success("Transaction internalized successfully")
