@@ -21,8 +21,9 @@ class Token:
 
 class Tokens(list):
     def append(self, item: Token) -> None:
-        if not isinstance(item, Token):
-            raise TypeError("item must be Token")
+        # Relaxed type check to handle dynamic imports
+        if not hasattr(item, 'tx_id') or not hasattr(item, 'beef'):
+            raise TypeError("item must be Token-like object")
         super().append(item)
 
     def tx_ids(self) -> List[str]:

@@ -39,7 +39,7 @@ def main() -> None:
         args = {
             "plaintext": list(PLAINTEXT.encode("utf-8")),
             "protocolID": [0, PROTOCOL_ID],
-            "keyID": KEY_ID,
+                "keyID": KEY_ID,
             "counterparty": "self",
         }
         show.info("EncryptArgs", args)

@@ -1890,7 +1890,7 @@ class StorageProvider:
         satoshis = total_change - total_allocated
         self.update_transaction(new_tx.transaction_id, {"satoshis": satoshis})
 
-        outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs)
+        outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs, derivation_prefix)
         outputs_payload = outputs_result["outputs"]
         change_vouts = outputs_result["change_vouts"]
 
@@ -1992,7 +1992,7 @@ class StorageProvider:
         finally:
             session.close()
 
-    def _create_new_outputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], change_outputs: list[GenerateChangeSdkChangeOutput]) -> dict[str, Any]:
+    def _create_new_outputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], change_outputs: list[GenerateChangeSdkChangeOutput], derivation_prefix: str | None = None) -> dict[str, Any]:
         outputs_payload = []
         change_vouts = []
         created_at = self._now()
@@ -2060,6 +2060,7 @@ class StorageProvider:
                 "spendable": True,
                 "type": "P2PKH",
                 "basketId": change_basket_id,
+                "derivationPrefix": derivation_prefix,
                 "derivationSuffix": derivation_suffix,
                 "createdAt": created_at,
                 "updatedAt": created_at,
@@ -2077,6 +2078,7 @@ class StorageProvider:
                 "tags": [],
                 "outputId": output_id,
                 "basket": change_basket_name,
+                "derivationPrefix": derivation_prefix,
                 "derivationSuffix": derivation_suffix,
             })
             next_vout += 1
@@ -2451,6 +2453,19 @@ class StorageProvider:
         # Result structure (TS lines 39-41)
         result = {"sendWithResults": [], "notDelayedResults": None}
 
+        # Check if this is a new transaction or just sendWith
+        is_new_tx = args.get("isNewTx", True)
+        is_delayed = args.get("isDelayed", False)
+        send_with_txids = list(args.get("sendWith", []) or [])
+
+        # Handle sendWith only (no new transaction) - TS lines 51-66
+        if not is_new_tx:
+            if send_with_txids:
+                swr, ndr = self._share_reqs_with_world(auth, send_with_txids, is_delayed)
+                result["sendWithResults"] = swr
+                result["notDelayedResults"] = ndr
+            return result
+
         with session_scope(self.SessionLocal) as s:
             # Validate transaction parameters (TS line 47)
             reference = args.get("reference")
@@ -2529,6 +2544,19 @@ class StorageProvider:
             transaction.raw_tx = raw_tx
             transaction.status = new_tx_status
             s.add(transaction)
+            s.flush()
+
+            # Update output records with txid (TS lines 348-370)
+            # This is critical for noSendChange validation to find outputs by txid
+            q_outputs = select(Output).where(
+                (Output.user_id == user_id) &
+                (Output.transaction_id == transaction.transaction_id)
+            )
+            outputs = s.execute(q_outputs).scalars().all()
+            for output in outputs:
+                output.txid = txid
+                output.spendable = True
+                s.add(output)
             s.flush()
 
             # Create or update ProvenTxReq (TS line 271)
@@ -5018,6 +5046,25 @@ class InternalizeActionContext:
 
             for basket in self.basket_insertions:
                 self._store_new_basket_insertion_for_output(transaction_id, basket, s)
+
+            # Store rawTx in proven_tx_reqs for future child transactions (TS parity)
+            # This allows get_raw_tx_of_known_valid_transaction to find the source tx
+            if self.tx:
+                raw_tx_bytes = self.tx.serialize()
+                # Check if already exists
+                existing_req = s.execute(
+                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
+                ).scalar_one_or_none()
+                if existing_req:
+                    existing_req.raw_tx = raw_tx_bytes
+                    s.add(existing_req)
+                else:
+                    new_req = ProvenTxReq(
+                        txid=self.txid,
+                        status="unproven",
+                        raw_tx=raw_tx_bytes,
+                    )
+                    s.add(new_req)
 
             s.commit()
 

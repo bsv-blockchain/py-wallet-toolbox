@@ -13,7 +13,28 @@ import secrets
 from typing import List
 
 from internal import setup, show
-from . import token
+
+# Import token modules from local directory
+import importlib.util
+from pathlib import Path
+
+# Import token.py (Token, Tokens classes)
+_token_path = Path(__file__).parent / "token" / "token.py"
+_spec = importlib.util.spec_from_file_location("token", _token_path)
+token = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(token)
+
+# Import mint.py (mint_push_drop_token function)
+_mint_path = Path(__file__).parent / "token" / "mint.py"
+_mint_spec = importlib.util.spec_from_file_location("mint", _mint_path)
+mint_module = importlib.util.module_from_spec(_mint_spec)
+_mint_spec.loader.exec_module(mint_module)
+
+# Import redeem.py (redeem_push_drop_token function)
+_redeem_path = Path(__file__).parent / "token" / "redeem.py"
+_redeem_spec = importlib.util.spec_from_file_location("redeem", _redeem_path)
+redeem_module = importlib.util.module_from_spec(_redeem_spec)
+_redeem_spec.loader.exec_module(redeem_module)
 
 TOKENS_COUNT = 3
 DATA_PREFIX = "exampletoken"
@@ -35,7 +56,7 @@ def mint(alice: setup.Setup, alice_wallet, key_id: str) -> token.Tokens:
     for counter in range(TOKENS_COUNT):
         data_field = f"{DATA_PREFIX}-{counter}".encode("utf-8")
 
-        tok, no_send_change_outpoints = token.mint_push_drop_token(
+        tok, no_send_change_outpoints = mint_module.mint_push_drop_token(
             alice.identity_key,
             alice_wallet,
             data_field,
@@ -67,7 +88,7 @@ def redeem(tokens: token.Tokens, alice_wallet) -> None:
     redeemed = []
     
     for tok in tokens:
-        redeemed_tx_id, no_send_change = token.redeem_push_drop_token(
+        redeemed_tx_id, no_send_change = redeem_module.redeem_push_drop_token(
             alice_wallet,
             tok,
             prev_no_send_change,

@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""BRC-100 全28メソッドの網羅的テスト"""
+"""BRC-100 全28メソッドの網羅的テスト
+
+Usage:
+    # ローカルSQLiteストレージを使用（デフォルト）
+    python test_all_28_methods.py
+    
+    # Babbageリモートストレージを使用
+    USE_REMOTE_STORAGE=true python test_all_28_methods.py
+"""
 
 import os
 import sys
@@ -13,7 +21,14 @@ load_dotenv()
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import Services, create_default_options
 
-from src.config import get_key_deriver, get_network, get_storage_provider
+from src.config import (
+    get_key_deriver,
+    get_network,
+    get_storage_provider,
+    use_remote_storage,
+    get_remote_storage_client,
+    get_remote_storage_url,
+)
 
 
 def test_method(name: str, func, *args, **kwargs):
@@ -36,16 +51,48 @@ def main():
     # Initialize wallet
     network = get_network()
     key_deriver = get_key_deriver()
-    storage_provider = get_storage_provider(network)
     options = create_default_options(network)
     services = Services(options)
     
-    wallet = Wallet(
-        chain=network,
-        services=services,
-        key_deriver=key_deriver,
-        storage_provider=storage_provider,
-    )
+    # Check if remote storage is requested
+    remote_storage_mode = use_remote_storage()
+    
+    if remote_storage_mode:
+        print(f"\n🌐 リモートストレージモード: {get_remote_storage_url(network)}")
+        print("⚠️  リモートストレージはBRC-104認証が必要です")
+        print("-" * 70)
+        
+        # First create wallet with local storage (required for StorageClient auth)
+        local_storage = get_storage_provider(network)
+        wallet = Wallet(
+            chain=network,
+            services=services,
+            key_deriver=key_deriver,
+            storage_provider=local_storage,
+        )
+        
+        # Create remote storage client
+        remote_client = get_remote_storage_client(wallet, network)
+        
+        # Test remote connection
+        try:
+            print("\n🔄 リモートストレージに接続中...")
+            remote_settings = remote_client.make_available()
+            print(f"✅ リモートストレージ接続成功!")
+            print(f"   Storage Identity Key: {remote_settings.get('storageIdentityKey', 'N/A')}")
+            print(f"   Chain: {remote_settings.get('chain', 'N/A')}")
+        except Exception as e:
+            print(f"❌ リモートストレージ接続失敗: {e}")
+            print("   ローカルストレージで続行します...")
+    else:
+        print("\n💾 ローカルストレージモード")
+        storage_provider = get_storage_provider(network)
+        wallet = Wallet(
+            chain=network,
+            services=services,
+            key_deriver=key_deriver,
+            storage_provider=storage_provider,
+        )
     
     print(f"\n🟢 ネットワーク: {network}")
     print("\n" + "-" * 70)

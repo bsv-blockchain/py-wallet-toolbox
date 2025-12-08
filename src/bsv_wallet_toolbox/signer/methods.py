@@ -342,7 +342,9 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     # Counterparty (locker's public key or identity)
                     locker_pub = create_input.get("locker_pub_key", "")
                     if locker_pub:
-                        counterparty = Counterparty(type=CounterpartyType.public_key, counterparty=locker_pub)
+                        from bsv.keys import PublicKey as PubKey
+                        locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
+                        counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
                     else:
                         counterparty = Counterparty(type=CounterpartyType.SELF)
 
@@ -1073,8 +1075,20 @@ def _setup_wallet_payment_for_output(
         output = tx.outputs[output_index]
 
         # Step 2: Extract payment derivation parameters (support both camelCase and snake_case)
-        derivation_prefix = payment_remittance.get("derivationPrefix") or payment_remittance.get("derivation_prefix", "")
-        derivation_suffix = payment_remittance.get("derivationSuffix") or payment_remittance.get("derivation_suffix", "")
+        # These are Base64 encoded - decode them for keyID construction
+        import base64
+        derivation_prefix_b64 = payment_remittance.get("derivationPrefix") or payment_remittance.get("derivation_prefix", "")
+        derivation_suffix_b64 = payment_remittance.get("derivationSuffix") or payment_remittance.get("derivation_suffix", "")
+        
+        # Decode Base64 to get raw values for keyID (matches Go SDK behavior)
+        try:
+            derivation_prefix = base64.b64decode(derivation_prefix_b64).decode("utf-8") if derivation_prefix_b64 else ""
+            derivation_suffix = base64.b64decode(derivation_suffix_b64).decode("utf-8") if derivation_suffix_b64 else ""
+        except Exception:
+            # Fallback to using values as-is if not valid Base64
+            derivation_prefix = derivation_prefix_b64
+            derivation_suffix = derivation_suffix_b64
+        
         key_id = f"{derivation_prefix} {derivation_suffix}".strip()
 
         # Step 3: Get sender identity key for key derivation
@@ -1084,7 +1098,9 @@ def _setup_wallet_payment_for_output(
         brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
 
         if sender_identity_key:
-            counterparty = Counterparty(type=CounterpartyType.public_key, counterparty=sender_identity_key)
+            from bsv.keys import PublicKey as PubKey
+            sender_pub_key = PubKey(sender_identity_key) if isinstance(sender_identity_key, str) else sender_identity_key
+            counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=sender_pub_key)
         else:
             counterparty = Counterparty(type=CounterpartyType.SELF)
 

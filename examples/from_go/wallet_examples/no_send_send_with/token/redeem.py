@@ -9,7 +9,14 @@ from typing import List, Tuple
 from bsv.script.type import P2PKH
 from bsv_wallet_toolbox.wallet import Wallet
 from internal import show
-from .token import Token
+# Import Token from same directory
+import importlib.util
+from pathlib import Path as _Path
+_token_path = _Path(__file__).parent / "token.py"
+_spec = importlib.util.spec_from_file_location("token_module", _token_path)
+_token_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_token_mod)
+Token = _token_mod.Token
 
 REDEEM_LABEL = "redeemPushDropToken"
 
@@ -30,13 +37,14 @@ def redeem_push_drop_token(
     # Getting address from wallet instance is not direct in BRC-100 wallet interface?
     # Wallet has private_key.
     # Assuming wallet.get_public_key() returns PublicKey object from sdk
-    address = wallet.get_public_key().address() 
-    # If not, we can use token.from_identity_key since we are Alice
+    # Use token's from_identity_key since we are Alice
+    address = token.from_identity_key.address()
     
-    locking_script = P2PKH.lock(address)
+    locking_script = P2PKH().lock(address)
     
+    # For noSend chains, don't pass inputBEEF (it has no merkle path)
+    # Instead, use knownTxids to let wallet look up from storage
     create_args = {
-        "inputBEEF": token.beef,
         "inputs": [
             {
                 "outpoint": {
@@ -57,7 +65,9 @@ def redeem_push_drop_token(
             "noSend": True,
             "noSendChange": no_send_change,
             "randomizeOutputs": False,
-            "signAndProcess": True, 
+            "signAndProcess": True,
+            # Tell wallet this txid is known valid (from previous noSend)
+            "knownTxids": [token.tx_id],
         },
         "labels": [label],
         "description": label,

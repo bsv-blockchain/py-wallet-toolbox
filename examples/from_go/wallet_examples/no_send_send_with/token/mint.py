@@ -8,9 +8,18 @@ from typing import List, Tuple
 
 from bsv.script.type import P2PKH
 from bsv.keys import PublicKey
+from bsv.transaction import Beef, Transaction
+from bsv.transaction import beef as beef_constants
 from bsv_wallet_toolbox.wallet import Wallet
 from internal import show
-from .token import Token
+# Import Token from same directory
+import importlib.util
+from pathlib import Path
+_token_path = Path(__file__).parent / "token.py"
+_spec = importlib.util.spec_from_file_location("token_module", _token_path)
+_token_mod = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_token_mod)
+Token = _token_mod.Token
 
 PROTOCOL_NAME = "nosendexample"
 MINT_LABEL = "mintPushDropToken"
@@ -31,7 +40,7 @@ def mint_push_drop_token(
     # We can derive address from it?
     # IdentityKey is a PublicKey.
     address = identity_key.address()
-    locking_script = P2PKH.lock(address)
+    locking_script = P2PKH().lock(address)
 
     show.info("Mint token, Locking Script", locking_script.hex())
 
@@ -57,11 +66,25 @@ def mint_push_drop_token(
     result = wallet.create_action(create_args)
 
     tx_id = result["txid"]
-    # In NoSend mode, we might get the raw tx in 'tx' field.
+    
+    # Create a BEEF from the raw transaction for use in subsequent inputs
+    # BRC-100 create_action returns raw tx bytes in 'tx' field
+    raw_tx = result.get("tx")
+    if raw_tx:
+        if isinstance(raw_tx, list):
+            raw_tx = bytes(raw_tx)
+        # Parse raw transaction and wrap in BEEF
+        tx_obj = Transaction.from_hex(raw_tx)
+        # Use BEEF_V1 constant (0xefbe0001)
+        beef = Beef(version=beef_constants.BEEF_V1)
+        beef.merge_transaction(tx_obj)
+        beef_bytes = beef.to_binary()
+    else:
+        beef_bytes = None
     
     tok = Token(
         tx_id=tx_id,
-        beef=result.get("tx"), 
+        beef=beef_bytes, 
         key_id=key_id,
         from_identity_key=identity_key,
         satoshis=MINT_SATOSHIS

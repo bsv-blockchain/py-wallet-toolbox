@@ -1,20 +1,32 @@
 """Configuration helpers for the BRC-100 demo."""
 
+from __future__ import annotations
+
 import os
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from bsv.hd.bip32 import bip32_derive_xprv_from_mnemonic
 from bsv.hd.bip39 import mnemonic_from_entropy
 from bsv.wallet import KeyDeriver
 from bsv_wallet_toolbox.storage import StorageProvider
+from bsv_wallet_toolbox.rpc import StorageClient
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+
+if TYPE_CHECKING:
+    from bsv_wallet_toolbox import Wallet
 
 # Load environment variables from .env if present
 load_dotenv()
 
 # Allowed network names
 Chain = Literal["main", "test"]
+
+# Remote storage endpoints (Babbage)
+REMOTE_STORAGE_URLS = {
+    "main": "https://storage.babbage.systems",
+    "test": "https://staging-storage.babbage.systems",
+}
 
 
 def get_network() -> Chain:
@@ -86,6 +98,16 @@ def print_network_info(chain: Chain) -> None:
         print("⚠️  MAINNET MODE – you are dealing with real BSV funds.")
 
 
+def use_remote_storage() -> bool:
+    """Check if remote storage should be used (via USE_REMOTE_STORAGE env var)."""
+    return os.getenv("USE_REMOTE_STORAGE", "").lower() in ("1", "true", "yes")
+
+
+def get_remote_storage_url(network: Chain) -> str:
+    """Get the remote storage server URL for the given network."""
+    return REMOTE_STORAGE_URLS[network]
+
+
 def get_storage_provider(network: Chain) -> StorageProvider:
     """Create a SQLite-backed StorageProvider."""
     db_file = f"wallet_{network}.db"
@@ -107,4 +129,27 @@ def get_storage_provider(network: Chain) -> StorageProvider:
         print(f"⚠️  Storage initialization warning: {e}")
     
     return storage
+
+
+def get_remote_storage_client(wallet: "Wallet", network: Chain) -> StorageClient:
+    """Create a StorageClient for Babbage remote storage.
+    
+    Args:
+        wallet: Wallet instance for BRC-104 authentication
+        network: Network to connect to ('main' or 'test')
+        
+    Returns:
+        StorageClient connected to the appropriate Babbage storage server
+        
+    Note:
+        - mainnet: https://storage.babbage.systems
+        - testnet: https://staging-storage.babbage.systems
+    """
+    endpoint_url = get_remote_storage_url(network)
+    
+    print(f"🌐 Connecting to remote storage: {endpoint_url}")
+    
+    client = StorageClient(wallet, endpoint_url)
+    
+    return client
 

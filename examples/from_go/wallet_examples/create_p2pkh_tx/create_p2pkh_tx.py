@@ -13,10 +13,10 @@ from bsv.keys import PublicKey
 from internal import setup, show
 
 # RecipientAddress is the address to send satoshis to (P2PKH address)
-RECIPIENT_ADDRESS = ""  # example: 1A6ut1tWnfg5mAD8s1drDLM6gNsLNGvgWq
+RECIPIENT_ADDRESS = "n2hLhPBSecDd8zu1W44Aett6Az7mQT5FtT"  # testnet address
 
 # SatoshisToSend is the amount to send to the recipient
-SATOSHIS_TO_SEND = 1  # example: 100
+SATOSHIS_TO_SEND = 1000  # 1000 satoshis
 
 # OutputDescription describes the purpose of this output
 OUTPUT_DESCRIPTION = "Payment to recipient"
@@ -44,8 +44,8 @@ def main() -> None:
         # Create P2PKH locking script from the recipient address
         # Go: addr, err := script.NewAddressFromString(RecipientAddress)
         #     lockingScript, err := p2pkh.Lock(addr)
-        # Python SDK: P2PKH.lock(address_string) -> Script
-        locking_script = P2PKH.lock(RECIPIENT_ADDRESS)
+        # Python SDK: P2PKH().lock(address_string) -> Script
+        locking_script = P2PKH().lock(RECIPIENT_ADDRESS)
 
         # Create the arguments needed for the CreateAction
         create_args = {
