@@ -536,7 +536,7 @@ class TestInternalizeAction:
 
         with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
             with patch('bsv_wallet_toolbox.signer.methods.process_action') as mock_process:
-                with patch('bsv_wallet_toolbox.signer.methods.parse_beef') as mock_parse_beef:
+                with patch('bsv_wallet_toolbox.signer.methods.parse_beef_ex') as mock_parse_beef_ex:
                     with patch('bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output') as mock_setup:
                         mock_recover.return_value = Mock()
                         mock_process.return_value = {"txid": "internalized_txid"}
@@ -545,7 +545,8 @@ class TestInternalizeAction:
                         btx_mock = {"tx": Mock()}
                         btx_mock["tx"].outputs = [Mock()]
                         beef_mock.find_txid.return_value = btx_mock
-                        mock_parse_beef.return_value = beef_mock
+                        # parse_beef_ex returns tuple (beef, subject_txid, subject_tx)
+                        mock_parse_beef_ex.return_value = (beef_mock, "test_txid", btx_mock["tx"])
                         mock_wallet.storage.internalize_action.return_value = {"txid": "internalized_txid"}
 
                         result = internalize_action(mock_wallet, auth, args)
@@ -577,7 +578,7 @@ class TestAcquireDirectCertificate:
     def test_acquire_direct_certificate_success(self, mock_wallet: Mock) -> None:
         """Test successful acquire_direct_certificate execution."""
         auth = {"identity_key": "test_key", "userId": "test_user"}
-        vargs = {"type": "identity", "fields": {}, "subject": "test_subject"}
+        vargs = {"type": "identity", "fields": {}, "subject": "test_subject", "certifier": "test_certifier"}
 
         with patch('bsv_wallet_toolbox.signer.methods.create_action') as mock_create:
             mock_create.return_value = {"txid": "cert_txid"}
@@ -762,13 +763,20 @@ class TestHelperFunctions:
 
     def test_verify_unlock_scripts_success(self) -> None:
         """Test _verify_unlock_scripts success."""
+        from unittest.mock import AsyncMock
         txid = "test_txid"
         beef = Mock()
 
         # Set up beef mock structure
         beef_tx = Mock()
-        beef_tx.tx_obj = Mock()
-        beef_tx.tx_obj.inputs = [{"unlocking_script": b"test_script"}]
+        mock_tx = Mock()
+        # Create mock input with unlocking_script attribute
+        mock_input = Mock()
+        mock_input.unlocking_script = Mock()  # Has unlocking script
+        mock_tx.inputs = [mock_input]
+        # Mock verify as async method that returns True
+        mock_tx.verify = AsyncMock(return_value=True)
+        beef_tx.tx_obj = mock_tx
         beef.txs = {txid: beef_tx}
 
         with patch('bsv_wallet_toolbox.signer.methods.Beef') as mock_beef_class:
@@ -824,18 +832,18 @@ class TestHelperFunctions:
         output_spec = {"satoshis": 1000, "payment_remittance": {"derivation_prefix": "m/44'/0'/0'/1", "derivation_suffix": "0"}}
         tx = Mock()
         tx.outputs = [Mock()]
-        tx.outputs[0].get.return_value = "test_script_hex"
+        # Set locking_script as a string to avoid isinstance check with mocked Script
+        tx.outputs[0].locking_script = "test_script_hex"
         wallet = Mock()
         brc29_protocol_id = ["protocol1"]
 
-        with patch('bsv_wallet_toolbox.signer.methods.Script') as mock_script_class, \
-             patch('bsv_wallet_toolbox.signer.methods.Protocol') as mock_protocol_class, \
+        # Don't patch Script - it's used in isinstance() checks and needs to be a real type
+        with patch('bsv_wallet_toolbox.signer.methods.Protocol') as mock_protocol_class, \
              patch('bsv_wallet_toolbox.signer.methods.Counterparty') as mock_counterparty_class, \
              patch('bsv_wallet_toolbox.signer.methods.CounterpartyType') as mock_counterparty_type_class, \
              patch('bsv_wallet_toolbox.signer.methods.P2PKH') as mock_p2pkh_class:
             mock_script = Mock()
-            mock_script.to_hex.return_value = "test_script_hex"
-            mock_script_class.return_value = mock_script
+            mock_script.hex.return_value = "test_script_hex"
 
             # Mock protocol
             mock_protocol = Mock()
@@ -861,6 +869,10 @@ class TestHelperFunctions:
             mock_p2pkh = Mock()
             mock_p2pkh.lock.return_value = mock_script
             mock_p2pkh_class.return_value = mock_p2pkh
+
+            # Make sure the expected script hex matches the output script hex
+            # The output script is "test_script_hex", so expected should match
+            mock_script.hex.return_value = "test_script_hex"
 
             # Should not raise exception
             _setup_wallet_payment_for_output(output_spec, tx, wallet, brc29_protocol_id)

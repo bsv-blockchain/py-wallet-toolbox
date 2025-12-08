@@ -3,10 +3,78 @@
 Reference: wallet-toolbox/test/wallet/action/createAction.test.ts
 """
 
+from datetime import datetime, timezone
+
 import pytest
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.errors import InvalidParameterError
+
+
+@pytest.fixture
+def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
+    """Create a wallet with storage and seeded UTXOs for create_action tests.
+    
+    This fixture extends wallet_with_storage by seeding a spendable UTXO
+    that can be used to fund transactions in create_action tests.
+    """
+    wallet = wallet_with_storage
+    storage = wallet.storage
+    
+    # Make storage available
+    storage.make_available()
+    
+    # Get user ID from wallet
+    auth = wallet._make_auth()
+    user_id = auth["userId"]
+    
+    # Get or create default basket (required for allocate_change_input)
+    change_basket = storage.find_or_insert_output_basket(user_id, "default")
+    basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
+    
+    # Seed transaction that will provide the UTXO
+    source_txid = "03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c"
+    tx_id = storage.insert_transaction({
+        "userId": user_id,
+        "txid": source_txid,
+        "status": "completed",
+        "reference": "test-seed-tx",
+        "isOutgoing": False,
+        "satoshis": 50000,  # Sufficient to fund outputs + fees for createAction tests
+        "description": "Seeded UTXO for testing",
+        "version": 1,
+        "lockTime": 0,
+        "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    })
+    
+    # Seed spendable UTXO (output at vout 0)
+    # Use a simple P2PKH locking script (OP_DUP OP_HASH160 <pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG)
+    pub_key = wallet.key_deriver._root_private_key.public_key()
+    pub_key_hash = pub_key.hash160()
+    # P2PKH: 76 a9 14 <20 bytes pubkey hash> 88 ac
+    locking_script = bytes([0x76, 0xa9, 0x14]) + pub_key_hash + bytes([0x88, 0xac])
+    
+    storage.insert_output({
+        "transactionId": tx_id,
+        "userId": user_id,
+        "basketId": basket_id,  # "default" basket - required for allocate_change_input
+        "spendable": True,
+        "change": True,  # Change outputs are spendable
+        "vout": 0,
+        "satoshis": 50000,  # Sufficient to fund outputs + fees for createAction tests
+        "providedBy": "storage",  # Must be "storage" to match working examples
+        "purpose": "change",
+        "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
+        "txid": source_txid,
+        "lockingScript": locking_script,
+        "spent_by": None,  # Explicitly set to None to ensure it's allocatable
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    })
+    
+    return wallet
 
 
 @pytest.fixture
@@ -114,7 +182,7 @@ class TestWalletCreateAction:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.create_action(invalid_args)
 
-    def test_repeatable_txid(self, wallet_with_storage: Wallet) -> None:
+    def test_repeatable_txid(self, wallet_with_storage_and_funds: Wallet) -> None:
         """Given: CreateActionArgs with deterministic settings (randomize_outputs=False)
            When: Call create_action
            Then: Produces a valid transaction ID
@@ -140,7 +208,7 @@ class TestWalletCreateAction:
         }
 
         # When
-        result = wallet_with_storage.create_action(create_args)
+        result = wallet_with_storage_and_funds.create_action(create_args)
 
         # Then - Valid txid returned
         assert "txid" in result
@@ -150,7 +218,7 @@ class TestWalletCreateAction:
         assert "tx" in result
         assert isinstance(result["tx"], list)  # BRC-100 format (list[int])
 
-    def test_signable_transaction(self, wallet_with_storage: Wallet) -> None:
+    def test_signable_transaction(self, wallet_with_storage_and_funds: Wallet) -> None:
         """Given: CreateActionArgs with signAndProcess=False
            When: Call create_action
            Then: Returns signableTransaction for external signing
@@ -173,7 +241,7 @@ class TestWalletCreateAction:
         }
 
         # When
-        result = wallet_with_storage.create_action(create_args)
+        result = wallet_with_storage_and_funds.create_action(create_args)
 
         # Then
         assert "noSendChange" in result

@@ -29,7 +29,7 @@ from ..chaintracker.chaintracks.api import (
     ReorgListener,
 )
 from ..wallet_services import Chain
-from ..merkle_path_utils import convert_proof_to_merkle_path
+from ...utils.merkle_path_utils import convert_proof_to_merkle_path
 
 
 class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
@@ -89,6 +89,24 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Internal implementation of get_chain."""
         return Chain.MAIN if self.network == "main" else Chain.TEST
 
+    def _get_http_headers(self) -> dict[str, str]:
+        """Get HTTP headers for API requests.
+        
+        Returns headers including Accept and optional Authorization (if api_key is set).
+        This is a wrapper around the parent class's get_headers() method.
+        
+        Returns:
+            HTTP headers dictionary.
+        """
+        headers: dict[str, str] = {
+            "Accept": "application/json",
+        }
+        
+        if isinstance(self.api_key, str) and self.api_key.strip():
+            headers["Authorization"] = self.api_key
+        
+        return headers
+
     async def get_info(self) -> ChaintracksInfo:
         """Get summary of configuration and state.
 
@@ -118,22 +136,50 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Internal implementation of get_present_height."""
         return await self.current_height()
 
+    async def get_headers(self, height: int, count: int) -> str:
+        """Get headers in serialized format.
+
+        Implements ChaintracksClientApi.get_headers() interface.
+        
+        Not implemented: WoC lacks bulk header endpoint required for this.
+
+        Args:
+            height: Starting block height
+            count: Number of headers to return
+
+        Returns:
+            Serialized headers as hex string
+
+        Raises:
+            NotImplementedError: Always (no bulk header API)
+
+        Reference:
+            - toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/Api/ChaintracksClientApi.ts
+        """
+        return await self._get_headers(height, count)
+
+    async def _get_headers(self, height: int, count: int) -> str:
+        """Internal implementation of get_headers."""
+        raise NotImplementedError("get_headers() is not supported by WhatsOnChain provider")
+
     async def get_bulk_headers(self, height: int, count: int) -> str:
         """Get headers in serialized format (bulk).
 
-        Not implemented: WoC lacks bulk header endpoint required for this.
+        Alias for get_headers() for backward compatibility.
         
-        Note: Renamed from get_headers to avoid collision with parent class's
-        get_headers() which returns HTTP headers dict.
+        Note: This method exists for compatibility but delegates to get_headers().
+
+        Args:
+            height: Starting block height
+            count: Number of headers to return
+
+        Returns:
+            Serialized headers as hex string
 
         Raises:
             NotImplementedError: Always (no bulk header API)
         """
-        return self._get_headers(height, count)
-
-    def _get_headers(self, height: int, count: int) -> str:
-        """Internal implementation of get_headers."""
-        raise NotImplementedError("get_headers() is not supported by WhatsOnChain provider")
+        return await self.get_headers(height, count)
 
     async def find_chain_tip_header(self) -> BlockHeader:
         """Get the active chain tip header.
@@ -462,14 +508,24 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
     async def _get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:  # noqa: ARG002
         """Internal implementation of get_merkle_path."""
+        # Initialize result dict
+        result: dict[str, Any] = {"name": "WoCTsc", "notes": []}
+        
+        # Build URL and request options
+        url = f"{self.URL}/tx/{txid}/proof/tsc"
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
+        
         try:
             response = await self.http_client.fetch(url, request_options)
+            status_text = getattr(response, "status_text", None)
+            if response.status_code == 200 and not status_text:
+                status_text = "OK"
             note_base = {
                 "name": "WoCTsc",
                 "txid": txid,
                 "url": url,
                 "status": response.status_code,
-                "statusText": getattr(response, "status_text", None),
+                "statusText": status_text,
             }
 
             if response.status_code == 429:
@@ -480,7 +536,14 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 note_base["statusText"] = getattr(response, "status_text", None)
 
             if response.status_code == 404:
-                result["notes"].append({**note_base, "what": "getMerklePathNotFound"})
+                # NotFound note should only include name, status, statusText, and what (not txid/url)
+                not_found_note = {
+                    "name": note_base["name"],
+                    "status": note_base["status"],
+                    "statusText": note_base["statusText"],
+                    "what": "getMerklePathNotFound",
+                }
+                result["notes"].append(not_found_note)
                 return result
 
             if not response.ok or response.status_code != 200:
@@ -494,13 +557,27 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             body = response.json() or {}
             payload = body.get("data") if isinstance(body, dict) else body
             if not payload:
-                result["notes"].append({**note_base, "what": "getMerklePathNoData"})
+                # NoData note should only include name, status, statusText, and what (not txid/url)
+                no_data_note = {
+                    "name": note_base["name"],
+                    "status": note_base["status"],
+                    "statusText": note_base["statusText"],
+                    "what": "getMerklePathNoData",
+                }
+                result["notes"].append(no_data_note)
                 return result
 
             proofs = payload if isinstance(payload, list) else [payload]
             proof_entry = proofs[0] if proofs else None
             if not proof_entry:
-                result["notes"].append({**note_base, "what": "getMerklePathNoData"})
+                # NoData note should only include name, status, statusText, and what (not txid/url)
+                no_data_note = {
+                    "name": note_base["name"],
+                    "status": note_base["status"],
+                    "statusText": note_base["statusText"],
+                    "what": "getMerklePathNoData",
+                }
+                result["notes"].append(no_data_note)
                 return result
 
             proof_target = proof_entry.get("target")
@@ -510,22 +587,80 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                     header = await services.hash_to_header_async(proof_target)
                 except Exception as exc:  # noqa: PERF203
                     result["notes"].append({**note_base, "what": "getMerklePathNoHeader", "error": str(exc)})
+                    return result
+
+            if not header:
+                result["notes"].append({**note_base, "what": "getMerklePathNoHeader"})
+                return result
+
+            # Get block height from header
+            block_height = header.get("height") if isinstance(header, dict) else getattr(header, "height", None)
+            if block_height is None:
+                result["notes"].append({**note_base, "what": "getMerklePathNoHeader"})
+                return result
 
             proof_dict = {
                 "index": proof_entry.get("index", 0),
                 "nodes": proof_entry.get("nodes") or [],
-                "height": header.get("height") if isinstance(header, dict) else getattr(header, "height", None),
+                "height": block_height,
             }
 
-            merkle_path = convert_proof_to_merkle_path(txid, proof_dict)
+            # Convert proof to merkle path format (returns dict with blockHeight and path)
+            merkle_path_dict = convert_proof_to_merkle_path(txid, proof_dict)
+            
+            # Convert hash_str to hash in path structure to match expected format
+            path = merkle_path_dict.get("path", [])
+            converted_path = []
+            for level in path:
+                converted_level = []
+                for leaf in level:
+                    converted_leaf = {"offset": leaf["offset"]}
+                    if "hash_str" in leaf:
+                        converted_leaf["hash"] = leaf["hash_str"]
+                    if leaf.get("txid"):
+                        converted_leaf["txid"] = True
+                    if leaf.get("duplicate"):
+                        converted_leaf["duplicate"] = True
+                    converted_level.append(converted_leaf)
+                converted_path.append(converted_level)
+            
             result["merklePath"] = {
-                "index": merkle_path.index,
-                "nodes": merkle_path.nodes,
-                "height": merkle_path.height,
+                "blockHeight": merkle_path_dict["blockHeight"],
+                "path": converted_path,
             }
             if header:
-                result["header"] = header
-            result["notes"].append({**note_base, "what": "getMerklePathSuccess"})
+                # Convert header to dict format if needed, and ensure bits is an integer
+                if isinstance(header, dict):
+                    header_dict = header.copy()
+                else:
+                    header_dict = {
+                        "version": getattr(header, "version", None),
+                        "previousHash": getattr(header, "previousHash", None),
+                        "merkleRoot": getattr(header, "merkleRoot", None),
+                        "time": getattr(header, "time", None),
+                        "bits": getattr(header, "bits", None),
+                        "nonce": getattr(header, "nonce", None),
+                        "height": getattr(header, "height", None),
+                        "hash": getattr(header, "hash", None),
+                    }
+                # Convert bits from string to int if needed
+                if "bits" in header_dict:
+                    bits = header_dict["bits"]
+                    if isinstance(bits, str):
+                        # Convert hex string to int (e.g., "1d00ffff" -> 486604799)
+                        try:
+                            header_dict["bits"] = int(bits, 16)
+                        except (ValueError, TypeError):
+                            pass  # Keep original if conversion fails
+                result["header"] = header_dict
+            # Success note should only include name, status, statusText, and what (not txid/url)
+            success_note = {
+                "name": note_base["name"],
+                "status": note_base["status"],
+                "statusText": note_base["statusText"],
+                "what": "getMerklePathSuccess",
+            }
+            result["notes"].append(success_note)
             return result
         except Exception as exc:  # noqa: PERF203
             result["notes"].append({"name": "WoCTsc", "what": "getMerklePathCatch", "error": str(exc)})
@@ -759,7 +894,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         data["name"] = "WhatsOnChain"
         return data
 
-    async def get_raw_tx(self, txid: str) -> dict[str, Any] | None:
+    async def get_raw_tx(self, txid: str) -> str | None:
         """Get raw transaction hex for a given txid (TS-compatible optional result).
 
         Behavior:
@@ -780,14 +915,13 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
     async def _get_raw_tx(self, txid: str) -> str | None:
         """Internal implementation of get_raw_tx."""
+        # Validate txid format
         if not isinstance(txid, str) or len(txid) != 64:
-            result["error"] = {"message": "Invalid txid length", "code": "INVALID_TXID"}
-            return result
+            return None
         try:
             bytes.fromhex(txid)
         except ValueError:
-            result["error"] = {"message": "Invalid txid hex", "code": "INVALID_TXID"}
-            return result
+            return None
 
         try:
             request_options = {"method": "GET", "headers": self._get_http_headers()}
@@ -797,21 +931,15 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 body = response.json() or {}
                 data = body.get("data")
                 if data:
-                    result["rawTx"] = data
-                    return result
+                    return data
 
             if response.status_code == 404:
                 return None
-            # Unexpected status or empty body
-            result["error"] = {
-                "message": f"Unexpected WhatsOnChain response status={response.status_code}",
-                "code": "HTTP_ERROR",
-            }
-            return result
-        except Exception as exc:
-            # Handle connection errors, timeouts, etc.
-            result["error"] = {"message": str(exc), "code": "NETWORK_ERROR"}
-            return result
+            # Unexpected status or empty body - return None
+            return None
+        except Exception:
+            # Handle connection errors, timeouts, etc. - return None
+            return None
 
     async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
         """Get transaction propagation info for a given txid (TS-compatible intent).

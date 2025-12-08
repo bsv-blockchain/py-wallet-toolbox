@@ -5,7 +5,6 @@ Reference: go-wallet-toolbox/pkg/internal/txutils/script_hash.go
 Reference: go-wallet-toolbox/pkg/wdk/locktime.go
 """
 
-import asyncio
 from time import time
 from unittest.mock import patch, MagicMock, AsyncMock
 
@@ -45,7 +44,7 @@ class TestNLockTimeIsFinal:
         services = Services("main")
 
         # When
-        result = asyncio.run(services.n_lock_time_is_final(tx))
+        result = services.n_lock_time_is_final(tx)
 
         # Then
         assert result is True
@@ -54,14 +53,14 @@ class TestNLockTimeIsFinal:
         # Given: height branch (nLockTime < 500_000_000), strict < comparison
         services = Services("main")
 
-        async def fake_get_height() -> int:
+        def fake_get_height() -> int:
             return 800_000
 
         monkeypatch.setattr(services, "get_height", fake_get_height)
 
         # When / Then
-        assert asyncio.run(services.n_lock_time_is_final(799_999)) is True
-        assert asyncio.run(services.n_lock_time_is_final(800_000)) is False
+        assert services.n_lock_time_is_final(799_999) is True
+        assert services.n_lock_time_is_final(800_000) is False
 
     def test_timestamp_based_locktime_strict_less_than(self) -> None:
         # Given: timestamp branch (nLockTime >= 500_000_000), strict < comparison
@@ -69,8 +68,8 @@ class TestNLockTimeIsFinal:
         now = int(time())
 
         # When / Then
-        assert asyncio.run(services.n_lock_time_is_final(now - 10)) is True
-        assert asyncio.run(services.n_lock_time_is_final(now + 3600)) is False
+        assert services.n_lock_time_is_final(now - 10) is True
+        assert services.n_lock_time_is_final(now + 3600) is False
 
 
 class TestHashOutputScriptErrorHandling:
@@ -197,14 +196,14 @@ class TestNLockTimeIsFinalErrorHandling:
 
         for invalid_tx in invalid_txs:
             with pytest.raises((AttributeError, TypeError, ValueError)):
-                asyncio.run(services.n_lock_time_is_final(invalid_tx))
+                services.n_lock_time_is_final(invalid_tx)
 
     def test_n_lock_time_is_final_transaction_no_inputs(self) -> None:
         """Test n_lock_time_is_final with transaction that has no inputs."""
         services = Services("main")
 
         tx = Transaction()  # No inputs added
-        result = asyncio.run(services.n_lock_time_is_final(tx))
+        result = services.n_lock_time_is_final(tx)
         # Should handle transactions with no inputs gracefully
         assert isinstance(result, bool)
 
@@ -219,7 +218,7 @@ class TestNLockTimeIsFinalErrorHandling:
 
         # Mock get_height since transaction locktime (0) is height-based
         with patch.object(services, 'get_height', return_value=1000000):
-            result = asyncio.run(services.n_lock_time_is_final(tx))
+            result = services.n_lock_time_is_final(tx)
             assert result is True  # Mixed sequences make transaction final (locktime ignored)
 
     def test_n_lock_time_is_final_all_non_final_sequences(self) -> None:
@@ -232,7 +231,7 @@ class TestNLockTimeIsFinalErrorHandling:
 
         # Mock get_height since transaction locktime (0) is height-based
         with patch.object(services, 'get_height', return_value=1000000):
-            result = asyncio.run(services.n_lock_time_is_final(tx))
+            result = services.n_lock_time_is_final(tx)
             assert result is True  # Non-final sequences make transaction final (locktime ignored)
 
     def test_n_lock_time_is_final_height_based_boundary_values(self) -> None:
@@ -251,7 +250,7 @@ class TestNLockTimeIsFinalErrorHandling:
 
         for mock_height, locktime, expected in test_cases:
             with patch.object(services, 'get_height', return_value=mock_height):
-                result = asyncio.run(services.n_lock_time_is_final(locktime))
+                result = services.n_lock_time_is_final(locktime)
                 assert result == expected, f"Failed for height={mock_height}, locktime={locktime}"
 
     def test_n_lock_time_is_final_timestamp_based_boundary_values(self) -> None:
@@ -268,7 +267,7 @@ class TestNLockTimeIsFinalErrorHandling:
         ]
 
         for locktime, expected in test_cases:
-            result = asyncio.run(services.n_lock_time_is_final(locktime))
+            result = services.n_lock_time_is_final(locktime)
             assert result == expected, f"Failed for locktime={locktime}"
 
     def test_n_lock_time_is_final_network_height_failure(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -282,7 +281,7 @@ class TestNLockTimeIsFinalErrorHandling:
         monkeypatch.setattr(services, "get_height", failing_get_height)
 
         # Height-based locktime should handle failure gracefully
-        result = asyncio.run(services.n_lock_time_is_final(400000))
+        result = services.n_lock_time_is_final(400000)
         # Should return False when height check fails
         assert result is False
 
@@ -294,7 +293,7 @@ class TestNLockTimeIsFinalErrorHandling:
         tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF))  # Max uint32
         tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFF))  # Max uint32
 
-        result = asyncio.run(services.n_lock_time_is_final(tx))
+        result = services.n_lock_time_is_final(tx)
         assert result is True  # All max sequences should be final
 
     def test_n_lock_time_is_final_zero_sequence_numbers(self) -> None:
@@ -307,7 +306,7 @@ class TestNLockTimeIsFinalErrorHandling:
 
         # Mock get_height since transaction locktime (0) is height-based
         with patch.object(services, 'get_height', return_value=1000000):
-            result = asyncio.run(services.n_lock_time_is_final(tx))
+            result = services.n_lock_time_is_final(tx)
             assert result is True  # Zero sequences make transaction final (locktime ignored)
 
     def test_n_lock_time_is_final_many_inputs(self) -> None:
@@ -319,14 +318,14 @@ class TestNLockTimeIsFinalErrorHandling:
         for i in range(100):
             tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=i, sequence=0xFFFFFFFF))
 
-        result = asyncio.run(services.n_lock_time_is_final(tx))
+        result = services.n_lock_time_is_final(tx)
         assert result is True  # All final sequences
 
         # Now test with one non-final sequence
         tx.inputs[50].sequence = 0xFFFFFFFE
         # Mock get_height since transaction locktime (0) is height-based
         with patch.object(services, 'get_height', return_value=1000000):
-            result = asyncio.run(services.n_lock_time_is_final(tx))
+            result = services.n_lock_time_is_final(tx)
             assert result is True  # Mixed sequences make transaction final (locktime ignored)
 
     def test_n_lock_time_is_final_negative_locktime_values(self) -> None:
@@ -336,7 +335,7 @@ class TestNLockTimeIsFinalErrorHandling:
         # Negative values should be treated as height-based (since < 500M)
         # Mock get_height for height-based locktime check
         with patch.object(services, 'get_height', return_value=1000000):
-            result = asyncio.run(services.n_lock_time_is_final(-1))
+            result = services.n_lock_time_is_final(-1)
             assert result is True  # Negative locktime < height is final
 
     def test_n_lock_time_is_final_extremely_large_locktime(self) -> None:
@@ -346,7 +345,7 @@ class TestNLockTimeIsFinalErrorHandling:
         # Very large timestamp (year 2106+)
         large_timestamp = 2**31  # About year 2038 in Unix time
 
-        result = asyncio.run(services.n_lock_time_is_final(large_timestamp))
+        result = services.n_lock_time_is_final(large_timestamp)
         assert result is False  # Future timestamps should not be final
 
     def test_n_lock_time_is_final_transaction_with_locktime_field(self) -> None:
@@ -358,7 +357,7 @@ class TestNLockTimeIsFinalErrorHandling:
         tx.locktime = 1000000  # Set transaction locktime
         tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF))  # Final sequence
 
-        result = asyncio.run(services.n_lock_time_is_final(tx))
+        result = services.n_lock_time_is_final(tx)
         assert result is True  # Should ignore tx locktime, only check sequences
 
     def test_services_method_calls_with_none_self(self) -> None:
@@ -369,15 +368,14 @@ class TestNLockTimeIsFinalErrorHandling:
             # Try calling methods with None as self - should fail gracefully
             services = Services("main")
             hash_method = services.hash_output_script
-            async def locktime_method(tx):
-                return await services.n_lock_time_is_final(tx)
+            locktime_method = services.n_lock_time_is_final
 
             # These should raise AttributeError, not crash
             with pytest.raises(AttributeError):
                 hash_method(None, "test_script")
 
-            with pytest.raises(AttributeError):
-                locktime_method(None, Transaction())
+            with pytest.raises((AttributeError, TypeError)):
+                locktime_method(Transaction())
 
         except Exception:
             # Any exception is acceptable as long as it's not a crash

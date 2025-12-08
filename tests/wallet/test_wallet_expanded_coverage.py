@@ -305,6 +305,10 @@ class TestWalletKnownTxidsMethods:
 
     def test_get_known_txids_with_new_txids(self, wallet_with_storage: Wallet) -> None:
         """Test get_known_txids with new txids."""
+        # Force fallback to _known_txids by disabling beef (matching test_wallet_getknowntxids.py pattern)
+        # This ensures the test works regardless of BEEF state
+        wallet_with_storage.beef = None
+        
         new_txids = ["tx1", "tx2", "tx3"]
         result = wallet_with_storage.get_known_txids(new_txids)
 

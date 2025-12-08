@@ -210,6 +210,7 @@ class TestAcquireDirectCertificate:
         vargs = {
             "certificateType": "test_type",
             "certifierUrl": "https://certifier.example.com",
+            "certifier": "test_certifier",  # Required field
             "serialNumber": "12345",
             "subject": "test_subject",
         }
@@ -225,6 +226,7 @@ class TestAcquireDirectCertificate:
         vargs = {
             "certificateType": "identity",
             "certifierUrl": "https://certifier.example.com",
+            "certifier": "test_certifier",  # Required field
             "serialNumber": "67890",
             "subject": "test_subject",
             "fields": {
