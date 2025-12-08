@@ -412,22 +412,73 @@ def main():
     )
     
     # 24. acquire_certificate
-    # certifierは公開鍵が必要
+    # Direct acquisition requires a complete pre-signed certificate
+    # For testing, we create a self-signed certificate using the wallet's own key
     if pub_key and 'publicKey' in pub_key:
+        import base64
+        import os
+        
+        # Generate test certificate data
+        test_serial = base64.b64encode(os.urandom(32)).decode('utf-8')
+        test_type = "dGVzdC1jZXJ0aWZpY2F0ZQ=="  # base64 of "test-certificate"
+        
+        # For direct acquisition, we need:
+        # - type, certifier, subject, serialNumber (required)
+        # - revocationOutpoint, signature, fields, keyringForSubject (optional but recommended)
+        # Since we don't have a real certifier, we use placeholder values
+        # Note: This will skip signature verification since signature is not valid
         results['acquire_certificate'], _ = test_method(
             "24. acquire_certificate",
             wallet.acquire_certificate, {
-                "type": "dGVzdC1jZXJ0aWZpY2F0ZQ==",  # base64 of "test-certificate"
-                "certifier": pub_key['publicKey'],
+                "type": test_type,
+                "certifier": pub_key['publicKey'],  # Self-signed for testing
+                "subject": pub_key['publicKey'],
+                "serialNumber": test_serial,
+                "revocationOutpoint": "0000000000000000000000000000000000000000000000000000000000000000.0",
+                "signature": "",  # Empty signature - verification will be skipped
+                "fields": {"name": "VGVzdA=="},  # base64 encrypted "Test"
+                "keyringForSubject": {},
+                "keyringRevealer": "certifier",
                 "acquisitionProtocol": "direct",
-                "fields": {"name": "Test"},
             }
         )
     else:
         print("  ⏭️  24. acquire_certificate (公開鍵取得失敗)")
     
-    # 25. prove_certificate (有効な証明書必要)
-    print("  ⏭️  25. prove_certificate (有効な証明書必要)")
+    # 25. prove_certificate
+    # prove_certificateは保存済み証明書とverifier公開鍵、有効なkeyringが必要
+    # Note: prove_certificate requires a certificate with valid keyring to decrypt/re-encrypt
+    # Since our test certificate has empty keyring, this will fail
+    # In production, certificates would be acquired from a real certifier with proper encryption
+    if results.get('acquire_certificate') and pub_key and 'publicKey' in pub_key:
+        cert_data = results['acquire_certificate']
+        # Check if certificate has valid keyring (fields and keyring must match)
+        has_valid_keyring = bool(cert_data.get("fields")) and len(cert_data.get("fields", {})) > 0
+        
+        if has_valid_keyring:
+            try:
+                results['prove_certificate'], _ = test_method(
+                    "25. prove_certificate",
+                    wallet.prove_certificate, {
+                        "certificate": {
+                            "type": cert_data.get("type"),
+                            "serialNumber": cert_data.get("serialNumber"),
+                            "certifier": cert_data.get("certifier"),
+                            "subject": cert_data.get("subject"),
+                            "revocationOutpoint": cert_data.get("revocationOutpoint"),
+                            "signature": cert_data.get("signature"),
+                            "fields": cert_data.get("fields", {}),
+                        },
+                        "verifier": pub_key['publicKey'],
+                        "fieldsToReveal": list(cert_data.get("fields", {}).keys()),
+                    }
+                )
+            except Exception as e:
+                print(f"  ⚠️  25. prove_certificate: {str(e)[:60]}")
+        else:
+            print("  ⏭️  25. prove_certificate (有効なkeyring必要 - issuanceプロトコルで取得した証明書で使用)")
+    else:
+        print("  ⏭️  25. prove_certificate (有効な証明書必要)")
     
     # 26. relinquish_certificate
     if pub_key and 'publicKey' in pub_key:

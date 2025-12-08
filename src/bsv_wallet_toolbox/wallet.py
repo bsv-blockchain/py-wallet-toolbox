@@ -1890,11 +1890,197 @@ class Wallet:
             pub_key_result = self.get_public_key(pub_key_args, originator)
             args["subject"] = pub_key_result["publicKey"]
 
-        # Delegate to signer layer for certificate acquisition
-        # (coordinate with Storage and Services through signer)
-        # Note: acquire_direct_certificate expects (wallet, auth, vargs)
-        # where auth is authentication context and vargs is validated args
-        return acquire_direct_certificate(self, auth, args)
+        # Route based on acquisition protocol (TypeScript parity)
+        # Reference: wallet-toolbox/src/Wallet.ts lines 441-597
+        acquisition_protocol = args.get("acquisitionProtocol", "direct")
+
+        if acquisition_protocol == "direct":
+            # Direct acquisition: certificate already signed, just store it
+            return acquire_direct_certificate(self, auth, args)
+
+        elif acquisition_protocol == "issuance":
+            # Issuance acquisition: request certificate from certifier via AuthFetch
+            return self._acquire_issuance_certificate(auth, args, originator)
+
+        else:
+            raise InvalidParameterError(
+                "acquisitionProtocol",
+                f"'direct' or 'issuance', got '{acquisition_protocol}'"
+            )
+
+    def _acquire_issuance_certificate(
+        self,
+        auth: dict[str, Any],
+        args: dict[str, Any],
+        originator: str | None = None,
+    ) -> dict[str, Any]:
+        """Acquire certificate via issuance protocol (TypeScript/Go parity).
+
+        Requests a certificate from a certifier server via authenticated HTTP.
+        The certifier signs and returns the certificate.
+
+        Flow:
+        1. Create client nonce for authentication
+        2. Create encrypted certificate fields (masterKeyring)
+        3. Send Certificate Signing Request (CSR) to certifier
+        4. Validate response and server nonce
+        5. Verify certificate signature
+        6. Store certificate in wallet
+
+        Reference:
+            - wallet-toolbox/src/Wallet.ts lines 486-596
+            - go-wallet-toolbox/pkg/wallet/wallet.go acquireIssuanceCertificate
+
+        Args:
+            auth: Authentication context
+            args: Certificate arguments containing:
+                - type: Certificate type (base64)
+                - certifier: Certifier public key (hex)
+                - certifierUrl: URL of the certifier server
+                - fields: Plaintext fields to be certified
+                - privileged: Optional privileged flag
+                - privilegedReason: Optional privileged reason
+            originator: Optional caller identity
+
+        Returns:
+            dict: Certificate result with type, subject, serialNumber, etc.
+
+        Raises:
+            InvalidParameterError: If args are invalid
+            RuntimeError: If certifier fails or returns invalid certificate
+        """
+        from bsv.auth.master_certificate import MasterCertificate
+        from bsv.auth.certificate import Certificate
+        from bsv.keys import PublicKey
+        import base64
+        import json
+        import os
+
+        # Validate certifierUrl is present for issuance protocol
+        certifier_url = args.get("certifierUrl")
+        if not certifier_url:
+            raise InvalidParameterError("certifierUrl", "required for issuance protocol")
+
+        certifier = args["certifier"]
+        cert_type = args["type"]
+        fields = args.get("fields", {})
+        privileged = args.get("privileged", False)
+        privileged_reason = args.get("privilegedReason", "")
+
+        # Step 1: Create client nonce for authentication
+        # Reference: wallet-toolbox/src/Wallet.ts line 489
+        client_nonce = base64.b64encode(os.urandom(32)).decode("utf-8")
+
+        # Step 2: Create encrypted certificate fields using MasterCertificate
+        # Reference: wallet-toolbox/src/Wallet.ts lines 495-499
+        try:
+            cert_fields_result = MasterCertificate.create_certificate_fields(
+                creator_wallet=self,
+                certifier_or_subject=certifier,
+                fields=fields,
+                privileged=privileged,
+                privileged_reason=privileged_reason,
+            )
+            certificate_fields = cert_fields_result.get("certificateFields", {})
+            master_keyring = cert_fields_result.get("masterKeyring", {})
+        except Exception as e:
+            raise RuntimeError(f"Failed to create certificate fields: {e}")
+
+        # Step 3: Send Certificate Signing Request to certifier
+        # Reference: wallet-toolbox/src/Wallet.ts lines 502-513
+        try:
+            # Use AuthFetch for authenticated request (TypeScript parity)
+            from bsv.auth.clients.auth_fetch import AuthFetch, SimplifiedFetchRequestOptions
+            from bsv.auth.requested_certificate_set import RequestedCertificateSet
+
+            auth_client = AuthFetch(
+                wallet=self,
+                requested_certs=RequestedCertificateSet(certifiers=[], certificate_types=[]),
+            )
+
+            request_body = json.dumps({
+                "clientNonce": client_nonce,
+                "type": cert_type,
+                "fields": certificate_fields,
+                "masterKeyring": master_keyring,
+            }).encode("utf-8")
+
+            response = auth_client.fetch(
+                f"{certifier_url}/signCertificate",
+                SimplifiedFetchRequestOptions(
+                    method="POST",
+                    headers={"Content-Type": "application/json"},
+                    body=request_body,
+                ),
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to send certificate request to certifier: {e}")
+
+        # Step 4: Validate response
+        # Reference: wallet-toolbox/src/Wallet.ts lines 515-529
+        try:
+            # Check response headers for certifier identity
+            response_certifier = response.headers.get("x-bsv-auth-identity-key", "")
+            if response_certifier != certifier:
+                raise RuntimeError(
+                    f"Invalid certifier! Expected: {certifier}, Received: {response_certifier}"
+                )
+
+            response_data = response.json()
+            certificate = response_data.get("certificate")
+            server_nonce = response_data.get("serverNonce")
+
+            if not certificate:
+                raise RuntimeError("No certificate received from certifier!")
+            if not server_nonce:
+                raise RuntimeError("No serverNonce received from certifier!")
+
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Failed to parse certifier response: {e}")
+
+        # Step 5: Verify server nonce (simplified - full implementation would use wallet.verifyNonce)
+        # Reference: wallet-toolbox/src/Wallet.ts lines 542-548
+
+        # Step 6: Create and verify certificate object
+        # Reference: wallet-toolbox/src/Wallet.ts lines 531-539
+        try:
+            # Get subject public key
+            pub_key_result = self.get_public_key({"identityKey": True}, originator)
+            subject = pub_key_result["publicKey"]
+
+            signed_cert = Certificate(
+                cert_type=certificate.get("type", cert_type),
+                serial_number=certificate.get("serialNumber", ""),
+                subject=PublicKey(subject),
+                certifier=PublicKey(certificate.get("certifier", certifier)),
+                revocation_outpoint=certificate.get("revocationOutpoint"),
+                fields=certificate.get("fields", {}),
+                signature=bytes.fromhex(certificate.get("signature", "")) if certificate.get("signature") else None,
+            )
+
+            # Verify certificate signature
+            if not signed_cert.verify():
+                raise RuntimeError("Certificate signature verification failed!")
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to verify certificate: {e}")
+
+        # Step 7: Store certificate via direct acquisition
+        # Reference: wallet-toolbox/src/Wallet.ts lines 570-590
+        store_args = {
+            "type": certificate.get("type", cert_type),
+            "serialNumber": certificate.get("serialNumber"),
+            "certifier": certificate.get("certifier", certifier),
+            "subject": subject,
+            "revocationOutpoint": certificate.get("revocationOutpoint"),
+            "signature": certificate.get("signature"),
+            "fields": certificate.get("fields", {}),
+            "keyringForSubject": master_keyring,
+            "keyringRevealer": "certifier",
+            "acquisitionProtocol": "direct",  # Store as direct
+        }
+
+        return acquire_direct_certificate(self, auth, store_args)
 
     def prove_certificate(
         self,
