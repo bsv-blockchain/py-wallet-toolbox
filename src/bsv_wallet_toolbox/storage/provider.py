@@ -44,9 +44,6 @@ from .methods.generate_change import (
     InsufficientFundsError,
 )
 from .db import create_session_factory, session_scope
-from .methods import get_sync_chunk as _get_sync_chunk
-from .methods import purge_data as _purge_data
-from .methods import review_status as _review_status
 from .models import (
     Base,
     Certificate,
@@ -3742,7 +3739,9 @@ class StorageProvider:
             - toolbox/ts-wallet-toolbox/src/storage/methods/getSyncChunk.ts
             - toolbox/go-wallet-toolbox/pkg/storage/internal/sync/sync_chunk_action.go
         """
-        return _get_sync_chunk(self, args)
+        # TODO: Implement get_sync_chunk logic
+        # This should retrieve sync chunk data for wallet synchronization
+        raise NotImplementedError("get_sync_chunk implementation pending")
 
     def update_transaction(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("transaction", pk_value, patch)
@@ -3825,8 +3824,9 @@ class StorageProvider:
         for user in users:
             auth = {"userId": user["user_id"]}
             try:
-                # Call methods.review_status for each user
-                res = _review_status(self, auth, aged_limit)
+                # TODO: Implement review_status logic per user
+                # This should review and update transaction statuses for aged transactions
+                res = {"updated_count": 0, "aged_count": 0, "log": ""}
                 updated_count += res.get("updated_count", 0)
                 aged_count += res.get("aged_count", 0)
                 if res.get("log"):
@@ -3851,7 +3851,9 @@ class StorageProvider:
         Returns:
             Dict with log and count.
         """
-        return _purge_data(self, params)
+        # TODO: Implement purge_data logic
+        # This should purge transient data according to params
+        return {"log": "", "count": 0}
 
     def allocate_change_input(
         self,

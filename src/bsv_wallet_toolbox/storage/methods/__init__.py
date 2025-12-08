@@ -1,43 +1,228 @@
 """Storage methods package.
 
-Re-exports from the methods.py module and sub-modules.
+Re-exports from sub-modules.
 """
 
-# Import from parent's methods.py using absolute import
-from bsv_wallet_toolbox.storage.methods_impl import (
-    GenerateChangeInput,
-    ListActionsArgs,
-    ListOutputsArgs,
-    StorageProcessActionArgs,
-    StorageProcessActionResults,
-    attempt_to_post_reqs_to_network,
-    generate_change,
-    get_beef_for_transaction,
-    get_sync_chunk,
-    internalize_action,
-    list_actions,
-    list_certificates,
-    list_outputs,
-    process_action,
-    purge_data,
-    review_status,
+from dataclasses import dataclass
+from typing import Any
+
+# Note: Most storage methods are implemented as methods on the StorageProvider class.
+# Import StorageProvider and use its methods (e.g., storage_provider.process_action()).
+# The functions exported here are wrappers that delegate to StorageProvider methods.
+
+from .generate_change import (
+    GenerateChangeSdkInput,
+    GenerateChangeSdkOutput,
+    GenerateChangeSdkChangeInput,
+    GenerateChangeSdkChangeOutput,
+    GenerateChangeSdkParams,
+    GenerateChangeSdkResult,
+    StorageFeeModel,
+    generate_change_sdk,
+    InsufficientFundsError,
+    InternalError,
 )
 
+# Type definitions for storage method arguments and results
+# These are used for type hints and testing
+
+
+@dataclass
+class GenerateChangeInput:
+    """Input specification for change generation."""
+    satoshis: int
+    locking_script: str
+
+
+@dataclass
+class ListActionsArgs:
+    """Arguments for listing wallet actions."""
+    limit: int = 10
+    offset: int = 0
+    labels: list[str] | None = None
+
+
+@dataclass
+class ListOutputsArgs:
+    """Arguments for listing wallet outputs."""
+    limit: int = 10
+    offset: int = 0
+    basket: str | None = None
+
+
+@dataclass
+class StorageProcessActionArgs:
+    """Arguments for processing a storage action."""
+    is_new_tx: bool = True
+    is_no_send: bool = False
+    is_send_with: bool = False
+    is_delayed: bool = False
+    send_with: list[str] | None = None
+    log: dict[str, Any] | None = None
+
+
+@dataclass
+class StorageProcessActionResults:
+    """Results from processing a storage action."""
+    send_with_results: dict[str, Any] | None = None
+    not_delayed_results: dict[str, Any] | None = None
+
+
+# Wrapper functions that delegate to StorageProvider methods
+# These maintain backward compatibility for code expecting standalone functions
+
+
+def process_action(storage: Any, auth: dict[str, Any], args: dict[str, Any] | StorageProcessActionArgs) -> StorageProcessActionResults:
+    """Process a transaction action (finalize & sign).
+    
+    Wrapper around StorageProvider.process_action().
+    """
+    # Convert dataclass to dict if needed
+    if isinstance(args, StorageProcessActionArgs):
+        args_dict = {
+            "isNewTx": args.is_new_tx,
+            "isNoSend": args.is_no_send,
+            "isSendWith": args.is_send_with,
+            "isDelayed": args.is_delayed,
+            "sendWith": args.send_with or [],
+            "log": args.log,
+        }
+    else:
+        args_dict = args
+    
+    result = storage.process_action(auth, args_dict)
+    return StorageProcessActionResults(
+        send_with_results=result.get("sendWithResults"),
+        not_delayed_results=result.get("notDelayedResults"),
+    )
+
+
+def list_actions(storage: Any, auth: dict[str, Any], args: dict[str, Any] | ListActionsArgs) -> dict[str, Any]:
+    """List wallet actions.
+    
+    Wrapper around StorageProvider.list_actions().
+    """
+    if isinstance(args, ListActionsArgs):
+        args_dict = {
+            "limit": args.limit,
+            "offset": args.offset,
+            "labels": args.labels or [],
+        }
+    else:
+        args_dict = args
+    
+    return storage.list_actions(auth, args_dict)
+
+
+def list_outputs(storage: Any, auth: dict[str, Any], args: dict[str, Any] | ListOutputsArgs) -> dict[str, Any]:
+    """List wallet outputs.
+    
+    Wrapper around StorageProvider.list_outputs().
+    """
+    if isinstance(args, ListOutputsArgs):
+        args_dict = {
+            "limit": args.limit,
+            "offset": args.offset,
+            "basket": args.basket,
+        }
+    else:
+        args_dict = args
+    
+    return storage.list_outputs(auth, args_dict)
+
+
+def list_certificates(storage: Any, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    """List certificates.
+    
+    Wrapper around StorageProvider.list_certificates().
+    """
+    return storage.list_certificates(auth, args)
+
+
+def internalize_action(storage: Any, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
+    """Internalize an action.
+    
+    Wrapper around StorageProvider.internalize_action().
+    """
+    return storage.internalize_action(auth, args)
+
+
+def get_beef_for_transaction(storage: Any, txid: str) -> bytes | None:
+    """Get BEEF for a transaction.
+    
+    Wrapper around StorageProvider.get_beef_for_transaction().
+    """
+    return storage.get_beef_for_transaction(txid)
+
+
+def attempt_to_post_reqs_to_network(storage: Any, reqs: list[dict[str, Any]]) -> dict[str, Any]:
+    """Attempt to post requests to network.
+    
+    Wrapper around StorageProvider.attempt_to_post_reqs_to_network().
+    """
+    return storage.attempt_to_post_reqs_to_network(reqs)
+
+
+def review_status(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Review transaction statuses.
+    
+    Wrapper around StorageProvider.review_status().
+    """
+    return storage.review_status(args)
+
+
+def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
+    """Purge transient data.
+    
+    Wrapper around StorageProvider.purge_data().
+    """
+    return storage.purge_data(params)
+
+
+def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
+    """Get synchronization chunk.
+    
+    Wrapper around StorageProvider.get_sync_chunk().
+    """
+    return storage.get_sync_chunk(args)
+
+
+def generate_change(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
+    """Generate change for a transaction.
+    
+    Note: This is a placeholder. Actual change generation uses generate_change_sdk().
+    """
+    raise NotImplementedError("Use generate_change_sdk() from generate_change module instead")
+
+
 __all__ = [
+    # Types from generate_change
+    "GenerateChangeSdkInput",
+    "GenerateChangeSdkOutput",
+    "GenerateChangeSdkChangeInput",
+    "GenerateChangeSdkChangeOutput",
+    "GenerateChangeSdkParams",
+    "GenerateChangeSdkResult",
+    "StorageFeeModel",
+    "generate_change_sdk",
+    "InsufficientFundsError",
+    "InternalError",
+    # Type definitions
     "GenerateChangeInput",
     "ListActionsArgs",
     "ListOutputsArgs",
     "StorageProcessActionArgs",
     "StorageProcessActionResults",
-    "attempt_to_post_reqs_to_network",
-    "generate_change",
-    "get_beef_for_transaction",
-    "get_sync_chunk",
-    "internalize_action",
-    "list_actions",
-    "list_certificates",
-    "list_outputs",
+    # Wrapper functions
     "process_action",
-    "purge_data",
+    "list_actions",
+    "list_outputs",
+    "list_certificates",
+    "internalize_action",
+    "get_beef_for_transaction",
+    "attempt_to_post_reqs_to_network",
     "review_status",
+    "purge_data",
+    "get_sync_chunk",
+    "generate_change",
 ]
