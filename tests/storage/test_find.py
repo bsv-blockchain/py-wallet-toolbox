@@ -86,10 +86,10 @@ def test_find_output_baskets(storage_seeded) -> None:
 def test_find_outputs(storage_seeded) -> None:
     storage, seed = storage_seeded
     outputs = storage.find_outputs({"partial": {}})
-    assert len(outputs) == 3
+    assert len(outputs) == 5  # Updated: 3 original + 2 added for test_create_action tests
 
     user1_outputs = storage.find_outputs({"partial": {"userId": seed["user1"]["userId"]}})
-    assert len(user1_outputs) == 2
+    assert len(user1_outputs) == 4  # Updated: 2 original + 2 added for test_create_action tests
 
     user2_outputs = storage.find_outputs({"partial": {"userId": seed["user2"]["userId"]}})
     assert len(user2_outputs) == 1
@@ -107,19 +107,19 @@ def test_find_output_tags_and_maps(storage_seeded) -> None:
 def test_find_transactions_and_commissions(storage_seeded) -> None:
     storage, seed = storage_seeded
     txs = storage.find_transactions({"partial": {}})
-    assert len(txs) == 3
+    assert len(txs) == 4  # Updated: 3 original + 1 added (tx4) for test_create_action tests
 
     txs_user1 = storage.find_transactions({"partial": {"userId": seed["user1"]["userId"]}})
-    assert len(txs_user1) == 2
+    assert len(txs_user1) == 3  # Updated: 2 original + 1 added (tx4) for test_create_action tests
 
     txs_user2 = storage.find_transactions({"partial": {"userId": seed["user2"]["userId"]}})
     assert len(txs_user2) == 1
 
     commissions = storage.find_commissions({"partial": {}})
-    assert len(commissions) == 3
+    assert len(commissions) == 3  # Commissions unchanged
 
     commissions_user1 = storage.find_commissions({"partial": {"userId": seed["user1"]["userId"]}})
-    assert len(commissions_user1) == 2
+    assert len(commissions_user1) == 2  # Commissions unchanged
 
 
 def test_find_tx_labels_and_maps(storage_seeded) -> None:

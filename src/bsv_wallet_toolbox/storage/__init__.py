@@ -18,12 +18,12 @@ from .entities import (
     TxLabelMap,
     User,
 )
+# Note: Storage methods (process_action, list_actions, etc.) are methods on
+# StorageProvider class, not standalone functions. Use StorageProvider instances
+# to access these methods.
+from .provider import StorageProvider
+# Import storage method wrappers from methods package
 from .methods import (
-    GenerateChangeInput,
-    ListActionsArgs,
-    ListOutputsArgs,
-    StorageProcessActionArgs,
-    StorageProcessActionResults,
     attempt_to_post_reqs_to_network,
     generate_change,
     get_beef_for_transaction,
@@ -36,27 +36,14 @@ from .methods import (
     purge_data,
     review_status,
 )
-from .provider import StorageProvider
-from .wallet_storage_manager import (
-    WalletStorageManager,
-    EntitySyncState,
-    SyncResult,
-    AuthId,
-    ManagedStorage,
-)
 
 __all__ = [
     "Certificate",
     "CertificateField",
-    "GenerateChangeInput",
-    "ListActionsArgs",
-    "ListOutputsArgs",
     "Output",
     "OutputBasket",
     "OutputTag",
     "OutputTagMap",
-    "StorageProcessActionArgs",
-    "StorageProcessActionResults",
     "StorageProvider",
     "Transaction",
     "TxLabelMap",
@@ -72,10 +59,4 @@ __all__ = [
     "process_action",
     "purge_data",
     "review_status",
-    # WalletStorageManager
-    "WalletStorageManager",
-    "EntitySyncState",
-    "SyncResult",
-    "AuthId",
-    "ManagedStorage",
 ]

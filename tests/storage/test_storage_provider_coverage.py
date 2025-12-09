@@ -34,7 +34,7 @@ def test_user(storage_provider):
     """Create a test user and return user_id."""
     identity_key = "test_identity_key_123"
     user_data = storage_provider.find_or_insert_user(identity_key)
-    return user_data["userId"]
+    return user_data["user"]["userId"]
 
 
 class TestStorageProviderInitialization:
@@ -80,10 +80,10 @@ class TestUserManagement:
 
         result = storage_provider.find_or_insert_user(identity_key)
 
-        assert "userId" in result
-        assert "identityKey" in result
-        assert result["identityKey"] == identity_key
-        assert isinstance(result["userId"], int)
+        assert "userId" in result["user"]
+        assert "identityKey" in result["user"]
+        assert result["user"]["identityKey"] == identity_key
+        assert isinstance(result["user"]["userId"], int)
 
     def test_find_or_insert_user_existing_user(self, storage_provider) -> None:
         """Test finding an existing user."""
@@ -91,11 +91,11 @@ class TestUserManagement:
 
         # Create user first time
         result1 = storage_provider.find_or_insert_user(identity_key)
-        user_id1 = result1["userId"]
+        user_id1 = result1["user"]["userId"]
 
         # Try to create same user again
         result2 = storage_provider.find_or_insert_user(identity_key)
-        user_id2 = result2["userId"]
+        user_id2 = result2["user"]["userId"]
 
         # Should return same user ID
         assert user_id1 == user_id2

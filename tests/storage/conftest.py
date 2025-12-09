@@ -114,10 +114,29 @@ def seed_storage(storage: StorageProvider) -> dict[str, Any]:
         }
     )
 
+    # Create additional transaction for user1 with completed status to support larger test amounts
+    tx4_id = storage.insert_transaction(
+        {
+            "userId": user1_id,
+            "status": "completed",  # Must be completed/unproven/sending for allocate_change_input
+            "reference": "ref-u1-4",
+            "isOutgoing": False,
+            "satoshis": 150_000,
+            "description": "User1 large transaction for testing",
+            "version": 1,
+            "lockTime": 0,
+            "inputBEEF": b"\x0f\x10",
+            "rawTx": b"\x11\x12",
+            "created_at": _ts(base_time, 23),
+            "updated_at": _ts(base_time, 23),
+        }
+    )
+
     transactions = {
         "tx1": _record_by_id(storage, "find_transactions", "transactionId", tx1_id),
         "tx2": _record_by_id(storage, "find_transactions", "transactionId", tx2_id),
         "tx3": _record_by_id(storage, "find_transactions", "transactionId", tx3_id),
+        "tx4": _record_by_id(storage, "find_transactions", "transactionId", tx4_id),
     }
 
     # Commissions
@@ -196,11 +215,55 @@ def seed_storage(storage: StorageProvider) -> dict[str, Any]:
             "updated_at": _ts(base_time, 42),
         }
     )
+    # Add additional outputs for user1 to support tests requiring larger amounts
+    # Use tx4 which has "completed" status (required for allocate_change_input)
+    # Both outputs must be in basket_ids[0] which is the "default" basket used by create_action
+    # Note: spent_by should be None (default) for outputs to be allocatable
+    output4_id = storage.insert_output(
+        {
+            "transactionId": tx4_id,
+            "userId": user1_id,
+            "basketId": basket_ids[0],  # "default" basket - required for allocate_change_input
+            "spendable": True,
+            "change": False,
+            "vout": 0,
+            "satoshis": 150_000,  # More than enough for test_create_action_known_txids_return_txid_only (90005 needed) + fees + change
+            "providedBy": "storage",
+            "purpose": "payment",
+            "type": "standard",
+            "txid": "d" * 64,
+            "lockingScript": b"\x20\x21",
+            "spent_by": None,  # Explicitly set to None to ensure it's allocatable
+            "created_at": _ts(base_time, 43),
+            "updated_at": _ts(base_time, 43),
+        }
+    )
+    output5_id = storage.insert_output(
+        {
+            "transactionId": tx4_id,
+            "userId": user1_id,
+            "basketId": basket_ids[0],  # "default" basket - required for allocate_change_input
+            "spendable": True,
+            "change": False,
+            "vout": 1,
+            "satoshis": 2_000,  # Enough for test_create_action_output_tags_persisted (1205 needed)
+            "providedBy": "storage",
+            "purpose": "payment",
+            "type": "standard",
+            "txid": "e" * 64,
+            "lockingScript": b"\x22\x23",
+            "spent_by": None,  # Explicitly set to None to ensure it's allocatable
+            "created_at": _ts(base_time, 44),
+            "updated_at": _ts(base_time, 44),
+        }
+    )
 
     outputs = {
         "o1": _record_by_id(storage, "find_outputs", "outputId", output1_id),
         "o2": _record_by_id(storage, "find_outputs", "outputId", output2_id),
         "o3": _record_by_id(storage, "find_outputs", "outputId", output3_id),
+        "o4": _record_by_id(storage, "find_outputs", "outputId", output4_id),
+        "o5": _record_by_id(storage, "find_outputs", "outputId", output5_id),
     }
 
     # Output tags

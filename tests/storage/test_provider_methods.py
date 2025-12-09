@@ -44,9 +44,9 @@ class TestStorageProviderBasicOperations:
         identity_key = "test_user_key"
 
         result = storage_provider.find_or_insert_user(identity_key)
-        assert "userId" in result
+        assert "userId" in result["user"]
         # createdNew may not be present if user already exists
-        assert isinstance(result["userId"], int)
+        assert isinstance(result["user"]["userId"], int)
 
 
 class TestStorageProviderTransactionOperations:

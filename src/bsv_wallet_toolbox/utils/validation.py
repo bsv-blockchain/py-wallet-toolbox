@@ -330,7 +330,9 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
         raise InvalidParameterError("description", "5-2000 bytes UTF-8")
 
     # Validate outputs: list (can be empty when using sendWith)
-    outputs = args.get("outputs", [])
+    if "outputs" not in args:
+        raise InvalidParameterError("outputs", "required field")
+    outputs = args["outputs"]
     if not isinstance(outputs, list):
         raise InvalidParameterError("outputs", "a list")
     
@@ -341,11 +343,7 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     
     # Require at least one output unless using sendWith (TS parity)
     if len(outputs) == 0 and not is_send_with:
-        # Check if this is a remix change operation (empty inputs and outputs)
-        inputs = args.get("inputs", [])
-        is_remix_change = len(inputs) == 0 and len(outputs) == 0
-        if not is_remix_change:
-            raise InvalidParameterError("outputs", "at least one output required")
+        raise InvalidParameterError("outputs", "at least one output required")
 
     for o in outputs:
         if not isinstance(o, dict):
