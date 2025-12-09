@@ -12,12 +12,16 @@ Reference: toolbox/ts-wallet-toolbox/src/sdk/WalletServices.interfaces.ts
 """
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Literal
 
 from bsv.chaintracker import ChainTracker
 
-# Type alias for blockchain network
-Chain = Literal["main", "test"]
+
+class Chain(Enum):
+    """Blockchain network enumeration."""
+    MAIN = "main"
+    TEST = "test"
 
 
 class WalletServices(ABC):
@@ -39,7 +43,7 @@ class WalletServices(ABC):
         chain: The blockchain network ('main' or 'test')
     """
 
-    def __init__(self, chain: Chain = "main") -> None:
+    def __init__(self, chain: Chain = Chain.MAIN) -> None:
         """Initialize wallet services.
 
         Args:

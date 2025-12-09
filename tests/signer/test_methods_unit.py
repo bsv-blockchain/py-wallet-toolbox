@@ -4,7 +4,7 @@ Tests the core signing logic without requiring full wallet infrastructure.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 from bsv_wallet_toolbox.signer.methods import (
     create_action,
@@ -36,6 +36,12 @@ class TestCreateAction:
         mock_tx = MagicMock()
         mock_tx.txid.return_value = "a" * 64
         mock_tx.serialize.return_value = b"mock_tx_bytes"
+        # Mock verify as async method that returns True
+        mock_tx.verify = AsyncMock(return_value=True)
+        # Mock inputs with at least one input that has unlocking_script
+        mock_input = MagicMock()
+        mock_input.unlocking_script = MagicMock()  # Has unlocking script
+        mock_tx.inputs = [mock_input]
 
         mock_pending = PendingSignAction(
             reference="test_ref",
@@ -83,6 +89,12 @@ class TestCreateAction:
             mock_tx = MagicMock()
             mock_tx.txid.return_value = "b" * 64
             mock_tx.serialize.return_value = b"mock_tx_bytes"
+            # Mock verify as async method that returns True
+            mock_tx.verify = AsyncMock(return_value=True)
+            # Mock inputs with at least one input that has unlocking_script
+            mock_input = MagicMock()
+            mock_input.unlocking_script = MagicMock()  # Has unlocking script
+            mock_tx.inputs = [mock_input]
 
             mock_pending = PendingSignAction(
                 reference="test_ref",
@@ -331,7 +343,7 @@ class TestProveCertificate:
         mock_auth = MagicMock()
 
         args = {
-            "certificate": "",  # Invalid certificate
+            "certificate": {},  # Invalid certificate (empty dict instead of empty string)
             "fields": [],
         }
 

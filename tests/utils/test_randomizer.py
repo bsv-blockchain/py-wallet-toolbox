@@ -38,6 +38,13 @@ class TestSecureRandomizer:
         with pytest.raises(ValueError):
             randomizer.random_int(10, 5)  # min > max
 
+    def test_random_int_equal_min_max(self):
+        """Test random_int with min_value equal to max_value."""
+        randomizer = SecureRandomizer()
+
+        with pytest.raises(ValueError, match="min_value must be less than max_value"):
+            randomizer.random_int(5, 5)  # min == max
+
     def test_shuffle(self):
         """Test list shuffling."""
         randomizer = SecureRandomizer()

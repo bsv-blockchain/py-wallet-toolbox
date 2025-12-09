@@ -1,6 +1,0 @@
-{
-  "passed": [],
-  "fixed": [
-    "tests/monitor/test_tasks.py::TestTaskSendWaiting::test_task_send_waiting_run_task_no_transactions"
-  ]
-}

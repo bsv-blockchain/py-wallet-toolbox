@@ -201,7 +201,7 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     The fixture seeds a UTXO matching universal test vector expectations:
     - txid: 03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c
     - vout: 0
-    - satoshis: 2000 (enough to fund 999 sat output + fees)
+    - satoshis: 50000 (sufficient to fund 999 sat output + fees for createAction tests)
     - spendable: True
 
     Returns:
@@ -224,16 +224,9 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "updated_at": datetime.now(timezone.utc),
     })
 
-    # Create default basket
-    basket_id = storage.insert_output_basket({
-        "userId": user_id,
-        "name": "default",
-        "numberOfDesiredUTXOs": 10,
-        "minimumDesiredUTXOValue": 1000,
-        "isDeleted": False,
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
-    })
+    # Get or create default basket (use find_or_insert to match storage provider behavior)
+    change_basket = storage.find_or_insert_output_basket(user_id, "default")
+    basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
 
     # Seed transaction that will provide the UTXO
     # This txid matches what the universal test vector expects as input
@@ -244,7 +237,7 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "status": "completed",
         "reference": "test-seed-tx",
         "isOutgoing": False,
-        "satoshis": 2000,
+        "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests
         "description": "Seeded UTXO for testing",
         "version": 1,
         "lockTime": 0,
@@ -263,16 +256,17 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     storage.insert_output({
         "transactionId": tx_id,
         "userId": user_id,
-        "basketId": basket_id,
+        "basketId": basket_id,  # "default" basket - required for allocate_change_input
         "spendable": True,
         "change": True,  # Change outputs are spendable
         "vout": 0,
-        "satoshis": 2000,  # Enough for 999 sat output + fees
-        "providedBy": "test",
+        "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests (999 sat output + fees)
+        "providedBy": "storage",  # Changed from "test" to "storage" to match working examples
         "purpose": "change",
-        "type": "change",
+        "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
         "txid": source_txid,
         "lockingScript": locking_script,
+        "spent_by": None,  # Explicitly set to None to ensure it's allocatable
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
     })
@@ -488,7 +482,44 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 if txid in recorded_hex:
                     return Resp(True, 200, {"data": recorded_hex[txid]})
                 return Resp(False, 404, {})
-            # getMerklePath
+            # getMerklePath - TSC proof endpoint
+            if "/tx/" in url and "/proof/tsc" in url:
+                txid = url.split("/tx/")[-1].split("/")[0]
+                if txid in recorded_merkle:
+                    # Return TSC proof format that the code expects
+                    merkle_data = recorded_merkle[txid]
+                    header = merkle_data.get("header", {})
+                    # Extract target (block hash) from header
+                    target = header.get("hash", "")
+                    # Build TSC proof response
+                    # The path structure tells us the index and nodes
+                    merkle_path = merkle_data.get("merklePath", {})
+                    path = merkle_path.get("path", [])
+                    if path and len(path) > 0:
+                        # Extract index from first level (txid leaf offset)
+                        level0 = path[0]
+                        index = None
+                        for leaf in level0:
+                            if leaf.get("txid"):
+                                index = leaf.get("offset")
+                                break
+                        # Extract nodes from path (sibling hashes at each level)
+                        nodes = []
+                        for level in path:
+                            for leaf in level:
+                                if not leaf.get("txid") and "hash" in leaf:
+                                    nodes.append(leaf["hash"])
+                                    break  # Only one sibling per level
+                        if index is not None and nodes:
+                            return Resp(True, 200, [{
+                                "index": index,
+                                "nodes": nodes,
+                                "target": target,
+                                "txOrId": txid,
+                            }])
+                # For invalid txids, return 200 with empty data (not 404) to match test expectations
+                return Resp(True, 200, {})
+            # getMerklePath - legacy endpoint (kept for compatibility)
             if "/tx/" in url and url.endswith("/merklepath"):
                 txid = url.split("/tx/")[-1].split("/")[0]
                 if txid in recorded_merkle:
