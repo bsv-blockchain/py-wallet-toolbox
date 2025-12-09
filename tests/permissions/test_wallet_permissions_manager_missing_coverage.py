@@ -7,7 +7,7 @@ not covered by existing tests.
 
 import asyncio
 import time
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
