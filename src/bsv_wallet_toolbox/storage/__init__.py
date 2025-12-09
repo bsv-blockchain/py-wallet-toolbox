@@ -22,12 +22,19 @@ from .entities import (
 # StorageProvider class, not standalone functions. Use StorageProvider instances
 # to access these methods.
 from .provider import StorageProvider
-from .wallet_storage_manager import (
-    WalletStorageManager,
-    EntitySyncState,
-    SyncResult,
-    AuthId,
-    ManagedStorage,
+# Import storage method wrappers from methods package
+from .methods import (
+    attempt_to_post_reqs_to_network,
+    generate_change,
+    get_beef_for_transaction,
+    get_sync_chunk,
+    internalize_action,
+    list_actions,
+    list_certificates,
+    list_outputs,
+    process_action,
+    purge_data,
+    review_status,
 )
 
 __all__ = [
@@ -41,4 +48,15 @@ __all__ = [
     "Transaction",
     "TxLabelMap",
     "User",
+    "attempt_to_post_reqs_to_network",
+    "generate_change",
+    "get_beef_for_transaction",
+    "get_sync_chunk",
+    "internalize_action",
+    "list_actions",
+    "list_certificates",
+    "list_outputs",
+    "process_action",
+    "purge_data",
+    "review_status",
 ]

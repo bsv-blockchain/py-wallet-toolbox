@@ -35,7 +35,7 @@ def test_user(storage_provider):
     """Create a test user and return user_id."""
     identity_key = "test_identity_key_123"
     user_data = storage_provider.find_or_insert_user(identity_key)
-    return user_data["userId"]
+    return user_data["user"]["userId"]
 
 
 class TestListActionsAdvanced:

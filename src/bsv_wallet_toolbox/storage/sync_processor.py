@@ -73,6 +73,7 @@ class SyncChunkProcessor:
                     "processed": True,
                     "inserts": 0,
                     "updates": 0,
+                    "updated": 0,
                     "errors": [],
                     "done": True,
                     "maxUpdated_at": None
@@ -100,6 +101,7 @@ class SyncChunkProcessor:
                 "processed": True,
                 "inserts": self.inserts_count,
                 "updates": self.updates_count,
+                "updated": total,
                 "errors": self.errors,
                 "done": False,
                 "maxUpdated_at": datetime.now().isoformat()
@@ -112,6 +114,7 @@ class SyncChunkProcessor:
                 "processed": False,
                 "inserts": 0,
                 "updates": 0,
+                "updated": 0,
                 "errors": [error_msg],
                 "done": False,
                 "maxUpdated_at": None
@@ -150,9 +153,9 @@ class SyncChunkProcessor:
         for basket in baskets:
             try:
                 self.logger.debug(f"Processing basket: {basket.get('name', 'unknown')}")
-                self.provider.find_or_insert_output_basket(
-                    user_id=self._get_user_id(),
-                    name=basket.get('name', 'default')
+                self.provider.configure_basket(
+                    auth={"userId": self._get_user_id()},
+                    basket_config=basket
                 )
                 self.inserts_count += 1
             except Exception as e:
@@ -212,34 +215,25 @@ class SyncChunkProcessor:
             try:
                 txid = tx.get('txid', 'unknown')
                 self.logger.debug(f"Processing transaction: {txid}")
-                
-                # Check if transaction already exists
-                from .models import Transaction
-                session = self.provider.SessionLocal()
-                try:
-                    existing = session.query(Transaction).filter_by(txid=txid).first()
-                    if not existing:
-                        # Insert new transaction
-                        user_id = self._get_user_id()
-                        tx_data = {
-                            'user_id': user_id,
-                            'txid': txid,
-                            'status': tx.get('status', 'unprocessed'),
-                            'reference': tx.get('reference', ''),
-                            'is_outgoing': tx.get('isOutgoing', False),
-                            'satoshis': tx.get('satoshis', 0),
-                            'description': tx.get('description', ''),
-                            'version': tx.get('version', 1),
-                            'lock_time': tx.get('lockTime', 0),
-                            'input_beef': tx.get('inputBEEF'),
-                        }
-                        self.provider.insert_transaction(tx_data)
-                        self.inserts_count += 1
-                    else:
-                        self.updates_count += 1
-                finally:
-                    session.close()
+
+                # Insert transaction (provider handles upsert logic)
+                user_id = self._get_user_id()
+                tx_data = {
+                    'user_id': user_id,
+                    'txid': txid,
+                    'status': tx.get('status', 'unprocessed'),
+                    'reference': tx.get('reference', ''),
+                    'is_outgoing': tx.get('isOutgoing', False),
+                    'satoshis': tx.get('satoshis', 0),
+                    'description': tx.get('description', ''),
+                    'version': tx.get('version', 1),
+                    'lock_time': tx.get('lockTime', 0),
+                    'input_beef': tx.get('inputBEEF'),
+                }
+                self.provider.insert_transaction(tx_data)
+                self.inserts_count += 1
             except Exception as e:
+                self.errors.append(f"Failed to process transaction {txid}: {e}")
                 self.logger.debug(f"Transaction sync error: {e}")
                 self.inserts_count += 1  # Count as processed
 
@@ -252,57 +246,29 @@ class SyncChunkProcessor:
                 vout = output.get('vout', 0)
                 self.logger.debug(f"Processing output: {txid}:{vout}")
                 
-                # Check if output already exists
-                from .models import Output, Transaction
-                session = self.provider.SessionLocal()
-                try:
-                    existing = session.query(Output).filter_by(txid=txid, vout=vout).first()
-                    if not existing:
-                        # Get transaction_id from txid
-                        user_id = self._get_user_id()
-                        tx = session.query(Transaction).filter_by(txid=txid, user_id=user_id).first()
-                        if not tx:
-                            self.logger.debug(f"Transaction not found for output {txid}:{vout}, skipping")
-                            continue
-                        
-                        # Get default basket
-                        basket_id = output.get('basketId')
-                        if not basket_id:
-                            # Try to find default basket
-                            from .models import OutputBasket
-                            default_basket = session.query(OutputBasket).filter_by(
-                                user_id=user_id, name='default'
-                            ).first()
-                            if default_basket:
-                                basket_id = default_basket.basket_id
-                        
-                        # Insert new output
-                        output_data = {
-                            'user_id': user_id,
-                            'transaction_id': tx.transaction_id,
-                            'txid': txid,
-                            'vout': vout,
-                            'satoshis': output.get('satoshis', 0),
-                            'locking_script': output.get('lockingScript', b''),
-                            'spendable': output.get('spendable', True),
-                            'change': output.get('change', False),
-                            'spent': output.get('spent', False),
-                            'output_description': output.get('outputDescription', ''),
-                            'basket_id': basket_id,
-                            'derivation_prefix': output.get('derivationPrefix'),
-                            'derivation_suffix': output.get('derivationSuffix'),
-                            'custom_instructions': output.get('customInstructions'),
-                            'sender_identity_key': output.get('senderIdentityKey'),
-                            'provided_by': output.get('providedBy', 'you'),
-                            'purpose': output.get('purpose', 'change'),
-                            'type': output.get('type', 'P2PKH'),
-                        }
-                        self.provider.insert_output(output_data)
-                        self.inserts_count += 1
-                    else:
-                        self.updates_count += 1
-                finally:
-                    session.close()
+                # Insert output (provider handles upsert)
+                user_id = self._get_user_id()
+                output_data = {
+                    'user_id': user_id,
+                    'txid': txid,
+                    'vout': vout,
+                    'satoshis': output.get('satoshis', 0),
+                    'locking_script': output.get('lockingScript', b''),
+                    'spendable': output.get('spendable', True),
+                    'change': output.get('change', False),
+                    'spent': output.get('spent', False),
+                    'output_description': output.get('outputDescription', ''),
+                    'basket_id': output.get('basketId'),
+                    'derivation_prefix': output.get('derivationPrefix'),
+                    'derivation_suffix': output.get('derivationSuffix'),
+                    'custom_instructions': output.get('customInstructions'),
+                    'sender_identity_key': output.get('senderIdentityKey'),
+                    'provided_by': output.get('providedBy', 'you'),
+                    'purpose': output.get('purpose', 'change'),
+                    'type': output.get('type', 'P2PKH'),
+                }
+                self.provider.insert_output(output_data)
+                self.inserts_count += 1
             except Exception as e:
                 self.logger.warning(f"Output sync error for {output.get('txid', 'unknown')}:{output.get('vout', 0)}: {e}")
                 # Don't count failed outputs as processed
