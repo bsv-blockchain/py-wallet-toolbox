@@ -4,7 +4,7 @@ This module provides comprehensive test coverage for all methods in the
 WhatsOnChain provider implementation, focusing on error paths and edge cases.
 """
 
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
