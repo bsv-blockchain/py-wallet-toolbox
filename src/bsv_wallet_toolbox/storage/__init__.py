@@ -37,6 +37,13 @@ from .methods import (
     review_status,
 )
 from .provider import StorageProvider
+from .wallet_storage_manager import (
+    WalletStorageManager,
+    EntitySyncState,
+    SyncResult,
+    AuthId,
+    ManagedStorage,
+)
 
 __all__ = [
     "Certificate",
@@ -65,4 +72,10 @@ __all__ = [
     "process_action",
     "purge_data",
     "review_status",
+    # WalletStorageManager
+    "WalletStorageManager",
+    "EntitySyncState",
+    "SyncResult",
+    "AuthId",
+    "ManagedStorage",
 ]

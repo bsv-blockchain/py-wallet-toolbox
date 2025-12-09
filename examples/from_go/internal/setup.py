@@ -2,12 +2,14 @@
 
 Replicates the functionality of Go's internal/example_setup package.
 Handles configuration loading, wallet initialization, and environment setup.
+
+Supports both local storage (SQLite) and remote storage (JSON-RPC over HTTP).
 """
 
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
 import yaml
 from dotenv import load_dotenv
@@ -20,6 +22,7 @@ from bsv_wallet_toolbox.storage.provider import StorageProvider
 from bsv_wallet_toolbox.storage.db import create_sqlite_engine
 
 from . import show
+from .simple_storage_client import SimpleStorageClient
 
 # Load environment variables from .env file
 load_dotenv()
@@ -80,15 +83,27 @@ class Setup:
 
         Returns:
             Tuple containing the wallet instance and a cleanup function.
+
+        Supports both local storage (SQLite) and remote storage (JSON-RPC client).
+        When server_url is configured, uses StorageClient for remote storage.
         """
         # In Python, we don't need a factory pattern like Go because we can pass the storage provider directly
         # or construct the wallet with the appropriate storage.
         # However, to match Go's behavior (switching between local/remote), we'll do logic here.
 
+        storage: Union[StorageProvider, StorageClient]
+        
         if self.environment.server_url:
             show.info("Using remote storage", self.environment.server_url)
-            # TODO: Implement JsonRpcClient for remote storage
-            raise NotImplementedError("Remote storage client not yet implemented")
+            
+            # Use SimpleStorageClient for testing (no authentication required)
+            # For production, use the full StorageClient with AuthFetch
+            storage = SimpleStorageClient(
+                endpoint_url=self.environment.server_url,
+                timeout=30.0,
+            )
+            
+            show.info("Remote storage connected", self.environment.server_url)
         else:
             sqlite_file = "wallet.db"  # Default for local examples
             show.info("Using local storage", sqlite_file)

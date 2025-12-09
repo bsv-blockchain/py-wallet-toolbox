@@ -427,27 +427,30 @@ class StorageProvider:
     # ------------------------------------------------------------------
     # Users
     # ------------------------------------------------------------------
-    def find_or_insert_user(self, identity_key: str) -> dict[str, int | str]:
+    def find_or_insert_user(self, identity_key: str) -> dict[str, Any]:
         """Find existing user or insert a new one by identity_key.
 
         Summary:
             Idempotent upsert by public key hex.
         TS parity:
-            Same intent as TS storage helpers.
+            Returns { user: TableUser, isNew: boolean } matching TypeScript interface.
         Args:
             identity_key: Public key hex string.
         Returns:
-            Dict with keys: userId, identityKey
+            Dict with keys: user (containing userId, identityKey), isNew
         Raises:
             sqlalchemy.exc.SQLAlchemyError: On database errors.
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+            toolbox/ts-wallet-toolbox/src/sdk/WalletStorage.interfaces.ts
         """
         with session_scope(self.SessionLocal) as s:
             q = select(User).where(User.identity_key == identity_key)
             _exec_result = s.execute(q)
             u = _exec_result.scalar_one_or_none()
+            is_new = False
             if u is None:
+                is_new = True
                 u = User(identity_key=identity_key)
                 s.add(u)
                 try:
@@ -456,7 +459,18 @@ class StorageProvider:
                     s.rollback()
                     _exec_result = s.execute(q)
                     u = _exec_result.scalar_one()
-            return {"userId": u.user_id, "identityKey": u.identity_key}
+                    is_new = False
+            # Return TS-compatible format: { user: TableUser, isNew: boolean }
+            return {
+                "user": {
+                    "userId": u.user_id,
+                    "identityKey": u.identity_key,
+                    "activeStorage": u.active_storage or "",
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                    "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+                },
+                "isNew": is_new,
+            }
 
     def find_or_insert_sync_state_auth(
         self, auth: dict[str, Any], storage_identity_key: str, storage_name: str
