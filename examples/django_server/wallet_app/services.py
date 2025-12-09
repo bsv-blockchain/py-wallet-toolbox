@@ -14,6 +14,7 @@ from typing import Optional
 from sqlalchemy import create_engine
 from bsv_wallet_toolbox.rpc import StorageServer
 from bsv_wallet_toolbox.storage import StorageProvider
+from bsv_wallet_toolbox.services import WalletServices
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,14 @@ def get_storage_server() -> StorageServer:
             logger.info("StorageProvider database initialized successfully")
         except Exception as e:
             logger.warning(f"StorageProvider make_available failed (may already be initialized): {e}")
+
+        # Initialize WalletServices for broadcast functionality
+        try:
+            wallet_services = WalletServices(chain='test')
+            storage_provider.set_services(wallet_services)
+            logger.info("WalletServices initialized for testnet (broadcast enabled)")
+        except Exception as e:
+            logger.warning(f"WalletServices initialization failed: {e}")
 
         # Create StorageServer with StorageProvider auto-registration
         _storage_server = StorageServer(storage_provider=storage_provider)

@@ -8,12 +8,26 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
+
+BRC-104 Authentication and Payment middleware configuration is at the bottom.
+Uses py-middleware package for BSV authentication.
 """
 
+import sys
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Add py-middleware to path (for development)
+PY_MIDDLEWARE_PATH = BASE_DIR.parent.parent.parent / 'py-middleware'
+if PY_MIDDLEWARE_PATH.exists():
+    sys.path.insert(0, str(PY_MIDDLEWARE_PATH))
+
+# Add py-middleware examples adapter to path
+PY_MIDDLEWARE_ADAPTER_PATH = PY_MIDDLEWARE_PATH / 'examples' / 'django_example'
+if PY_MIDDLEWARE_ADAPTER_PATH.exists():
+    sys.path.insert(0, str(PY_MIDDLEWARE_ADAPTER_PATH))
 
 
 # Quick-start development settings - unsuitable for production
@@ -26,7 +40,7 @@ SECRET_KEY = 'django-insecure-yavde1#iud62ylvl=-twwg4!(2fyyfpkbea142bbg2ml67vs8l
 DEBUG = True
 
 # Allow localhost for development
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -44,14 +58,38 @@ INSTALLED_APPS = [
     'rest_framework',
 ]
 
+# =============================================================================
+# Middleware Configuration
+# =============================================================================
+# Order matters! CORS must be first, then security, then auth.
+#
+# Reference architecture (matching Go/TypeScript implementations):
+#   1. Django Security - Standard Django security
+#   2. BSV Auth Middleware (py-middleware) - BRC-104 authentication
+#   3. BSV Payment Middleware (py-middleware) - Monetization (optional)
+#   4. Application handlers
+#
+# To enable BSV authentication, uncomment the middleware lines below
+# and configure BSV_MIDDLEWARE settings.
+# =============================================================================
+
 MIDDLEWARE = [
+    # Django standard middleware
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # CSRF disabled for JSON-RPC API (authentication handled by BRC-104)
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # ==========================================================================
+    # BSV Middleware (py-middleware package)
+    # Uncomment to enable BRC-104 authentication
+    # ==========================================================================
+    # 'adapter.auth_middleware.BSVAuthMiddleware',
+    # 'adapter.payment_middleware_complete.BSVPaymentMiddleware',
 ]
 
 ROOT_URLCONF = 'wallet_server.urls'
@@ -136,9 +174,52 @@ REST_FRAMEWORK = {
     ],
 }
 
-# CORS configuration for JSON-RPC API
-# Install django-cors-headers if needed: pip install django-cors-headers
+
+# =============================================================================
+# BSV Middleware Configuration (py-middleware package)
+# =============================================================================
+# Reference: py-middleware/examples/django_example/adapter/
+#            go-wallet-toolbox/pkg/storage/server.go
+#            go-bsv-middleware/pkg/middleware/
+# =============================================================================
+
+# BSV_MIDDLEWARE = {
+#     # Required: Wallet instance for authentication
+#     # Example using py-wallet-toolbox:
+#     #   from bsv_wallet_toolbox import Wallet
+#     #   'WALLET': Wallet(chain='test', key_deriver=...),
+#     'WALLET': None,
+#
+#     # Allow unauthenticated requests (for development/testing)
+#     # Set to False in production to require BRC-104 authentication
+#     'ALLOW_UNAUTHENTICATED': True,
+#
+#     # Certificate requirements for mutual authentication
+#     'CERTIFICATE_REQUESTS': None,
+#
+#     # Callback when certificates are received
+#     'ON_CERTIFICATES_RECEIVED': None,
+#
+#     # Custom session manager (optional)
+#     'SESSION_MANAGER': None,
+#
+#     # Logging configuration
+#     'LOG_LEVEL': 'error',  # 'debug', 'info', 'warn', 'error'
+# }
+
+
+# =============================================================================
+# CORS Configuration
+# =============================================================================
+# For cross-origin requests, install django-cors-headers:
+#   pip install django-cors-headers
+#
+# Then add to INSTALLED_APPS and MIDDLEWARE:
+#   INSTALLED_APPS = [..., 'corsheaders', ...]
+#   MIDDLEWARE = ['corsheaders.middleware.CorsMiddleware', ...]
+#
 # CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",  # React dev server
+#     "http://localhost:3000",
 #     "http://127.0.0.1:3000",
 # ]
+# =============================================================================
