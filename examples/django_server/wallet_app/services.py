@@ -5,6 +5,9 @@ This module provides service layer integration with py-wallet-toolbox,
 specifically the StorageServer for handling JSON-RPC requests.
 
 Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageServer.ts
+
+Also provides server wallet for BRC-104 authentication middleware.
+Reference: go-wallet-toolbox/pkg/storage/server.go
 """
 
 import logging
@@ -15,11 +18,70 @@ from sqlalchemy import create_engine
 from bsv_wallet_toolbox.rpc import StorageServer
 from bsv_wallet_toolbox.storage import StorageProvider
 from bsv_wallet_toolbox.services import WalletServices
+from bsv_wallet_toolbox.wallet import Wallet as ToolboxWallet
+from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
+from bsv.keys import PrivateKey
+from bsv.wallet import KeyDeriver
 
 logger = logging.getLogger(__name__)
 
 # Global StorageServer instance
 _storage_server: Optional[StorageServer] = None
+
+# Global server wallet for authentication
+_server_wallet: Optional[ToolboxWallet] = None
+
+# Server private key (from examples-config.yaml or environment)
+# This should match the server_private_key in from_go/examples-config.yaml
+SERVER_PRIVATE_KEY = os.environ.get(
+    'SERVER_PRIVATE_KEY',
+    '9a1b02c96311651770c3d4858dd73bfb5b4128990cf7a3f0e6b11c00934de831'  # Default from examples-config.yaml
+)
+
+
+def get_server_wallet() -> ToolboxWallet:
+    """
+    Get or create the server wallet for BRC-104 authentication.
+    
+    This wallet is used by the BSV auth middleware to sign and verify
+    authentication messages.
+    
+    Reference: go-wallet-toolbox/pkg/storage/server.go (Server.Handler())
+    
+    Returns:
+        ToolboxWallet: Server wallet instance for authentication
+    """
+    global _server_wallet
+    
+    if _server_wallet is None:
+        logger.info("Initializing server wallet for BRC-104 authentication")
+        
+        try:
+            # Create server private key from hex
+            private_key = PrivateKey.from_hex(SERVER_PRIVATE_KEY)
+            identity_key = private_key.public_key()
+            
+            logger.info(f"Server identity key: {identity_key.hex()}")
+            
+            # Create wallet components
+            key_deriver = KeyDeriver(private_key)
+            privileged_manager = PrivilegedKeyManager(private_key)
+            
+            # Create server wallet (without storage - only for auth)
+            _server_wallet = ToolboxWallet(
+                chain='test',
+                key_deriver=key_deriver,
+                storage_provider=None,  # Server wallet doesn't need storage
+                privileged_key_manager=privileged_manager,
+            )
+            
+            logger.info("Server wallet initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize server wallet: {e}")
+            raise
+    
+    return _server_wallet
 
 
 def get_storage_server() -> StorageServer:

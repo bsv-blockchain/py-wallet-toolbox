@@ -3,7 +3,11 @@
 Replicates the functionality of Go's internal/example_setup package.
 Handles configuration loading, wallet initialization, and environment setup.
 
-Supports both local storage (SQLite) and remote storage (JSON-RPC over HTTP).
+Supports both local storage (SQLite) and remote storage (JSON-RPC over HTTP with BRC-104 authentication).
+
+Reference:
+    Go: go-wallet-toolbox/examples/internal/example_setup/setup.go
+    Go uses storage.NewClient which internally uses AuthFetch for BRC-104 authentication.
 """
 
 import os
@@ -20,6 +24,7 @@ from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
 from bsv_wallet_toolbox.wallet import Wallet as ToolboxWallet
 from bsv_wallet_toolbox.storage.provider import StorageProvider
 from bsv_wallet_toolbox.storage.db import create_sqlite_engine
+from bsv_wallet_toolbox.rpc.storage_client import StorageClient
 
 from . import show
 from .simple_storage_client import SimpleStorageClient
@@ -91,19 +96,50 @@ class Setup:
         # or construct the wallet with the appropriate storage.
         # However, to match Go's behavior (switching between local/remote), we'll do logic here.
 
-        storage: Union[StorageProvider, StorageClient]
+        storage: Union[StorageProvider, StorageClient, SimpleStorageClient]
         
         if self.environment.server_url:
             show.info("Using remote storage", self.environment.server_url)
             
-            # Use SimpleStorageClient for testing (no authentication required)
-            # For production, use the full StorageClient with AuthFetch
-            storage = SimpleStorageClient(
-                endpoint_url=self.environment.server_url,
-                timeout=30.0,
-            )
+            # Check if we should use authenticated StorageClient or simple client
+            # Use environment variable to control this behavior
+            # Default to false until BRC-104 auth protocol is fully working with Django middleware
+            use_auth = os.environ.get("USE_AUTH_STORAGE", "false").lower() in ("true", "1", "yes")
             
-            show.info("Remote storage connected", self.environment.server_url)
+            if use_auth:
+                # Use StorageClient with AuthFetch for BRC-104 authentication
+                # This matches Go's storage.NewClient behavior which uses AuthFetch internally
+                # Reference: go-wallet-toolbox/pkg/storage/client.go
+                
+                # Create a temporary wallet for authentication
+                # The StorageClient needs a wallet to sign authentication requests
+                chain = normalize_chain(self.environment.bsv_network)
+                key_deriver = KeyDeriver(self.private_key)
+                privileged_manager = PrivilegedKeyManager(self.private_key)
+                
+                # Create a minimal wallet for auth (without storage)
+                # Note: StorageClient needs wallet for AuthFetch authentication
+                auth_wallet = ToolboxWallet(
+                    chain=chain,
+                    key_deriver=key_deriver,
+                    storage_provider=None,  # No storage needed for auth
+                    privileged_key_manager=privileged_manager,
+                )
+                
+                storage = StorageClient(
+                    wallet=auth_wallet,
+                    endpoint_url=self.environment.server_url,
+                    timeout=30.0,
+                )
+                show.info("Remote storage connected with BRC-104 authentication", self.environment.server_url)
+            else:
+                # Use SimpleStorageClient for testing (no authentication required)
+                # Useful for testing with unauthenticated servers
+                storage = SimpleStorageClient(
+                    endpoint_url=self.environment.server_url,
+                    timeout=30.0,
+                )
+                show.info("Remote storage connected without authentication", self.environment.server_url)
         else:
             sqlite_file = "wallet.db"  # Default for local examples
             show.info("Using local storage", sqlite_file)

@@ -10,10 +10,11 @@ import json
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
-from bsv.keys import PublicKey
+from bsv.keys import PrivateKey, PublicKey
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
+from bsv.wallet.wallet_impl import WalletImpl as ProtoWallet
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
     CreateSignatureResult,
@@ -268,6 +269,21 @@ class Wallet:
         self._trust_settings_cache: dict[str, Any] | None = None
         self._trust_settings_cache_expires_at: float = 0
 
+        # Initialize ProtoWallet for cryptographic operations (TS/Go parity)
+        # TS: this.proto = new ProtoWallet(keyDeriver)
+        # Go: w.proto = wallet.NewProtoWallet(keyDeriver)
+        # py-sdk: ProtoWallet is WalletImpl which takes PrivateKey
+        self.proto: ProtoWallet | None = None
+        if self.key_deriver is not None:
+            try:
+                # Access the root private key from KeyDeriver
+                root_key = getattr(self.key_deriver, '_root_private_key', None)
+                if root_key is not None:
+                    self.proto = ProtoWallet(root_key, permission_callback=lambda _: True)
+            except Exception:
+                # Fallback: proto remains None, direct implementation will be used
+                pass
+
         # Wire services into storage for TS parity SpecOps (e.g., invalid change)
         try:
             if self.services is not None and self.storage is not None:
@@ -383,6 +399,98 @@ class Wallet:
                 raise InvalidParameterError("originator", "must be a string")
             if len(originator.encode("utf-8")) > MAX_ORIGINATOR_LENGTH_BYTES:
                 raise InvalidParameterError("originator", "must be under 250 bytes")
+
+    def _convert_signature_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert signature args from py-wallet-toolbox format to py-sdk format.
+
+        py-wallet-toolbox uses camelCase (protocolID, keyID, hashToDirectlySign)
+        py-sdk WalletImpl uses snake_case (protocol_id, key_id, hash_to_directly_sign)
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk format
+        """
+        proto_args: dict[str, Any] = {}
+
+        # Convert protocolID -> protocol_id
+        protocol_id = args.get("protocolID")
+        if protocol_id is not None:
+            proto_args["protocol_id"] = protocol_id
+
+        # Convert keyID -> key_id
+        key_id = args.get("keyID")
+        if key_id is not None:
+            proto_args["key_id"] = key_id
+
+        # Convert counterparty to py-sdk format
+        # py-sdk expects: 'self', 'anyone', or dict with {type, counterparty}
+        # py-wallet-toolbox uses: 'self', 'anyone', or hex string
+        counterparty = args.get("counterparty")
+        if counterparty is not None:
+            if isinstance(counterparty, str):
+                if counterparty in ("self", "anyone"):
+                    # py-sdk WalletImpl._normalize_counterparty handles these strings
+                    # but it expects them as None for 'self' or special handling
+                    # We need to convert to dict format that py-sdk expects
+                    if counterparty == "self":
+                        proto_args["counterparty"] = {"type": CounterpartyType.SELF}
+                    elif counterparty == "anyone":
+                        proto_args["counterparty"] = {"type": CounterpartyType.ANYONE}
+                else:
+                    # Hex string - convert to dict format
+                    proto_args["counterparty"] = {
+                        "type": CounterpartyType.OTHER,
+                        "counterparty": counterparty
+                    }
+            elif isinstance(counterparty, PublicKey):
+                proto_args["counterparty"] = {
+                    "type": CounterpartyType.OTHER,
+                    "counterparty": counterparty.hex()
+                }
+            else:
+                proto_args["counterparty"] = counterparty
+
+        # Convert data (normalize to bytes)
+        data = args.get("data")
+        if data is not None:
+            proto_args["data"] = _as_bytes(data, "data")
+
+        # Convert hashToDirectlySign -> hash_to_directly_sign
+        hash_to_sign = args.get("hashToDirectlySign")
+        if hash_to_sign is not None:
+            proto_args["hash_to_directly_sign"] = _as_bytes(hash_to_sign, "hashToDirectlySign")
+
+        # forSelf -> for_self
+        for_self = args.get("forSelf")
+        if for_self is not None:
+            proto_args["for_self"] = for_self
+
+        return proto_args
+
+    def _convert_verify_signature_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert verify signature args from py-wallet-toolbox format to py-sdk format.
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk format
+        """
+        proto_args = self._convert_signature_args_to_proto_format(args)
+
+        # Convert hashToDirectlyVerify -> hash_to_directly_verify
+        hash_to_verify = args.get("hashToDirectlyVerify")
+        if hash_to_verify is not None:
+            proto_args["hash_to_directly_verify"] = _as_bytes(hash_to_verify, "hashToDirectlyVerify")
+
+        # signature stays the same but normalize to bytes
+        signature = args.get("signature")
+        if signature is not None:
+            proto_args["signature"] = _as_bytes(signature, "signature")
+
+        return proto_args
 
     def _to_wallet_network(self, chain: Chain) -> WalletNetwork:
         """Convert chain to wallet network name.
@@ -2442,10 +2550,30 @@ class Wallet:
         # Validate arguments
         validate_create_signature_args(args)
 
-        # Check if privileged mode is requested
+        # Check if privileged mode is requested (TS/Go parity)
+        # TS: if (args.privileged) { return this.privilegedKeyManager.createSignature(args) }
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_signature(args)
 
+        # Delegate to proto (py-sdk WalletImpl) - TS/Go parity
+        # TS: return this.proto.createSignature(args)
+        # Go: return w.proto.CreateSignature(ctx, args, originator)
+        if self.proto is not None:
+            # Convert args from py-wallet-toolbox format (camelCase) to py-sdk format (snake_case)
+            proto_args = self._convert_signature_args_to_proto_format(args)
+            result = self.proto.create_signature(proto_args, originator)
+            
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"create_signature failed: {result['error']}")
+            
+            # Convert signature to list[int] format for consistency
+            signature = result.get("signature", b"")
+            if isinstance(signature, bytes):
+                return {"signature": _to_byte_list(signature)}
+            return {"signature": list(signature) if signature else []}
+
+        # Fallback: Direct implementation if proto is not available
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 
@@ -2517,10 +2645,26 @@ class Wallet:
         # Validate arguments
         validate_verify_signature_args(args)
 
-        # Check if privileged mode is requested
+        # Check if privileged mode is requested (TS/Go parity)
+        # TS: if (args.privileged) { return this.privilegedKeyManager.verifySignature(args) }
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_signature(args)
 
+        # Delegate to proto (py-sdk WalletImpl) - TS/Go parity
+        # TS: return this.proto.verifySignature(args)
+        # Go: return w.proto.VerifySignature(ctx, args, originator)
+        if self.proto is not None:
+            # Convert args from py-wallet-toolbox format (camelCase) to py-sdk format (snake_case)
+            proto_args = self._convert_verify_signature_args_to_proto_format(args)
+            result = self.proto.verify_signature(proto_args, originator)
+            
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"verify_signature failed: {result['error']}")
+            
+            return {"valid": bool(result.get("valid", False))}
+
+        # Fallback: Direct implementation if proto is not available
         if self.key_deriver is None:
             raise RuntimeError("keyDeriver is not configured")
 

@@ -13,7 +13,7 @@ from bsv.keys import PublicKey
 from internal import setup, show
 
 # RecipientAddress is the address to send satoshis to (P2PKH address)
-RECIPIENT_ADDRESS = "n2hLhPBSecDd8zu1W44Aett6Az7mQT5FtT"  # testnet address
+RECIPIENT_ADDRESS = "mgiQPW6wGqy7neHztGJKnnKb3qEZkx7vnV"  # testnet address
 
 # SatoshisToSend is the amount to send to the recipient
 SATOSHIS_TO_SEND = 1000  # 1000 satoshis

@@ -86,10 +86,10 @@ MIDDLEWARE = [
 
     # ==========================================================================
     # BSV Middleware (py-middleware package)
-    # Uncomment to enable BRC-104 authentication
+    # BRC-104 authentication is now enabled
     # ==========================================================================
-    # 'adapter.auth_middleware.BSVAuthMiddleware',
-    # 'adapter.payment_middleware_complete.BSVPaymentMiddleware',
+    'adapter.auth_middleware.BSVAuthMiddleware',
+    # 'adapter.payment_middleware_complete.BSVPaymentMiddleware',  # Uncomment for payment
 ]
 
 ROOT_URLCONF = 'wallet_server.urls'
@@ -183,29 +183,42 @@ REST_FRAMEWORK = {
 #            go-bsv-middleware/pkg/middleware/
 # =============================================================================
 
-# BSV_MIDDLEWARE = {
-#     # Required: Wallet instance for authentication
-#     # Example using py-wallet-toolbox:
-#     #   from bsv_wallet_toolbox import Wallet
-#     #   'WALLET': Wallet(chain='test', key_deriver=...),
-#     'WALLET': None,
-#
-#     # Allow unauthenticated requests (for development/testing)
-#     # Set to False in production to require BRC-104 authentication
-#     'ALLOW_UNAUTHENTICATED': True,
-#
-#     # Certificate requirements for mutual authentication
-#     'CERTIFICATE_REQUESTS': None,
-#
-#     # Callback when certificates are received
-#     'ON_CERTIFICATES_RECEIVED': None,
-#
-#     # Custom session manager (optional)
-#     'SESSION_MANAGER': None,
-#
-#     # Logging configuration
-#     'LOG_LEVEL': 'error',  # 'debug', 'info', 'warn', 'error'
-# }
+# Server wallet is initialized lazily when the middleware loads
+# This avoids circular imports during Django startup
+_server_wallet_instance = None
+
+def get_bsv_wallet():
+    """Get or create server wallet for BSV middleware."""
+    global _server_wallet_instance
+    if _server_wallet_instance is None:
+        from wallet_app.services import get_server_wallet
+        _server_wallet_instance = get_server_wallet()
+    return _server_wallet_instance
+
+# Note: BSV_MIDDLEWARE['WALLET'] will be set by the middleware on first access
+# The middleware checks for callable and calls it if needed
+BSV_MIDDLEWARE = {
+    # Required: Wallet instance for authentication
+    # Uses get_server_wallet() from wallet_app.services (lazy loaded)
+    'WALLET': None,  # Will be set below after definition
+    'WALLET_GETTER': get_bsv_wallet,  # Callable for lazy initialization
+
+    # Allow unauthenticated requests (for development/testing)
+    # Set to False in production to require BRC-104 authentication
+    'ALLOW_UNAUTHENTICATED': True,
+
+    # Certificate requirements for mutual authentication
+    'CERTIFICATE_REQUESTS': None,
+
+    # Callback when certificates are received
+    'ON_CERTIFICATES_RECEIVED': None,
+
+    # Custom session manager (optional)
+    'SESSION_MANAGER': None,
+
+    # Logging configuration
+    'LOG_LEVEL': 'debug',  # 'debug', 'info', 'warn', 'error'
+}
 
 
 # =============================================================================

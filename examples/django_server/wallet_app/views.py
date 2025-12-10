@@ -8,16 +8,20 @@ Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageServer.t
 When BSV authentication is enabled via py-middleware, the identity key
 verification is handled automatically by the middleware. The views can
 access authenticated identity via request.auth.identity_key.
+
+BRC-104 Authentication:
+- /.well-known/auth endpoint handles initialRequest/initialResponse handshake
+- General messages use x-bsv-auth-* headers for authentication
 """
 
 import json
 import logging
 
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .services import get_storage_server
+from .services import get_storage_server, get_server_wallet
 
 logger = logging.getLogger(__name__)
 
@@ -204,4 +208,152 @@ def json_rpc_endpoint(request: HttpRequest):
                 "message": f"Internal error: {str(e)}"
             },
             "id": request_id
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def well_known_auth_endpoint(request: HttpRequest):
+    """
+    BRC-104 Authentication endpoint for mutual authentication handshake.
+    
+    This endpoint handles:
+    - initialRequest: Client sends initial authentication request
+    - initialResponse: Server responds with its identity and signature
+    
+    Reference:
+    - go-sdk/auth/transports/simplified_http_transport.go
+    - ts-sdk/src/auth/transports/SimplifiedFetchTransport.ts
+    """
+    # Handle OPTIONS for CORS preflight
+    if request.method == 'OPTIONS':
+        response = HttpResponse()
+        response.status_code = 204
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = '*'
+        return response
+
+    try:
+        # Parse the incoming AuthMessage
+        try:
+            message_data = json.loads(request.body.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            logger.warning(f"Invalid JSON in auth request: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'code': 'ERR_INVALID_JSON',
+                'description': str(e)
+            }, status=400)
+
+        logger.info(f"[AUTH] Received message: {message_data.get('messageType', 'unknown')}")
+        
+        message_type = message_data.get('messageType') or message_data.get('message_type', '')
+        
+        if message_type == 'initialRequest':
+            return _handle_initial_request(request, message_data)
+        else:
+            logger.warning(f"[AUTH] Unknown message type: {message_type}")
+            return JsonResponse({
+                'status': 'error',
+                'code': 'ERR_UNKNOWN_MESSAGE_TYPE',
+                'description': f'Unknown message type: {message_type}'
+            }, status=400)
+
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        logger.error(f"Error in auth endpoint: {e}\n{error_detail}")
+        return JsonResponse({
+            'status': 'error',
+            'code': 'ERR_AUTH_FAILED',
+            'description': str(e)
+        }, status=500)
+
+
+def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonResponse:
+    """
+    Handle initialRequest message and generate initialResponse.
+    
+    Reference: go-sdk/auth/peer.go handleInitialRequest()
+    """
+    import os
+    import base64
+    from bsv.keys import PrivateKey
+    from bsv.hash import sha256
+    
+    try:
+        # Get server wallet
+        server_wallet = get_server_wallet()
+        
+        # Extract client's identity key and nonce
+        client_identity_key = message_data.get('identityKey') or message_data.get('identity_key', '')
+        client_nonce = message_data.get('nonce') or message_data.get('initialNonce') or message_data.get('initial_nonce', '')
+        version = message_data.get('version', '0.1')
+        
+        logger.info(f"[AUTH] Client identity: {client_identity_key[:20]}... nonce: {client_nonce[:20]}...")
+        
+        # Generate server's nonce
+        server_nonce = base64.b64encode(os.urandom(32)).decode('utf-8')
+        
+        # Get server's identity key
+        server_identity_key = server_wallet.get_public_key({
+            'identityKey': True
+        })
+        if isinstance(server_identity_key, dict):
+            server_identity_key = server_identity_key.get('publicKey', '')
+        
+        logger.info(f"[AUTH] Server identity: {server_identity_key[:20]}...")
+        
+        # Create signature over the message
+        # Reference: go-sdk/auth/peer.go signMessage()
+        # Sign: version + messageType + yourNonce + nonce
+        message_to_sign = f"{version}initialResponse{client_nonce}{server_nonce}"
+        message_bytes = message_to_sign.encode('utf-8')
+        message_hash = sha256(message_bytes)
+        
+        # Sign using wallet
+        signature_result = server_wallet.create_signature({
+            'data': list(message_hash),
+            'protocolID': [2, 'auth'],
+            'keyID': '1',
+            'counterparty': client_identity_key
+        })
+        
+        signature_hex = ''
+        if isinstance(signature_result, dict):
+            sig = signature_result.get('signature', b'')
+            if isinstance(sig, bytes):
+                signature_hex = sig.hex()
+            elif isinstance(sig, list):
+                signature_hex = bytes(sig).hex()
+            else:
+                signature_hex = str(sig)
+        
+        # Build initialResponse
+        response_data = {
+            'status': 'success',
+            'version': version,
+            'messageType': 'initialResponse',
+            'identityKey': server_identity_key,
+            'nonce': server_nonce,
+            'yourNonce': client_nonce,
+            'initialNonce': client_nonce,
+            'certificates': [],
+            'signature': signature_hex
+        }
+        
+        logger.info(f"[AUTH] Sending initialResponse with signature: {signature_hex[:40]}...")
+        
+        response = JsonResponse(response_data)
+        response['Access-Control-Allow-Origin'] = '*'
+        return response
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"[AUTH] Error handling initialRequest: {e}\n{traceback.format_exc()}")
+        return JsonResponse({
+            'status': 'error',
+            'code': 'ERR_INITIAL_REQUEST_FAILED',
+            'description': str(e)
         }, status=500)
