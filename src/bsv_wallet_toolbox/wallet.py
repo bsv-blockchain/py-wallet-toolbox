@@ -49,22 +49,15 @@ from .utils.validation import (
     validate_abort_action_args,
     validate_acquire_certificate_args,
     validate_create_action_args,
-    validate_create_hmac_args,
-    validate_create_signature_args,
-    validate_decrypt_args,
     validate_discover_by_attributes_args,
     validate_discover_by_identity_key_args,
-    validate_encrypt_args,
     validate_get_header_args,
-    validate_get_public_key_args,
     validate_get_version_args,
     validate_internalize_action_args,
     validate_list_actions_args,
     validate_prove_certificate_args,
     validate_relinquish_certificate_args,
     validate_sign_action_args,
-    validate_verify_hmac_args,
-    validate_verify_signature_args,
     validate_wallet_constructor_args,
 )
 
@@ -488,6 +481,307 @@ class Wallet:
         signature = args.get("signature")
         if signature is not None:
             proto_args["signature"] = _as_bytes(signature, "signature")
+
+        return proto_args
+
+    def _convert_get_public_key_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert get_public_key args from py-wallet-toolbox format to py-sdk ProtoWallet format.
+
+        py-wallet-toolbox uses camelCase (protocolID, keyID, forSelf, identityKey)
+        py-sdk ProtoWallet.get_public_key expects the same format (it handles both).
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+        """
+        proto_args: dict[str, Any] = {}
+
+        # Pass through identityKey
+        if "identityKey" in args:
+            proto_args["identityKey"] = args["identityKey"]
+
+        # Pass through protocolID (py-sdk accepts list/tuple format)
+        if "protocolID" in args:
+            proto_args["protocolID"] = args["protocolID"]
+
+        # Pass through keyID
+        if "keyID" in args:
+            proto_args["keyID"] = args["keyID"]
+
+        # Convert counterparty to string format (py-sdk accepts string 'self'/'anyone'/hex)
+        counterparty_arg = args.get("counterparty")
+        if counterparty_arg is not None:
+            if isinstance(counterparty_arg, PublicKey):
+                proto_args["counterparty"] = counterparty_arg.hex()
+            else:
+                proto_args["counterparty"] = counterparty_arg
+
+        # Pass through forSelf
+        if "forSelf" in args:
+            proto_args["forSelf"] = args["forSelf"]
+
+        # Pass through seekPermission
+        if "seekPermission" in args:
+            proto_args["seekPermission"] = args["seekPermission"]
+
+        return proto_args
+
+    def _convert_counterparty_to_proto_format(self, counterparty_arg: Any) -> dict[str, Any] | None:
+        """Convert counterparty to py-sdk ProtoWallet dict format.
+
+        py-sdk ProtoWallet._normalize_counterparty expects:
+        - dict with 'type' and optionally 'counterparty' keys
+        - None -> SELF
+
+        Args:
+            counterparty_arg: Counterparty in py-wallet-toolbox format
+
+        Returns:
+            Dict in py-sdk format or None
+        """
+        if counterparty_arg is None:
+            return None
+
+        if isinstance(counterparty_arg, str):
+            if counterparty_arg == "self":
+                return {"type": CounterpartyType.SELF}
+            elif counterparty_arg == "anyone":
+                return {"type": CounterpartyType.ANYONE}
+            else:
+                # Hex string public key
+                return {"type": CounterpartyType.OTHER, "counterparty": counterparty_arg}
+        elif isinstance(counterparty_arg, PublicKey):
+            return {"type": CounterpartyType.OTHER, "counterparty": counterparty_arg.hex()}
+        else:
+            return counterparty_arg
+
+    def _convert_encrypt_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert encrypt args from py-wallet-toolbox format to py-sdk ProtoWallet format.
+
+        py-wallet-toolbox uses camelCase (protocolID, keyID, forSelf)
+        py-sdk ProtoWallet expects: plaintext + encryption_args dict with snake_case
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+
+        Raises:
+            TypeError: If protocolID format is invalid
+        """
+        plaintext = args.get("plaintext")
+        if plaintext is not None:
+            plaintext = _as_bytes(plaintext, "plaintext")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+        for_self = args.get("forSelf", False)
+
+        # Build encryption_args in py-sdk format
+        encryption_args: dict[str, Any] = {}
+
+        if protocol_id is not None:
+            # Validate protocolID format - must be tuple/list, not string
+            if isinstance(protocol_id, str):
+                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+            try:
+                # py-sdk expects dict with securityLevel and protocol
+                encryption_args["protocol_id"] = {
+                    "securityLevel": protocol_id[0],
+                    "protocol": protocol_id[1],
+                }
+            except (TypeError, IndexError) as e:
+                raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
+
+        if key_id is not None:
+            encryption_args["key_id"] = key_id
+
+        # Handle counterparty conversion - must use dict format for py-sdk
+        encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
+
+        encryption_args["forSelf"] = for_self
+
+        return {
+            "plaintext": plaintext,
+            "encryption_args": encryption_args,
+        }
+
+    def _convert_decrypt_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert decrypt args from py-wallet-toolbox format to py-sdk ProtoWallet format.
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+
+        Raises:
+            TypeError: If protocolID format is invalid
+        """
+        ciphertext = args.get("ciphertext")
+        if ciphertext is not None:
+            ciphertext = _as_bytes(ciphertext, "ciphertext")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+
+        # Build encryption_args in py-sdk format
+        encryption_args: dict[str, Any] = {}
+
+        if protocol_id is not None:
+            # Validate protocolID format - must be tuple/list, not string
+            if isinstance(protocol_id, str):
+                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+            try:
+                encryption_args["protocol_id"] = {
+                    "securityLevel": protocol_id[0],
+                    "protocol": protocol_id[1],
+                }
+            except (TypeError, IndexError) as e:
+                raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
+
+        if key_id is not None:
+            encryption_args["key_id"] = key_id
+
+        # Handle counterparty conversion - must use dict format for py-sdk
+        encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
+
+        return {
+            "ciphertext": ciphertext,
+            "encryption_args": encryption_args,
+        }
+
+    def _convert_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert HMAC args from py-wallet-toolbox format to py-sdk ProtoWallet format.
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+
+        Raises:
+            TypeError: If protocolID format is invalid
+        """
+        data = args.get("data")
+        if data is not None:
+            data = _as_bytes(data, "data")
+
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+        counterparty_arg = args.get("counterparty", "self")
+
+        # Build encryption_args in py-sdk format (HMAC uses same structure)
+        encryption_args: dict[str, Any] = {}
+
+        if protocol_id is not None:
+            # Validate protocolID format - must be tuple/list, not string
+            if isinstance(protocol_id, str):
+                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+            try:
+                encryption_args["protocol_id"] = {
+                    "securityLevel": protocol_id[0],
+                    "protocol": protocol_id[1],
+                }
+            except (TypeError, IndexError) as e:
+                raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
+
+        if key_id is not None:
+            encryption_args["key_id"] = key_id
+
+        # Handle counterparty conversion - must use dict format for py-sdk
+        encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
+
+        return {
+            "data": data,
+            "encryption_args": encryption_args,
+        }
+
+    def _convert_verify_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert verify HMAC args from py-wallet-toolbox format to py-sdk ProtoWallet format.
+
+        Args:
+            args: Arguments in py-wallet-toolbox format
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+        """
+        proto_args = self._convert_hmac_args_to_proto_format(args)
+
+        # Add HMAC value to verify
+        hmac_value = args.get("hmac")
+        if hmac_value is not None:
+            proto_args["hmac"] = _as_bytes(hmac_value, "hmac")
+
+        return proto_args
+
+    def _convert_reveal_counterparty_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert reveal_counterparty_key_linkage args to py-sdk ProtoWallet format.
+
+        Args:
+            args: Arguments in py-wallet-toolbox format (camelCase)
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+        """
+        counterparty = args.get("counterparty")
+        verifier = args.get("verifier")
+
+        # Convert PublicKey objects to appropriate format
+        if hasattr(counterparty, "hex"):
+            counterparty = counterparty.hex()
+        if hasattr(verifier, "hex"):
+            verifier = verifier.hex()
+
+        return {
+            "counterparty": counterparty,
+            "verifier": verifier,
+            "seekPermission": args.get("seekPermission", False),
+        }
+
+    def _convert_reveal_specific_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert reveal_specific_key_linkage args to py-sdk ProtoWallet format.
+
+        Args:
+            args: Arguments in py-wallet-toolbox format (camelCase)
+
+        Returns:
+            Arguments in py-sdk ProtoWallet format
+        """
+        counterparty = args.get("counterparty")
+        verifier = args.get("verifier")
+        protocol_id = args.get("protocolID")
+        key_id = args.get("keyID")
+
+        # Convert PublicKey objects to appropriate format
+        if hasattr(counterparty, "hex"):
+            counterparty = counterparty.hex()
+        if hasattr(verifier, "hex"):
+            verifier = verifier.hex()
+
+        proto_args: dict[str, Any] = {
+            "counterparty": counterparty,
+            "verifier": verifier,
+            "key_id": key_id,
+            "seekPermission": args.get("seekPermission", False),
+        }
+
+        # Convert protocolID format
+        if protocol_id is not None:
+            if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
+                proto_args["protocol_id"] = {
+                    "security_level": protocol_id[0],
+                    "protocol": protocol_id[1],
+                }
+            elif isinstance(protocol_id, dict):
+                proto_args["protocol_id"] = protocol_id
+            else:
+                proto_args["protocolID"] = protocol_id
 
         return proto_args
 
@@ -2253,30 +2547,34 @@ class Wallet:
         Reveals the linkage between this wallet's key and a counterparty's key,
         encrypted for a verifier's inspection. Uses key derivation and encryption.
 
-        TS parity:
-            - Delegates to ProtoWallet or PrivilegedKeyManager
+        TS/Go parity:
+            - Delegates to ProtoWallet for cryptographic operations
             - Validates privileged mode via args.privileged flag
 
         Args:
             args: Arguments dict containing:
                 - counterparty (str): Counterparty public key (hex)
                 - verifier (str): Verifier public key (hex) for encryption
-                - protocolID (tuple[int, str]): Security level and protocol name
-                - keyID (str): Key identifier
                 - privileged (bool, optional): Whether to use privileged key
                 - privilegedReason (str, optional): Reason for privileged access
             originator: Optional caller identity
 
         Returns:
-            dict: {'encryptedLinkage': bytes} - encrypted linkage for verifier
+            dict containing:
+                - prover: Prover's public key
+                - counterparty: Counterparty's public key
+                - verifier: Verifier's public key
+                - revelationTime: Timestamp
+                - encryptedLinkage: Encrypted linkage bytes
+                - encryptedLinkageProof: Encrypted Schnorr proof bytes
 
         Raises:
-            InvalidParameterError: If args are invalid
-            RuntimeError: If key_deriver or privileged_key_manager not configured
+            ValueError: If args are invalid
+            RuntimeError: If proto is not configured
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts
-            - ts-sdk ProtoWallet.revealCounterpartyKeyLinkage
+            - go-wallet-toolbox/pkg/wallet/wallet.go RevealCounterpartyKeyLinkage
+            - py-sdk ProtoWallet.reveal_counterparty_key_linkage
         """
         self._validate_originator(originator)
 
@@ -2284,45 +2582,19 @@ class Wallet:
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.reveal_counterparty_key_linkage(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # Go: return w.proto.RevealCounterpartyKeyLinkage(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_reveal_counterparty_args_to_proto_format(args)
+            result = self.proto.reveal_counterparty_key_linkage(proto_args, originator)
 
-        # Validate required parameters
-        if args.get("privileged") and not args.get("privilegedReason"):
-            raise ValueError("privilegedReason is required when privileged is True")
-        
-        counterparty = args.get("counterparty", "")
-        if not counterparty or counterparty == "":
-            raise ValueError("counterparty is required")
-        if len(counterparty) != 66 or not counterparty.startswith(("02", "03")):
-            raise ValueError("counterparty must be a valid compressed public key (66 hex chars)")
-        
-        verifier = args.get("verifier")
-        if verifier is None:
-            raise ValueError("verifier is required")
-        if not verifier or verifier == "":
-            raise ValueError("verifier cannot be empty")
-        if len(verifier) != 66 or not verifier.startswith(("02", "03")):
-            raise ValueError("verifier must be a valid compressed public key (66 hex chars)")
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"reveal_counterparty_key_linkage failed: {result['error']}")
 
-        # Check if key_deriver has the method
-        if hasattr(self.key_deriver, 'reveal_counterparty_key_linkage'):
-            # Delegate to key_deriver for standard (non-privileged) operation
-            return self.key_deriver.reveal_counterparty_key_linkage(args)
-        else:
-            # Fall back to stub implementation for compatibility
-            # In a real implementation, this would compute cryptographic proofs
-            prover = self.key_deriver.identity_key().hex()
+            return result
 
-            return {
-                "prover": prover,
-                "counterparty": counterparty,
-                "verifier": verifier,
-                "revealedBy": prover,  # The prover reveals their own linkage
-                "revelationTime": "2023-01-01T00:00:00Z",
-                "encryptedLinkage": [1, 2, 3, 4],
-                "encryptedLinkageProof": [5, 6, 7, 8]
-            }
+        raise RuntimeError("proto is not configured")
 
     def reveal_specific_key_linkage(
         self,
@@ -2334,8 +2606,8 @@ class Wallet:
         Reveals linkage for a specific derived key with a counterparty,
         encrypted for a verifier. More fine-grained than counterparty linkage.
 
-        TS parity:
-            - Delegates to ProtoWallet or PrivilegedKeyManager
+        TS/Go parity:
+            - Delegates to ProtoWallet for cryptographic operations
             - Validates privileged mode via args.privileged flag
 
         Args:
@@ -2349,15 +2621,23 @@ class Wallet:
             originator: Optional caller identity
 
         Returns:
-            dict: {'encryptedLinkage': bytes} - encrypted linkage for verifier
+            dict containing:
+                - prover: Prover's public key
+                - counterparty: Counterparty's public key
+                - verifier: Verifier's public key
+                - protocolID: Protocol ID
+                - keyID: Key ID
+                - encryptedLinkage: Encrypted linkage bytes
+                - encryptedLinkageProof: Encrypted proof bytes
+                - proofType: Proof type (0 = no proof)
 
         Raises:
-            InvalidParameterError: If args are invalid
-            RuntimeError: If key_deriver or privileged_key_manager not configured
+            ValueError: If args are invalid
+            RuntimeError: If proto is not configured
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts
-            - ts-sdk ProtoWallet.revealSpecificKeyLinkage
+            - go-wallet-toolbox/pkg/wallet/wallet.go RevealSpecificKeyLinkage
+            - py-sdk ProtoWallet.reveal_specific_key_linkage
         """
         self._validate_originator(originator)
 
@@ -2365,48 +2645,19 @@ class Wallet:
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.reveal_specific_key_linkage(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # Go: return w.proto.RevealSpecificKeyLinkage(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_reveal_specific_args_to_proto_format(args)
+            result = self.proto.reveal_specific_key_linkage(proto_args, originator)
 
-        # Validate required parameters
-        protocol_id = args.get("protocolID")
-        if protocol_id is None:
-            raise ValueError("protocolID is required")
-        
-        key_id = args.get("keyID")
-        if key_id is None:
-            raise ValueError("keyID is required")
-        if key_id == "":
-            raise ValueError("keyID cannot be empty")
-        
-        counterparty = args.get("counterparty", "")
-        if not counterparty or counterparty == "":
-            raise ValueError("counterparty is required")
-        
-        verifier = args.get("verifier")
-        if verifier is None:
-            raise ValueError("verifier is required")
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"reveal_specific_key_linkage failed: {result['error']}")
 
-        # Check if key_deriver has the method
-        if hasattr(self.key_deriver, 'reveal_specific_key_linkage'):
-            # Delegate to key_deriver for standard (non-privileged) operation
-            return self.key_deriver.reveal_specific_key_linkage(args)
-        else:
-            # Fall back to stub implementation for compatibility
-            # In a real implementation, this would compute cryptographic proofs
-            prover = self.key_deriver.identity_key().hex()
+            return result
 
-            return {
-                "prover": prover,
-                "counterparty": counterparty,
-                "verifier": verifier,
-                "keyID": key_id,
-                "protocolID": protocol_id,
-                "revealedBy": prover,  # The prover reveals their own linkage
-                "revelationTime": "2023-01-01T00:00:00Z",
-                "encryptedLinkage": [1, 2, 3, 4],
-                "encryptedLinkageProof": [5, 6, 7, 8]
-            }
+        raise RuntimeError("proto is not configured")
 
     def get_public_key(
         self,
@@ -2461,8 +2712,6 @@ class Wallet:
         self._validate_originator(originator)
 
         # Validate arguments
-        validate_get_public_key_args(args)
-
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             # Handle privileged key synchronously
@@ -2470,44 +2719,23 @@ class Wallet:
                 privileged_key = self.privileged_key_manager._get_privileged_key(args.get("privilegedReason", ""))
                 return {"publicKey": privileged_key.public_key().hex()}
             else:
-                # For derived keys, we'd need to implement synchronous derivation
-                # For now, fall back to regular key deriver
-                pass
+                # For derived keys, use privileged key manager's get_public_key
+                return self.privileged_key_manager.get_public_key(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # TS: return this.proto.getPublicKey(args)
+        # Go: return w.proto.GetPublicKey(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_get_public_key_args_to_proto_format(args)
+            result = self.proto.get_public_key(proto_args, originator)
 
-        # Case 1: Identity key requested
-        if args.get("identityKey"):
-            # Return root public key (matches TS: this.keyDeriver.rootKey.toPublicKey().toString())
-            root_public_key = self.key_deriver._root_public_key
-            return {"publicKey": root_public_key.hex()}
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"get_public_key failed: {result['error']}")
 
-        # Case 2: Derive a key
-        protocol_id = args["protocolID"]
-        key_id = args["keyID"]
+            return {"publicKey": result.get("publicKey", "")}
 
-        # Convert TypeScript protocolID format [security_level, protocol_name] to Protocol
-
-        security_level, protocol_name = protocol_id
-        protocol = Protocol(security_level=security_level, protocol=protocol_name)
-
-        # Get counterparty (default: 'self', matching TS)
-        counterparty_arg = args.get("counterparty", "self")
-        counterparty = _parse_counterparty(counterparty_arg)
-
-        # Get forSelf flag (default: False, matching TS)
-        for_self = args.get("forSelf", False)
-
-        # Derive public key
-        derived_pub = self.key_deriver.derive_public_key(
-            protocol=protocol,
-            key_id=key_id,
-            counterparty=counterparty,
-            for_self=for_self,
-        )
-
-        return {"publicKey": derived_pub.hex()}
+        raise RuntimeError("proto is not configured")
 
     def create_signature(
         self,
@@ -2546,9 +2774,6 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate arguments
-        validate_create_signature_args(args)
-
         # Check if privileged mode is requested (TS/Go parity)
         # TS: if (args.privileged) { return this.privilegedKeyManager.createSignature(args) }
         if args.get("privileged") and self.privileged_key_manager is not None:
@@ -2572,37 +2797,8 @@ class Wallet:
                 return {"signature": _to_byte_list(signature)}
             return {"signature": list(signature) if signature else []}
 
-        # Fallback: Direct implementation if proto is not available
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
-
-        # Inputs
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_arg = args.get("counterparty", "self")
-
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-        counterparty = _parse_counterparty(counterparty_arg)
-
-        # Derive private key for signing
-        priv = self.key_deriver.derive_private_key(
-            protocol=protocol,
-            key_id=key_id,
-            counterparty=counterparty,
-        )
-
-        # Decide message to sign
-        h_direct = args.get("hashToDirectlySign")
-        if h_direct is not None:
-            to_sign = _as_bytes(h_direct, "hashToDirectlySign")
-        else:
-            data = args.get("data", b"")
-            buf = _as_bytes(data, "data")
-            to_sign = hashlib.sha256(buf).digest()
-
-        # Sign without extra hashing (TS parity)
-        signature: bytes = priv.sign(to_sign, hasher=lambda m: m)
-        return {"signature": _to_byte_list(signature)}
+        # proto is required - no fallback implementation
+        raise RuntimeError("proto (ProtoWallet) is not configured")
 
     def verify_signature(
         self,
@@ -2641,9 +2837,6 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate arguments
-        validate_verify_signature_args(args)
-
         # Check if privileged mode is requested (TS/Go parity)
         # TS: if (args.privileged) { return this.privilegedKeyManager.verifySignature(args) }
         if args.get("privileged") and self.privileged_key_manager is not None:
@@ -2663,45 +2856,8 @@ class Wallet:
             
             return {"valid": bool(result.get("valid", False))}
 
-        # Fallback: Direct implementation if proto is not available
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
-
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        signature = args.get("signature")
-        counterparty_arg = args.get("counterparty", "self")
-        for_self = args.get("forSelf", False)
-
-        signature_bytes = _as_bytes(signature, "signature")
-
-        # Use provided publicKey for verification (BRC-100 compliant)
-        public_key_hex = args.get("publicKey")
-        if public_key_hex:
-            # Use the provided public key directly
-            pub = PublicKey(public_key_hex)
-        else:
-            # Fall back to deriving from protocolID/keyID if no publicKey provided
-            protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-            counterparty = _parse_counterparty(counterparty_arg)
-            pub = self.key_deriver.derive_public_key(
-                protocol=protocol,
-                key_id=key_id,
-                counterparty=counterparty,
-                for_self=for_self,
-            )
-
-        h_direct = args.get("hashToDirectlyVerify")
-        if h_direct is not None:
-            digest = _as_bytes(h_direct, "hashToDirectlyVerify")
-        else:
-            data = args.get("data", b"")
-            buf = _as_bytes(data, "data")
-            digest = hashlib.sha256(buf).digest()
-
-        # Verify without extra hashing (TS parity)
-        valid = pub.verify(signature_bytes, digest, hasher=lambda m: m)
-        return {"valid": bool(valid)}
+        # proto is required - no fallback implementation
+        raise RuntimeError("proto (ProtoWallet) is not configured")
 
     def encrypt(
         self,
@@ -2712,6 +2868,7 @@ class Wallet:
 
         TS parity:
         - Use derived public key from protocolID/keyID/counterparty unless forSelf uses identity pathing.
+        - Delegates to ProtoWallet for cryptographic operations (Go/TS parity).
 
         Args:
             args: Dictionary containing:
@@ -2736,34 +2893,27 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate arguments
-        validate_encrypt_args(args)
-
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.encrypt(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # Go: return w.proto.Encrypt(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_encrypt_args_to_proto_format(args)
+            result = self.proto.encrypt(proto_args, originator)
 
-        plaintext = _as_bytes(args.get("plaintext"), "plaintext")
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"encrypt failed: {result['error']}")
 
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_arg = args.get("counterparty", "self")
-        for_self = args.get("forSelf", False)
+            # Convert ciphertext to list[int] format for consistency
+            ciphertext = result.get("ciphertext", b"")
+            if isinstance(ciphertext, bytes):
+                return {"ciphertext": _to_byte_list(ciphertext)}
+            return {"ciphertext": list(ciphertext) if ciphertext else []}
 
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-        counterparty = _parse_counterparty(counterparty_arg)
-
-        pub = self.key_deriver.derive_public_key(
-            protocol=protocol,
-            key_id=key_id,
-            counterparty=counterparty,
-            for_self=for_self,
-        )
-        ciphertext: bytes = pub.encrypt(plaintext)
-        return {"ciphertext": _to_byte_list(ciphertext)}
+        raise RuntimeError("proto is not configured")
 
     def decrypt(
         self,
@@ -2771,6 +2921,8 @@ class Wallet:
         originator: str | None = None,
     ) -> dict[str, Any]:
         """Decrypt ciphertext using a derived private key.
+
+        TS/Go parity: Delegates to ProtoWallet for cryptographic operations.
 
         Args:
             args: Dictionary containing:
@@ -2794,32 +2946,28 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate arguments
-        validate_decrypt_args(args)
-
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.decrypt(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # TS: return this.proto.decrypt(args)
+        # Go: return w.proto.Decrypt(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_decrypt_args_to_proto_format(args)
+            result = self.proto.decrypt(proto_args, originator)
 
-        ciphertext = _as_bytes(args.get("ciphertext"), "ciphertext")
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"decrypt failed: {result['error']}")
 
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_arg = args.get("counterparty", "self")
+            # Convert plaintext to list[int] format for consistency
+            plaintext = result.get("plaintext", b"")
+            if isinstance(plaintext, bytes):
+                return {"plaintext": _to_byte_list(plaintext)}
+            return {"plaintext": list(plaintext) if plaintext else []}
 
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-        counterparty = _parse_counterparty(counterparty_arg)
-
-        priv = self.key_deriver.derive_private_key(
-            protocol=protocol,
-            key_id=key_id,
-            counterparty=counterparty,
-        )
-        plaintext: bytes = priv.decrypt(ciphertext)
-        return {"plaintext": _to_byte_list(plaintext)}
+        raise RuntimeError("proto is not configured")
 
     def create_hmac(
         self,
@@ -2828,7 +2976,8 @@ class Wallet:
     ) -> dict[str, Any]:
         """Create HMAC-SHA256 using derived symmetric key.
 
-        TS parity:
+        TS/Go parity:
+        - Delegates to ProtoWallet for cryptographic operations.
         - Symmetric key derived from protocolID/keyID/counterparty via KeyDeriver.
 
         Args:
@@ -2853,29 +3002,28 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate arguments
-        validate_create_hmac_args(args)
-
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_hmac(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # TS: return this.proto.createHMAC(args)
+        # Go: return w.proto.CreateHMAC(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_hmac_args_to_proto_format(args)
+            result = self.proto.create_hmac(proto_args, originator)
 
-        data = _as_bytes(args.get("data"), "data")
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"create_hmac failed: {result['error']}")
 
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_arg = args.get("counterparty", "self")
+            # Convert hmac to list[int] format for consistency
+            hmac_value = result.get("hmac", b"")
+            if isinstance(hmac_value, bytes):
+                return {"hmac": _to_byte_list(hmac_value)}
+            return {"hmac": list(hmac_value) if hmac_value else []}
 
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-        counterparty = _parse_counterparty(counterparty_arg)
-
-        sym_key = self.key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
-
-        tag = hmac.new(sym_key, data, hashlib.sha256).digest()
-        return {"hmac": _to_byte_list(tag)}
+        raise RuntimeError("proto is not configured")
 
     def verify_hmac(
         self,
@@ -2883,6 +3031,8 @@ class Wallet:
         originator: str | None = None,
     ) -> dict[str, Any]:
         """Verify HMAC-SHA256 using derived symmetric key.
+
+        TS/Go parity: Delegates to ProtoWallet for cryptographic operations.
 
         Args:
             args: Dictionary containing:
@@ -2907,30 +3057,24 @@ class Wallet:
         """
         self._validate_originator(originator)
 
-        # Validate arguments
-        validate_verify_hmac_args(args)
-
         # Check if privileged mode is requested
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_hmac(args)
 
-        if self.key_deriver is None:
-            raise RuntimeError("keyDeriver is not configured")
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
+        # TS: return this.proto.verifyHMAC(args)
+        # Go: return w.proto.VerifyHMAC(ctx, args, originator)
+        if self.proto is not None:
+            proto_args = self._convert_verify_hmac_args_to_proto_format(args)
+            result = self.proto.verify_hmac(proto_args, originator)
 
-        data = _as_bytes(args.get("data"), "data")
-        provided = _as_bytes(args.get("hmac"), "hmac")
+            # Handle error response from proto
+            if "error" in result:
+                raise RuntimeError(f"verify_hmac failed: {result['error']}")
 
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_arg = args.get("counterparty", "self")
+            return {"valid": bool(result.get("valid", False))}
 
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-        counterparty = _parse_counterparty(counterparty_arg)
-        sym_key = self.key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
-
-        expected = hmac.new(sym_key, data, hashlib.sha256).digest()
-        valid = hmac.compare_digest(expected, provided)
-        return {"valid": bool(valid)}
+        raise RuntimeError("proto is not configured")
 
     def balance_and_utxos(self, basket: str = "default") -> dict[str, Any]:
         """Get total satoshi value and UTXO list for a basket.
