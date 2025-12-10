@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from bsv.keys import PrivateKey, PublicKey
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
-from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol
-from bsv.wallet.wallet_impl import WalletImpl as ProtoWallet
+from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol, ProtoWallet
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
     CreateSignatureResult,
@@ -272,7 +271,7 @@ class Wallet:
         # Initialize ProtoWallet for cryptographic operations (TS/Go parity)
         # TS: this.proto = new ProtoWallet(keyDeriver)
         # Go: w.proto = wallet.NewProtoWallet(keyDeriver)
-        # py-sdk: ProtoWallet is WalletImpl which takes PrivateKey
+        # py-sdk: ProtoWallet takes PrivateKey
         self.proto: ProtoWallet | None = None
         if self.key_deriver is not None:
             try:
@@ -404,7 +403,7 @@ class Wallet:
         """Convert signature args from py-wallet-toolbox format to py-sdk format.
 
         py-wallet-toolbox uses camelCase (protocolID, keyID, hashToDirectlySign)
-        py-sdk WalletImpl uses snake_case (protocol_id, key_id, hash_to_directly_sign)
+        py-sdk ProtoWallet uses snake_case (protocol_id, key_id, hash_to_directly_sign)
 
         Args:
             args: Arguments in py-wallet-toolbox format
@@ -431,7 +430,7 @@ class Wallet:
         if counterparty is not None:
             if isinstance(counterparty, str):
                 if counterparty in ("self", "anyone"):
-                    # py-sdk WalletImpl._normalize_counterparty handles these strings
+                    # py-sdk ProtoWallet._normalize_counterparty handles these strings
                     # but it expects them as None for 'self' or special handling
                     # We need to convert to dict format that py-sdk expects
                     if counterparty == "self":
@@ -2555,7 +2554,7 @@ class Wallet:
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.create_signature(args)
 
-        # Delegate to proto (py-sdk WalletImpl) - TS/Go parity
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
         # TS: return this.proto.createSignature(args)
         # Go: return w.proto.CreateSignature(ctx, args, originator)
         if self.proto is not None:
@@ -2650,7 +2649,7 @@ class Wallet:
         if args.get("privileged") and self.privileged_key_manager is not None:
             return self.privileged_key_manager.verify_signature(args)
 
-        # Delegate to proto (py-sdk WalletImpl) - TS/Go parity
+        # Delegate to proto (py-sdk ProtoWallet) - TS/Go parity
         # TS: return this.proto.verifySignature(args)
         # Go: return w.proto.VerifySignature(ctx, args, originator)
         if self.proto is not None:
