@@ -227,6 +227,7 @@ class StorageClient:
             )
 
             # Use AuthFetch for BRC-104 authenticated request (TS pattern)
+            # py-sdk AuthFetch.fetch signature: fetch(ctx, url_str, config)
             config = SimplifiedFetchRequestOptions(
                 method="POST",
                 headers={"Content-Type": "application/json"},

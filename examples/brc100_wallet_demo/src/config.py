@@ -141,8 +141,18 @@ def print_network_info(chain: Chain) -> None:
 
 
 def use_remote_storage() -> bool:
-    """Check if remote storage should be used (via USE_REMOTE_STORAGE env var)."""
-    return os.getenv("USE_REMOTE_STORAGE", "").lower() in ("1", "true", "yes")
+    """Check if remote storage should be used.
+
+    Semantics:
+        - If USE_REMOTE_STORAGE is unset/empty -> local SQLite storage is used.
+        - If USE_REMOTE_STORAGE is set to a non-empty string (including a URL),
+          remote storage mode is enabled.
+
+    This allows both:
+        USE_REMOTE_STORAGE=true
+        USE_REMOTE_STORAGE=http://localhost:8100
+    """
+    return os.getenv("USE_REMOTE_STORAGE", "").strip() != ""
 
 
 def use_wallet_infra() -> bool:
@@ -164,13 +174,19 @@ def get_remote_storage_url(network: Chain) -> str:
     """Get the remote storage server URL for the given network.
 
     Resolution order:
-        1. WALLET_STORAGE_URL env var (for custom/go storage servers)
-        2. REMOTE_STORAGE_URL env var (legacy name)
-        3. Hard-coded defaults in REMOTE_STORAGE_URLS (Babbage)
+        1. USE_REMOTE_STORAGE if it looks like a URL (http:// or https://)
+        2. WALLET_STORAGE_URL env var (for custom/go storage servers)
+        3. REMOTE_STORAGE_URL env var (legacy name)
+        4. Hard-coded defaults in REMOTE_STORAGE_URLS (Babbage)
     """
+    use_remote = os.getenv("USE_REMOTE_STORAGE", "").strip()
+    if use_remote.startswith(("http://", "https://")):
+        return use_remote
+
     env_url = os.getenv("WALLET_STORAGE_URL") or os.getenv("REMOTE_STORAGE_URL")
     if env_url:
         return env_url
+
     return REMOTE_STORAGE_URLS[network]
 
 
