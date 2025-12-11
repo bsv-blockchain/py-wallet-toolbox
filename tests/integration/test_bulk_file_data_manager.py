@@ -141,6 +141,7 @@ class TestBulkFileDataManager:
         assert range_result.min_height == 0
         assert range_result.max_height > 800000
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_default_options_cdn_files(self) -> None:
         """Given: BulkFileDataManager with default options
@@ -157,6 +158,7 @@ class TestBulkFileDataManager:
         # When/Then
         await self._test0_body(manager)
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_default_options_cdn_files_nodropall(self) -> None:
         """Given: BulkFileDataManager with storage (noDropAll)

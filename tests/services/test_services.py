@@ -101,7 +101,7 @@ class TestServices:
         # Then
         assert height > 600000
 
-    @pytest.mark.skip(reason="Stub implementation returns empty results, needs real implementation")
+    @pytest.mark.integration
     def test_listen_for_old_block_headers(self) -> None:
         """Given: WhatsOnChainServices and height range
            When: Listen for old block headers via WocHeadersBulkListener
@@ -236,7 +236,7 @@ class TestServices:
         assert "height" in headers[0]
         assert "hash" in headers[0]
 
-    @pytest.mark.skip(reason="Stub implementation returns empty results")
+    @pytest.mark.integration
     def test_get_header_byte_file_links(self) -> None:
         """Given: WhatsOnChainServices instance
            When: Get header byte file links for height range 907123-911000

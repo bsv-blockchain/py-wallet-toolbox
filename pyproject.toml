@@ -106,6 +106,7 @@ python_functions = ["test_*"]
 addopts = "-v --strict-markers"
 markers = [
     "manual: marks tests as manual tests (deselect with '-m \"not manual\"')",
+    "integration: marks tests as integration tests requiring external services (deselect with '-m \"not integration\"')",
 ]
 # Entity tests deferred to Phase 5 (see conftest_entity_skip.py)
 asyncio_mode = "auto"

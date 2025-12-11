@@ -114,7 +114,7 @@ class TestVerifyBeef:
                describe('verifyBeef tests')
     """
 
-    @pytest.mark.skip(reason="Integration test: requires working chaintracker with network access for merkle path verification")
+    @pytest.mark.integration
     async def test_verify_beef_from_hex(self) -> None:
         """Given: BEEF hex string and mainnet services
            When: Parse BEEF and verify with chaintracker

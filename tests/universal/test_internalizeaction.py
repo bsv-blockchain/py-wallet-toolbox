@@ -22,7 +22,7 @@ class TestUniversalVectorsInternalizeAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires BEEF parsing and storage provider setup")
+    @pytest.mark.integration
     def test_internalizeaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_storage
     ) -> None:

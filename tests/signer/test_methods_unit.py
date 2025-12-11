@@ -126,7 +126,6 @@ class TestCreateAction:
 class TestSignAction:
     """Test sign_action function."""
 
-    @pytest.mark.skip(reason="Requires extensive transaction verification mocking")
     def test_sign_action_success(self):
         """Test successful sign_action."""
         from bsv_wallet_toolbox.signer.methods import PendingSignAction
@@ -161,10 +160,12 @@ class TestSignAction:
 
         # Mock the complete_signed_transaction function
         with patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete, \
-             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
+             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process, \
+             patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify:
 
             mock_complete.return_value = mock_tx
             mock_process.return_value = {"sendWithResults": [], "notDelayedResults": []}
+            mock_verify.return_value = None  # Skip verification for this test
 
             args = {
                 "reference": "test_ref_123",

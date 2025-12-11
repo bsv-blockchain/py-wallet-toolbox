@@ -146,7 +146,7 @@ class TestGetMerklePath:
                describe('getRawTx service tests')
     """
 
-    @pytest.mark.skip(reason="Integration test requiring async service calls and network access")
+    @pytest.mark.integration
     def test_get_merkle_path(self) -> None:
         """Given: Services with mainnet configuration
            When: Get merkle path for a known txid

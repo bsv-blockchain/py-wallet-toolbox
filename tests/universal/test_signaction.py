@@ -22,7 +22,7 @@ class TestUniversalVectorsSignAction:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires full transaction workflow with prior createAction")
+    @pytest.mark.integration
     def test_signaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_storage
     ) -> None:

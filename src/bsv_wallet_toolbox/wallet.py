@@ -25,7 +25,7 @@ from bsv.wallet.wallet_interface import (
     GetVersionResult,
 )
 
-from .errors import InvalidParameterError, ReviewActionsError
+from .errors import InvalidParameterError, ReviewActionsError, WalletError
 from .manager.wallet_settings_manager import WalletSettingsManager
 from .sdk.privileged_key_manager import PrivilegedKeyManager
 from .sdk.types import (
@@ -3433,11 +3433,42 @@ class Wallet:
         if not isinstance(args, dict):
             raise InvalidParameterError("args must be a dictionary")
 
-        # Validate writer
-        writer = args.get("writer")
-        if writer is None:
+        # Validate args is not empty
+        if not args:
+            raise InvalidParameterError("args cannot be empty")
+
+        # Validate writer exists in args
+        if "writer" not in args:
             raise InvalidParameterError("writer is required")
-        
+
+        # Validate writer
+        writer = args["writer"]
+        if writer is None:
+            raise InvalidParameterError("writer cannot be None")
+
+        # Validate writer type (only string or storage objects allowed)
+        if not isinstance(writer, str) and not hasattr(writer, 'sync_to_writer'):
+            raise InvalidParameterError(f"writer must be a string or storage object, got {type(writer).__name__}")
+
+        # Validate options exists in args
+        if "options" not in args:
+            raise InvalidParameterError("options is required")
+
+        # Validate options
+        options = args["options"]
+        if options is None:
+            raise InvalidParameterError("options cannot be None")
+        if not isinstance(options, dict):
+            raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
+
+        # Validate batch_size if provided
+        batch_size = options.get("batch_size")
+        if batch_size is not None:
+            if not isinstance(batch_size, int):
+                raise InvalidParameterError(f"batch_size must be an integer, got {type(batch_size).__name__}")
+            if batch_size <= 0:
+                raise InvalidParameterError("batch_size must be positive")
+
         # Handle string writer (storage identity key) for backwards compatibility
         if isinstance(writer, str):
             if writer == "":
@@ -3453,35 +3484,20 @@ class Wallet:
             else:
                 return {"inserts": 1, "updates": 0, "log": "stub sync"}
 
-        # Validate options
-        options = args.get("options", {})
-        if options is None:
-            options = {}
-        if not isinstance(options, dict):
-            raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
-        
-        # Validate batch_size if provided
-        batch_size = options.get("batch_size")
-        if batch_size is not None:
-            if not isinstance(batch_size, int):
-                raise InvalidParameterError(f"batch_size must be an integer, got {type(batch_size).__name__}")
-            if batch_size <= 0:
-                raise InvalidParameterError("batch_size must be positive")
-
         # Get progress logging function
         prog_log = options.get("prog_log")
         
         # Use WalletStorageManager for actual sync
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             # Create a manager with local storage as active
             manager = WalletStorageManager(
-                identity_key=self._key_deriver.root_key.public_key.hex() if self._key_deriver else "",
-                active=self._storage
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
+                active=self.storage
             )
             
             # Create auth ID
             auth = AuthId(
-                identity_key=self._key_deriver.root_key.public_key.hex() if self._key_deriver else "",
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
                 user_id=getattr(self, '_user_id', None),
                 is_active=True
             )
@@ -3548,13 +3564,13 @@ class Wallet:
         prog_log = options.get("prog_log")
         
         # Use WalletStorageManager for actual sync
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             identity_key = self._key_deriver.root_key.public_key.hex() if self._key_deriver else ""
             
             # Create a manager with local storage as active
             manager = WalletStorageManager(
                 identity_key=identity_key,
-                active=self._storage
+                active=self.storage
             )
             
             # Perform sync from reader to local
@@ -3602,14 +3618,14 @@ class Wallet:
         prog_log = args.get("prog_log")
         
         # Use WalletStorageManager for actual sync
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             identity_key = self._key_deriver.root_key.public_key.hex() if self._key_deriver else ""
             
             # Create a manager with local storage as active
             # Note: In full implementation, backups would be passed from wallet config
             manager = WalletStorageManager(
                 identity_key=identity_key,
-                active=self._storage
+                active=self.storage
             )
             
             # Perform backup sync
@@ -3672,12 +3688,12 @@ class Wallet:
             raise InvalidParameterError(f"backup_first must be a boolean, got {type(backup_first_value).__name__}")
 
         # Use WalletStorageManager for storage switching
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             # Create a manager with current storage as active
             from .storage.wallet_storage_manager import WalletStorageManager
             manager = WalletStorageManager(
-                identity_key=self._key_deriver.root_key.public_key.hex() if self._key_deriver else "",
-                active=self._storage
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
+                active=self.storage
             )
 
             # Add other available storages as backups
