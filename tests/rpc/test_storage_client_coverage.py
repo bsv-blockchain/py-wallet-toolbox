@@ -4,7 +4,7 @@ This module tests the JSON-RPC 2.0 client implementation for remote storage prov
 Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
 """
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 
 import pytest
 import requests
@@ -53,6 +53,7 @@ class TestStorageClient:
         response.ok = True
         response.status_code = 200
         response.reason = "OK"
+        response.headers = {}
         return response
 
     def test_client_creation(self, mock_wallet) -> None:
@@ -105,7 +106,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -124,7 +125,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -165,10 +166,11 @@ class TestStorageClient:
         mock_response.ok = False
         mock_response.status_code = 500
         mock_response.reason = "Internal Server Error"
+        mock_response.headers = {}
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -186,7 +188,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -205,7 +207,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -223,7 +225,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -241,7 +243,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -259,7 +261,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -280,7 +282,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -302,7 +304,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -323,7 +325,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -344,7 +346,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -365,7 +367,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
@@ -390,7 +392,7 @@ class TestStorageClient:
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
-            mock_auth_client.fetch.return_value = mock_response
+            mock_auth_client.fetch = AsyncMock(return_value=mock_response)
             MockAuthFetch.return_value = mock_auth_client
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")

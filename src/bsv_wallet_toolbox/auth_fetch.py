@@ -319,7 +319,7 @@ class AuthFetch:
             session_manager=session_manager,
         )
 
-    def fetch(
+    async def fetch(
         self,
         url: str,
         config: Optional[SimplifiedFetchRequestOptions] = None,
@@ -339,7 +339,18 @@ class AuthFetch:
         Raises:
             Exception: On request failure or authentication error
         """
-        return self._impl.fetch(url, config)
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.debug(f"AuthFetch.fetch called: url={url}, method={config.method if config else 'GET'}")
+
+        try:
+            response = await self._impl.fetch(url, config)
+            logger.debug(f"AuthFetch.fetch succeeded: status={response.status_code}")
+            return response
+        except Exception as e:
+            logger.error(f"AuthFetch.fetch failed: {e}")
+            raise
 
     def send_certificate_request(
         self,

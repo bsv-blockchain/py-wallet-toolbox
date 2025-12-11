@@ -35,6 +35,7 @@ Network and parsing errors are propagated as exceptions.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import threading
@@ -231,7 +232,18 @@ class StorageClient:
                 headers={"Content-Type": "application/json"},
                 body=json.dumps(request_body).encode("utf-8"),
             )
-            response = self.auth_client.fetch(self.endpoint_url, config)
+
+            logger.debug(
+                f"AuthFetch request: method={method}, url={self.endpoint_url}, body_size={len(config.body) if config.body else 0}",
+                extra={"method": method, "endpoint": self.endpoint_url, "request_body": request_body},
+            )
+
+            response = asyncio.run(self.auth_client.fetch(self.endpoint_url, config))
+
+            logger.debug(
+                f"AuthFetch response: status={response.status_code}, headers={dict(response.headers)}",
+                extra={"method": method, "status_code": response.status_code, "response_headers": dict(response.headers)},
+            )
 
             # Check HTTP status code
             if not response.ok:

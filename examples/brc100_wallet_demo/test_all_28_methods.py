@@ -4,9 +4,15 @@
 Usage:
     # ローカルSQLiteストレージを使用（デフォルト）
     python test_all_28_methods.py
-    
+
     # Babbageリモートストレージを使用
     USE_REMOTE_STORAGE=true python test_all_28_methods.py
+
+    # wallet-infraサーバーを使用
+    USE_WALLET_INFRA=true python test_all_28_methods.py
+
+    # wallet-infraサーバーを使用（認証バイパス - テスト用のみ）
+    USE_WALLET_INFRA=true BYPASS_WALLET_INFRA_AUTH=true python test_all_28_methods.py
 """
 
 import os
@@ -28,6 +34,10 @@ from src.config import (
     use_remote_storage,
     get_remote_storage_client,
     get_remote_storage_url,
+    use_wallet_infra,
+    get_wallet_infra_client,
+    get_wallet_infra_url,
+    bypass_wallet_infra_auth,
 )
 
 
@@ -54,14 +64,16 @@ def main():
     options = create_default_options(network)
     services = Services(options)
     
-    # Check if remote storage is requested
+    # Check storage mode (priority: wallet-infra > remote > local)
+    wallet_infra_mode = use_wallet_infra()
+    bypass_auth = bypass_wallet_infra_auth()
     remote_storage_mode = use_remote_storage()
-    
-    if remote_storage_mode:
-        print(f"\n🌐 リモートストレージモード: {get_remote_storage_url(network)}")
-        print("⚠️  リモートストレージはBRC-104認証が必要です")
+
+    if wallet_infra_mode:
+        print(f"\n🏗️  wallet-infraモード: {get_wallet_infra_url()}")
+        print("⚠️  wallet-infraはBRC-104認証が必要です")
         print("-" * 70)
-        
+
         # First create wallet with local storage (required for StorageClient auth)
         local_storage = get_storage_provider(network)
         wallet = Wallet(
@@ -70,10 +82,66 @@ def main():
             key_deriver=key_deriver,
             storage_provider=local_storage,
         )
-        
+
+        # Create wallet-infra client
+        infra_client = get_wallet_infra_client(wallet)
+
+        # Test wallet-infra connection
+        if bypass_auth:
+            print("\n🔄 wallet-infra認証をバイパスして直接接続...")
+            print("   注意: これはテスト目的のみです。本番環境では使用しないでください。")
+
+            # Create new wallet instance using StorageClient as storage provider (bypass auth)
+            print("\n🔄 wallet-infraストレージを使用したwalletインスタンスを作成中...")
+            wallet = Wallet(
+                chain=network,
+                services=services,
+                key_deriver=key_deriver,
+                storage_provider=infra_client,
+            )
+            print("✅ wallet-infra walletインスタンス作成成功 (認証バイパス)!")
+        else:
+            try:
+                print("\n🔄 wallet-infraに接続中...")
+                infra_settings = infra_client.make_available()
+                print(f"✅ wallet-infra接続成功!")
+                print(f"   Storage Identity Key: {infra_settings.get('storageIdentityKey', 'N/A')}")
+                print(f"   Chain: {infra_settings.get('chain', 'N/A')}")
+
+                # Create new wallet instance using StorageClient as storage provider
+                print("\n🔄 wallet-infraストレージを使用したwalletインスタンスを作成中...")
+                wallet = Wallet(
+                    chain=network,
+                    services=services,
+                    key_deriver=key_deriver,
+                    storage_provider=infra_client,
+                )
+                print("✅ wallet-infra walletインスタンス作成成功!")
+
+            except Exception as e:
+                print(f"⚠️  wallet-infra認証失敗: {e}")
+                print("   これはPython SDKの既知の問題です。ローカルストレージでテストを続行します...")
+                print("   注意: wallet-infra認証はPythonでは現在サポートされていません。")
+                print("   テスト用に BYPASS_WALLET_INFRA_AUTH=true を設定して認証をバイパスできます。")
+                wallet_infra_mode = False  # Fall back to local
+
+    if not wallet_infra_mode and remote_storage_mode:
+        print(f"\n🌐 リモートストレージモード: {get_remote_storage_url(network)}")
+        print("⚠️  リモートストレージはBRC-104認証が必要です")
+        print("-" * 70)
+
+        # First create wallet with local storage (required for StorageClient auth)
+        local_storage = get_storage_provider(network)
+        wallet = Wallet(
+            chain=network,
+            services=services,
+            key_deriver=key_deriver,
+            storage_provider=local_storage,
+        )
+
         # Create remote storage client
         remote_client = get_remote_storage_client(wallet, network)
-        
+
         # Test remote connection
         try:
             print("\n🔄 リモートストレージに接続中...")
@@ -81,10 +149,23 @@ def main():
             print(f"✅ リモートストレージ接続成功!")
             print(f"   Storage Identity Key: {remote_settings.get('storageIdentityKey', 'N/A')}")
             print(f"   Chain: {remote_settings.get('chain', 'N/A')}")
+
+            # Create new wallet instance using StorageClient as storage provider
+            print("\n🔄 リモートストレージを使用したwalletインスタンスを作成中...")
+            wallet = Wallet(
+                chain=network,
+                services=services,
+                key_deriver=key_deriver,
+                storage_provider=remote_client,
+            )
+            print("✅ リモートストレージ walletインスタンス作成成功!")
+
         except Exception as e:
             print(f"❌ リモートストレージ接続失敗: {e}")
             print("   ローカルストレージで続行します...")
-    else:
+            remote_storage_mode = False  # Fall back to local
+
+    if not wallet_infra_mode and not remote_storage_mode:
         print("\n💾 ローカルストレージモード")
         storage_provider = get_storage_provider(network)
         wallet = Wallet(
