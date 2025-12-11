@@ -9,15 +9,16 @@ import pytest
 
 from bsv_wallet_toolbox.brc29 import KeyID, address_for_counterparty, address_for_self
 
-# Test data (matches Go implementation fixtures)
+# Test data (matches Go implementation fixtures from go-wallet-toolbox/pkg/brc29/fixtures_test.go)
 SENDER_PUBLIC_KEY_HEX = "0320bbfb879bbd6761ecd2962badbb41ba9d60ca88327d78b07ae7141af6b6c810"
 SENDER_PRIVATE_KEY_HEX = "143ab18a84d3b25e1a13cefa90038411e5d2014590a2a4a57263d1593c8dee1c"
 SENDER_WIF_STRING = "Kwu2vS6fqkd5WnRgB9VXd4vYpL9mwkXePZWtG9Nr5s6JmfHcLsQr"
 RECIPIENT_PUBLIC_KEY_HEX = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
 RECIPIENT_PRIVATE_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000001"
 KEY_ID = KeyID(derivation_prefix="Pr==", derivation_suffix="Su==")
-EXPECTED_ADDRESS = "18HqET2ViSHNj9nvFiTSp1LXbgBpLCsi1r"
-EXPECTED_TESTNET_ADDRESS = "mnonXW7UXTidWGGXyHRpdvYrTfnXHjuf4E"
+# Updated to match Go-SDK test vectors (go-wallet-toolbox/pkg/brc29/fixtures_test.go)
+EXPECTED_ADDRESS = "19bxE1pRYYtjZeQm7P8e2Ws5zMkm8NNuxx"
+EXPECTED_TESTNET_ADDRESS = "mp7uX4uQMaKzLktNpx71rS5QrMMTzDP12u"
 INVALID_KEY_HEX = "invalid"
 
 

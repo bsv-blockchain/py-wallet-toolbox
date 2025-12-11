@@ -60,6 +60,7 @@ def test_verify_signature_fail_on_modified_data(wallet_with_key_deriver):
 
 def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
     # Direct pre-hash signature/verification
+    # Use counterparty='self' for consistency - same key for create and verify
     data = b"hash me"
     digest = hashlib.sha256(data).digest()
 
@@ -68,6 +69,7 @@ def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
             "hashToDirectlySign": digest,
             "protocolID": [2, "auth message signature"],
             "keyID": "default",
+            "counterparty": "self",
         }
     )
     sig = sres["signature"]
@@ -78,6 +80,7 @@ def test_direct_hash_sign_and_verify(wallet_with_key_deriver):
             "protocolID": [2, "auth message signature"],
             "keyID": "default",
             "signature": sig,
+            "counterparty": "self",
         }
     )
     assert vres.get("valid") is True

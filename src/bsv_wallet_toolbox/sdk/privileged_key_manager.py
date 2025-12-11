@@ -235,7 +235,7 @@ class PrivilegedKeyManager:
                 raw_key_bytes = self._reassemble_key_from_chunks()
                 if raw_key_bytes and len(raw_key_bytes) == 32:
                     self._schedule_destruction()
-                    return PrivateKey(raw_key_bytes.hex())
+                    return PrivateKey.from_hex(raw_key_bytes.hex())
 
             # Otherwise, fetch a fresh key from the secure environment
             fetched_key = self._key_getter(reason)

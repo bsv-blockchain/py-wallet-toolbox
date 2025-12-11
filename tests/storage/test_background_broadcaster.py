@@ -20,7 +20,9 @@ class TestBroadcasterProtocol:
 
     def test_protocol_definition(self) -> None:
         """Test that BroadcasterProtocol is a Protocol."""
-        assert hasattr(BroadcasterProtocol, "__protocol_attrs__")
+        from typing import Protocol
+        # Check if it's a Protocol (works across Python versions)
+        assert getattr(BroadcasterProtocol, "_is_protocol", False) or issubclass(BroadcasterProtocol, Protocol)
 
 
 class MockBroadcaster:

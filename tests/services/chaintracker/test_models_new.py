@@ -283,7 +283,9 @@ class TestStorageQueries:
 
     def test_protocol_definition(self) -> None:
         """Test that StorageQueries is a Protocol."""
-        assert hasattr(StorageQueries, "__protocol_attrs__")
+        from typing import Protocol
+        # Check if it's a Protocol (works across Python versions)
+        assert getattr(StorageQueries, "_is_protocol", False) or issubclass(StorageQueries, Protocol)
 
     def test_protocol_methods_exist(self) -> None:
         """Test that all expected methods are defined in the protocol."""

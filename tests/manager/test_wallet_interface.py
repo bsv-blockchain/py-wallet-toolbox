@@ -16,8 +16,12 @@ class TestWalletInterfaceProtocol:
 
     def test_wallet_interface_is_protocol(self) -> None:
         """Test that WalletInterface is a Protocol."""
-        # Protocol classes have __protocol_attrs__
-        assert hasattr(WalletInterface, "__protocol_attrs__")
+        # Check if it's a Protocol (works across Python versions)
+        from typing import Protocol, runtime_checkable, get_type_hints
+        
+        # WalletInterface should be a subclass of Protocol or have Protocol characteristics
+        # In Python 3.11+, _is_protocol is the reliable attribute
+        assert getattr(WalletInterface, "_is_protocol", False) or issubclass(WalletInterface, Protocol)
 
     def test_mock_implements_wallet_interface(self) -> None:
         """Test that a mock can satisfy the WalletInterface protocol."""
