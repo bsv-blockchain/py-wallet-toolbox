@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -72,6 +73,9 @@ WalletNetwork = Literal["mainnet", "testnet"]
 
 # Constants
 MAX_ORIGINATOR_LENGTH_BYTES = 250  # BRC-100 standard: originator must be under 250 bytes
+
+# Logger
+logger = logging.getLogger(__name__)
 
 
 def _parse_counterparty(value: str | PublicKey) -> Counterparty:
@@ -826,7 +830,7 @@ class Wallet:
 
         # Fallback: use identity key from key_deriver if available
         if self.key_deriver and hasattr(self.key_deriver, "identity_key"):
-            return f"storage {self.key_deriver.identity_key}"
+            return f"storage {self.key_deriver.identity_key().hex()}"
 
         return "storage unknown"
 
@@ -3667,10 +3671,29 @@ class Wallet:
         if not isinstance(backup_first_value, bool):
             raise InvalidParameterError(f"backup_first must be a boolean, got {type(backup_first_value).__name__}")
 
-        # Stub implementation - do nothing for tests
-        # Full implementation requires WalletStorageManager
-        # For now, just validate and return to allow tests to pass
-        pass
+        # Use WalletStorageManager for storage switching
+        if hasattr(self, '_storage') and self._storage:
+            # Create a manager with current storage as active
+            from .storage.wallet_storage_manager import WalletStorageManager
+            manager = WalletStorageManager(
+                identity_key=self._key_deriver.root_key.public_key.hex() if self._key_deriver else "",
+                active=self._storage
+            )
+
+            # Add other available storages as backups
+            # Note: In a full implementation, this would need to track available storages
+            # For now, we'll assume the target storage is already known to the manager
+
+            try:
+                manager.set_active(storage, backup_first=backup_first_value)
+                # Update wallet's active storage reference
+                self._storage = manager.get_active()
+                logger.info(f"Wallet active storage switched to {storage}")
+            except Exception as e:
+                raise WalletError(f"Failed to switch active storage: {e}")
+        else:
+            # No storage manager available, just validate parameters
+            logger.warning("No storage provider available for set_active operation")
 
     def list_failed_actions(
         self, args: dict[str, Any], unfail: bool = False, originator: str | None = None
@@ -3980,3 +4003,4 @@ def _throw_dummy_review_actions() -> None:
         tx=None,  # Would be beef.toBinaryAtomic(txid)
         no_send_change=[f"{txid}.0"],
     )
+

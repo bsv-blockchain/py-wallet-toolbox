@@ -286,7 +286,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test.com",
-            config={"securityLevel": 1, "seekProtocolPermissions": True},
+            config={"securityLevel": 1, "seekPermissionsForPublicKeyRevelation": True},
         )
 
         callback_count = 0
@@ -295,7 +295,7 @@ class TestWalletPermissionsManagerCallbacks:
             nonlocal callback_count
             callback_count += 1
             # Grant permission
-            manager.grant_permission(params["requestID"], {"ephemeral": False})
+            manager.grant_permission({"requestID": params["requestID"], "ephemeral": False})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
@@ -335,7 +335,7 @@ class TestWalletPermissionsManagerCallbacks:
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
             admin_originator="admin.test.com",
-            config={"securityLevel": 1, "seekProtocolPermissions": True},
+            config={"securityLevel": 1, "seekPermissionsForPublicKeyRevelation": True},
         )
 
         callback_count = 0
@@ -344,7 +344,7 @@ class TestWalletPermissionsManagerCallbacks:
             nonlocal callback_count
             callback_count += 1
             # Grant permission
-            manager.grant_permission(params["requestID"], {"ephemeral": False})
+            manager.grant_permission({"requestID": params["requestID"], "ephemeral": False})
 
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
