@@ -23,7 +23,8 @@ load_dotenv()
 # Allowed network names
 Chain = Literal["main", "test"]
 
-# Remote storage endpoints (Babbage)
+# Remote storage endpoints (default: Babbage public servers)
+# Can be overridden via environment variables for custom/go storage servers.
 REMOTE_STORAGE_URLS = {
     "main": "https://storage.babbage.systems",
     "test": "https://staging-storage.babbage.systems",
@@ -160,7 +161,16 @@ def get_wallet_infra_url() -> str:
 
 
 def get_remote_storage_url(network: Chain) -> str:
-    """Get the remote storage server URL for the given network."""
+    """Get the remote storage server URL for the given network.
+
+    Resolution order:
+        1. WALLET_STORAGE_URL env var (for custom/go storage servers)
+        2. REMOTE_STORAGE_URL env var (legacy name)
+        3. Hard-coded defaults in REMOTE_STORAGE_URLS (Babbage)
+    """
+    env_url = os.getenv("WALLET_STORAGE_URL") or os.getenv("REMOTE_STORAGE_URL")
+    if env_url:
+        return env_url
     return REMOTE_STORAGE_URLS[network]
 
 
