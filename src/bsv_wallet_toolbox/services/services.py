@@ -783,6 +783,9 @@ class Services(WalletServices):
                 # Note: get_raw_tx takes only txid, unlike get_merkle_path which also takes services
                 r = self._run_async(stc.service(txid))
 
+                # Provider contract:
+                # - Preferred (TS-style): dict with "rawTx" and optional "error"
+                # - Legacy/py-sdk: raw hex string or None
                 if isinstance(r, dict):
                     raw_tx_hex = r.get("rawTx")
                     if raw_tx_hex:
@@ -817,7 +820,33 @@ class Services(WalletServices):
                         services.add_service_call_success(stc, "not found")
                     else:
                         services.add_service_call_failure(stc)
+                elif isinstance(r, str):
+                    # Backwards-compatible path for providers that return raw hex directly.
+                    try:
+                        raw_tx_bytes = bytes.fromhex(r)
+                        computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
+                    except (ValueError, TypeError):
+                        # Treat invalid hex as provider failure.
+                        services.add_service_call_failure(stc, "invalid data")
+                    else:
+                        if computed_txid.lower() == txid.lower():
+                            # Match found
+                            result["rawTx"] = r
+                            result["name"] = getattr(stc, "provider_name", None)
+                            result.pop("error", None)
+                            services.add_service_call_success(stc)
+                            return r
+
+                        # Hash mismatch - mark as error
+                        error = {
+                            "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
+                            "code": "TXID_MISMATCH",
+                        }
+                        services.add_service_call_error(stc, error)
+                        if "error" not in result:
+                            result["error"] = error
                 else:
+                    # None or unsupported type -> treat as not found
                     services.add_service_call_success(stc, "not found")
 
             except Exception as e:

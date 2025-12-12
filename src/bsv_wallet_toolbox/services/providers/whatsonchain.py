@@ -607,8 +607,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
             # Convert proof to merkle path format (returns dict with blockHeight and path)
             merkle_path_dict = convert_proof_to_merkle_path(txid, proof_dict)
-            
-            # Convert hash_str to hash in path structure to match expected format
+
+            # Preserve py-sdk MerklePath-compatible structure (hash_str) while also
+            # exposing a TS-style "hash" field for compatibility where needed.
             path = merkle_path_dict.get("path", [])
             converted_path = []
             for level in path:
@@ -616,6 +617,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 for leaf in level:
                     converted_leaf = {"offset": leaf["offset"]}
                     if "hash_str" in leaf:
+                        # Keep original field name for py-sdk's MerklePath
+                        converted_leaf["hash_str"] = leaf["hash_str"]
+                        # Add TS-style alias for any Python callers expecting "hash"
                         converted_leaf["hash"] = leaf["hash_str"]
                     if leaf.get("txid"):
                         converted_leaf["txid"] = True
@@ -623,7 +627,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                         converted_leaf["duplicate"] = True
                     converted_level.append(converted_leaf)
                 converted_path.append(converted_level)
-            
+
             result["merklePath"] = {
                 "blockHeight": merkle_path_dict["blockHeight"],
                 "path": converted_path,
