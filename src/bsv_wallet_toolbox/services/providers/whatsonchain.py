@@ -89,6 +89,46 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Internal implementation of get_chain."""
         return Chain.MAIN if self.network == "main" else Chain.TEST
 
+    # ------------------------------------------------------------------ #
+    # Override selected py-sdk tracker methods to avoid signature clash  #
+    # with ChaintracksClientApi.get_headers(height, count).              #
+    # ------------------------------------------------------------------ #
+
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:  # type: ignore[override]
+        """Verify merkle root for a given height using WoC HTTP API.
+
+        This reimplements the py-sdk tracker method but uses the local
+        ``_get_http_headers`` helper instead of ``self.get_headers()`` so
+        that our Chaintracks-style ``get_headers(height, count)`` does not
+        interfere with SDK behavior.
+        """
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
+
+        response = await self.http_client.fetch(f"{self.URL}/block/{height}/header", request_options)
+        if response.ok:
+            merkleroot = response.json()["data"].get("merkleroot")
+            return merkleroot == root
+        if response.status_code == 404:
+            return False
+        raise RuntimeError(
+            f"Failed to verify merkleroot for height {height} because of an error: {response.json()}"
+        )
+
+    async def current_height(self) -> int:  # type: ignore[override]
+        """Get current blockchain height from WhatsOnChain API.
+
+        Reimplementation of the py-sdk tracker method that avoids calling
+        the base-class ``get_headers()`` (which would be shadowed by this
+        class's Chaintracks-style ``get_headers(height, count)``).
+        """
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
+
+        response = await self.http_client.fetch(f"{self.URL}/chain/info", request_options)
+        if response.ok:
+            data = response.json() or {}
+            return data.get("blocks", 0)
+        raise RuntimeError(f"Failed to get current height: {response.json()}")
+
     def _get_http_headers(self) -> dict[str, str]:
         """Get HTTP headers for API requests.
         
