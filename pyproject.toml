@@ -31,6 +31,9 @@ dev = [
     "mypy>=1.0.0",
     "black>=23.0.0",
     "ruff>=0.1.0",
+    # Database drivers for testing
+    "pymysql>=1.1",
+    "psycopg[binary]>=3.1",
 ]
 db-mysql = [
     "pymysql>=1.1",
@@ -103,6 +106,7 @@ python_functions = ["test_*"]
 addopts = "-v --strict-markers"
 markers = [
     "manual: marks tests as manual tests (deselect with '-m \"not manual\"')",
+    "integration: marks tests as integration tests requiring external services (deselect with '-m \"not integration\"')",
 ]
 # Entity tests deferred to Phase 5 (see conftest_entity_skip.py)
 asyncio_mode = "auto"

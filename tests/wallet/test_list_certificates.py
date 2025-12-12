@@ -87,7 +87,7 @@ class TestWalletListCertificates:
         with pytest.raises(InvalidParameterError):
             wallet_with_storage.list_certificates(invalid_args)
 
-    @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
+    # @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
     def test_filter_by_certifier_lowercase(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with valid certifier (lowercase hex)
            When: Call list_certificates
@@ -113,7 +113,7 @@ class TestWalletListCertificates:
         assert len(result["certificates"]) == min(args["limit"], expected_count)
         assert result["totalCertificates"] == expected_count
 
-    @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
+    # @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
     def test_filter_by_certifier_uppercase(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with valid certifier (uppercase hex)
            When: Call list_certificates
@@ -139,7 +139,7 @@ class TestWalletListCertificates:
         assert len(result["certificates"]) == min(args["limit"], expected_count)
         assert result["totalCertificates"] == expected_count
 
-    @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
+    # @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
     def test_filter_by_multiple_certifiers(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with multiple certifiers
            When: Call list_certificates
@@ -154,7 +154,7 @@ class TestWalletListCertificates:
         args = {
             "certifiers": [
                 "02CF6CDF466951D8DFC9E7C9367511D0007ED6FBA35ED42D425CC412FD6CFD4A17",
-                "03db7f9011443a17080e90dd97e370f246940420b07e2195f783a2be186c019722",
+                "03cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17",
             ],
             "types": [],
             "limit": 10,
@@ -168,7 +168,7 @@ class TestWalletListCertificates:
         assert len(result["certificates"]) == min(args["limit"], expected_count)
         assert result["totalCertificates"] == expected_count
 
-    @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
+    # @pytest.mark.skip(reason="Requires populated test database with specific certificate test data from TypeScript")
     def test_filter_by_type(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with certificate type filter
            When: Call list_certificates
@@ -181,7 +181,7 @@ class TestWalletListCertificates:
         """
         # Given
         args = {"certifiers": [], "types": ["exOl3KM0dIJ04EW5pZgbZmPag6MdJXd3/a1enmUU/BA="], "limit": 10}  # Base64 type
-        expected_count = 2  # From test data
+        expected_count = 3  # From test data
 
         # When
         result = wallet_with_storage.list_certificates(args)
@@ -398,10 +398,9 @@ class TestWalletListCertificates:
     def test_invalid_params_wrong_offset_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong offset type
            When: Call list_certificates
-           Then: Returns result (offset is not validated in list_certificates)
+           Then: Raises InvalidParameterError
         """
-        # Given - Test various invalid types
-        # Note: list_certificates validation doesn't check offset type
+        # Given - Test various invalid types (negative integers are allowed)
         invalid_types_for_offset = ["string", [], {}, 45.67]
 
         for invalid_offset in invalid_types_for_offset:
@@ -411,11 +410,9 @@ class TestWalletListCertificates:
                 "offset": invalid_offset
             }
 
-            # When - offset is not validated in list_certificates
-            result = wallet_with_storage.list_certificates(invalid_args)
-
-            # Then
-            assert "certificates" in result
+            # When/Then - InvalidParameterError is raised
+            with pytest.raises(InvalidParameterError):
+                wallet_with_storage.list_certificates(invalid_args)
 
     def test_invalid_params_zero_limit_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with zero limit

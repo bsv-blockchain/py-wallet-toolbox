@@ -5,12 +5,22 @@ This module provides comprehensive test coverage for database utility functions.
 
 import pytest
 
+import pytest
 from bsv_wallet_toolbox.storage.db import (
     create_engine_from_url,
     create_session_factory,
     create_sqlite_engine,
     session_scope,
 )
+
+
+def _has_module(module_name: str) -> bool:
+    """Check if a module is available."""
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
 
 
 class TestCreateEngineFromUrl:
@@ -22,27 +32,21 @@ class TestCreateEngineFromUrl:
         assert engine is not None
         assert str(engine.url) == "sqlite:///test.db"
 
+    @pytest.mark.skipif(not _has_module("pymysql"), reason="pymysql not available")
     def test_create_mysql_engine(self) -> None:
         """Test creating MySQL engine."""
-        try:
-            url = "mysql+pymysql://user:pass@host/db"
-            engine = create_engine_from_url(url)
-            assert engine is not None
-            assert str(engine.url) == url
-        except ImportError:
-            # pymysql not available, skip test
-            pytest.skip("pymysql not available")
+        url = "mysql+pymysql://user:pass@host/db"
+        engine = create_engine_from_url(url)
+        assert engine is not None
+        assert str(engine.url) == url
 
+    @pytest.mark.skipif(not _has_module("psycopg2"), reason="psycopg2 not available")
     def test_create_postgres_engine(self) -> None:
         """Test creating PostgreSQL engine."""
-        try:
-            url = "postgresql+psycopg2://user:pass@host/db"
-            engine = create_engine_from_url(url)
-            assert engine is not None
-            assert str(engine.url) == url
-        except ImportError:
-            # psycopg2 not available, skip test
-            pytest.skip("psycopg2 not available")
+        url = "postgresql+psycopg2://user:pass@host/db"
+        engine = create_engine_from_url(url)
+        assert engine is not None
+        assert str(engine.url) == url
 
     def test_normalize_async_sqlite_url(self) -> None:
         """Test normalizing async SQLite URLs to sync."""
@@ -50,27 +54,21 @@ class TestCreateEngineFromUrl:
         assert engine is not None
         assert str(engine.url) == "sqlite:///test.db"
 
+    @pytest.mark.skipif(not _has_module("pymysql"), reason="pymysql not available")
     def test_normalize_async_mysql_url(self) -> None:
         """Test normalizing async MySQL URLs to sync."""
-        try:
-            url = "mysql+aiomysql://user:pass@host/db"
-            engine = create_engine_from_url(url)
-            assert engine is not None
-            assert str(engine.url) == "mysql+pymysql://user:pass@host/db"
-        except ImportError:
-            # pymysql not available, skip test
-            pytest.skip("pymysql not available")
+        url = "mysql+aiomysql://user:pass@host/db"
+        engine = create_engine_from_url(url)
+        assert engine is not None
+        assert str(engine.url) == "mysql+pymysql://user:pass@host/db"
 
+    @pytest.mark.skipif(not _has_module("psycopg2"), reason="psycopg2 not available")
     def test_normalize_async_postgres_url(self) -> None:
         """Test normalizing async PostgreSQL URLs to sync."""
-        try:
-            url = "postgresql+asyncpg://user:pass@host/db"
-            engine = create_engine_from_url(url)
-            assert engine is not None
-            assert str(engine.url) == "postgresql+psycopg2://user:pass@host/db"
-        except ImportError:
-            # psycopg2 not available, skip test
-            pytest.skip("psycopg2 not available")
+        url = "postgresql+asyncpg://user:pass@host/db"
+        engine = create_engine_from_url(url)
+        assert engine is not None
+        assert str(engine.url) == "postgresql+psycopg2://user:pass@host/db"
 
     def test_echo_parameter(self) -> None:
         """Test echo parameter is passed through."""

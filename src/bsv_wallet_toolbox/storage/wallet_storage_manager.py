@@ -748,9 +748,69 @@ class WalletStorageManager:
         
         return stores
 
+    def set_active(self, storage_identity_key: str, backup_first: bool = False) -> None:
+        """Set the active storage provider.
+
+        Switches the active storage to the provider with the given identity key.
+        Optionally backs up data from current active to new active first.
+
+        Args:
+            storage_identity_key: Identity key of storage to make active
+            backup_first: Whether to backup current active data first
+
+        Raises:
+            InvalidParameterError: If storage not found or invalid
+            WalletError: If backup/sync operations fail
+
+        Reference:
+            wallet-toolbox/src/storage/WalletStorageManager.ts (setActive)
+        """
+        if not storage_identity_key:
+            raise InvalidParameterError("storage_identity_key", "cannot be empty")
+
+        # Find the target storage
+        target_store = None
+        for store in self._stores:
+            if store.settings and store.settings.storage_identity_key == storage_identity_key:
+                target_store = store
+                break
+
+        if not target_store:
+            raise InvalidParameterError("storage_identity_key", f"storage '{storage_identity_key}' not found")
+
+        # If backup_first is True, sync current active to target first
+        if backup_first and self._active and self._active != target_store:
+            try:
+                result = self.sync_to_writer(
+                    auth=self.get_auth(),
+                    writer=target_store.storage,
+                    log=f"Backup before switching to {storage_identity_key}"
+                )
+                logger.info(f"Backup sync completed: {result.inserts} inserts, {result.updates} updates")
+            except Exception as e:
+                raise WalletError(f"Backup failed before switching storage: {e}")
+
+        # Update user record to point to new active storage
+        if target_store.user:
+            target_store.user.active_storage = storage_identity_key
+
+        # Set new active
+        self._active = target_store
+
+        # Move any conflicting actives to backups
+        self._backups = []
+        for store in self._stores:
+            if store != target_store:
+                self._backups.append(store)
+
+        # Clear conflicting actives (they're now backups)
+        self._conflicting_actives = []
+
+        logger.info(f"Switched active storage to {storage_identity_key}")
+
     def add_wallet_storage_provider(self, provider: WalletStorageProvider) -> None:
         """Add a new storage provider to the manager.
-        
+
         Args:
             provider: Storage provider to add
         """

@@ -252,6 +252,11 @@ def validate_list_certificates_args(args: dict[str, Any]) -> None:
         if not isinstance(limit, int) or limit < 0 or limit > MAX_PAGINATION_LIMIT:
             raise InvalidParameterError("limit", f"must be 0..{MAX_PAGINATION_LIMIT}")
 
+    if "offset" in args:
+        offset = args["offset"]
+        if not isinstance(offset, int):
+            raise InvalidParameterError("offset", "must be an integer")
+
     if "certifiers" in args:
         certifiers = args["certifiers"]
         if not isinstance(certifiers, list):

@@ -7,7 +7,7 @@ Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/B
 
 import pytest
 
-pytestmark = pytest.mark.skip(reason="Module not yet implemented")
+# pytestmark = pytest.mark.skip(reason="Module not yet implemented")
 
 try:
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import BulkIngestorCDNBabbage
@@ -119,7 +119,16 @@ class TestBulkIngestorCDNBabbage:
         live_headers = await cdn.fetch_headers(before, range_obj, range_obj, [])
         reader = await BulkFilesReaderStorage.from_storage(storage, fetch, range_obj)
 
-        await storage.knex.destroy()
+        # Cleanup: destroy storage connection (handles None knex from stub)
+        if storage.knex is not None and hasattr(storage.knex, 'destroy'):
+            destroy_method = storage.knex.destroy
+            if callable(destroy_method):
+                result = destroy_method()
+                if hasattr(result, '__await__'):
+                    await result
+        else:
+            # Fallback to storage.destroy() if knex is None or doesn't have destroy
+            await storage.destroy()
 
         # Then
         return {"cdn": cdn, "r": {"reader": reader, "live_headers": live_headers}}

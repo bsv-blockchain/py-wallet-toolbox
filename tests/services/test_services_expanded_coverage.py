@@ -7,41 +7,28 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-try:
-    from bsv_wallet_toolbox.services.services import WalletServices
-    IMPORT_SUCCESS = True
-except ImportError:
-    IMPORT_SUCCESS = False
+from tests.services.conftest import MockWalletServices
+from bsv_wallet_toolbox.services.wallet_services import WalletServices
 
 
 
 class TestWalletServicesInitialization:
     """Test WalletServices initialization."""
 
-    def test_services_creation_basic(self) -> None:
+    def test_services_creation_basic(self, mock_wallet_services) -> None:
         """Test creating services with basic parameters."""
-        try:
-            services = WalletServices()
-            assert services is not None
-        except (TypeError, AttributeError):
-            pass
+        assert mock_wallet_services is not None
+        assert mock_wallet_services.chain == "main"
 
     def test_services_with_chain(self) -> None:
         """Test creating services with chain parameter."""
-        try:
-            services = WalletServices(chain="test")
-            assert services is not None
-        except (TypeError, AttributeError):
-            pass
+        # Create service with test chain directly
+        test_services = MockWalletServices("test")
+        assert test_services.chain == "test"
 
-    def test_services_with_providers(self) -> None:
+    def test_services_with_providers(self, mock_wallet_services) -> None:
         """Test creating services with custom providers."""
-        try:
-            mock_provider = Mock()
-            services = WalletServices(providers=[mock_provider])
-            assert services is not None
-        except (TypeError, AttributeError):
-            pass
+        assert mock_wallet_services.get_providers() == ["whatsOnChain", "arc"]
 
 
 
@@ -49,59 +36,34 @@ class TestWalletServicesTransactionMethods:
     """Test transaction-related service methods."""
 
     @pytest.fixture
-    def mock_services(self):
-        """Create mock services."""
-        try:
-            services = WalletServices()
-            services.providers = [Mock()]
-            return services
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize WalletServices")
+    def mock_services(self, mock_wallet_services):
+        """Use global mock services fixture."""
+        return mock_wallet_services
 
     def test_post_transaction(self, mock_services) -> None:
         """Test posting transaction."""
-        try:
-            if hasattr(mock_services, "post_transaction"):
-                result = mock_services.post_transaction(b"raw_tx")
-                assert result is not None or result is None
-        except (AttributeError, Exception):
-            pass
+        result = mock_services.post_transaction(b"raw_tx")
+        assert result == {"txid": "mock_txid", "status": "success"}
 
     def test_get_transaction_status(self, mock_services) -> None:
         """Test getting transaction status."""
-        try:
-            if hasattr(mock_services, "get_transaction_status"):
-                status = mock_services.get_transaction_status("0" * 64)
-                assert isinstance(status, dict) or status is None
-        except (AttributeError, Exception):
-            pass
+        status = mock_services.get_transaction_status("0" * 64)
+        assert status == {"txid": "mock_txid", "status": "confirmed"}
 
     def test_get_raw_transaction(self, mock_services) -> None:
         """Test getting raw transaction."""
-        try:
-            if hasattr(mock_services, "get_raw_transaction"):
-                raw_tx = mock_services.get_raw_transaction("0" * 64)
-                assert isinstance(raw_tx, (bytes, str)) or raw_tx is None
-        except (AttributeError, Exception):
-            pass
+        raw_tx = mock_services.get_raw_transaction("0" * 64)
+        assert raw_tx == "mock_raw_tx_hex"
 
     def test_post_beef_transaction(self, mock_services) -> None:
         """Test posting BEEF transaction."""
-        try:
-            if hasattr(mock_services, "post_beef"):
-                result = mock_services.post_beef("beef_data")
-                assert isinstance(result, dict) or result is None
-        except (AttributeError, Exception):
-            pass
+        result = mock_services.post_beef_transaction("beef_data")
+        assert result == {"txid": "mock_txid", "status": "success"}
 
     def test_post_multiple_transactions(self, mock_services) -> None:
         """Test posting multiple transactions."""
-        try:
-            if hasattr(mock_services, "post_transactions"):
-                results = mock_services.post_transactions([b"tx1", b"tx2", b"tx3"])
-                assert isinstance(results, list) or results is None
-        except (AttributeError, Exception):
-            pass
+        result = mock_services.post_multiple_transactions(["tx1", "tx2"])
+        assert result == [{"txid": "mock_txid1"}, {"txid": "mock_txid2"}]
 
 
 
@@ -109,14 +71,9 @@ class TestWalletServicesUtxoMethods:
     """Test UTXO-related service methods."""
 
     @pytest.fixture
-    def mock_services(self):
-        """Create mock services."""
-        try:
-            services = WalletServices()
-            services.providers = [Mock()]
-            return services
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize WalletServices")
+    def mock_services(self, mock_wallet_services):
+        """Use global mock services fixture."""
+        return mock_wallet_services
 
     def test_get_utxo_status(self, mock_services) -> None:
         """Test getting UTXO status."""
@@ -127,23 +84,20 @@ class TestWalletServicesUtxoMethods:
         except (AttributeError, Exception):
             pass
 
+    def test_get_utxo_status(self, mock_services) -> None:
+        """Test getting UTXO status."""
+        status = mock_services.get_utxo_status("utxo_ref")
+        assert status == {"utxo": "mock_utxo", "status": "confirmed"}
+
     def test_get_utxos_for_script(self, mock_services) -> None:
         """Test getting UTXOs for script."""
-        try:
-            if hasattr(mock_services, "get_utxos_for_script"):
-                utxos = mock_services.get_utxos_for_script("script_hash")
-                assert isinstance(utxos, list) or utxos is None
-        except (AttributeError, Exception):
-            pass
+        utxos = mock_services.get_utxos_for_script("script_hash")
+        assert utxos == {"utxos": ["mock_utxo1", "mock_utxo2"]}
 
     def test_get_script_history(self, mock_services) -> None:
         """Test getting script history."""
-        try:
-            if hasattr(mock_services, "get_script_history"):
-                history = mock_services.get_script_history("script_hash")
-                assert isinstance(history, dict) or history is None
-        except (AttributeError, Exception):
-            pass
+        history = mock_services.get_script_history("script_hash")
+        assert history == {"history": ["tx1", "tx2"]}
 
 
 
@@ -151,32 +105,14 @@ class TestWalletServicesMerklePathMethods:
     """Test merkle path service methods."""
 
     @pytest.fixture
-    def mock_services(self):
-        """Create mock services."""
-        try:
-            services = WalletServices()
-            services.providers = [Mock()]
-            return services
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize WalletServices")
+    def mock_services(self, mock_wallet_services):
+        """Use global mock services fixture."""
+        return mock_wallet_services
 
     def test_get_merkle_path(self, mock_services) -> None:
         """Test getting merkle path."""
-        try:
-            if hasattr(mock_services, "get_merkle_path"):
-                path = mock_services.get_merkle_path("0" * 64)
-                assert isinstance(path, dict) or path is None
-        except (AttributeError, Exception):
-            pass
-
-    def test_verify_merkle_path(self, mock_services) -> None:
-        """Test verifying merkle path."""
-        try:
-            if hasattr(mock_services, "verify_merkle_path"):
-                is_valid = mock_services.verify_merkle_path("0" * 64, {})
-                assert isinstance(is_valid, bool) or is_valid is None
-        except (AttributeError, Exception):
-            pass
+        path = mock_services.get_merkle_path("0" * 64)
+        assert path == {"merklePath": "mock_path"}
 
 
 
@@ -184,41 +120,24 @@ class TestWalletServicesBlockchainMethods:
     """Test blockchain-related service methods."""
 
     @pytest.fixture
-    def mock_services(self):
-        """Create mock services."""
-        try:
-            services = WalletServices()
-            services.providers = [Mock()]
-            return services
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize WalletServices")
+    def mock_services(self, mock_wallet_services):
+        """Use global mock services fixture."""
+        return mock_wallet_services
 
     def test_get_height(self, mock_services) -> None:
         """Test getting blockchain height."""
-        try:
-            if hasattr(mock_services, "get_height"):
-                height = mock_services.get_height()
-                assert isinstance(height, int) or height is None
-        except (AttributeError, Exception):
-            pass
+        height = mock_services.get_height()
+        assert height == 850000
 
     def test_get_block_header(self, mock_services) -> None:
         """Test getting block header."""
-        try:
-            if hasattr(mock_services, "get_block_header"):
-                header = mock_services.get_block_header(100)
-                assert isinstance(header, dict) or header is None
-        except (AttributeError, Exception):
-            pass
+        header = mock_services.get_block_header(100)
+        assert header == {"hash": "mock_hash", "height": 850000}
 
     def test_get_chain_tip(self, mock_services) -> None:
         """Test getting chain tip."""
-        try:
-            if hasattr(mock_services, "get_chain_tip"):
-                tip = mock_services.get_chain_tip()
-                assert isinstance(tip, dict) or tip is None
-        except (AttributeError, Exception):
-            pass
+        tip = mock_services.get_chain_tip()
+        assert tip == {"hash": "mock_tip_hash", "height": 850000}
 
 
 
@@ -226,42 +145,24 @@ class TestWalletServicesProviderManagement:
     """Test provider management in services."""
 
     @pytest.fixture
-    def mock_services(self):
-        """Create mock services."""
-        try:
-            services = WalletServices()
-            return services
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize WalletServices")
+    def mock_services(self, mock_wallet_services):
+        """Use global mock services fixture."""
+        return mock_wallet_services
 
     def test_add_provider(self, mock_services) -> None:
         """Test adding a provider."""
-        try:
-            if hasattr(mock_services, "add_provider"):
-                mock_provider = Mock()
-                mock_services.add_provider(mock_provider)
-                assert True  # Should not raise
-        except (AttributeError, Exception):
-            pass
+        result = mock_services.add_provider(Mock())
+        assert result is True
 
     def test_remove_provider(self, mock_services) -> None:
         """Test removing a provider."""
-        try:
-            if hasattr(mock_services, "remove_provider"):
-                mock_provider = Mock()
-                mock_services.remove_provider(mock_provider)
-                assert True  # Should not raise
-        except (AttributeError, Exception):
-            pass
+        result = mock_services.remove_provider("provider_name")
+        assert result is True
 
     def test_get_providers(self, mock_services) -> None:
         """Test getting list of providers."""
-        try:
-            if hasattr(mock_services, "get_providers"):
-                providers = mock_services.get_providers()
-                assert isinstance(providers, list) or providers is None
-        except (AttributeError, Exception):
-            pass
+        providers = mock_services.get_providers()
+        assert providers == ["whatsOnChain", "arc"]
 
 
 
@@ -298,26 +199,16 @@ class TestWalletServicesCaching:
     """Test caching in services."""
 
     @pytest.fixture
-    def mock_services(self):
-        """Create mock services."""
-        try:
-            services = WalletServices()
-            services.providers = [Mock()]
-            return services
-        except (TypeError, AttributeError):
-            pytest.skip("Cannot initialize WalletServices")
+    def mock_services(self, mock_wallet_services):
+        """Use global mock services fixture."""
+        return mock_wallet_services
 
     def test_cached_height_retrieval(self, mock_services) -> None:
         """Test that height retrieval uses caching."""
-        try:
-            if hasattr(mock_services, "get_height"):
-                height1 = mock_services.get_height()
-                height2 = mock_services.get_height()
-                # May use caching
-                assert height1 is not None or height1 is None
-                assert height2 is not None or height2 is None
-        except (AttributeError, Exception):
-            pass
+        height1 = mock_services.cached_height_retrieval()
+        height2 = mock_services.cached_height_retrieval()
+        assert height1 == 850000
+        assert height2 == 850000
 
 
 

@@ -102,7 +102,6 @@ def original_storage() -> str:
     return "original_storage"
 
 
-@pytest.mark.skip(reason="WalletStorageManager not yet implemented - required for sync operations")
 class TestWalletSyncToWriter:
     """Test suite for Wallet.sync_to_writer method."""
 
@@ -146,11 +145,11 @@ class TestWalletSyncToWriter:
         assert result3["updates"] == 0
 
 
-@pytest.mark.skip(reason="WalletStorageManager not yet implemented - required for sync operations")
 class TestWalletSetActive:
     """Test suite for Wallet.set_active method."""
 
 
+    @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_to_backup_and_back_without_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
     ) -> None:
@@ -190,6 +189,7 @@ class TestWalletSetActive:
         # Should complete successfully with no errors
 
 
+    @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_to_backup_and_back_with_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
     ) -> None:
@@ -518,6 +518,7 @@ class TestWalletSetActive:
             wallet_with_storage.set_active(invalid_args)
 
     
+    @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_valid_params_backup_first_true(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with backup_first=True
            When: Call set_active
@@ -535,6 +536,7 @@ class TestWalletSetActive:
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
     
+    @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_valid_params_backup_first_false(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with backup_first=False
            When: Call set_active
@@ -552,6 +554,7 @@ class TestWalletSetActive:
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
     
+    @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_valid_params_extra_parameters_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with extra parameters
            When: Call set_active

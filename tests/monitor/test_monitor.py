@@ -199,8 +199,8 @@ MOCK_MERKLE_PATH_RESULTS = [
 class TestMonitor:
     """Test suite for Monitor tasks."""
 
+    @pytest.mark.skip(reason="Test takes over 1 minute to run")
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Takes too long to run")
     async def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value

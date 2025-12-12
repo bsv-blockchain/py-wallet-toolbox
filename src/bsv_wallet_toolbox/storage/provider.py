@@ -1334,6 +1334,20 @@ class StorageProvider:
                 q = q.where(Certificate.certifier == c)
             if sn := args.get("serialNumber"):
                 q = q.where(Certificate.serial_number == sn)
+            # Handle certifiers array (case-insensitive)
+            if certifiers := args.get("certifiers"):
+                if isinstance(certifiers, list):
+                    # Convert all certifiers to lowercase for case-insensitive comparison
+                    lower_certifiers = [c.lower() for c in certifiers]
+                    q = q.where(func.lower(Certificate.certifier).in_(lower_certifiers))
+                elif certifiers:
+                    q = q.where(func.lower(Certificate.certifier) == certifiers.lower())
+            # Handle types array
+            if types := args.get("types"):
+                if isinstance(types, list):
+                    q = q.where(Certificate.type.in_(types))
+                elif types:
+                    q = q.where(Certificate.type == types)
             _exec_result = s.execute(q)
             rows = _exec_result.scalars()
             return [
@@ -1592,7 +1606,19 @@ class StorageProvider:
             }
             certs_with_fields.append(cert_with_fields)
 
-        return {"totalCertificates": len(certs_with_fields), "certificates": certs_with_fields}
+        # Apply pagination
+        total_count = len(certs_with_fields)
+        offset = args.get("offset", 0)
+        limit = args.get("limit")
+
+        if limit is not None:
+            start_idx = offset
+            end_idx = start_idx + limit
+            paginated_certs = certs_with_fields[start_idx:end_idx]
+        else:
+            paginated_certs = certs_with_fields[offset:]
+
+        return {"totalCertificates": total_count, "certificates": paginated_certs}
 
     def list_actions(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """List actions with optional filters and detailed information.

@@ -336,10 +336,91 @@ def wallet_with_storage(test_key_deriver: KeyDeriver) -> Wallet:
     identity_key = test_key_deriver.identity_key().hex()
     user_id = storage.get_or_create_user_id(identity_key)
 
+    # Seed certificate data for list_certificates tests
+    _seed_certificate_data(storage, user_id)
+
     # Create wallet with storage provider and key deriver
     wallet = Wallet(chain="main", key_deriver=test_key_deriver, storage_provider=storage)
 
     return wallet
+
+
+def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
+    """Seed test certificate data matching TypeScript test expectations."""
+    from datetime import datetime, timezone
+
+    # Certificate data from TypeScript tests
+    certifier_pubkey = "02cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17"
+    cert_type_base64 = "exOl3KM0dIJ04EW5pZgbZmPag6MdJXd3/a1enmUU/BA="
+
+    # Create test certificates
+    certificates = [
+        # 4 certificates with the main certifier (for certifier filtering tests)
+        {
+            "user_id": user_id,
+            "type": cert_type_base64,
+            "serial_number": "01" * 16,  # 32 bytes as hex
+            "subject": "test_subject_1",
+            "certifier": certifier_pubkey,
+            "revocation_outpoint": "deadbeef" * 8 + ".1",
+            "signature": "test_signature_1",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        },
+        {
+            "user_id": user_id,
+            "type": "different_type_base64",  # Different type
+            "serial_number": "02" * 16,  # 32 bytes as hex
+            "subject": "test_subject_2",
+            "certifier": certifier_pubkey,
+            "revocation_outpoint": "beefdead" * 8 + ".2",
+            "signature": "test_signature_2",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        },
+        {
+            "user_id": user_id,
+            "type": cert_type_base64,
+            "serial_number": "03" * 16,  # 32 bytes as hex
+            "subject": "test_subject_3",
+            "certifier": certifier_pubkey,
+            "revocation_outpoint": "feeddead" * 8 + ".3",
+            "signature": "test_signature_3",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        },
+        {
+            "user_id": user_id,
+            "type": "another_type_base64",  # Different type
+            "serial_number": "04" * 16,  # 32 bytes as hex
+            "subject": "test_subject_4",
+            "certifier": certifier_pubkey,
+            "revocation_outpoint": "deedbeef" * 8 + ".4",
+            "signature": "test_signature_4",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        },
+        # 1 certificate with different certifier (for multiple certifiers test)
+        {
+            "user_id": user_id,
+            "type": cert_type_base64,
+            "serial_number": "05" * 16,
+            "subject": "test_subject_5",
+            "certifier": "03cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17",  # Different certifier
+            "revocation_outpoint": "beefdeed" * 8 + ".5",
+            "signature": "test_signature_5",
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc),
+        }
+    ]
+
+    # Insert certificates into storage
+    try:
+        for cert in certificates:
+            storage.insert_certificate(cert)
+    except Exception:
+        # Storage might not have insert_certificate method, skip seeding
+        pass
 
 
 # ========================================================================

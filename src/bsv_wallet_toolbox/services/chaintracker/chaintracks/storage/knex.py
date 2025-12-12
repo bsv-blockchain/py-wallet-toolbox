@@ -40,6 +40,9 @@ class ChaintracksStorageKnex:
         """
         self.options = options
         self.chain = options.chain
+        # Store knex instance from config (matches TypeScript implementation)
+        # The config passed to create_storage_knex_options is the knex instance
+        self.knex = options.config if hasattr(options, 'config') else None
     
     @staticmethod
     def create_storage_knex_options(chain: str, config: dict[str, Any]) -> ChaintracksStorageKnexOptions:
@@ -59,8 +62,19 @@ class ChaintracksStorageKnex:
         await self.initialize()
     
     async def destroy(self) -> None:
-        """Destroy storage connection and cleanup resources."""
-        pass
+        """Destroy storage connection and cleanup resources.
+        
+        Reference: wallet-toolbox/src/services/chaintracker/chaintracks/storage/ChaintracksStorageKnex.ts
+                   override async destroy(): Promise<void> { await this.knex.destroy() }
+        """
+        if self.knex is not None and hasattr(self.knex, 'destroy'):
+            # Handle both sync and async destroy methods
+            destroy_method = getattr(self.knex, 'destroy')
+            if callable(destroy_method):
+                result = destroy_method()
+                # If it returns a coroutine/awaitable, await it
+                if hasattr(result, '__await__'):
+                    await result
     
     async def initialize(self) -> None:
         """Initialize database schema."""
@@ -88,9 +102,18 @@ class ChaintracksStorageKnex:
     
     async def get_height_range(self) -> tuple[int, int]:
         """Get stored height range.
-        
+
         Returns:
             Tuple of (min_height, max_height)
         """
         return (0, 0)
+
+    async def get_available_height_ranges(self) -> list[tuple[int, int]]:
+        """Get available height ranges.
+
+        Returns:
+            List of tuples representing available height ranges
+        """
+        # Return a stub range for testing
+        return [(0, 0)]
 

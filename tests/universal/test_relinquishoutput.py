@@ -22,9 +22,9 @@ class TestUniversalVectorsRelinquishOutput:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.skip(reason="Requires storage provider setup that cannot be easily mocked")
+    # @pytest.mark.skip(reason="Requires storage provider setup that cannot be easily mocked")
     def test_relinquishoutput_wire_matches_universal_vectors(
-        self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver
+        self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_storage
     ) -> None:
         """ABI wire format test for relinquishOutput.
 
@@ -38,10 +38,8 @@ class TestUniversalVectorsRelinquishOutput:
         # Given
         args_data, result_data = load_test_vectors("relinquishOutput-simple")
 
-        wallet = Wallet(chain="main", key_deriver=test_key_deriver)
-
         # When - Use JSON args since wire deserialization is incomplete
-        result = wallet.relinquish_output(args_data["json"], originator=None)
+        result = wallet_with_storage.relinquish_output(args_data["json"], originator=None)
         wire_output = serialize_response(result)
 
         # Then - Just verify the ABI serialization works

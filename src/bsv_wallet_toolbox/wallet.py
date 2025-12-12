@@ -7,6 +7,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import logging
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -24,7 +25,7 @@ from bsv.wallet.wallet_interface import (
     GetVersionResult,
 )
 
-from .errors import InvalidParameterError, ReviewActionsError
+from .errors import InvalidParameterError, ReviewActionsError, WalletError
 from .manager.wallet_settings_manager import WalletSettingsManager
 from .sdk.privileged_key_manager import PrivilegedKeyManager
 from .sdk.types import (
@@ -72,6 +73,9 @@ WalletNetwork = Literal["mainnet", "testnet"]
 
 # Constants
 MAX_ORIGINATOR_LENGTH_BYTES = 250  # BRC-100 standard: originator must be under 250 bytes
+
+# Logger
+logger = logging.getLogger(__name__)
 
 
 def _parse_counterparty(value: str | PublicKey) -> Counterparty:
@@ -826,7 +830,7 @@ class Wallet:
 
         # Fallback: use identity key from key_deriver if available
         if self.key_deriver and hasattr(self.key_deriver, "identity_key"):
-            return f"storage {self.key_deriver.identity_key}"
+            return f"storage {self.key_deriver.identity_key().hex()}"
 
         return "storage unknown"
 
@@ -3429,11 +3433,42 @@ class Wallet:
         if not isinstance(args, dict):
             raise InvalidParameterError("args must be a dictionary")
 
-        # Validate writer
-        writer = args.get("writer")
-        if writer is None:
+        # Validate args is not empty
+        if not args:
+            raise InvalidParameterError("args cannot be empty")
+
+        # Validate writer exists in args
+        if "writer" not in args:
             raise InvalidParameterError("writer is required")
-        
+
+        # Validate writer
+        writer = args["writer"]
+        if writer is None:
+            raise InvalidParameterError("writer cannot be None")
+
+        # Validate writer type (only string or storage objects allowed)
+        if not isinstance(writer, str) and not hasattr(writer, 'sync_to_writer'):
+            raise InvalidParameterError(f"writer must be a string or storage object, got {type(writer).__name__}")
+
+        # Validate options exists in args
+        if "options" not in args:
+            raise InvalidParameterError("options is required")
+
+        # Validate options
+        options = args["options"]
+        if options is None:
+            raise InvalidParameterError("options cannot be None")
+        if not isinstance(options, dict):
+            raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
+
+        # Validate batch_size if provided
+        batch_size = options.get("batch_size")
+        if batch_size is not None:
+            if not isinstance(batch_size, int):
+                raise InvalidParameterError(f"batch_size must be an integer, got {type(batch_size).__name__}")
+            if batch_size <= 0:
+                raise InvalidParameterError("batch_size must be positive")
+
         # Handle string writer (storage identity key) for backwards compatibility
         if isinstance(writer, str):
             if writer == "":
@@ -3449,35 +3484,20 @@ class Wallet:
             else:
                 return {"inserts": 1, "updates": 0, "log": "stub sync"}
 
-        # Validate options
-        options = args.get("options", {})
-        if options is None:
-            options = {}
-        if not isinstance(options, dict):
-            raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
-        
-        # Validate batch_size if provided
-        batch_size = options.get("batch_size")
-        if batch_size is not None:
-            if not isinstance(batch_size, int):
-                raise InvalidParameterError(f"batch_size must be an integer, got {type(batch_size).__name__}")
-            if batch_size <= 0:
-                raise InvalidParameterError("batch_size must be positive")
-
         # Get progress logging function
         prog_log = options.get("prog_log")
         
         # Use WalletStorageManager for actual sync
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             # Create a manager with local storage as active
             manager = WalletStorageManager(
-                identity_key=self._key_deriver.root_key.public_key.hex() if self._key_deriver else "",
-                active=self._storage
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
+                active=self.storage
             )
             
             # Create auth ID
             auth = AuthId(
-                identity_key=self._key_deriver.root_key.public_key.hex() if self._key_deriver else "",
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
                 user_id=getattr(self, '_user_id', None),
                 is_active=True
             )
@@ -3544,13 +3564,13 @@ class Wallet:
         prog_log = options.get("prog_log")
         
         # Use WalletStorageManager for actual sync
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             identity_key = self._key_deriver.root_key.public_key.hex() if self._key_deriver else ""
             
             # Create a manager with local storage as active
             manager = WalletStorageManager(
                 identity_key=identity_key,
-                active=self._storage
+                active=self.storage
             )
             
             # Perform sync from reader to local
@@ -3598,14 +3618,14 @@ class Wallet:
         prog_log = args.get("prog_log")
         
         # Use WalletStorageManager for actual sync
-        if hasattr(self, '_storage') and self._storage:
+        if hasattr(self, 'storage') and self.storage:
             identity_key = self._key_deriver.root_key.public_key.hex() if self._key_deriver else ""
             
             # Create a manager with local storage as active
             # Note: In full implementation, backups would be passed from wallet config
             manager = WalletStorageManager(
                 identity_key=identity_key,
-                active=self._storage
+                active=self.storage
             )
             
             # Perform backup sync
@@ -3667,10 +3687,29 @@ class Wallet:
         if not isinstance(backup_first_value, bool):
             raise InvalidParameterError(f"backup_first must be a boolean, got {type(backup_first_value).__name__}")
 
-        # Stub implementation - do nothing for tests
-        # Full implementation requires WalletStorageManager
-        # For now, just validate and return to allow tests to pass
-        pass
+        # Use WalletStorageManager for storage switching
+        if hasattr(self, 'storage') and self.storage:
+            # Create a manager with current storage as active
+            from .storage.wallet_storage_manager import WalletStorageManager
+            manager = WalletStorageManager(
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
+                active=self.storage
+            )
+
+            # Add other available storages as backups
+            # Note: In a full implementation, this would need to track available storages
+            # For now, we'll assume the target storage is already known to the manager
+
+            try:
+                manager.set_active(storage, backup_first=backup_first_value)
+                # Update wallet's active storage reference
+                self._storage = manager.get_active()
+                logger.info(f"Wallet active storage switched to {storage}")
+            except Exception as e:
+                raise WalletError(f"Failed to switch active storage: {e}")
+        else:
+            # No storage manager available, just validate parameters
+            logger.warning("No storage provider available for set_active operation")
 
     def list_failed_actions(
         self, args: dict[str, Any], unfail: bool = False, originator: str | None = None
@@ -3980,3 +4019,4 @@ def _throw_dummy_review_actions() -> None:
         tx=None,  # Would be beef.toBinaryAtomic(txid)
         no_send_change=[f"{txid}.0"],
     )
+
