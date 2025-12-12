@@ -136,7 +136,11 @@ class StorageProvider:
         self.settings: dict[str, Any] | None = None
         # Logger for sync operations
         self.logger = logging.getLogger(f"{__name__}.StorageProvider")
-        self.fee_model = {"model": "sat/kb", "value": 100}
+        # TS default: { model: 'sat/kb', value: 1 }
+        # (wallet-toolbox/src/storage/StorageProvider.ts: StorageProvider.defaultOptions)
+        self.fee_model = {"model": "sat/kb", "value": 1}
+        # Randomizer for deterministic testing (None = use system entropy)
+        self._randomizer: Any | None = None
 
     def set_services(self, services: Any) -> None:
         """Attach a Services instance for network-backed checks.
@@ -162,6 +166,64 @@ class StorageProvider:
         if self._services is None:
             raise RuntimeError("Services must be set via set_services() before use")
         return self._services
+
+    def set_randomizer(self, randomizer: Any) -> None:
+        """Set a custom randomizer for deterministic testing.
+
+        Args:
+            randomizer: A Randomizer instance (e.g., DeterministicRandomizer for testing)
+
+        Reference:
+            - go-wallet-toolbox/pkg/storage/provider.go (WithRandomizer)
+        """
+        self._randomizer = randomizer
+
+    def with_randomizer(self, randomizer: Any) -> "StorageProvider":
+        """Set a custom randomizer and return self for chaining.
+
+        Args:
+            randomizer: A Randomizer instance (e.g., DeterministicRandomizer for testing)
+
+        Returns:
+            self for method chaining
+
+        Reference:
+            - go-wallet-toolbox/pkg/storage/provider.go (WithRandomizer)
+        """
+        self._randomizer = randomizer
+        return self
+
+    def _generate_random_base64(self, length: int) -> str:
+        """Generate random base64 string using randomizer if available.
+
+        Args:
+            length: Number of raw bytes to encode
+
+        Returns:
+            Base64-encoded string
+
+        Reference:
+            - go-wallet-toolbox/pkg/randomizer/randomizer.go (Base64)
+        """
+        if self._randomizer is not None:
+            return self._randomizer.base64(length)
+        return base64.b64encode(secrets.token_bytes(length)).decode("ascii")
+
+    def _generate_reference(self) -> str:
+        """Generate random reference string (Go parity: 12 bytes).
+
+        Reference:
+            - go-wallet-toolbox/pkg/storage/internal/actions/create.go (referenceLength = 12)
+        """
+        return self._generate_random_base64(12)
+
+    def _generate_derivation_suffix(self) -> str:
+        """Generate random derivation suffix (Go parity: 16 bytes).
+
+        Reference:
+            - go-wallet-toolbox/pkg/storage/internal/actions/create.go (derivationLength = 16)
+        """
+        return self._generate_random_base64(16)
 
     def get_or_create_user_id(self, identity_key: str) -> int:
         """Get or create a user by identity key.
@@ -1867,7 +1929,12 @@ class StorageProvider:
         no_send_change_in = self._validate_no_send_change(user_id, vargs, change_basket)
         available_change_count = self.count_change_inputs(user_id, change_basket_id, not vargs.is_delayed)
 
-        fee_model_val = getattr(self.fee_model, "value", 100) if hasattr(self, "fee_model") else 100
+        # self.fee_model may be a dict (our default) or an object with `.value`.
+        fee_model_source = getattr(self, "fee_model", None)
+        if isinstance(fee_model_source, dict):
+            fee_model_val = fee_model_source.get("value", 1)
+        else:
+            fee_model_val = getattr(fee_model_source, "value", 1)
         fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
 
         new_tx = self._create_new_tx_record(user_id, vargs, storage_beef_bytes)
@@ -1976,7 +2043,7 @@ class StorageProvider:
             session.close()
 
     def _create_new_tx_record(self, user_id: int, vargs: Any, storage_beef_bytes: bytes) -> TransactionModel:
-        reference = generate_reference()
+        reference = self._generate_reference()
         created_at = self._now()
         
         tx_id = self.insert_transaction({
@@ -2057,7 +2124,7 @@ class StorageProvider:
         change_basket = ctx["change_basket"]
         
         for co in change_outputs:
-            derivation_suffix = secrets.token_hex(16)
+            derivation_suffix = self._generate_derivation_suffix()
             
             output_id = self.insert_output({
                 "transactionId": ctx["transaction_id"],
@@ -2328,7 +2395,7 @@ class StorageProvider:
         change_basket = ctx["change_basket"]
         # Handle both dict and object forms of change_basket
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
-        min_utxo_value = change_basket.get("minimumDesiredUtxoValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
+        min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
 
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
@@ -2388,7 +2455,7 @@ class StorageProvider:
         return {
             "allocated_change": allocated_change_outputs,
             "change_outputs": result.change_outputs,
-            "derivation_prefix": secrets.token_hex(16),
+            "derivation_prefix": self._generate_derivation_suffix(),  # Go uses same length for prefix
             "max_possible_satoshis_adjustment": result.max_possible_satoshis_adjustment,
         }
 
@@ -3855,96 +3922,9 @@ class StorageProvider:
         # This should purge transient data according to params
         return {"log": "", "count": 0}
 
-    def allocate_change_input(
-        self,
-        user_id: int,
-        basket_id: int,
-        target_satoshis: int,
-        exact_satoshis: int | None,
-        exclude_sending: bool,
-        _transaction_id: int,
-    ) -> dict[str, Any] | None:
-        """Allocate a change input from available outputs in a basket.
-
-        Searches for an unspent output in the specified basket that matches the
-        satoshis requirement (exact or minimum). Optionally excludes outputs in
-        'sending' status. Used during transaction creation to reserve change outputs.
-
-        Args:
-            user_id: Owner of the outputs to search
-            basket_id: Output basket to search within
-            target_satoshis: Minimum satoshis needed (if exact_satoshis is None)
-            exact_satoshis: If provided, looks for exact satoshis match; otherwise uses target
-            exclude_sending: If True, skips outputs in 'sending' status
-            _transaction_id: Transaction being constructed (unused, for future use)
-
-        Returns:
-            dict with output details if match found; None if no matching output available
-            Keys include: output_id, satoshis, txid, vout, basket_id, spent_by
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (allocateChangeInput)
-        """
-        session = self.SessionLocal()
-        try:
-            query = select(Output).where(
-                (Output.user_id == user_id)
-                & (Output.basket_id == basket_id)
-                & (Output.spendable.is_(True))
-                & (Output.spent_by.is_(None))
-            )
-
-            if exclude_sending:
-                query = query.where(Output.type != "sending")
-
-            result = session.execute(query)
-            outputs = result.scalars().all()
-
-            for output in outputs:
-                if exact_satoshis is not None:
-                    if output.satoshis == exact_satoshis:
-                        return self._model_to_dict(output)
-                elif output.satoshis >= target_satoshis:
-                    return self._model_to_dict(output)
-
-            return None
-        finally:
-            session.close()
-
-    def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
-        """Count available change inputs in a basket.
-
-        Counts unspent outputs in the specified basket that could be used as change
-        inputs. Optionally excludes outputs in 'sending' status. Used to determine
-        if sufficient change outputs are available before creating new transactions.
-
-        Args:
-            user_id: Owner of the outputs to count
-            basket_id: Output basket to count within
-            exclude_sending: If True, skips outputs in 'sending' status
-
-        Returns:
-            int: Number of available (unspent, not deleted) outputs in basket
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (countChangeInputs)
-        """
-        session = self.SessionLocal()
-        try:
-            query = select(Output).where(
-                (Output.user_id == user_id)
-                & (Output.basket_id == basket_id)
-                & (Output.spendable.is_(True))
-                & (Output.spent_by.is_(None))
-            )
-
-            if exclude_sending:
-                query = query.where(Output.type != "sending")
-
-            result = session.execute(query)
-            return len(result.scalars().all())
-        finally:
-            session.close()
+    # NOTE: allocate_change_input and count_change_inputs are defined earlier in this file
+    # (around line 2216 and 2237) with proper Transaction status checking.
+    # Do not duplicate them here.
 
     def relinquish_certificate(self, _auth: dict[str, Any], args: dict[str, Any]) -> bool:
         """Mark a certificate as relinquished (soft-deleted from active use).
@@ -5045,7 +5025,7 @@ class InternalizeActionContext:
                 description=self.vargs.get("description", ""),
                 version=self.tx.version if self.tx else 2,
                 lock_time=self.tx.locktime if self.tx else 0,
-                reference=base64.b64encode(secrets.token_bytes(7)).decode(),
+                reference=self.storage._generate_reference(),
                 is_outgoing=False,
                 created_at=now,
                 updated_at=now,
