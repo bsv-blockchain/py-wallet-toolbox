@@ -1010,29 +1010,39 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
             # scripts_only=True skips merkle proof verification, just validates scripts
             # Transaction.verify() is async in Python SDK
             import asyncio
-            
-            async def _async_verify():
+
+            async def _async_verify() -> bool:
                 return await transaction.verify(chaintracker=None, scripts_only=True)
-            
+
             # Run async verification
             try:
                 loop = asyncio.get_running_loop()
-                # If we're already in an async context, create a task
+                # If we're already in an async context, delegate to a background thread
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     is_valid = loop.run_in_executor(pool, lambda: asyncio.run(_async_verify()))
             except RuntimeError:
                 # No running loop, safe to use asyncio.run()
                 is_valid = asyncio.run(_async_verify())
-            
+
             if not is_valid:
                 raise WalletError(f"Transaction {txid} script verification failed")
+        except ValueError as verify_val_err:
+            # py-sdk Transaction.verify may raise ValueError when source transactions or
+            # merkle proofs are missing for inputs. これは「検証に必要な追加コンテキストが無い」
+            # だけであり、ウォレット内部で生成したトランザクションに対しては致命的ではない。
+            msg = str(verify_val_err)
+            if "missing an associated source transaction" in msg:
+                # ベストエフォート検証: ここでは追加エラーにせずスキップする。
+                pass
+            else:
+                raise WalletError(f"Script verification error: {verify_val_err!s}")
         except Exception as verify_err:
-            # If verify() fails due to missing source transactions, fall back to basic check
-            # This can happen with advanced features like knownTxids
+            # If verify() fails due to other reasons, fall back only for clearly benign cases.
             err_str = str(verify_err).lower()
-            if "source" in err_str or "coroutine" in err_str:
-                # Skip full verification, basic checks already passed
+            if "coroutine" in err_str:
+                # Event loop / coroutine 絡みの実行環境エラーは無視してよい（テスト環境など）
                 pass
             else:
                 raise WalletError(f"Script verification error: {verify_err!s}")

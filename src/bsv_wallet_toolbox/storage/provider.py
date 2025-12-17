@@ -2714,6 +2714,13 @@ class StorageProvider:
             s.commit()
 
         if txids_to_send:
+            # Debug: show processAction broadcast intent
+            print(
+                "[DEBUG] process_action: will share_reqs_with_world for "
+                f"txids={txids_to_send}, "
+                f"isNewTx={is_new_tx}, isNoSend={is_no_send}, "
+                f"isDelayed={is_delayed}, isSendWith={is_send_with}"
+            )
             swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
             result["sendWithResults"] = swr
             result["notDelayedResults"] = ndr
@@ -2734,6 +2741,9 @@ class StorageProvider:
         if not txids:
             return swr, ndr
 
+        # Debug: show high-level broadcast intent
+        print(f"[DEBUG] _share_reqs_with_world: txids={txids}, is_delayed={is_delayed}")
+
         session = self.SessionLocal()
         try:
             reqs = (
@@ -2751,6 +2761,7 @@ class StorageProvider:
             tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
 
             if is_delayed:
+                print("[DEBUG] _share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
@@ -2767,6 +2778,7 @@ class StorageProvider:
             try:
                 services = self.get_services()
             except RuntimeError:
+                print("[DEBUG] _share_reqs_with_world: get_services() failed, skipping network broadcast")
                 services = None
 
             for txid in txids:
@@ -2794,6 +2806,10 @@ class StorageProvider:
                     if ndr is not None:
                         ndr.append({"txid": txid, "status": "error", "message": "no raw transaction available"})
                     continue
+
+                # Debug: we have raw bytes and will attempt broadcast
+                print(f"[DEBUG] _share_reqs_with_world: attempting broadcast for txid={txid}, "
+                      f"raw_tx_len={len(raw_bytes)} bytes, services_available={services is not None}")
 
                 status = "failed"
                 note: dict[str, Any] = {"txid": txid, "status": "error"}
@@ -2823,6 +2839,12 @@ class StorageProvider:
                         message = str(exc)
                 else:
                     message = "Services not configured"
+
+                # Debug: log provider result
+                print(
+                    f"[DEBUG] _share_reqs_with_world: broadcast_result for txid={txid}: "
+                    f"broadcast_ok={broadcast_ok}, status={status}, message={message!r}"
+                )
 
                 if broadcast_ok:
                     req.status = "unmined"

@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import os
 from pathlib import Path
+from pprint import pprint
 
 from dotenv import load_dotenv
 
@@ -65,7 +66,20 @@ def main() -> None:
     # ---- ウォレット初期化（test_all_28_methods.py と同等のストレージ切り替え） ----
     chain = get_network()
     key_deriver = get_key_deriver()
+
+    # Services はデフォルト設定に加えて、環境変数から TAAL ARC API キーを注入しておく。
+    # これにより、post_beef 経由のブロードキャストが TAAL ARC（testnet）の優先経路として使われる。
     options = create_default_options(chain)
+    options["arcApiKey"] = os.getenv("TAAL_ARC_API_KEY") or options.get("arcApiKey")
+    # シンプルなデモなので、Bitails / GorillaPool 側は無効化しておく
+    options["bitailsApiKey"] = None
+    options["arcGorillaPoolUrl"] = None
+    options["arcGorillaPoolApiKey"] = None
+    options["arcGorillaPoolHeaders"] = None
+
+    print(f"[DEBUG] ARC URL: {options['arcUrl']}")
+    print(f"[DEBUG] ARC API key set: {bool(options['arcApiKey'])}")
+
     services = Services(options)
 
     # ストレージモード判定（優先度: wallet-infra > remote > local）
@@ -163,6 +177,10 @@ def main() -> None:
     if not wallet_infra_mode and not remote_storage_mode:
         print("\n💾 ローカルストレージモード")
         storage_provider = get_storage_provider(chain)
+        # ローカルストレージモードでは、StorageProvider にも Services を紐付けておくことで
+        # process_action → _share_reqs_with_world → services.post_beef(...) による
+        # ネットワークブロードキャストが有効になる。
+        storage_provider.set_services(services)
         wallet = Wallet(
             chain=chain,
             services=services,
@@ -235,8 +253,18 @@ def main() -> None:
         return
 
     print("\n✅ トランザクションを internalize しました。")
-    print(f"   state : {internalize_result.get('state', 'unknown')}")
-    print(f"   txid  : {internalize_result.get('txid', 'n/a')}")
+    # internalizeAction の結果は BRC-100/TS 実装と同様に
+    #   - accepted: bool
+    #   - isMerge: bool
+    #   - txid: str
+    #   - satoshis: int
+    # などを返し、「state」フィールドは持ちません。
+    # ここでは accepted フラグから簡易的な状態を表示します。
+    accepted = internalize_result.get("accepted")
+    state_str = "accepted" if accepted is True else ("rejected" if accepted is False else "n/a")
+    print(f"   state   : {state_str}")
+    print(f"   txid    : {internalize_result.get('txid', 'n/a')}")
+    print(f"   satoshis: {internalize_result.get('satoshis', 'n/a')}")
 
     # ---- 2) internalize した資金を使って create_action を 1 回実行 ----------------
     answer = input(
@@ -261,16 +289,43 @@ def main() -> None:
                         "outputDescription": "Faucet-funded demo OP_RETURN output",
                     }
                 ],
+                # ここで acceptDelayedBroadcast=False を指定しておくと、
+                # storage.process_action(..., isDelayed=False) となり、
+                # _share_reqs_with_world(..., is_delayed=False) 経由で即時ブロードキャストを試みる。
+                "options": {
+                    "acceptDelayedBroadcast": False,
+                },
             }
         )
     except Exception as err:  # noqa: BLE001
         print(f"\n❌ create_action でエラーが発生しました: {err}")
         return
 
+    # 詳細なデバッグ用に create_action の生結果をフルダンプ
+    #print("\n[DEBUG] raw create_action result:")
+    #pprint(action_result, width=120, sort_dicts=False)
+
+    # Services 経由の postBeef 呼び出し履歴を確認
+    try:
+        print("\n[DEBUG] Services call history (postBeef):")
+        services_history = services.get_services_call_history(reset=False)
+        pprint(services_history.get("postBeef"), width=120, sort_dicts=False)
+    except Exception as debug_err:  # noqa: BLE001
+        print(f"[DEBUG] Unable to read services call history: {debug_err}")
+
     print("\n✅ create_action が成功しました。結果の概要:")
     txid_created = action_result.get("txid") or action_result.get("txID") or "(txid not returned)"
     print(f"   txid : {txid_created}")
-    print(f"   state: {action_result.get('state', 'unknown')}")
+
+    # 手動ブロードキャスト用に Raw TX HEX を表示（ARC などに貼り付けて使う）
+    try:
+        raw_tx_bytes = bytes(action_result.get("tx") or [])
+        raw_tx_hex = raw_tx_bytes.hex()
+        if raw_tx_hex:
+            print("\n🔎 Raw transaction hex (手動ブロードキャスト用):")
+            print(raw_tx_hex)
+    except Exception as debug_err:  # noqa: BLE001
+        print(f"[DEBUG] Failed to render raw transaction hex: {debug_err}")
 
     print("\n🎉 Faucet からの受金を internalize → create_action で利用するデモが完了しました。")
 

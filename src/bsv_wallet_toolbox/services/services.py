@@ -1382,6 +1382,14 @@ class Services(WalletServices):
         # Try each provider in priority order
         last_error: str | None = None
 
+        # Debug: high-level broadcast context
+        print(
+            "[DEBUG] Services.post_beef: "
+            f"txid={txid}, txids={txids}, "
+            f"providers={{'gorillapool': {bool(self.arc_gorillapool)}, "
+            f"'taal': {bool(self.arc_taal)}, 'bitails': {bool(self.bitails)}}}"
+        )
+
         # 1. Try ARC GorillaPool (if configured)
         if self.arc_gorillapool:
             try:
@@ -1409,8 +1417,14 @@ class Services(WalletServices):
                         "message": getattr(res, "description", "Double spend detected"),
                     }
                 last_error = getattr(res, "description", "GorillaPool broadcast failed")
+                print(
+                    "[DEBUG] Services.post_beef: GorillaPool broadcast non-success, "
+                    f"status={getattr(res, 'status', None)!r}, "
+                    f"double_spend={getattr(res, 'double_spend', None)!r}"
+                )
             except Exception as e:
                 last_error = str(e)
+                print(f"[DEBUG] Services.post_beef: GorillaPool broadcast exception: {e!s}")
 
         # 2. Try ARC TAAL (if configured)
         if self.arc_taal:
@@ -1439,8 +1453,14 @@ class Services(WalletServices):
                         "message": getattr(res, "description", "Double spend detected"),
                     }
                 last_error = getattr(res, "description", "TAAL broadcast failed")
+                print(
+                    "[DEBUG] Services.post_beef: TAAL broadcast non-success, "
+                    f"status={getattr(res, 'status', None)!r}, "
+                    f"double_spend={getattr(res, 'double_spend', None)!r}"
+                )
             except Exception as e:
                 last_error = str(e)
+                print(f"[DEBUG] Services.post_beef: TAAL broadcast exception: {e!s}")
 
         # 3. Try Bitails (if configured)
         if self.bitails:
@@ -1456,12 +1476,18 @@ class Services(WalletServices):
                     last_error = "Bitails broadcast failed"
             except Exception as e:
                 last_error = str(e)
+                print(f"[DEBUG] Services.post_beef: Bitails broadcast exception: {e!s}")
 
         # Fallback: If no providers configured, return mocked success for test compatibility
         if not self.arc_gorillapool and not self.arc_taal and not self.bitails:
+            print("[DEBUG] Services.post_beef: no providers configured, returning mocked success")
             return {"accepted": True, "txid": txid, "message": "mocked"}
 
         # Otherwise return failure
+        print(
+            "[DEBUG] Services.post_beef: all providers failed, "
+            f"last_error={last_error!r}, txids={txids}"
+        )
         return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
 
     def verify_beef(self, beef: str | bytes) -> bool:
