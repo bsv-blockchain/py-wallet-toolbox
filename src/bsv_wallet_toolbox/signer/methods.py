@@ -294,12 +294,16 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
     # Insert user-provided unlocking scripts from spends
     for vin_str, spend in spends.items():
         vin = int(vin_str)
-        create_input = prior.args.get("inputs", [])[vin] if vin < len(prior.args.get("inputs", [])) else None
+        create_inputs = prior.args.get("inputs")
+        if isinstance(create_inputs, list) and vin < len(create_inputs):
+            create_input = create_inputs[vin]
+        else:
+            create_input = None
         input_data = prior.tx.inputs[vin] if vin < len(prior.tx.inputs) else None
 
         if (
             not create_input
-            or not input_data
+            or input_data is None
             or create_input.get("unlocking_script") is not None
             or "unlocking_script_length" not in create_input
             or not isinstance(create_input["unlocking_script_length"], int)
@@ -315,9 +319,10 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 f"exceeds expected length {create_input['unlocking_script_length']}"
             )
 
-            input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
-            if "sequence_number" in spend:
-                input_data.sequence = spend["sequence_number"]
+        # Apply unlocking script and optional sequence number to the underlying TransactionInput
+        input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
+        if "sequence_number" in spend:
+            input_data.sequence = spend["sequence_number"]
 
     # Insert SABPPP unlock templates for wallet-signed inputs
     # These are wallet-signed inputs that use BRC-29 protocol for authentication
@@ -332,7 +337,11 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
         # This implements ScriptTemplateBRC29.unlock flow from TypeScript
         if vin < len(prior.tx.inputs):
             input_data = prior.tx.inputs[vin]
-            create_input = prior.args.get("inputs", [])[vin] if vin < len(prior.args.get("inputs", [])) else None
+            create_inputs = prior.args.get("inputs")
+            if isinstance(create_inputs, list) and vin < len(create_inputs):
+                create_input = create_inputs[vin]
+            else:
+                create_input = None
 
             if create_input:
                 try:
@@ -359,13 +368,13 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     p2pkh = P2PKH()
                     unlock_template = p2pkh.unlock(derived_private_key)
 
-                    # Step 3: Attach template to transaction input
-                    input_data["unlocking_script_template"] = unlock_template
+                    # Step 3: Attach template to transaction input (py-sdk TransactionInput API)
+                    input_data.unlocking_script_template = unlock_template
 
                 except (ImportError, AttributeError, Exception):
                     # If BRC-29 derivation fails, log but continue
                     # The input may be signed by other means
-                    input_data["unlocking_script_template"] = None
+                    input_data.unlocking_script_template = None
 
     # Sign wallet-signed inputs using bsv-sdk transaction signing
     # This matches TypeScript: await prior.tx.sign()
@@ -376,18 +385,16 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
     try:
         # Step 1: Process unlocking script templates for wallet-signed inputs
         # For each input that has an unlocking_script_template from BRC-29 derivation
-        for vin in range(len(prior.tx.inputs)):
-            input_data = prior.tx.inputs[vin]
-
+        for vin, input_data in enumerate(prior.tx.inputs):
             # If input has unlocking template (from BRC-29), generate the unlock script
-            if input_data.get("unlocking_script_template") is not None:
+            template = getattr(input_data, "unlocking_script_template", None)
+            if template is not None:
                 try:
-                    template = input_data["unlocking_script_template"]
                     # Call template.sign(tx, vin) to generate the unlock script
                     # This matches py-sdk UnlockingScriptTemplate.sign pattern
                     if hasattr(template, "sign"):
                         unlock_script = template.sign(prior.tx, vin)
-                        input_data["unlocking_script"] = unlock_script
+                        input_data.unlocking_script = unlock_script
                 except Exception:
                     # Template signing may fail - continue with other inputs
                     pass

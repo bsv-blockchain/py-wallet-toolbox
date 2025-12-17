@@ -2340,10 +2340,28 @@ class StorageProvider:
         if not exclude_sending:
             allowed_status.append("sending")
 
+        # Only allocate **wallet-managed change UTXOs** for automatic funding.
+        # 
+        # TS parity rationale:
+        # - internalizeAction wallet payments and createAction change outputs are stored with:
+        #     - change = True
+        #     - type = "P2PKH"
+        # - Basket insertion outputs are stored with:
+        #     - change = False
+        #     - type = "custom"
+        #   and must **not** be used as SABPPP inputs for automatic change.
+        # 
+        # In early examples, basket insertion outputs were mistakenly placed in the
+        # default basket, which caused generate_change to select "custom" outputs and
+        # signer to raise `vin N, "custom" is not supported`.  Filtering by
+        # `change == True` and `type == "P2PKH"` restores TS semantics and ensures that
+        # only proper change outputs are auto-selected.
         base_cond = (
             (Output.user_id == user_id)
             & (Output.spendable.is_(True))
             & (Output.basket_id == basket_id)
+            & (Output.change.is_(True))
+            & (Output.type == "P2PKH")
             & (TransactionModel.status.in_(allowed_status))
         )
 
