@@ -15,7 +15,6 @@ Reference:
 
 from __future__ import annotations
 
-import base64
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -151,31 +150,6 @@ def build_signable_transaction(
     storage_inputs = dctr.get("inputs", [])
     storage_outputs = dctr.get("outputs", [])
 
-    # Debug: show storage inputs/outputs at the start of build_signable_transaction
-    try:
-        print("[DEBUG] build_signable_transaction: storage inputs/outputs snapshot")
-        print(f"  inputs ({len(storage_inputs)}):")
-        for si in storage_inputs:
-            print(
-                f"    vin={si.get('vin')}, type={si.get('type')}, "
-                f"source_txid={si.get('source_txid')}, "
-                f"source_vout={si.get('source_vout')}, "
-                f"source_satoshis={si.get('source_satoshis')}, "
-                f"derivation_prefix={si.get('derivation_prefix')}, "
-                f"derivation_suffix={si.get('derivation_suffix')}, "
-                f"sender_identity_key={si.get('sender_identity_key')}"
-            )
-        print(f"  outputs ({len(storage_outputs)}):")
-        for so in storage_outputs:
-            print(
-                f"    vout={so.get('vout')}, satoshis={so.get('satoshis')}, "
-                f"providedBy={so.get('providedBy')}, purpose={so.get('purpose')}, "
-                f"basket={so.get('basket')}"
-            )
-    except Exception:
-        # debug only
-        pass
-
     tx = Transaction(version=args.get("version", 2), tx_inputs=[], tx_outputs=[], locktime=args.get("lockTime", 0))
 
     # Map output vout to index
@@ -298,12 +272,9 @@ def build_signable_transaction(
             try:
                 # py-bsv Script コンストラクタは hex 文字列を直接受け取る
                 tx_input.locking_script = Script(ls_hex)
-            except Exception as dbg_err:  # noqa: BLE001
+            except Exception:  # noqa: BLE001
                 # Debug-only: locking script parse failure should surface as WalletError later if critical
-                print(
-                    "[DEBUG] build_signable_transaction: failed to parse locking script for vin="
-                    f"{storage_input.get('vin')}: {dbg_err!s}"
-                )
+                pass
 
         tx.add_input(tx_input)
         total_change_inputs += validate_satoshis(
@@ -401,29 +372,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     locker_pub = create_input.get("locker_pub_key", "")
                 else:
                     # Wallet-managed change: derive from storage metadata
-                    
-                    # Try to decode Base64 derivation prefixes/suffixes if present.
-                    # This is necessary because internalizeAction typically receives and stores
-                    # these values as Base64 strings (per BRC-29 spec for JSON transmission),
-                    # but key derivation requires the raw string values.
-                    derivation_prefix = pdi.derivation_prefix or ""
-                    try:
-                        if derivation_prefix:
-                            decoded = base64.b64decode(derivation_prefix).decode("utf-8")
-                            # Simple heuristic: if it decodes to a valid string, use it.
-                            derivation_prefix = decoded
-                    except Exception:
-                        pass
-
-                    derivation_suffix = pdi.derivation_suffix or ""
-                    try:
-                        if derivation_suffix:
-                            decoded = base64.b64decode(derivation_suffix).decode("utf-8")
-                            derivation_suffix = decoded
-                    except Exception:
-                        pass
-
-                    key_id = f"{derivation_prefix} {derivation_suffix}".strip()
+                    key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}".strip()
                     locker_pub = pdi.unlocker_pub_key
 
                 if locker_pub:
@@ -472,29 +421,6 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     # Template signing may fail - continue with other inputs
                     pass
 
-        # Debug: show input state before calling tx.sign()
-        try:
-            print("[DEBUG] complete_signed_transaction: input state before tx.sign()")
-            for vin, inp in enumerate(prior.tx.inputs):
-                try:
-                    us = getattr(inp, "unlocking_script", None)
-                    us_hex = ""
-                    if us is not None:
-                        if hasattr(us, "to_hex"):
-                            us_hex = us.to_hex()
-                        elif hasattr(us, "serialize"):
-                            us_hex = us.serialize().hex()
-                    tmpl = getattr(inp, "unlocking_script_template", None)
-                    print(
-                        f"  vin={vin}, source_txid={getattr(inp, 'source_txid', None)}, "
-                        f"has_template={tmpl is not None}, unlocking_len={len(us_hex)//2 if us_hex else 0}"
-                    )
-                except Exception as dbg_err:
-                    print(f"  [DEBUG] failed to inspect input vin={vin}: {dbg_err!s}")
-        except Exception:
-            # Debug logging failures should not affect signing
-            pass
-
         # Step 2: Call transaction signing if available
         # This handles any final transaction-level signing requirements
         if hasattr(prior.tx, "sign"):
@@ -503,28 +429,6 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
             # - Validate the transaction structure
             # - Apply any protocol-specific transformations
             prior.tx.sign()
-
-        # Debug: show input state after tx.sign()
-        try:
-            print("[DEBUG] complete_signed_transaction: input state after tx.sign()")
-            for vin, inp in enumerate(prior.tx.inputs):
-                try:
-                    us = getattr(inp, "unlocking_script", None)
-                    us_hex = ""
-                    if us is not None:
-                        if hasattr(us, "to_hex"):
-                            us_hex = us.to_hex()
-                        elif hasattr(us, "serialize"):
-                            us_hex = us.serialize().hex()
-                    tmpl = getattr(inp, "unlocking_script_template", None)
-                    print(
-                        f"  vin={vin}, source_txid={getattr(inp, 'source_txid', None)}, "
-                        f"has_template={tmpl is not None}, unlocking_len={len(us_hex)//2 if us_hex else 0}"
-                    )
-                except Exception as dbg_err:
-                    print(f"  [DEBUG] failed to inspect input vin={vin}: {dbg_err!s}")
-        except Exception:
-            pass
 
     except Exception:
         # Transaction signing may fail for various reasons

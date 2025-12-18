@@ -33,6 +33,7 @@ Phase 4 Implementation Status:
 
 import asyncio
 import inspect
+import logging
 import threading
 from collections.abc import Callable
 from time import time
@@ -240,6 +241,7 @@ class Services(WalletServices):
 
         # Call parent constructor
         super().__init__(chain)
+        self.logger = logging.getLogger(f"{__name__}.Services")
 
         # Initialize WhatsOnChain provider
         woc_api_key = self.options.get("whatsOnChainApiKey")
@@ -1383,11 +1385,13 @@ class Services(WalletServices):
         last_error: str | None = None
 
         # Debug: high-level broadcast context
-        print(
-            "[DEBUG] Services.post_beef: "
-            f"txid={txid}, txids={txids}, "
-            f"providers={{'gorillapool': {bool(self.arc_gorillapool)}, "
-            f"'taal': {bool(self.arc_taal)}, 'bitails': {bool(self.bitails)}}}"
+        self.logger.debug(
+            "Services.post_beef: txid=%s, txids=%s, providers={'gorillapool': %s, 'taal': %s, 'bitails': %s}",
+            txid,
+            txids,
+            bool(self.arc_gorillapool),
+            bool(self.arc_taal),
+            bool(self.bitails),
         )
 
         # 1. Try ARC GorillaPool (if configured)
@@ -1417,14 +1421,14 @@ class Services(WalletServices):
                         "message": getattr(res, "description", "Double spend detected"),
                     }
                 last_error = getattr(res, "description", "GorillaPool broadcast failed")
-                print(
-                    "[DEBUG] Services.post_beef: GorillaPool broadcast non-success, "
-                    f"status={getattr(res, 'status', None)!r}, "
-                    f"double_spend={getattr(res, 'double_spend', None)!r}"
+                self.logger.debug(
+                    "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
                 )
             except Exception as e:
                 last_error = str(e)
-                print(f"[DEBUG] Services.post_beef: GorillaPool broadcast exception: {e!s}")
+                self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
 
         # 2. Try ARC TAAL (if configured)
         if self.arc_taal:
@@ -1453,14 +1457,14 @@ class Services(WalletServices):
                         "message": getattr(res, "description", "Double spend detected"),
                     }
                 last_error = getattr(res, "description", "TAAL broadcast failed")
-                print(
-                    "[DEBUG] Services.post_beef: TAAL broadcast non-success, "
-                    f"status={getattr(res, 'status', None)!r}, "
-                    f"double_spend={getattr(res, 'double_spend', None)!r}"
+                self.logger.debug(
+                    "Services.post_beef: TAAL broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
                 )
             except Exception as e:
                 last_error = str(e)
-                print(f"[DEBUG] Services.post_beef: TAAL broadcast exception: {e!s}")
+                self.logger.debug("Services.post_beef: TAAL broadcast exception: %s", e)
 
         # 3. Try Bitails (if configured)
         if self.bitails:
@@ -1476,17 +1480,18 @@ class Services(WalletServices):
                     last_error = "Bitails broadcast failed"
             except Exception as e:
                 last_error = str(e)
-                print(f"[DEBUG] Services.post_beef: Bitails broadcast exception: {e!s}")
+                self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
 
         # Fallback: If no providers configured, return mocked success for test compatibility
         if not self.arc_gorillapool and not self.arc_taal and not self.bitails:
-            print("[DEBUG] Services.post_beef: no providers configured, returning mocked success")
+            self.logger.debug("Services.post_beef: no providers configured, returning mocked success")
             return {"accepted": True, "txid": txid, "message": "mocked"}
 
         # Otherwise return failure
-        print(
-            "[DEBUG] Services.post_beef: all providers failed, "
-            f"last_error={last_error!r}, txids={txids}"
+        self.logger.debug(
+            "Services.post_beef: all providers failed, last_error=%r, txids=%s",
+            last_error,
+            txids,
         )
         return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 import base64
 import os
 from pathlib import Path
-from pprint import pprint
 
 from dotenv import load_dotenv
 
@@ -46,6 +45,7 @@ from src.transaction_management import _build_atomic_beef_for_txid
 # Faucet 用 BRC-29 派生情報（test_all_28_methods.py と同じ値）
 FAUCET_DERIVATION_PREFIX = "faucet-prefix-01"
 FAUCET_DERIVATION_SUFFIX = "faucet-suffix-01"
+DEFAULT_OUTPUT_INDEX = 0
 
 
 def main() -> None:
@@ -77,9 +77,6 @@ def main() -> None:
     options["arcGorillaPoolUrl"] = None
     options["arcGorillaPoolApiKey"] = None
     options["arcGorillaPoolHeaders"] = None
-
-    print(f"[DEBUG] ARC URL: {options['arcUrl']}")
-    print(f"[DEBUG] ARC API key set: {bool(options['arcApiKey'])}")
 
     services = Services(options)
 
@@ -212,6 +209,23 @@ def main() -> None:
         print("\n❌ txid が 16 進数として不正です。")
         return
 
+    # internalize する vout を入力（未入力なら 0）
+    vout_raw = input(
+        "\n🔧 internalize したい output index を入力してください（デフォルト0）\n"
+        "outputIndex: "
+    ).strip()
+    if not vout_raw:
+        output_index = DEFAULT_OUTPUT_INDEX
+    else:
+        try:
+            output_index = int(vout_raw)
+        except ValueError:
+            print("\n❌ output index は整数で指定してください。")
+            return
+        if output_index < 0:
+            print("\n❌ output index は 0 以上を指定してください。")
+            return
+
     try:
         atomic_beef = _build_atomic_beef_for_txid(chain, txid)
     except Exception as err:  # noqa: BLE001
@@ -233,9 +247,9 @@ def main() -> None:
         "tx": atomic_beef,
         "outputs": [
             {
-                # もっとも単純なケースとして「最初のアウトプット(0) が自分宛て」の
-                # BRC-29 wallet payment であると仮定する。
-                "outputIndex": 0,
+                # デフォルトでは最初のアウトプット(0)を自分宛てとみなす。
+                # 入力された outputIndex を使用する。
+                "outputIndex": output_index,
                 "protocol": "wallet payment",
                 "paymentRemittance": {
                     "senderIdentityKey": anyone_key.hex(),
@@ -323,8 +337,8 @@ def main() -> None:
                 raw_hex = services.get_raw_tx(err.txid) or ""
                 if isinstance(raw_hex, str) and raw_hex:
                     tx_bytes = bytes.fromhex(raw_hex)
-            except Exception as debug_err:  # noqa: BLE001
-                print(f"[DEBUG] failed to fetch rawTx for txid={err.txid}: {debug_err}")
+            except Exception:  # noqa: BLE001
+                pass
 
         # 3) 取得できたら HEX を表示（ARC 等への手動投稿に利用可能）
         if tx_bytes:
@@ -333,38 +347,10 @@ def main() -> None:
                 print("\n🔎 Raw transaction hex (エラー時デバッグ用・手動ブロードキャスト可):")
                 print(raw_tx_hex)
 
-        # 4) review_action_results / send_with_results もあれば参考情報として表示
-        try:
-            rar = getattr(err, "review_action_results", None)
-            swr = getattr(err, "send_with_results", None)
-            if rar is not None or swr is not None:
-                print("\n[DEBUG] ReviewActionsError details:")
-                if rar is not None:
-                    print("  review_action_results:")
-                    pprint(rar, width=120, sort_dicts=False)
-                if swr is not None:
-                    print("  send_with_results:")
-                    pprint(swr, width=120, sort_dicts=False)
-        except Exception:
-            # デバッグ出力なので失敗してもスルー
-            pass
-
         return
     except Exception as err:  # noqa: BLE001
         print(f"\n❌ create_action で予期しないエラーが発生しました: {err}")
         return
-
-    # 詳細なデバッグ用に create_action の生結果をフルダンプ
-    #print("\n[DEBUG] raw create_action result:")
-    #pprint(action_result, width=120, sort_dicts=False)
-
-    # Services 経由の postBeef 呼び出し履歴を確認
-    try:
-        print("\n[DEBUG] Services call history (postBeef):")
-        services_history = services.get_services_call_history(reset=False)
-        pprint(services_history.get("postBeef"), width=120, sort_dicts=False)
-    except Exception as debug_err:  # noqa: BLE001
-        print(f"[DEBUG] Unable to read services call history: {debug_err}")
 
     print("\n✅ create_action が成功しました。結果の概要:")
     txid_created = action_result.get("txid") or action_result.get("txID") or "(txid not returned)"
@@ -377,8 +363,8 @@ def main() -> None:
         if raw_tx_hex:
             print("\n🔎 Raw transaction hex (手動ブロードキャスト用):")
             print(raw_tx_hex)
-    except Exception as debug_err:  # noqa: BLE001
-        print(f"[DEBUG] Failed to render raw transaction hex: {debug_err}")
+    except Exception:  # noqa: BLE001
+        pass
 
     print("\n🎉 Faucet からの受金を internalize → create_action で利用するデモが完了しました。")
 

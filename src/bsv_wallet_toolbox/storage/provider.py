@@ -703,6 +703,10 @@ class StorageProvider:
         if specop == "wallet_balance":
             basket_name = "default"
             specop_ignore_limit = True
+            # For wallet_balance, we only want available spendable funds
+            # This means excluding spent outputs, and optionally excluding locked outputs
+            # if we had a way to check locks here. Currently 'spendable' flag handles this.
+            include_spent = False
         elif specop == "invalid_change":
             basket_name = basket_name or "default"
             specop_ignore_limit = True
@@ -2721,11 +2725,14 @@ class StorageProvider:
 
         if txids_to_send:
             # Debug: show processAction broadcast intent
-            print(
-                "[DEBUG] process_action: will share_reqs_with_world for "
-                f"txids={txids_to_send}, "
-                f"isNewTx={is_new_tx}, isNoSend={is_no_send}, "
-                f"isDelayed={is_delayed}, isSendWith={is_send_with}"
+            self.logger.debug(
+                "process_action: will share_reqs_with_world for txids=%s, "
+                "isNewTx=%s, isNoSend=%s, isDelayed=%s, isSendWith=%s",
+                txids_to_send,
+                is_new_tx,
+                is_no_send,
+                is_delayed,
+                is_send_with,
             )
             swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
             result["sendWithResults"] = swr
@@ -2748,7 +2755,7 @@ class StorageProvider:
             return swr, ndr
 
         # Debug: show high-level broadcast intent
-        print(f"[DEBUG] _share_reqs_with_world: txids={txids}, is_delayed={is_delayed}")
+        self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
 
         session = self.SessionLocal()
         try:
@@ -2767,7 +2774,7 @@ class StorageProvider:
             tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
 
             if is_delayed:
-                print("[DEBUG] _share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
+                self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
@@ -2784,7 +2791,7 @@ class StorageProvider:
             try:
                 services = self.get_services()
             except RuntimeError:
-                print("[DEBUG] _share_reqs_with_world: get_services() failed, skipping network broadcast")
+                self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
                 services = None
 
             for txid in txids:
@@ -2814,8 +2821,13 @@ class StorageProvider:
                     continue
 
                 # Debug: we have raw bytes and will attempt broadcast
-                print(f"[DEBUG] _share_reqs_with_world: attempting broadcast for txid={txid}, "
-                      f"raw_tx_len={len(raw_bytes)} bytes, services_available={services is not None}")
+                self.logger.debug(
+                    "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
+                    "services_available=%s",
+                    txid,
+                    len(raw_bytes),
+                    services is not None,
+                )
 
                 status = "failed"
                 note: dict[str, Any] = {"txid": txid, "status": "error"}
@@ -2847,9 +2859,12 @@ class StorageProvider:
                     message = "Services not configured"
 
                 # Debug: log provider result
-                print(
-                    f"[DEBUG] _share_reqs_with_world: broadcast_result for txid={txid}: "
-                    f"broadcast_ok={broadcast_ok}, status={status}, message={message!r}"
+                self.logger.debug(
+                    "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
+                    txid,
+                    broadcast_ok,
+                    status,
+                    message,
                 )
 
                 if broadcast_ok:
