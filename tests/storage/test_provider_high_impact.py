@@ -803,6 +803,8 @@ class TestCreateActionOperations:
             "vout": 0,
             "satoshis": 100000,
             "spendable": True,
+            "change": True,  # Must be True for allocate_change_input
+            "type": "P2PKH",  # Must be "P2PKH" for allocate_change_input
             "txid": "s" * 64,
             "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
         })
