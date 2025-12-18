@@ -8,13 +8,11 @@ Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/__tests/Cha
 import pytest
 
 try:
-    from bsv_wallet_toolbox.hash import sha256
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.util import (
         ChaintracksFetch,
         valid_bulk_header_files_by_file_hash,
     )
-
-    from bsv_wallet_toolbox.utils import as_array, as_string
+    from bsv_wallet_toolbox.utils import sha256_hash, as_array, as_string
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -70,7 +68,7 @@ class TestChaintracksFetch:
 
         # Then
         assert len(data) == 8000000
-        file_hash = as_string(sha256(as_array(data)), "base64")
+        file_hash = as_string(sha256_hash(as_array(data)), "base64")
         assert valid_bulk_header_files_by_file_hash()[file_hash] is not None
 
     @pytest.mark.integration
@@ -92,7 +90,7 @@ class TestChaintracksFetch:
 
         # Then
         assert len(data) == 80 * 100000
-        file_hash = as_string(sha256(as_array(data)), "base64")
+        file_hash = as_string(sha256_hash(as_array(data)), "base64")
         assert valid_bulk_header_files_by_file_hash()[file_hash] is not None
 
     @pytest.mark.integration
@@ -113,5 +111,5 @@ class TestChaintracksFetch:
         data = fetch.download(url)
 
         # Then
-        file_hash = as_string(sha256(as_array(data)), "base64")
+        file_hash = as_string(sha256_hash(as_array(data)), "base64")
         assert valid_bulk_header_files_by_file_hash()[file_hash] is not None

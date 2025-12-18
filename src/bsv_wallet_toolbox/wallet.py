@@ -137,6 +137,29 @@ def _to_byte_list(value: bytes | bytearray) -> list[int]:
     return list(bytes(value))
 
 
+def _normalize_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Normalize protocol parameters to handle both protocolID and protocol_id formats.
+
+    The wallet API expects protocolID (camelCase), but tests may pass protocol_id (snake_case).
+    This function ensures both formats are accepted and normalized to protocolID.
+
+    Args:
+        args: Arguments dictionary that may contain protocol parameters
+
+    Returns:
+        Updated args dict with normalized protocol parameters
+    """
+    # Handle protocol_id -> protocolID normalization
+    if "protocol_id" in args and "protocolID" not in args:
+        args["protocolID"] = args["protocol_id"]
+
+    # Handle key_id -> keyID normalization
+    if "key_id" in args and "keyID" not in args:
+        args["keyID"] = args["key_id"]
+
+    return args
+
+
 class Wallet:
     """BRC-100 compliant wallet implementation.
 
@@ -403,22 +426,25 @@ class Wallet:
         py-sdk ProtoWallet uses snake_case (protocol_id, key_id, hash_to_directly_sign)
 
         Args:
-            args: Arguments in py-wallet-toolbox format
+            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
 
         Returns:
             Arguments in py-sdk format
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         proto_args: dict[str, Any] = {}
 
-        # Convert protocolID -> protocol_id
+        # Keep protocolID as camelCase (py-sdk expects protocolID, not protocol_id)
         protocol_id = args.get("protocolID")
         if protocol_id is not None:
-            proto_args["protocol_id"] = protocol_id
+            proto_args["protocolID"] = protocol_id
 
-        # Convert keyID -> key_id
+        # Keep keyID as camelCase (py-sdk expects keyID, not key_id)
         key_id = args.get("keyID")
         if key_id is not None:
-            proto_args["key_id"] = key_id
+            proto_args["keyID"] = key_id
 
         # Convert counterparty to py-sdk format
         # py-sdk expects: 'self', 'anyone', or dict with {type, counterparty}
@@ -469,11 +495,14 @@ class Wallet:
         """Convert verify signature args from py-wallet-toolbox format to py-sdk format.
 
         Args:
-            args: Arguments in py-wallet-toolbox format
+            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
 
         Returns:
             Arguments in py-sdk format
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         proto_args = self._convert_signature_args_to_proto_format(args)
 
         # Convert hashToDirectlyVerify -> hash_to_directly_verify
@@ -495,11 +524,14 @@ class Wallet:
         py-sdk ProtoWallet.get_public_key expects the same format (it handles both).
 
         Args:
-            args: Arguments in py-wallet-toolbox format
+            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         proto_args: dict[str, Any] = {}
 
         # Pass through identityKey
@@ -568,7 +600,7 @@ class Wallet:
         py-sdk ProtoWallet expects: plaintext + encryption_args dict with snake_case
 
         Args:
-            args: Arguments in py-wallet-toolbox format
+            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
@@ -576,6 +608,9 @@ class Wallet:
         Raises:
             TypeError: If protocolID format is invalid
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         plaintext = args.get("plaintext")
         if plaintext is not None:
             plaintext = _as_bytes(plaintext, "plaintext")
@@ -593,16 +628,19 @@ class Wallet:
             if isinstance(protocol_id, str):
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
             try:
-                # py-sdk expects dict with securityLevel and protocol
-                encryption_args["protocol_id"] = {
-                    "securityLevel": protocol_id[0],
-                    "protocol": protocol_id[1],
-                }
+                # py-sdk expects protocolID as dict with securityLevel and protocol
+                if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
+                    encryption_args["protocolID"] = {
+                        "securityLevel": protocol_id[0],
+                        "protocol": protocol_id[1]
+                    }
+                else:
+                    encryption_args["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
 
         if key_id is not None:
-            encryption_args["key_id"] = key_id
+            encryption_args["keyID"] = key_id
 
         # Handle counterparty conversion - must use dict format for py-sdk
         encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
@@ -618,7 +656,7 @@ class Wallet:
         """Convert decrypt args from py-wallet-toolbox format to py-sdk ProtoWallet format.
 
         Args:
-            args: Arguments in py-wallet-toolbox format
+            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
@@ -626,6 +664,9 @@ class Wallet:
         Raises:
             TypeError: If protocolID format is invalid
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         ciphertext = args.get("ciphertext")
         if ciphertext is not None:
             ciphertext = _as_bytes(ciphertext, "ciphertext")
@@ -642,15 +683,19 @@ class Wallet:
             if isinstance(protocol_id, str):
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
             try:
-                encryption_args["protocol_id"] = {
-                    "securityLevel": protocol_id[0],
-                    "protocol": protocol_id[1],
-                }
+                # py-sdk expects protocolID as dict with securityLevel and protocol
+                if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
+                    encryption_args["protocolID"] = {
+                        "securityLevel": protocol_id[0],
+                        "protocol": protocol_id[1]
+                    }
+                else:
+                    encryption_args["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
 
         if key_id is not None:
-            encryption_args["key_id"] = key_id
+            encryption_args["keyID"] = key_id
 
         # Handle counterparty conversion - must use dict format for py-sdk
         encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
@@ -664,7 +709,7 @@ class Wallet:
         """Convert HMAC args from py-wallet-toolbox format to py-sdk ProtoWallet format.
 
         Args:
-            args: Arguments in py-wallet-toolbox format
+            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
@@ -672,6 +717,9 @@ class Wallet:
         Raises:
             TypeError: If protocolID format is invalid
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         data = args.get("data")
         if data is not None:
             data = _as_bytes(data, "data")
@@ -688,15 +736,19 @@ class Wallet:
             if isinstance(protocol_id, str):
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
             try:
-                encryption_args["protocol_id"] = {
-                    "securityLevel": protocol_id[0],
-                    "protocol": protocol_id[1],
-                }
+                # py-sdk expects protocolID as dict with securityLevel and protocol
+                if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
+                    encryption_args["protocolID"] = {
+                        "securityLevel": protocol_id[0],
+                        "protocol": protocol_id[1]
+                    }
+                else:
+                    encryption_args["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
 
         if key_id is not None:
-            encryption_args["key_id"] = key_id
+            encryption_args["keyID"] = key_id
 
         # Handle counterparty conversion - must use dict format for py-sdk
         encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
@@ -2643,6 +2695,8 @@ class Wallet:
             - go-wallet-toolbox/pkg/wallet/wallet.go RevealSpecificKeyLinkage
             - py-sdk ProtoWallet.reveal_specific_key_linkage
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -2713,6 +2767,8 @@ class Wallet:
             If privileged is provided in args and privileged_key_manager is configured,
             uses privileged_key_manager instead of key_deriver.
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Validate arguments
@@ -2776,6 +2832,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - toolbox/py-wallet-toolbox/tests/universal/test_signature_min.py
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested (TS/Go parity)
@@ -2839,6 +2897,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - toolbox/py-wallet-toolbox/tests/universal/test_signature_min.py
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested (TS/Go parity)
@@ -2895,6 +2955,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (encrypt)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -2948,6 +3010,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (decrypt)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -3059,6 +3123,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (verify_hmac)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested

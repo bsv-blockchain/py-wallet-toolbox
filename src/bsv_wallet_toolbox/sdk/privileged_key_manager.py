@@ -24,6 +24,29 @@ from bsv.keys import PrivateKey
 from bsv.wallet import ProtoWallet
 
 
+def _normalize_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Normalize protocol parameters to handle both protocolID and protocol_id formats.
+
+    The privileged key manager API expects protocolID (camelCase), but tests may pass protocol_id (snake_case).
+    This function ensures both formats are accepted and normalized to protocolID.
+
+    Args:
+        args: Arguments dictionary that may contain protocol parameters
+
+    Returns:
+        Updated args dict with normalized protocol parameters
+    """
+    # Handle protocol_id -> protocolID normalization
+    if "protocol_id" in args and "protocolID" not in args:
+        args["protocolID"] = args["protocol_id"]
+
+    # Handle key_id -> keyID normalization
+    if "key_id" in args and "keyID" not in args:
+        args["keyID"] = args["key_id"]
+
+    return args
+
+
 class PrivilegedKeyManager:
     """Manages privileged private keys with secure storage and automatic cleanup.
 
@@ -293,30 +316,33 @@ class PrivilegedKeyManager:
         return ProtoWallet(private_key, permission_callback=lambda _: True)
 
     def _convert_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Convert args from camelCase to snake_case for ProtoWallet.
+        """Convert args to ProtoWallet format (camelCase).
         
         Args:
-            args: Arguments in camelCase format
+            args: Arguments in camelCase format (or snake_case, will be normalized)
             
         Returns:
-            Arguments in snake_case format for ProtoWallet
+            Arguments in camelCase format for ProtoWallet (py-sdk expects camelCase)
         """
+        # Normalize protocol parameters first (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
+        
         proto_args = {}
         
-        # protocolID -> protocol_id
+        # Keep protocolID as camelCase (py-sdk expects protocolID, not protocol_id)
         if "protocolID" in args and args["protocolID"] is not None:
             protocol_id = args["protocolID"]
             if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                proto_args["protocol_id"] = {
+                proto_args["protocolID"] = {
                     "securityLevel": protocol_id[0],
                     "protocol": protocol_id[1]
                 }
             else:
-                proto_args["protocol_id"] = protocol_id
+                proto_args["protocolID"] = protocol_id
         
-        # keyID -> key_id
+        # Keep keyID as camelCase (py-sdk expects keyID, not key_id)
         if "keyID" in args and args["keyID"] is not None:
-            proto_args["key_id"] = args["keyID"]
+            proto_args["keyID"] = args["keyID"]
             
         # counterparty - default to 'self' if not provided (TS parity)
         counterparty = args.get("counterparty")
@@ -408,6 +434,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'publicKey' field (hex string)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
@@ -438,6 +466,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'signature' field (list of int)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
@@ -472,6 +502,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'valid' field (bool)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
@@ -501,6 +533,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'ciphertext' field (list of int)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
@@ -535,6 +569,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'plaintext' field (list of int)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
@@ -600,6 +636,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'valid' field (bool)
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
@@ -656,6 +694,8 @@ class PrivilegedKeyManager:
         Returns:
             Dict containing specific key linkage revelation
         """
+        # Normalize protocol parameters (handle both protocolID and protocol_id)
+        args = _normalize_protocol_args(args)
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)

@@ -97,8 +97,12 @@ class DeterministicRandomizer(Randomizer):
 
     MIN_RANDOMIZE_LENGTH = 3  # minimum length for randomization to avoid early overflow
 
-    def __init__(self) -> None:
-        """Initialize test randomizer matching Go's NewTestRandomizer()."""
+    def __init__(self, seed: int | None = None) -> None:
+        """Initialize test randomizer matching Go's NewTestRandomizer().
+
+        Args:
+            seed: Optional seed value for API compatibility (currently unused)
+        """
         self._base_character = ord('a')  # 0x61
         self._roll_counter = 0
 

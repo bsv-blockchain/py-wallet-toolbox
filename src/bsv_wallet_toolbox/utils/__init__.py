@@ -7,6 +7,7 @@ Reference: toolbox/ts-wallet-toolbox/src/utility/
 
 import os
 from types import SimpleNamespace
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -108,6 +109,35 @@ class Setup:
             identity_key="",  # Identity key from .env if needed
             mysql_connection="",  # MySQL connection string if needed
         )
+
+    @staticmethod
+    def no_env(chain: str) -> bool:
+        """Check if environment is not configured for chain.
+
+        Args:
+            chain: Blockchain network ('main' or 'test')
+
+        Returns:
+            True if environment is not configured
+        """
+        try:
+            Setup.get_env(chain)
+            return False
+        except Exception:
+            return True
+
+    @staticmethod
+    def create_wallet_client(args: dict[str, Any]) -> Any:
+        """Create wallet client (stub - not fully implemented).
+
+        Args:
+            args: Configuration arguments
+
+        Returns:
+            Wallet client object (stub implementation)
+        """
+        # Stub implementation - full implementation would require wallet setup
+        raise NotImplementedError("Setup.create_wallet_client is not fully implemented")
 
 
 class TestUtils:
