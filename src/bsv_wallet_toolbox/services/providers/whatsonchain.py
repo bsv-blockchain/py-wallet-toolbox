@@ -92,6 +92,16 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     # ------------------------------------------------------------------ #
     # Override selected py-sdk tracker methods to avoid signature clash  #
     # with ChaintracksClientApi.get_headers(height, count).              #
+    #                                                                     #
+    # Background: py-sdk's WhatsOnChainTracker already defines            #
+    # get_headers() as "return HTTP headers" for REST calls, whereas this #
+    # toolbox layer must expose ChaintracksClientApi.get_headers(height,  #
+    # count) to match the TypeScript implementation. If we leave the      #
+    # original methods intact, adding the Chaintracks signature would     #
+    # break py-sdk's calls that currently invoke self.get_headers()       #
+    # (no args). To prevent that clash, we duplicate the relevant py-sdk  #
+    # logic locally and call self._get_http_headers() directly, reserving #
+    # the public get_headers(height, count) name for the Chaintracks API. #
     # ------------------------------------------------------------------ #
 
     async def is_valid_root_for_height(self, root: str, height: int) -> bool:  # type: ignore[override]
