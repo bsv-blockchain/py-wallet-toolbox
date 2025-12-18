@@ -15,6 +15,7 @@ Reference:
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -400,7 +401,29 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     locker_pub = create_input.get("locker_pub_key", "")
                 else:
                     # Wallet-managed change: derive from storage metadata
-                    key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}".strip()
+                    
+                    # Try to decode Base64 derivation prefixes/suffixes if present.
+                    # This is necessary because internalizeAction typically receives and stores
+                    # these values as Base64 strings (per BRC-29 spec for JSON transmission),
+                    # but key derivation requires the raw string values.
+                    derivation_prefix = pdi.derivation_prefix or ""
+                    try:
+                        if derivation_prefix:
+                            decoded = base64.b64decode(derivation_prefix).decode("utf-8")
+                            # Simple heuristic: if it decodes to a valid string, use it.
+                            derivation_prefix = decoded
+                    except Exception:
+                        pass
+
+                    derivation_suffix = pdi.derivation_suffix or ""
+                    try:
+                        if derivation_suffix:
+                            decoded = base64.b64decode(derivation_suffix).decode("utf-8")
+                            derivation_suffix = decoded
+                    except Exception:
+                        pass
+
+                    key_id = f"{derivation_prefix} {derivation_suffix}".strip()
                     locker_pub = pdi.unlocker_pub_key
 
                 if locker_pub:

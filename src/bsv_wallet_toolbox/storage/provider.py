@@ -2229,18 +2229,24 @@ class StorageProvider:
             vin += 1
             
         for ac in allocated_change:
-            inputs.append({
-                "vin": vin,
-                "source_txid": ac["txid"],
-                "source_vout": ac["vout"],
-                "source_satoshis": ac["satoshis"],
-                "source_locking_script": (ac["locking_script"] or b"").hex(),
-                "unlocking_script_length": 107,
-                "providedBy": ac["provided_by"] or "storage",
-                "type": ac["type"],
-                "derivation_prefix": ac["derivation_prefix"],
-                "derivation_suffix": ac["derivation_suffix"],
-            })
+            inputs.append(
+                {
+                    "vin": vin,
+                    "source_txid": ac["txid"],
+                    "source_vout": ac["vout"],
+                    "source_satoshis": ac["satoshis"],
+                    "source_locking_script": (ac["locking_script"] or b"").hex(),
+                    "unlocking_script_length": 107,
+                    "providedBy": ac["provided_by"] or "storage",
+                    "type": ac["type"],
+                    "derivation_prefix": ac["derivation_prefix"],
+                    "derivation_suffix": ac["derivation_suffix"],
+                    # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
+                    # This allows signer.build_signable_transaction to derive the correct
+                    # BRC-29 private key using sender_identity_key as counterparty when present.
+                    "sender_identity_key": ac.get("sender_identity_key") or "",
+                }
+            )
             vin += 1
             
         return inputs

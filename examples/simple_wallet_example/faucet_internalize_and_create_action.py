@@ -25,6 +25,7 @@ from dotenv import load_dotenv
 
 from bsv.keys import PrivateKey
 from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.errors import ReviewActionsError
 from bsv_wallet_toolbox.services import Services, create_default_options
 
 from src.config import (
@@ -223,6 +224,7 @@ def main() -> None:
     # - senderIdentityKey: Faucet 側 AnyoneKey (= PrivateKey(1).public_key())
     # - derivationPrefix / derivationSuffix: テスト用固定文字列（BRC-29 仕様に従い base64 で渡す）
     anyone_key = PrivateKey(1).public_key()
+    print(f"anyone_key: {anyone_key.hex()}")
     derivation_prefix_b64 = base64.b64encode(FAUCET_DERIVATION_PREFIX.encode("utf-8")).decode("ascii")
     derivation_suffix_b64 = base64.b64encode(FAUCET_DERIVATION_SUFFIX.encode("utf-8")).decode("ascii")
 
@@ -297,8 +299,59 @@ def main() -> None:
                 },
             }
         )
-    except Exception as err:  # noqa: BLE001
+    except ReviewActionsError as err:
+        # ブロードキャスト失敗など「要レビュー」ケース。
+        # ここでできる限り Raw TX HEX を出力して、手動デバッグしやすくする。
         print(f"\n❌ create_action でエラーが発生しました: {err}")
+
+        tx_bytes: bytes | None = None
+
+        # 1) 例外オブジェクトに tx（BRC-100 互換のバイト配列）があればそれを優先
+        try:
+            if getattr(err, "tx", None):
+                tx_field = err.tx
+                if isinstance(tx_field, (bytes, bytearray)):
+                    tx_bytes = bytes(tx_field)
+                elif isinstance(tx_field, list):
+                    tx_bytes = bytes(tx_field)
+        except Exception:
+            tx_bytes = None
+
+        # 2) tx が無い場合は txid から Services 経由で rawTx を取得してみる
+        if tx_bytes is None and getattr(err, "txid", None):
+            try:
+                raw_hex = services.get_raw_tx(err.txid) or ""
+                if isinstance(raw_hex, str) and raw_hex:
+                    tx_bytes = bytes.fromhex(raw_hex)
+            except Exception as debug_err:  # noqa: BLE001
+                print(f"[DEBUG] failed to fetch rawTx for txid={err.txid}: {debug_err}")
+
+        # 3) 取得できたら HEX を表示（ARC 等への手動投稿に利用可能）
+        if tx_bytes:
+            raw_tx_hex = tx_bytes.hex()
+            if raw_tx_hex:
+                print("\n🔎 Raw transaction hex (エラー時デバッグ用・手動ブロードキャスト可):")
+                print(raw_tx_hex)
+
+        # 4) review_action_results / send_with_results もあれば参考情報として表示
+        try:
+            rar = getattr(err, "review_action_results", None)
+            swr = getattr(err, "send_with_results", None)
+            if rar is not None or swr is not None:
+                print("\n[DEBUG] ReviewActionsError details:")
+                if rar is not None:
+                    print("  review_action_results:")
+                    pprint(rar, width=120, sort_dicts=False)
+                if swr is not None:
+                    print("  send_with_results:")
+                    pprint(swr, width=120, sort_dicts=False)
+        except Exception:
+            # デバッグ出力なので失敗してもスルー
+            pass
+
+        return
+    except Exception as err:  # noqa: BLE001
+        print(f"\n❌ create_action で予期しないエラーが発生しました: {err}")
         return
 
     # 詳細なデバッグ用に create_action の生結果をフルダンプ

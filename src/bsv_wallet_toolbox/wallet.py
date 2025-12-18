@@ -1382,7 +1382,7 @@ class Wallet:
         
         # Convert CreateActionResultX to BRC-100 CreateActionResult
         # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
-        result = {}
+        result: dict[str, Any] = {}
         if signer_result.txid is not None:
             result["txid"] = signer_result.txid
         if signer_result.tx is not None:
@@ -1420,7 +1420,17 @@ class Wallet:
 
         # 3. Error handling (unless isDelayed): throwIfAnyUnsuccessfulCreateActions(r)
         if not vargs.get("isDelayed"):
-            throw_if_any_unsuccessful_create_actions(result)
+            # Use signer_result's internal fields (which include sendWithResults/notDelayedResults)
+            # to decide whether any immediate broadcasts failed. This mirrors TS behaviour where
+            # throwIfAnyUnsuccessfulCreateActions operates on the extended CreateActionResultX.
+            internal_result: dict[str, Any] = {
+                "notDelayedResults": signer_result.not_delayed_results,
+                "sendWithResults": signer_result.send_with_results,
+                "txid": signer_result.txid,
+                "tx": signer_result.tx,
+                "noSendChange": signer_result.no_send_change,
+            }
+            throw_if_any_unsuccessful_create_actions(internal_result)
 
         return result
 

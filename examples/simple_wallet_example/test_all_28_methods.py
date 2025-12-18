@@ -198,6 +198,7 @@ def main():
 
         # sender (faucet 側) は AnyoneKey として扱う
         anyone_key = PrivateKey(1).public_key()
+        print(f"anyone_key: {anyone_key.hex()}")
 
         key_id = KeyID(
             derivation_prefix=FAUCET_DERIVATION_PREFIX,
