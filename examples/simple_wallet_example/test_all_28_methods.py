@@ -24,8 +24,12 @@ os.chdir(Path(__file__).parent)
 from dotenv import load_dotenv
 load_dotenv()
 
+from bsv.constants import Network
+from bsv.keys import PrivateKey
+
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import Services, create_default_options
+from bsv_wallet_toolbox.brc29 import KeyID, address_for_self
 
 from src.config import (
     get_key_deriver,
@@ -51,6 +55,10 @@ def test_method(name: str, func, *args, **kwargs):
         error_msg = str(e)[:60]
         print(f"  ⚠️  {name}: {error_msg}")
         return None, False
+
+
+FAUCET_DERIVATION_PREFIX = "faucet-prefix-01"
+FAUCET_DERIVATION_SUFFIX = "faucet-suffix-01"
 
 
 def main():
@@ -174,7 +182,56 @@ def main():
             key_deriver=key_deriver,
             storage_provider=storage_provider,
         )
-    
+
+    # -------------------------------------------------------------------------
+    # デモ追加: Faucet 用 BRC-29 受取アドレスを表示
+    # -------------------------------------------------------------------------
+    try:
+        # このデモでは、Go/TS の faucet 例と同じ BRC-29 パターンを使う:
+        # - senderIdentityKey として AnyoneKey (= PrivateKey(1).public_key())
+        # - derivationPrefix / derivationSuffix は固定文字列
+
+        # ルート秘密鍵（デモ用に KeyDeriver から直接参照）
+        root_priv = getattr(key_deriver, "_root_private_key", None)
+        if root_priv is None:
+            raise RuntimeError("KeyDeriver から root_private_key を取得できませんでした。")
+
+        # sender (faucet 側) は AnyoneKey として扱う
+        anyone_key = PrivateKey(1).public_key()
+        print(f"anyone_key: {anyone_key.hex()}")
+
+        key_id = KeyID(
+            derivation_prefix=FAUCET_DERIVATION_PREFIX,
+            derivation_suffix=FAUCET_DERIVATION_SUFFIX,
+        )
+
+        # 受取側（自分）のアドレスを BRC-29 で生成
+        is_testnet = (network == "test")
+        addr_info = address_for_self(
+            sender_public_key=anyone_key.hex(),
+            key_id=key_id,
+            recipient_private_key=root_priv,
+            testnet=is_testnet,
+        )
+        addr = addr_info["address_string"]
+
+        print("\n" + "-" * 70)
+        print("📥  Faucet 用受取アドレス（BRC-29）")
+        print("-" * 70)
+        print("このアドレスに Faucet から少額の BSV を送ってみてください。")
+        print("※ このスクリプト単体では UTXO を消費しません。")
+        print("   `faucet_internalize_and_create_action.py` と組み合わせると、")
+        print("   受け取ったコインを internalize → create_action で使うデモになります。")
+        print(f"\n   Address: {addr}")
+        if is_testnet:
+            print("\n   テストネット用 Faucet 例:")
+            print("     - https://scrypt.io/faucet")
+            print("     - https://witnessonchain.com/faucet/tbsv")
+
+        input("\n⏸ Faucet から送金したら Enter を押してテストを続行します...")
+    except Exception as e:  # noqa: PERF203
+        print(f"\n⚠️  受取アドレス表示中にエラーが発生しました: {str(e)[:60]}")
+
     print(f"\n🟢 ネットワーク: {network}")
     print("\n" + "-" * 70)
     

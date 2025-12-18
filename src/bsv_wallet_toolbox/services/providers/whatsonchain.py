@@ -89,6 +89,56 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Internal implementation of get_chain."""
         return Chain.MAIN if self.network == "main" else Chain.TEST
 
+    # ------------------------------------------------------------------ #
+    # Override selected py-sdk tracker methods to avoid signature clash  #
+    # with ChaintracksClientApi.get_headers(height, count).              #
+    #                                                                     #
+    # Background: py-sdk's WhatsOnChainTracker already defines            #
+    # get_headers() as "return HTTP headers" for REST calls, whereas this #
+    # toolbox layer must expose ChaintracksClientApi.get_headers(height,  #
+    # count) to match the TypeScript implementation. If we leave the      #
+    # original methods intact, adding the Chaintracks signature would     #
+    # break py-sdk's calls that currently invoke self.get_headers()       #
+    # (no args). To prevent that clash, we duplicate the relevant py-sdk  #
+    # logic locally and call self._get_http_headers() directly, reserving #
+    # the public get_headers(height, count) name for the Chaintracks API. #
+    # ------------------------------------------------------------------ #
+
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:  # type: ignore[override]
+        """Verify merkle root for a given height using WoC HTTP API.
+
+        This reimplements the py-sdk tracker method but uses the local
+        ``_get_http_headers`` helper instead of ``self.get_headers()`` so
+        that our Chaintracks-style ``get_headers(height, count)`` does not
+        interfere with SDK behavior.
+        """
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
+
+        response = await self.http_client.fetch(f"{self.URL}/block/{height}/header", request_options)
+        if response.ok:
+            merkleroot = response.json()["data"].get("merkleroot")
+            return merkleroot == root
+        if response.status_code == 404:
+            return False
+        raise RuntimeError(
+            f"Failed to verify merkleroot for height {height} because of an error: {response.json()}"
+        )
+
+    async def current_height(self) -> int:  # type: ignore[override]
+        """Get current blockchain height from WhatsOnChain API.
+
+        Reimplementation of the py-sdk tracker method that avoids calling
+        the base-class ``get_headers()`` (which would be shadowed by this
+        class's Chaintracks-style ``get_headers(height, count)``).
+        """
+        request_options = {"method": "GET", "headers": self._get_http_headers()}
+
+        response = await self.http_client.fetch(f"{self.URL}/chain/info", request_options)
+        if response.ok:
+            data = response.json() or {}
+            return data.get("blocks", 0)
+        raise RuntimeError(f"Failed to get current height: {response.json()}")
+
     def _get_http_headers(self) -> dict[str, str]:
         """Get HTTP headers for API requests.
         
@@ -607,8 +657,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
             # Convert proof to merkle path format (returns dict with blockHeight and path)
             merkle_path_dict = convert_proof_to_merkle_path(txid, proof_dict)
-            
-            # Convert hash_str to hash in path structure to match expected format
+
+            # Preserve py-sdk MerklePath-compatible structure (hash_str) while also
+            # exposing a TS-style "hash" field for compatibility where needed.
             path = merkle_path_dict.get("path", [])
             converted_path = []
             for level in path:
@@ -616,6 +667,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 for leaf in level:
                     converted_leaf = {"offset": leaf["offset"]}
                     if "hash_str" in leaf:
+                        # Keep original field name for py-sdk's MerklePath
+                        converted_leaf["hash_str"] = leaf["hash_str"]
+                        # Add TS-style alias for any Python callers expecting "hash"
                         converted_leaf["hash"] = leaf["hash_str"]
                     if leaf.get("txid"):
                         converted_leaf["txid"] = True
@@ -623,7 +677,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                         converted_leaf["duplicate"] = True
                     converted_level.append(converted_leaf)
                 converted_path.append(converted_level)
-            
+
             result["merklePath"] = {
                 "blockHeight": merkle_path_dict["blockHeight"],
                 "path": converted_path,

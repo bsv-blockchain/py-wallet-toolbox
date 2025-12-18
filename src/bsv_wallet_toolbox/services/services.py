@@ -33,6 +33,7 @@ Phase 4 Implementation Status:
 
 import asyncio
 import inspect
+import logging
 import threading
 from collections.abc import Callable
 from time import time
@@ -240,6 +241,7 @@ class Services(WalletServices):
 
         # Call parent constructor
         super().__init__(chain)
+        self.logger = logging.getLogger(f"{__name__}.Services")
 
         # Initialize WhatsOnChain provider
         woc_api_key = self.options.get("whatsOnChainApiKey")
@@ -783,6 +785,9 @@ class Services(WalletServices):
                 # Note: get_raw_tx takes only txid, unlike get_merkle_path which also takes services
                 r = self._run_async(stc.service(txid))
 
+                # Provider contract:
+                # - Preferred (TS-style): dict with "rawTx" and optional "error"
+                # - Legacy/py-sdk: raw hex string or None
                 if isinstance(r, dict):
                     raw_tx_hex = r.get("rawTx")
                     if raw_tx_hex:
@@ -817,7 +822,33 @@ class Services(WalletServices):
                         services.add_service_call_success(stc, "not found")
                     else:
                         services.add_service_call_failure(stc)
+                elif isinstance(r, str):
+                    # Backwards-compatible path for providers that return raw hex directly.
+                    try:
+                        raw_tx_bytes = bytes.fromhex(r)
+                        computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
+                    except (ValueError, TypeError):
+                        # Treat invalid hex as provider failure.
+                        services.add_service_call_failure(stc, "invalid data")
+                    else:
+                        if computed_txid.lower() == txid.lower():
+                            # Match found
+                            result["rawTx"] = r
+                            result["name"] = getattr(stc, "provider_name", None)
+                            result.pop("error", None)
+                            services.add_service_call_success(stc)
+                            return r
+
+                        # Hash mismatch - mark as error
+                        error = {
+                            "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
+                            "code": "TXID_MISMATCH",
+                        }
+                        services.add_service_call_error(stc, error)
+                        if "error" not in result:
+                            result["error"] = error
                 else:
+                    # None or unsupported type -> treat as not found
                     services.add_service_call_success(stc, "not found")
 
             except Exception as e:
@@ -1353,6 +1384,16 @@ class Services(WalletServices):
         # Try each provider in priority order
         last_error: str | None = None
 
+        # Debug: high-level broadcast context
+        self.logger.debug(
+            "Services.post_beef: txid=%s, txids=%s, providers={'gorillapool': %s, 'taal': %s, 'bitails': %s}",
+            txid,
+            txids,
+            bool(self.arc_gorillapool),
+            bool(self.arc_taal),
+            bool(self.bitails),
+        )
+
         # 1. Try ARC GorillaPool (if configured)
         if self.arc_gorillapool:
             try:
@@ -1380,8 +1421,14 @@ class Services(WalletServices):
                         "message": getattr(res, "description", "Double spend detected"),
                     }
                 last_error = getattr(res, "description", "GorillaPool broadcast failed")
+                self.logger.debug(
+                    "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
+                )
             except Exception as e:
                 last_error = str(e)
+                self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
 
         # 2. Try ARC TAAL (if configured)
         if self.arc_taal:
@@ -1410,8 +1457,14 @@ class Services(WalletServices):
                         "message": getattr(res, "description", "Double spend detected"),
                     }
                 last_error = getattr(res, "description", "TAAL broadcast failed")
+                self.logger.debug(
+                    "Services.post_beef: TAAL broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
+                )
             except Exception as e:
                 last_error = str(e)
+                self.logger.debug("Services.post_beef: TAAL broadcast exception: %s", e)
 
         # 3. Try Bitails (if configured)
         if self.bitails:
@@ -1427,12 +1480,19 @@ class Services(WalletServices):
                     last_error = "Bitails broadcast failed"
             except Exception as e:
                 last_error = str(e)
+                self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
 
         # Fallback: If no providers configured, return mocked success for test compatibility
         if not self.arc_gorillapool and not self.arc_taal and not self.bitails:
+            self.logger.debug("Services.post_beef: no providers configured, returning mocked success")
             return {"accepted": True, "txid": txid, "message": "mocked"}
 
         # Otherwise return failure
+        self.logger.debug(
+            "Services.post_beef: all providers failed, last_error=%r, txids=%s",
+            last_error,
+            txids,
+        )
         return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
 
     def verify_beef(self, beef: str | bytes) -> bool:

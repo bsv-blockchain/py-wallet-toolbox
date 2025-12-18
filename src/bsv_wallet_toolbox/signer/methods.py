@@ -204,66 +204,82 @@ def build_signable_transaction(
 
     # Add inputs
     for input_data in inputs:
-            storage_input = input_data["storage_input"]
-            args_input = input_data["args_input"]
+        storage_input = input_data["storage_input"]
+        args_input = input_data["args_input"]
 
-            # Skip inputs that are handled via BEEF (they don't need explicit input processing)
-            if storage_input.get("beef"):
-                continue
+        # Skip inputs that are handled via BEEF (they don't need explicit input processing)
+        if storage_input.get("beef"):
+            continue
 
-            if args_input:
-                # Type 1: User supplied input
-                has_unlock = args_input.get("unlockingScript") is not None
-                unlock = Script.from_hex(args_input.get("unlockingScript", "")) if has_unlock else Script()
+        if args_input:
+            # Type 1: User supplied input
+            has_unlock = args_input.get("unlockingScript") is not None
+            unlocking_hex = args_input.get("unlockingScript", "")
+            unlock = Script(unlocking_hex) if has_unlock and isinstance(unlocking_hex, str) else Script()
 
-                source_transaction = None
-                if args.get("isSignAction") and input_beef:
-                    txid = args_input.get("outpoint", {}).get("txid")
-                    if txid:
-                        tx_data = input_beef.find_txid(txid)
-                        if tx_data:
-                            source_transaction = tx_data.get("tx")
-
-                tx.add_input(
-                    TransactionInput(
-                        source_txid=args_input.get("outpoint", {}).get("txid", ""),
-                        source_output_index=args_input.get("outpoint", {}).get("vout", 0),
-                        source_transaction=source_transaction,
-                        unlocking_script=unlock,
-                        sequence=args_input.get("sequence_number", 0xFFFFFFFF),
-                    )
-                )
-            else:
-                # Type 2: SABPPP protocol inputs
-                if storage_input.get("type") != "P2PKH":
-                    raise WalletError(f'vin {storage_input.get("vin")}, ' f'"{storage_input.get("type")}" is not supported')
-
-            pending_storage_inputs.append(
-                PendingStorageInput(
-                    vin=len(tx.inputs),
-                    derivation_prefix=storage_input.get("derivation_prefix", ""),
-                    derivation_suffix=storage_input.get("derivation_suffix", ""),
-                    unlocker_pub_key=storage_input.get("sender_identity_key", ""),
-                    source_satoshis=storage_input.get("source_satoshis", 0),
-                    locking_script=storage_input.get("source_locking_script", ""),
-                )
-            )
-
-            source_tx_binary = storage_input.get("source_transaction")
-            source_tx = Transaction.from_hex(source_tx_binary) if source_tx_binary else None
+            source_transaction = None
+            if args.get("isSignAction") and input_beef:
+                txid = args_input.get("outpoint", {}).get("txid")
+                if txid:
+                    tx_data = input_beef.find_txid(txid)
+                    if tx_data:
+                        source_transaction = tx_data.get("tx")
 
             tx.add_input(
                 TransactionInput(
-                    source_txid=storage_input.get("source_txid", ""),
-                    source_output_index=storage_input.get("source_vout", 0),
-                    source_transaction=source_tx,
-                    unlocking_script=Script(),
-                    sequence=0xFFFFFFFF,
+                    source_txid=args_input.get("outpoint", {}).get("txid", ""),
+                    source_output_index=args_input.get("outpoint", {}).get("vout", 0),
+                    source_transaction=source_transaction,
+                    unlocking_script=unlock,
+                    sequence=args_input.get("sequence_number", 0xFFFFFFFF),
                 )
             )
-            total_change_inputs += validate_satoshis(
-                storage_input.get("source_satoshis", 0), "storage_input.source_satoshis"
+        else:
+            # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
+            if storage_input.get("type") != "P2PKH":
+                raise WalletError(
+                    f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported'
+                )
+
+        # Record pending storage input metadata for later BRC-29 signing
+        pending_storage_inputs.append(
+            PendingStorageInput(
+                vin=len(tx.inputs),
+                derivation_prefix=storage_input.get("derivation_prefix", ""),
+                derivation_suffix=storage_input.get("derivation_suffix", ""),
+                unlocker_pub_key=storage_input.get("sender_identity_key", ""),
+                source_satoshis=storage_input.get("source_satoshis", 0),
+                locking_script=storage_input.get("source_locking_script", ""),
             )
+        )
+
+        # Attach source transaction / metadata for SABPPP inputs
+        source_tx_binary = storage_input.get("source_transaction")
+        source_tx = Transaction.from_hex(source_tx_binary) if source_tx_binary else None
+
+        # Create a TransactionInput placeholder; unlocking_script will be filled later via BRC-29 template
+        tx_input = TransactionInput(
+            source_txid=storage_input.get("source_txid", ""),
+            source_output_index=storage_input.get("source_vout", 0),
+            source_transaction=source_tx,
+            unlocking_script=Script(),
+            sequence=0xFFFFFFFF,
+        )
+        # Populate satoshis and locking_script so that template.sign() can compute correct sighash
+        tx_input.satoshis = storage_input.get("source_satoshis", 0)
+        ls_hex = storage_input.get("source_locking_script", "")
+        if isinstance(ls_hex, str) and ls_hex:
+            try:
+                # py-bsv Script コンストラクタは hex 文字列を直接受け取る
+                tx_input.locking_script = Script(ls_hex)
+            except Exception:  # noqa: BLE001
+                # Debug-only: locking script parse failure should surface as WalletError later if critical
+                pass
+
+        tx.add_input(tx_input)
+        total_change_inputs += validate_satoshis(
+            storage_input.get("source_satoshis", 0), "storage_input.source_satoshis"
+        )
 
     # Calculate amount (total non-foreign inputs minus change outputs)
     total_change_outputs = sum(
@@ -294,12 +310,16 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
     # Insert user-provided unlocking scripts from spends
     for vin_str, spend in spends.items():
         vin = int(vin_str)
-        create_input = prior.args.get("inputs", [])[vin] if vin < len(prior.args.get("inputs", [])) else None
+        create_inputs = prior.args.get("inputs")
+        if isinstance(create_inputs, list) and vin < len(create_inputs):
+            create_input = create_inputs[vin]
+        else:
+            create_input = None
         input_data = prior.tx.inputs[vin] if vin < len(prior.tx.inputs) else None
 
         if (
             not create_input
-            or not input_data
+            or input_data is None
             or create_input.get("unlocking_script") is not None
             or "unlocking_script_length" not in create_input
             or not isinstance(create_input["unlocking_script_length"], int)
@@ -315,9 +335,10 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 f"exceeds expected length {create_input['unlocking_script_length']}"
             )
 
-            input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
-            if "sequence_number" in spend:
-                input_data.sequence = spend["sequence_number"]
+        # Apply unlocking script and optional sequence number to the underlying TransactionInput
+        input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
+        if "sequence_number" in spend:
+            input_data.sequence = spend["sequence_number"]
 
     # Insert SABPPP unlock templates for wallet-signed inputs
     # These are wallet-signed inputs that use BRC-29 protocol for authentication
@@ -332,40 +353,50 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
         # This implements ScriptTemplateBRC29.unlock flow from TypeScript
         if vin < len(prior.tx.inputs):
             input_data = prior.tx.inputs[vin]
-            create_input = prior.args.get("inputs", [])[vin] if vin < len(prior.args.get("inputs", [])) else None
 
-            if create_input:
-                try:
-                    # Step 1: Derive private key using KeyDeriver with BRC-29 protocol
-                    # BRC-29 protocol identifier
-                    brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
+            # Prefer explicit key info from create_action args.inputs (for custom inputs),
+            # but fall back to storage-provided derivation data (pdi) for wallet-managed change.
+            create_inputs = prior.args.get("inputs")
+            if isinstance(create_inputs, list) and vin < len(create_inputs):
+                create_input = create_inputs[vin]
+            else:
+                create_input = None
 
-                    # Key ID from create_input
+            try:
+                # Step 1: Derive private key using KeyDeriver with BRC-29 protocol
+                brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
+
+                if create_input:
+                    # Use key_id / locker_pub_key from create_action args
                     key_id = create_input.get("key_id", "")
-
-                    # Counterparty (locker's public key or identity)
                     locker_pub = create_input.get("locker_pub_key", "")
-                    if locker_pub:
-                        from bsv.keys import PublicKey as PubKey
-                        locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
-                        counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
-                    else:
-                        counterparty = Counterparty(type=CounterpartyType.SELF)
+                else:
+                    # Wallet-managed change: derive from storage metadata
+                    key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}".strip()
+                    locker_pub = pdi.unlocker_pub_key
 
-                    # Derive private key for this input
-                    derived_private_key = wallet.key_deriver.derive_private_key(brc29_protocol, key_id, counterparty)
+                if locker_pub:
+                    from bsv.keys import PublicKey as PubKey
 
-                    # Step 2: Create P2PKH unlock template
-                    p2pkh = P2PKH()
-                    unlock_template = p2pkh.unlock(derived_private_key)
+                    locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
+                    counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
+                else:
+                    counterparty = Counterparty(type=CounterpartyType.SELF)
 
-                    # Step 3: Attach template to transaction input
-                    input_data["unlocking_script_template"] = unlock_template
+                # Derive private key for this input
+                derived_private_key = wallet.key_deriver.derive_private_key(brc29_protocol, key_id, counterparty)
 
-                except (ImportError, AttributeError, Exception):
-                    # If BRC-29 derivation fails, log but continue
-                    # The input may be signed by other means
-                    input_data["unlocking_script_template"] = None
+                # Step 2: Create P2PKH unlock template
+                p2pkh = P2PKH()
+                unlock_template = p2pkh.unlock(derived_private_key)
+
+                # Step 3: Attach template to transaction input (py-sdk TransactionInput API)
+                input_data.unlocking_script_template = unlock_template
+
+            except (ImportError, AttributeError, Exception):
+                # If BRC-29 derivation fails, log but continue
+                # The input may be signed by other means
+                input_data.unlocking_script_template = None
 
     # Sign wallet-signed inputs using bsv-sdk transaction signing
     # This matches TypeScript: await prior.tx.sign()
@@ -376,18 +407,16 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
     try:
         # Step 1: Process unlocking script templates for wallet-signed inputs
         # For each input that has an unlocking_script_template from BRC-29 derivation
-        for vin in range(len(prior.tx.inputs)):
-            input_data = prior.tx.inputs[vin]
-
+        for vin, input_data in enumerate(prior.tx.inputs):
             # If input has unlocking template (from BRC-29), generate the unlock script
-            if input_data.get("unlocking_script_template") is not None:
+            template = getattr(input_data, "unlocking_script_template", None)
+            if template is not None:
                 try:
-                    template = input_data["unlocking_script_template"]
                     # Call template.sign(tx, vin) to generate the unlock script
                     # This matches py-sdk UnlockingScriptTemplate.sign pattern
                     if hasattr(template, "sign"):
                         unlock_script = template.sign(prior.tx, vin)
-                        input_data["unlocking_script"] = unlock_script
+                        input_data.unlocking_script = unlock_script
                 except Exception:
                     # Template signing may fail - continue with other inputs
                     pass
@@ -1003,29 +1032,39 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
             # scripts_only=True skips merkle proof verification, just validates scripts
             # Transaction.verify() is async in Python SDK
             import asyncio
-            
-            async def _async_verify():
+
+            async def _async_verify() -> bool:
                 return await transaction.verify(chaintracker=None, scripts_only=True)
-            
+
             # Run async verification
             try:
                 loop = asyncio.get_running_loop()
-                # If we're already in an async context, create a task
+                # If we're already in an async context, delegate to a background thread
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as pool:
                     is_valid = loop.run_in_executor(pool, lambda: asyncio.run(_async_verify()))
             except RuntimeError:
                 # No running loop, safe to use asyncio.run()
                 is_valid = asyncio.run(_async_verify())
-            
+
             if not is_valid:
                 raise WalletError(f"Transaction {txid} script verification failed")
+        except ValueError as verify_val_err:
+            # py-sdk Transaction.verify may raise ValueError when source transactions or
+            # merkle proofs are missing for inputs. これは「検証に必要な追加コンテキストが無い」
+            # だけであり、ウォレット内部で生成したトランザクションに対しては致命的ではない。
+            msg = str(verify_val_err)
+            if "missing an associated source transaction" in msg:
+                # ベストエフォート検証: ここでは追加エラーにせずスキップする。
+                pass
+            else:
+                raise WalletError(f"Script verification error: {verify_val_err!s}")
         except Exception as verify_err:
-            # If verify() fails due to missing source transactions, fall back to basic check
-            # This can happen with advanced features like knownTxids
+            # If verify() fails due to other reasons, fall back only for clearly benign cases.
             err_str = str(verify_err).lower()
-            if "source" in err_str or "coroutine" in err_str:
-                # Skip full verification, basic checks already passed
+            if "coroutine" in err_str:
+                # Event loop / coroutine 絡みの実行環境エラーは無視してよい（テスト環境など）
                 pass
             else:
                 raise WalletError(f"Script verification error: {verify_err!s}")

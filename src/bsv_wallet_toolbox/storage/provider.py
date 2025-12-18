@@ -703,6 +703,10 @@ class StorageProvider:
         if specop == "wallet_balance":
             basket_name = "default"
             specop_ignore_limit = True
+            # For wallet_balance, we only want available spendable funds
+            # This means excluding spent outputs, and optionally excluding locked outputs
+            # if we had a way to check locks here. Currently 'spendable' flag handles this.
+            include_spent = False
         elif specop == "invalid_change":
             basket_name = basket_name or "default"
             specop_ignore_limit = True
@@ -2229,18 +2233,24 @@ class StorageProvider:
             vin += 1
             
         for ac in allocated_change:
-            inputs.append({
-                "vin": vin,
-                "source_txid": ac["txid"],
-                "source_vout": ac["vout"],
-                "source_satoshis": ac["satoshis"],
-                "source_locking_script": (ac["locking_script"] or b"").hex(),
-                "unlocking_script_length": 107,
-                "providedBy": ac["provided_by"] or "storage",
-                "type": ac["type"],
-                "derivation_prefix": ac["derivation_prefix"],
-                "derivation_suffix": ac["derivation_suffix"],
-            })
+            inputs.append(
+                {
+                    "vin": vin,
+                    "source_txid": ac["txid"],
+                    "source_vout": ac["vout"],
+                    "source_satoshis": ac["satoshis"],
+                    "source_locking_script": (ac["locking_script"] or b"").hex(),
+                    "unlocking_script_length": 107,
+                    "providedBy": ac["provided_by"] or "storage",
+                    "type": ac["type"],
+                    "derivation_prefix": ac["derivation_prefix"],
+                    "derivation_suffix": ac["derivation_suffix"],
+                    # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
+                    # This allows signer.build_signable_transaction to derive the correct
+                    # BRC-29 private key using sender_identity_key as counterparty when present.
+                    "sender_identity_key": ac.get("sender_identity_key") or "",
+                }
+            )
             vin += 1
             
         return inputs
@@ -2340,10 +2350,28 @@ class StorageProvider:
         if not exclude_sending:
             allowed_status.append("sending")
 
+        # Only allocate **wallet-managed change UTXOs** for automatic funding.
+        # 
+        # TS parity rationale:
+        # - internalizeAction wallet payments and createAction change outputs are stored with:
+        #     - change = True
+        #     - type = "P2PKH"
+        # - Basket insertion outputs are stored with:
+        #     - change = False
+        #     - type = "custom"
+        #   and must **not** be used as SABPPP inputs for automatic change.
+        # 
+        # In early examples, basket insertion outputs were mistakenly placed in the
+        # default basket, which caused generate_change to select "custom" outputs and
+        # signer to raise `vin N, "custom" is not supported`.  Filtering by
+        # `change == True` and `type == "P2PKH"` restores TS semantics and ensures that
+        # only proper change outputs are auto-selected.
         base_cond = (
             (Output.user_id == user_id)
             & (Output.spendable.is_(True))
             & (Output.basket_id == basket_id)
+            & (Output.change.is_(True))
+            & (Output.type == "P2PKH")
             & (TransactionModel.status.in_(allowed_status))
         )
 
@@ -2696,6 +2724,16 @@ class StorageProvider:
             s.commit()
 
         if txids_to_send:
+            # Debug: show processAction broadcast intent
+            self.logger.debug(
+                "process_action: will share_reqs_with_world for txids=%s, "
+                "isNewTx=%s, isNoSend=%s, isDelayed=%s, isSendWith=%s",
+                txids_to_send,
+                is_new_tx,
+                is_no_send,
+                is_delayed,
+                is_send_with,
+            )
             swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
             result["sendWithResults"] = swr
             result["notDelayedResults"] = ndr
@@ -2716,6 +2754,9 @@ class StorageProvider:
         if not txids:
             return swr, ndr
 
+        # Debug: show high-level broadcast intent
+        self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
+
         session = self.SessionLocal()
         try:
             reqs = (
@@ -2733,6 +2774,7 @@ class StorageProvider:
             tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
 
             if is_delayed:
+                self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
@@ -2749,6 +2791,7 @@ class StorageProvider:
             try:
                 services = self.get_services()
             except RuntimeError:
+                self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
                 services = None
 
             for txid in txids:
@@ -2776,6 +2819,15 @@ class StorageProvider:
                     if ndr is not None:
                         ndr.append({"txid": txid, "status": "error", "message": "no raw transaction available"})
                     continue
+
+                # Debug: we have raw bytes and will attempt broadcast
+                self.logger.debug(
+                    "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
+                    "services_available=%s",
+                    txid,
+                    len(raw_bytes),
+                    services is not None,
+                )
 
                 status = "failed"
                 note: dict[str, Any] = {"txid": txid, "status": "error"}
@@ -2805,6 +2857,15 @@ class StorageProvider:
                         message = str(exc)
                 else:
                     message = "Services not configured"
+
+                # Debug: log provider result
+                self.logger.debug(
+                    "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
+                    txid,
+                    broadcast_ok,
+                    status,
+                    message,
+                )
 
                 if broadcast_ok:
                     req.status = "unmined"
