@@ -333,6 +333,21 @@ def create_wallet(
     return wallet, root_private_key
 
 
+def _print_storage_backend(wallet: Wallet, wallet_name: str) -> None:
+    """Print which storage backend is actually in use (remote vs local)."""
+    storage = getattr(wallet, "storage", None)
+    if storage is None:
+        print(f"🧩 Storage backend for {wallet_name}: (none)")
+        return
+    if isinstance(storage, StorageClient):
+        print(f"🧩 Storage backend for {wallet_name}: remote StorageClient ({storage.endpoint_url})")
+        return
+    if isinstance(storage, StorageProvider):
+        print(f"🧩 Storage backend for {wallet_name}: local SQLite (StorageProvider)")
+        return
+    print(f"🧩 Storage backend for {wallet_name}: {type(storage).__name__}")
+
+
 def build_atomic_beef_for_txid(chain: Chain, txid: str, services: Services) -> bytes:
     """Build an Atomic BEEF for the given txid."""
     print(f"\n🔎 Fetching raw transaction for txid={txid}")
@@ -393,7 +408,8 @@ def internalize_faucet_tx(
 
     print("\n🚀 Internalizing transaction via wallet payment protocol...")
     internalize_args: dict[str, Any] = {
-        "tx": atomic_beef,
+        # JSON-RPC payload must be JSON-serializable; represent bytes as list[int] (0-255).
+        "tx": list(atomic_beef),
         "outputs": [
             {
                 "outputIndex": output_index,
@@ -462,7 +478,8 @@ def internalize_standard_tx(
         )
 
     internalize_args: dict[str, Any] = {
-        "tx": atomic_beef,
+        # JSON-RPC payload must be JSON-serializable; represent bytes as list[int] (0-255).
+        "tx": list(atomic_beef),
         "outputs": outputs,
         "description": description,
         "labels": [f"txid:{txid}", "p2pkh"],
@@ -511,7 +528,8 @@ def internalize_wallet_payment_tx(
         return False
 
     internalize_args: dict[str, Any] = {
-        "tx": atomic_beef,
+        # JSON-RPC payload must be JSON-serializable; represent bytes as list[int] (0-255).
+        "tx": list(atomic_beef),
         "outputs": [
             {
                 "outputIndex": output_index,
@@ -1065,6 +1083,8 @@ def main() -> None:
     # Create wallets
     alice, alice_root_priv = create_wallet("alice", chain, services, use_remote)
     bob, bob_root_priv = create_wallet("bob", chain, services, use_remote)
+    _print_storage_backend(alice, "alice")
+    _print_storage_backend(bob, "bob")
     print()
 
     # Display Alice's BRC-29 Faucet receive address (matching test_all_28_methods.py)

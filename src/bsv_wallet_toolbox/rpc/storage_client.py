@@ -40,10 +40,12 @@ import json
 import logging
 import threading
 from typing import Any, TypeVar
+from urllib.parse import urlparse, urlunparse
 
 import requests
 
 from ..auth_fetch import AuthFetch, SimplifiedFetchRequestOptions
+from ..utils.trace import trace
 
 if False:  # TYPE_CHECKING
     pass
@@ -129,6 +131,14 @@ class StorageClient:
             msg = "endpoint_url must be a non-empty string"
             raise ValueError(msg)
 
+        # IMPORTANT (BRC-104 signature compatibility):
+        # If the URL has an empty path (e.g. "http://host:port"), different stacks may
+        # canonicalize it as "" vs "/". That can change the signed payload for the
+        # authenticated request and cause server-side "Invalid signature".
+        parsed = urlparse(endpoint_url)
+        if parsed.path == "":
+            endpoint_url = urlunparse(parsed._replace(path="/"))
+
         self.wallet = wallet
         self.endpoint_url = endpoint_url
         self.timeout = timeout
@@ -212,15 +222,31 @@ class StorageClient:
         """
         request_id = self._get_next_id()
 
+        def _jsonify(value: Any) -> Any:
+            """Convert Python objects to JSON-safe payloads (BRC-100 bytes => list[int])."""
+            if value is None:
+                return None
+            if isinstance(value, (str, int, float, bool)):
+                return value
+            if isinstance(value, (bytes, bytearray)):
+                return list(bytes(value))
+            if isinstance(value, list):
+                return [_jsonify(v) for v in value]
+            if isinstance(value, dict):
+                return {str(k): _jsonify(v) for k, v in value.items()}
+            # PublicKey objects etc: fall back to string representation
+            return str(value)
+
         # Build request body (TS: body)
         request_body = {
             "jsonrpc": "2.0",
             "method": method,
-            "params": params,
+            "params": _jsonify(params),
             "id": request_id,
         }
 
         try:
+            trace(logger, "rpc.request", method=method, id=request_id, endpoint=self.endpoint_url, params=request_body.get("params"))
             logger.debug(
                 f"RPC call: {method} (id={request_id})",
                 extra={"endpoint": self.endpoint_url, "params_count": len(params)},
@@ -240,36 +266,92 @@ class StorageClient:
 
             response = asyncio.run(self.auth_client.fetch(self.endpoint_url, config))
 
+            trace(
+                logger,
+                "rpc.http.response",
+                method=method,
+                id=request_id,
+                endpoint=self.endpoint_url,
+                status=response.status_code,
+                headers=dict(response.headers),
+            )
             logger.debug(
                 f"AuthFetch response: status={response.status_code}, headers={dict(response.headers)}",
                 extra={"method": method, "status_code": response.status_code, "response_headers": dict(response.headers)},
             )
 
-            # Check HTTP status code
-            if not response.ok:
-                msg = f"JSON-RPC call failed: HTTP {response.status_code} {response.reason}"
-                logger.error(msg)
-                raise requests.RequestException(msg)
+            # Parse JSON response (even on HTTP errors).
+            # Some servers return JSON-RPC errors with HTTP 500; the JSON-RPC error is the real signal.
+            try:
+                response_data = response.json()
+            except json.JSONDecodeError as e:
+                trace(
+                    logger,
+                    "rpc.response.decode_error",
+                    method=method,
+                    id=request_id,
+                    endpoint=self.endpoint_url,
+                    status=response.status_code,
+                    body_text=response.text,
+                )
+                logger.error(
+                    f"RPC JSON parse error: {e}",
+                    extra={"method": method, "id": request_id, "status_code": response.status_code},
+                )
+                # If HTTP status is error and body isn't JSON, raise as network/protocol error.
+                if not response.ok:
+                    msg = f"JSON-RPC call failed: HTTP {response.status_code} {response.reason}"
+                    logger.error(msg)
+                    raise requests.RequestException(msg) from e
+                raise
 
-            # Parse JSON response
-            response_data = response.json()
-
-            # Check for JSON-RPC error
+            # Check for JSON-RPC error first (even if HTTP status is 500).
             if "error" in response_data and response_data["error"] is not None:
                 error_obj = response_data["error"]
                 code = error_obj.get("code", -32603)
                 message = error_obj.get("message", "Unknown error")
                 data = error_obj.get("data")
 
+                trace(
+                    logger,
+                    "rpc.error",
+                    method=method,
+                    id=request_id,
+                    endpoint=self.endpoint_url,
+                    http_status=response.status_code,
+                    code=code,
+                    message=message,
+                    data=data,
+                )
                 logger.warning(
                     f"RPC error response: {message} (code={code})",
-                    extra={"method": method, "id": request_id},
+                    extra={"method": method, "id": request_id, "http_status": response.status_code},
                 )
 
                 raise JsonRpcError(code, message, data)
 
+            # If HTTP status is not OK but no JSON-RPC error is present, treat as HTTP failure.
+            if not response.ok:
+                msg = f"JSON-RPC call failed: HTTP {response.status_code} {response.reason}"
+                trace(
+                    logger,
+                    "rpc.http_error",
+                    method=method,
+                    id=request_id,
+                    endpoint=self.endpoint_url,
+                    http_status=response.status_code,
+                    reason=response.reason,
+                    response_body=response_data,
+                )
+                logger.error(
+                    msg,
+                    extra={"method": method, "id": request_id, "response_body": response_data},
+                )
+                raise requests.RequestException(msg)
+
             # Return result on success
             result = response_data.get("result")
+            trace(logger, "rpc.result", method=method, id=request_id, endpoint=self.endpoint_url, result=result)
             logger.debug(
                 f"RPC call succeeded: {method} (id={request_id})",
                 extra={"result_type": type(result).__name__},
@@ -278,12 +360,14 @@ class StorageClient:
             return result
 
         except requests.RequestException as e:
+            trace(logger, "rpc.network_error", method=method, id=request_id, endpoint=self.endpoint_url, error=str(e))
             logger.error(
                 f"RPC network error: {e}",
                 extra={"method": method, "id": request_id},
             )
             raise
         except json.JSONDecodeError as e:
+            trace(logger, "rpc.json_error", method=method, id=request_id, endpoint=self.endpoint_url, error=str(e))
             logger.error(
                 f"RPC JSON parse error: {e}",
                 extra={"method": method, "id": request_id},

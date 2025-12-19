@@ -28,6 +28,7 @@ from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.utils.trace import trace
 from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
 
@@ -118,18 +119,30 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
     Returns:
         CreateActionResultX with transaction and results
     """
+    trace(logger, "signer.create_action.start", auth=auth, args=vargs)
     result = CreateActionResultX()
     prior: PendingSignAction | None = None
 
     if vargs.get("isNewTx"):
+        trace(logger, "signer.create_action.new_tx.call", auth=auth, args=vargs)
         prior = _create_new_tx(wallet, auth, vargs)
+        trace(
+            logger,
+            "signer.create_action.new_tx.result",
+            reference=getattr(prior, "reference", None),
+            amount=getattr(prior, "amount", None),
+            dcr=getattr(prior, "dcr", None),
+        )
 
         if vargs.get("isSignAction"):
-            return _make_signable_transaction_result(prior, wallet, vargs)
+            signable = _make_signable_transaction_result(prior, wallet, vargs)
+            trace(logger, "signer.create_action.signable_transaction", result=signable)
+            return signable
 
         prior.tx = complete_signed_transaction(prior, {}, wallet)
 
         result.txid = prior.tx.txid()
+        trace(logger, "signer.create_action.completed", txid=result.txid)
         beef = Beef(version=1)
         if prior.dcr.get("inputBeef"):
             input_beef = parse_beef(prior.dcr["inputBeef"])
@@ -147,11 +160,21 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
         if not vargs.get("options", {}).get("returnTxidOnly"):
             # BRC-100 spec: return raw transaction bytes, not BEEF
             result.tx = prior.tx.serialize()
+            trace(logger, "signer.create_action.tx_bytes", tx=result.tx)
 
+    trace(
+        logger,
+        "signer.create_action.process_action.call",
+        txid=getattr(result, "txid", None),
+        reference=getattr(prior, "reference", None) if prior else None,
+        options=vargs.get("options", {}) if isinstance(vargs, dict) else None,
+    )
     process_result = process_action(prior, wallet, auth, vargs)
+    trace(logger, "signer.create_action.process_action.result", result=process_result)
     result.send_with_results = process_result.get("sendWithResults")
     result.not_delayed_results = process_result.get("notDelayedResults")
 
+    trace(logger, "signer.create_action.result", result=result.__dict__)
     return result
 
 
@@ -486,15 +509,32 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
     Returns:
         Process action results
     """
+    trace(
+        logger,
+        "signer.process_action.start",
+        auth=auth,
+        reference=getattr(prior, "reference", None) if prior else None,
+        vargs=vargs,
+    )
     if prior is None:
         # Create new transaction for processing
+        trace(logger, "signer.process_action.no_prior.recover", auth=auth)
         prior = _create_new_tx(wallet, auth, vargs)
+        trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, dcr=prior.dcr, amount=prior.amount)
 
         # Build signable transaction
         tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
+        trace(
+            logger,
+            "signer.process_action.build_signable_transaction.result",
+            amount=amount,
+            pending_inputs=pending_inputs,
+            log=log,
+        )
 
         # Complete signed transaction
         prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
+        trace(logger, "signer.process_action.complete_signed_transaction.ok", txid=prior.tx.txid(), rawTx=prior.tx.serialize())
 
     storage_args = {
         "isNewTx": vargs.get("isNewTx"),
@@ -507,7 +547,9 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         "sendWith": vargs.get("options", {}).get("sendWith", []) if vargs.get("isSendWith") else [],
     }
 
+    trace(logger, "signer.process_action.storage.call", auth=auth, storage_args=storage_args)
     result = wallet.storage.process_action(auth, storage_args)
+    trace(logger, "signer.process_action.storage.result", result=result)
     return result
 
 
@@ -525,6 +567,7 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Sign action result dict with txid, tx, sendWithResults, notDelayedResults
     """
+    trace(logger, "signer.sign_action.start", auth=auth, args=args)
     # Get prior pending sign action from wallet
     reference = args.get("reference")
     if not reference:
@@ -534,9 +577,12 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
     if not prior:
         # Out-of-session recovery: Query storage for the action
         # TS: if (!prior) { prior = await this.recoverActionFromStorage(vargs.reference) }
+        trace(logger, "signer.sign_action.recover_from_storage.call", reference=reference)
         prior = _recover_action_from_storage(wallet, auth, reference)
         if not prior:
+            trace(logger, "signer.sign_action.recover_from_storage.miss", reference=reference)
             raise WalletError(f"Unable to recover signAction reference '{reference}' from storage or memory.")
+        trace(logger, "signer.sign_action.recover_from_storage.hit", reference=reference, dcr=prior.dcr)
 
     # inputBeef might be empty for transactions with only wallet-managed inputs
     # TypeScript requires it, but we'll be more lenient for testing
@@ -546,15 +592,19 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
         # Use Beef class to generate proper format
         empty_beef = Beef(version=BEEF_V2)
         prior.dcr["inputBeef"] = empty_beef.to_binary()
+        trace(logger, "signer.sign_action.input_beef.defaulted", reference=reference, inputBeef=prior.dcr["inputBeef"])
 
     # Merge prior options with new sign action options
     vargs = _merge_prior_options(prior.args, args)
+    trace(logger, "signer.sign_action.merged_args", reference=reference, vargs=vargs)
 
     # Complete transaction with signatures
     prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
+    trace(logger, "signer.sign_action.complete_signed_transaction.ok", reference=reference, txid=prior.tx.txid(), rawTx=prior.tx.serialize())
 
     # Process the action
     process_result = process_action(prior, wallet, auth, vargs)
+    trace(logger, "signer.sign_action.process_action.result", reference=reference, result=process_result)
 
     # Build result
     txid = prior.tx.txid()
@@ -571,6 +621,7 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
         "notDelayedResults": process_result.get("notDelayedResults"),  # Internal - will be removed by wallet layer
     }
 
+    trace(logger, "signer.sign_action.result", reference=reference, result=result)
     return result
 
 
@@ -591,19 +642,29 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     Returns:
         Internalize action result from storage layer
     """
+    trace(logger, "signer.internalize_action.start", auth=auth, args=args)
     # Validate arguments
     validate_internalize_action_args(args)
     vargs = args
 
     # Validate and extract atomic BEEF
     tx_bytes = vargs.get("tx")
+    trace(logger, "signer.internalize_action.tx", tx=tx_bytes)
     ab: Beef
     subject_txid: str | None = None
     subject_tx: Transaction | None = None
     if tx_bytes:
         try:
+            trace(logger, "signer.internalize_action.parse_beef.call")
             ab, subject_txid, subject_tx = parse_beef_ex(tx_bytes)
+            trace(
+                logger,
+                "signer.internalize_action.parse_beef.ok",
+                subject_txid=subject_txid,
+                has_subject_tx=bool(subject_tx),
+            )
         except Exception as exc:  # noqa: PERF203
+            trace(logger, "signer.internalize_action.parse_beef.error", error=str(exc), exc_type=type(exc).__name__)
             raise WalletError("tx is not valid AtomicBEEF") from exc
     else:
         ab = Beef(version=1)
@@ -614,17 +675,22 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     # Verify the BEEF and find the target transaction
     txid = subject_txid or getattr(ab, "atomic_txid", None)
     if not txid:
+        trace(logger, "signer.internalize_action.no_txid", beef_log=ab.to_log_string())
         raise WalletError(f"tx is not valid AtomicBEEF: {ab.to_log_string()}")
 
     tx = subject_tx or _find_transaction_in_beef(ab, txid)
     if tx is None:
+        trace(logger, "signer.internalize_action.tx_not_found", txid=txid)
         raise WalletError(f"tx is not valid AtomicBEEF with newest txid of {txid}")
+
+    trace(logger, "signer.internalize_action.target_tx", txid=txid, outputs_len=len(getattr(tx, "outputs", []) or []))
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]
 
     # Process each output
     for output_spec in vargs.get("outputs", []):
+        trace(logger, "signer.internalize_action.output_spec", outputSpec=output_spec)
         output_index = output_spec.get("output_index")
 
         if output_index < 0 or output_index >= len(tx.outputs):
@@ -633,15 +699,20 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         protocol = output_spec.get("protocol")
 
         if protocol == "wallet payment":
+            trace(logger, "signer.internalize_action.output.wallet_payment", outputIndex=output_index)
             _setup_wallet_payment_for_output(output_spec, tx, wallet, brc29_protocol_id)
         elif protocol == "basket insertion":
             # No additional validations for basket insertion
+            trace(logger, "signer.internalize_action.output.basket_insertion", outputIndex=output_index)
             pass
         else:
+            trace(logger, "signer.internalize_action.output.unexpected_protocol", protocol=protocol)
             raise WalletError(f"unexpected protocol {protocol}")
 
     # Pass to storage layer
+    trace(logger, "signer.internalize_action.storage.call", auth=auth, args=vargs)
     result = wallet.storage.internalize_action(auth, vargs)
+    trace(logger, "signer.internalize_action.storage.result", result=result)
     return result
 
 

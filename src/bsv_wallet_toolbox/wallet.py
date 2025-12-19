@@ -46,6 +46,7 @@ from .signer.methods import (
 )
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
 from .utils.ttl_cache import TTLCache
+from .utils.trace import trace
 from .utils.validation import (
     validate_abort_action_args,
     validate_acquire_certificate_args,
@@ -360,24 +361,29 @@ class Wallet:
             return
 
         try:
+            trace(logger, "wallet.ensure_defaults.start")
             # Ensure storage is available
             self.storage.make_available()
             
             # Get or create user
             auth = self._make_auth()
             user_id = auth.get("userId")
+            trace(logger, "wallet.ensure_defaults.user", auth=auth, userId=user_id)
             
             if not user_id:
                 return
 
             # Ensure default label and basket exist using find_or_insert methods
             # These methods handle checking if the record already exists
+            trace(logger, "wallet.ensure_defaults.ensure", userId=user_id, label="default", basket="default")
             self.storage.find_or_insert_tx_label(user_id, "default")
             self.storage.find_or_insert_output_basket(user_id, "default")
+            trace(logger, "wallet.ensure_defaults.ok", userId=user_id)
 
-        except Exception:
+        except Exception as e:
             # Best-effort: If defaults can't be created, continue anyway
             # Storage might not be fully initialized yet
+            trace(logger, "wallet.ensure_defaults.error", error=str(e), exc_type=type(e).__name__)
             pass
 
     def _create_lookup_resolver(self) -> Any:
@@ -1112,7 +1118,14 @@ class Wallet:
             # Avoid mutating caller's dict
             args = {**args, "auth": auth}
 
-        return self.storage.list_outputs(auth, args)
+        trace(logger, "wallet.list_outputs.call", originator=originator, auth=auth, args=args)
+        try:
+            result = self.storage.list_outputs(auth, args)
+            trace(logger, "wallet.list_outputs.result", originator=originator, result=result)
+            return result
+        except Exception as e:
+            trace(logger, "wallet.list_outputs.error", originator=originator, error=str(e), exc_type=type(e).__name__)
+            raise
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List certificates with optional filters.
@@ -1347,6 +1360,7 @@ class Wallet:
         if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
+        trace(logger, "wallet.create_action.call", originator=originator, args=args)
         # Initialize options if not provided (TS parity: args.options ||= {})
         if "options" not in args or args["options"] is None:
             args["options"] = {}
@@ -1363,9 +1377,11 @@ class Wallet:
         # Validate and normalize args - returns vargs with computed flags (TS parity)
         # validate_create_action_args computes: isNewTx, isSendWith, isDelayed, isNoSend, etc.
         vargs = validate_create_action_args(args)
+        trace(logger, "wallet.create_action.validated", originator=originator, vargs=vargs)
 
         # Generate auth object with identity key
         auth = self._make_auth()
+        trace(logger, "wallet.create_action.auth", originator=originator, auth=auth)
 
         # Apply wallet-level configuration for complete transaction handling
         # TS: vargs.includeAllSourceTransactions = this.includeAllSourceTransactions
@@ -1378,7 +1394,12 @@ class Wallet:
             vargs["randomVals"] = random_vals[:]
 
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
-        signer_result = signer_create_action(self, auth, vargs)
+        try:
+            signer_result = signer_create_action(self, auth, vargs)
+            trace(logger, "wallet.create_action.signer_result", originator=originator, signer_result=getattr(signer_result, "__dict__", signer_result))
+        except Exception as e:
+            trace(logger, "wallet.create_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
+            raise
         
         # Convert CreateActionResultX to BRC-100 CreateActionResult
         # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
@@ -1465,16 +1486,24 @@ class Wallet:
         if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
+        trace(logger, "wallet.sign_action.call", originator=originator, args=args)
         # Validate input arguments (raises InvalidParameterError on failure)
         validate_sign_action_args(args)
+        trace(logger, "wallet.sign_action.validated", originator=originator, args=args)
 
         # Generate auth object with identity key
         auth = self._make_auth()
+        trace(logger, "wallet.sign_action.auth", originator=originator, auth=auth)
 
         # Delegate to signer layer for BRC-100 compliant signing
         # TS: const { auth, vargs } = this.validateAuthAndArgs(args, validateSignActionArgs)
         # TS: const r = await signAction(this, auth, args)
-        signer_result = signer_sign_action(self, auth, args)
+        try:
+            signer_result = signer_sign_action(self, auth, args)
+            trace(logger, "wallet.sign_action.signer_result", originator=originator, signer_result=signer_result)
+        except Exception as e:
+            trace(logger, "wallet.sign_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
+            raise
         
         # Convert to BRC-100 SignActionResult format
         # Remove internal fields (sendWithResults, notDelayedResults) - not part of BRC-100 spec
@@ -1538,7 +1567,10 @@ class Wallet:
 
         Reference: toolbox/ts-wallet-toolbox/src/Wallet.ts (signAction method)
         """
-        return self.sign_action(args, originator)
+        trace(logger, "wallet.process_action.call", originator=originator, args=args)
+        result = self.sign_action(args, originator)
+        trace(logger, "wallet.process_action.result", originator=originator, result=result)
+        return result
 
     def internalize_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Internalize a transaction action.
@@ -1586,7 +1618,13 @@ class Wallet:
 
         # Delegate to signer layer for BRC-100 compliant internalization
         # TS: const r = await internalizeAction(this, auth, args)
-        result = signer_internalize_action(self, auth, args)
+        trace(logger, "wallet.internalize_action.call", originator=originator, auth=auth, args=args)
+        try:
+            result = signer_internalize_action(self, auth, args)
+            trace(logger, "wallet.internalize_action.result", originator=originator, result=result)
+        except Exception as e:
+            trace(logger, "wallet.internalize_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
+            raise
 
         # Wave 4 Enhancement - Error handling & validation & BEEF integration
         # 1. BEEF merge from input
@@ -1719,7 +1757,12 @@ class Wallet:
         Helper method that creates an auth dict with the wallet's user ID
         for use by storage provider methods.
 
-        Mirrors TypeScript: `{ userId: this.userId }`
+        Mirrors TypeScript: `{ userId: this.userId }`.
+
+        Note:
+            Some remote storage servers also expect `identityKey` to be present for
+            server-side auth consistency checks. Including it is harmless for local
+            storage providers and improves interoperability.
 
         TS parity:
             The userId is the wallet's user record ID in the database,
@@ -1752,7 +1795,9 @@ class Wallet:
         # Get or create user by identity key
         user_id = self.storage.get_or_create_user_id(identity_key_hex)
 
-        return {"userId": user_id}
+        auth = {"userId": user_id, "identityKey": identity_key_hex}
+        trace(logger, "wallet.make_auth.result", auth=auth)
+        return auth
 
     def is_authenticated(
         self,
@@ -3259,8 +3304,9 @@ class Wallet:
         if not self.storage:
             raise RuntimeError("storage_provider is not configured")
 
-        # Use special operation for efficient balance calculation
-        result = self.list_outputs({"basket": specOpWalletBalance})
+        # Use special operation for efficient balance calculation.
+        # Some remote storage servers require an explicit positive `limit` even for SpecOps.
+        result = self.list_outputs({"basket": specOpWalletBalance, "limit": 1})
 
         return {"total": result.get("totalOutputs", 0)}
 
