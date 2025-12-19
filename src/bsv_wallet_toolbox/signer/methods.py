@@ -15,6 +15,8 @@ Reference:
 
 from __future__ import annotations
 
+import base64
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -28,6 +30,8 @@ from bsv.wallet import Counterparty, CounterpartyType, Protocol
 from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Type Definitions (TS Parity)
@@ -74,6 +78,30 @@ class CreateActionResultX:
 # ============================================================================
 # Core Methods
 # ============================================================================
+
+
+def _decode_remittance_component(value: str) -> str:
+    """Best-effort decode of base64 remittance data to printable ASCII."""
+    if not isinstance(value, str) or not value:
+        return ""
+
+    try:
+        decoded = base64.b64decode(value, validate=True)
+    except Exception:
+        return value
+
+    try:
+        text = decoded.decode("utf-8")
+    except UnicodeDecodeError:
+        return value
+
+    if not text:
+        return value
+
+    if any(ord(char) < 32 or ord(char) > 126 for char in text):
+        return value
+
+    return text
 
 
 def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateActionResultX:
@@ -245,8 +273,12 @@ def build_signable_transaction(
         pending_storage_inputs.append(
             PendingStorageInput(
                 vin=len(tx.inputs),
-                derivation_prefix=storage_input.get("derivation_prefix", ""),
-                derivation_suffix=storage_input.get("derivation_suffix", ""),
+                derivation_prefix=_decode_remittance_component(
+                    storage_input.get("derivation_prefix", "")
+                ),
+                derivation_suffix=_decode_remittance_component(
+                    storage_input.get("derivation_suffix", "")
+                ),
                 unlocker_pub_key=storage_input.get("sender_identity_key", ""),
                 source_satoshis=storage_input.get("source_satoshis", 0),
                 locking_script=storage_input.get("source_locking_script", ""),
@@ -1126,6 +1158,15 @@ def _setup_wallet_payment_for_output(
             raise WalletError(f"Output index {output_index} out of range")
 
         output = tx.outputs[output_index]
+        try:
+            current_script_preview = output.locking_script.hex()
+        except Exception:
+            current_script_preview = None
+        logger.debug(
+            "wallet_payment_output_loaded hypothesis=H4 index=%s script=%s",
+            output_index,
+            current_script_preview,
+        )
 
         # Step 2: Extract payment derivation parameters (support both camelCase and snake_case)
         # These are Base64 encoded - decode them for keyID construction
@@ -1183,6 +1224,12 @@ def _setup_wallet_payment_for_output(
         expected_script_hex = expected_lock_script.hex()
 
         if current_script_hex != expected_script_hex:
+            logger.debug(
+                "wallet_payment_script_mismatch hypothesis=H4 index=%s expected=%s actual=%s",
+                output_index,
+                expected_script_hex,
+                current_script_hex,
+            )
             raise WalletError(
                 "paymentRemittance output script does not conform to BRC-29: "
                 f"expected {expected_script_hex}, got {current_script_hex}"

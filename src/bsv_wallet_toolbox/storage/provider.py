@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import re
 import secrets
@@ -90,6 +91,16 @@ SNAKE_TO_CAMEL_OVERRIDES: dict[str, str] = {v: k for k, v in CAMEL_TO_SNAKE_OVER
 
 
 class StorageProvider:
+    _FATAL_BROADCAST_ERROR_HINTS = (
+        "missing inputs",
+        "missing prevout",
+        "mandatory-script-verify-flag failed",
+        "non-mandatory-script-verify-flag failed",
+        "txn-mempool-conflict",
+        "non-BSV transaction",
+        "invalid transaction",
+        "double spend",
+    )
     """Storage provider backed by SQLAlchemy ORM.
 
     Summary:
@@ -2876,11 +2887,24 @@ class StorageProvider:
                     if ndr is not None:
                         ndr.append({"txid": txid, "status": "success", "message": message or "broadcasted"})
                 else:
-                    req.status = "unsent"
-                    req.attempts = (req.attempts or 0) + 1
+                    fatal_error = self._is_fatal_broadcast_error(message)
+                    if fatal_error:
+                        req.status = "invalid"
+                        if tx_model:
+                            self._mark_transaction_failed(tx_model, session)
+                    else:
+                        req.status = "unsent"
+                        req.attempts = (req.attempts or 0) + 1
                     swr.append({"txid": txid, "status": "failed"})
                     if ndr is not None:
-                        ndr.append({"txid": txid, "status": "error", "message": message})
+                        ndr.append(
+                            {
+                                "txid": txid,
+                                "status": "error",
+                                "message": message,
+                                "fatal": fatal_error,
+                            }
+                        )
 
             session.commit()
             return swr, ndr
@@ -4144,6 +4168,29 @@ class StorageProvider:
         finally:
             session.close()
 
+    def _is_fatal_broadcast_error(self, message: str | None) -> bool:
+        if not message:
+            return False
+        lowered = message.lower()
+        return any(hint in lowered for hint in self._FATAL_BROADCAST_ERROR_HINTS)
+
+    def _mark_transaction_failed(self, tx_model: TransactionModel, session: Session) -> None:
+        """Mark a transaction as failed and release any inputs it had allocated."""
+        if tx_model.status == "failed":
+            return
+
+        tx_model.status = "failed"
+
+        outputs = (
+            session.execute(select(Output).where(Output.spent_by == tx_model.transaction_id))
+            .scalars()
+            .all()
+        )
+        for output in outputs:
+            output.spendable = True
+            output.spent_by = None
+            session.add(output)
+
     def insert_certificate_auth(self, auth: dict[str, Any], certificate: dict[str, Any]) -> int:
         """Insert a certificate with auth validation (authorized certificate insertion).
 
@@ -4950,9 +4997,18 @@ class InternalizeActionContext:
 
     def _parse_outputs(self) -> None:
         """Parse outputs and classify (TS lines 155-189)."""
+        logger = logging.getLogger(__name__)
+        def _agent_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
+            logger.debug(
+                "internalize_action agent_log hypothesis=%s message=%s data=%s",
+                hypothesis_id,
+                message,
+                data,
+            )
         for output_spec in self.vargs.get("outputs", []):
             output_index = output_spec.get("output_index", output_spec.get("outputIndex", -1))
             protocol = output_spec.get("protocol", "")
+            _agent_log("H1", "processing_output_spec", {"output_index": output_index, "protocol": protocol})
 
             if output_index < 0 or output_index >= len(self.tx.outputs):
                 raise InvalidParameterError(
@@ -4988,18 +5044,40 @@ class InternalizeActionContext:
 
                 if insertion_remittance or not payment_remittance:
                     raise InvalidParameterError("wallet payment", "valid paymentRemittance and no insertionRemittance")
+                sender_identity_key = payment_remittance.get("senderIdentityKey")
+                derivation_prefix = payment_remittance.get("derivationPrefix", "")
+                derivation_suffix = payment_remittance.get("derivationSuffix")
+                _agent_log(
+                    "H2",
+                    "wallet_payment_params",
+                    {
+                        "output_index": output_index,
+                        "sender_identity_key": sender_identity_key,
+                        "derivation_prefix": derivation_prefix,
+                        "derivation_suffix": derivation_suffix,
+                    },
+                )
 
                 self.wallet_payments.append(
                     {
                         "spec": output_spec,
-                        "sender_identity_key": payment_remittance.get("senderIdentityKey"),
-                        "derivation_prefix": payment_remittance.get("derivationPrefix", ""),
-                        "derivation_suffix": payment_remittance.get("derivationSuffix"),
+                        "sender_identity_key": sender_identity_key,
+                        "derivation_prefix": derivation_prefix,
+                        "derivation_suffix": derivation_suffix,
                         "vout": output_index,
                         "txo": txo,
                         "eo": None,
                         "ignore": False,
                     }
+                )
+                try:
+                    wallet_payment_script = txo.locking_script.hex() if txo.locking_script else None
+                except Exception:
+                    wallet_payment_script = None
+                _agent_log(
+                    "H3",
+                    "wallet_payment_recorded",
+                    {"output_index": output_index, "script_hex": wallet_payment_script},
                 )
             else:
                 raise InvalidParameterError("protocol", f"'wallet payment' or 'basket insertion', got '{protocol}'")
