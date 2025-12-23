@@ -2920,9 +2920,33 @@ class Wallet:
         # TS: return this.proto.verifySignature(args)
         # Go: return w.proto.VerifySignature(ctx, args, originator)
         if self.proto is not None:
+            # Debug: log input args
+            import sys
+            print(f"[WALLET.verify_signature] Input args keys: {list(args.keys())}", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] protocolID type: {type(args.get('protocolID'))}, value: {args.get('protocolID')}", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] keyID: {args.get('keyID')[:40] if args.get('keyID') else None}...", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] counterparty type: {type(args.get('counterparty'))}, value: {str(args.get('counterparty'))[:60] if args.get('counterparty') else None}...", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] data type: {type(args.get('data'))}, length: {len(args.get('data')) if args.get('data') else 0}", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] signature type: {type(args.get('signature'))}, length: {len(args.get('signature')) if args.get('signature') else 0}", file=sys.stdout, flush=True)
+            
             # Convert args from py-wallet-toolbox format (camelCase) to py-sdk format (snake_case)
             proto_args = self._convert_verify_signature_args_to_proto_format(args)
-            result = self.proto.verify_signature(proto_args, originator)
+            
+            print(f"[WALLET.verify_signature] After conversion proto_args keys: {list(proto_args.keys())}", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] After conversion protocolID type: {type(proto_args.get('protocolID'))}, value: {proto_args.get('protocolID')}", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] After conversion counterparty type: {type(proto_args.get('counterparty'))}, value: {str(proto_args.get('counterparty'))[:60] if proto_args.get('counterparty') else None}...", file=sys.stdout, flush=True)
+            
+            print(f"[WALLET.verify_signature] About to call self.proto.verify_signature", file=sys.stdout, flush=True)
+            print(f"[WALLET.verify_signature] self.proto type: {type(self.proto)}", file=sys.stdout, flush=True)
+            
+            try:
+                result = self.proto.verify_signature(proto_args, originator)
+                print(f"[WALLET.verify_signature] proto.verify_signature returned: {result}", file=sys.stdout, flush=True)
+            except Exception as e:
+                print(f"[WALLET.verify_signature] proto.verify_signature raised exception: {e}", file=sys.stdout, flush=True)
+                import traceback
+                traceback.print_exc()
+                raise
             
             # Handle error response from proto
             if "error" in result:
@@ -3145,14 +3169,21 @@ class Wallet:
         # TS: return this.proto.verifyHMAC(args)
         # Go: return w.proto.VerifyHMAC(ctx, args, originator)
         if self.proto is not None:
+            print(f"[Wallet.verify_hmac] Input args: {args}")
             proto_args = self._convert_verify_hmac_args_to_proto_format(args)
+            print(f"[Wallet.verify_hmac] Converted proto_args: {proto_args}")
             result = self.proto.verify_hmac(proto_args, originator)
+            print(f"[Wallet.verify_hmac] Proto result: {result}")
 
             # Handle error response from proto
             if "error" in result:
-                raise RuntimeError(f"verify_hmac failed: {result['error']}")
+                error_msg = f"verify_hmac failed: {result['error']}"
+                print(f"[Wallet.verify_hmac] ERROR: {error_msg}")
+                raise RuntimeError(error_msg)
 
-            return {"valid": bool(result.get("valid", False))}
+            valid = bool(result.get("valid", False))
+            print(f"[Wallet.verify_hmac] Final result: valid={valid}")
+            return {"valid": valid}
 
         raise RuntimeError("proto is not configured")
 

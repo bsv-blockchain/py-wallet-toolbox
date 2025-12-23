@@ -5,5 +5,8 @@
 Django>=4.2.0
 djangorestframework>=3.14.0
 
+# BSV Middleware (from git develop branch, editable install to include examples)
+-e git+https://github.com/bsv-blockchain/py-middleware.git@develop#egg=bsv-middleware
+
 # Local py-wallet-toolbox (with PushDrop fix)
 -e ../..

@@ -32,10 +32,13 @@ _storage_server: Optional[StorageServer] = None
 _server_wallet: Optional[ToolboxWallet] = None
 
 # Server private key (from examples-config.yaml or environment)
-# This should match the server_private_key in from_go/examples-config.yaml
+# NOTE: This must be DIFFERENT from the client's private key!
+# The default key was the same as the client, causing authentication failures.
+# New server key (hex): b4a609a63dc91bebf3823a8ff2470c23e2da9af18f5138990ef390373f8969d7
+# New server public key: 0320295654f4c8d4d2bc2ed79b0169f7584e62519b17f6a829adebe400316c90d6
 SERVER_PRIVATE_KEY = os.environ.get(
     'SERVER_PRIVATE_KEY',
-    '9a1b02c96311651770c3d4858dd73bfb5b4128990cf7a3f0e6b11c00934de831'  # Default from examples-config.yaml
+    'b4a609a63dc91bebf3823a8ff2470c23e2da9af18f5138990ef390373f8969d7'  # Different from client's key
 )
 
 
@@ -74,6 +77,13 @@ def get_server_wallet() -> ToolboxWallet:
                 storage_provider=None,  # Server wallet doesn't need storage
                 privileged_key_manager=privileged_manager,
             )
+            
+            # Debug: Check if proto was initialized
+            logger.info(f"Server wallet proto: {_server_wallet.proto}")
+            if _server_wallet.proto is None:
+                logger.error("Server wallet proto is None! verify_signature will fail!")
+            else:
+                logger.info(f"Server wallet proto initialized: {type(_server_wallet.proto)}")
             
             logger.info("Server wallet initialized successfully")
             

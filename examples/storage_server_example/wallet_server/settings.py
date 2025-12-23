@@ -15,19 +15,78 @@ Uses py-middleware package for BSV authentication.
 
 import sys
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Add py-middleware to path (for development)
-PY_MIDDLEWARE_PATH = BASE_DIR.parent.parent.parent / 'py-middleware'
-if PY_MIDDLEWARE_PATH.exists():
-    sys.path.insert(0, str(PY_MIDDLEWARE_PATH))
+# Add local py-sdk and py-middleware to path (for development)
+# This ensures we use local versions instead of installed packages
+# Try multiple locations where these packages might be
+lib_root = BASE_DIR.parent.parent.parent  # Relative to storage_server_example: ../../.. (py-lib root)
+home_py_lib = Path.home() / 'py-lib'
 
-# Add py-middleware examples adapter to path
-PY_MIDDLEWARE_ADAPTER_PATH = PY_MIDDLEWARE_PATH / 'examples' / 'django_example'
-if PY_MIDDLEWARE_ADAPTER_PATH.exists():
-    sys.path.insert(0, str(PY_MIDDLEWARE_ADAPTER_PATH))
+# Try to find py-sdk and py-middleware in common locations
+possible_sdk_paths = [
+    lib_root / 'py-sdk',  # Relative to storage_server_example: ../../../py-sdk
+    home_py_lib / 'py-sdk',  # Common development location
+]
+
+possible_middleware_paths = [
+    lib_root / 'py-middleware',  # Relative to storage_server_example: ../../../py-middleware
+    home_py_lib / 'py-middleware',  # Common development location
+]
+
+# Find and add py-sdk to path
+found_sdk = None
+for path in possible_sdk_paths:
+    if path.exists() and (path / 'bsv').exists():
+        found_sdk = path
+        sys.path.insert(0, str(path))
+        print(f"[SETTINGS] Using local py-sdk from: {path}")
+        break
+
+# Find and add py-middleware to path
+found_middleware = None
+for path in possible_middleware_paths:
+    examples_path = path / 'examples' / 'django_example'
+    if examples_path.exists():
+        found_middleware = path
+        sys.path.insert(0, str(path))
+        print(f"[SETTINGS] Using local py-middleware from: {path}")
+        break
+
+# Warn if local dependencies not found (will fall back to installed packages)
+if not found_sdk:
+    print(f"[SETTINGS] WARNING: Local py-sdk not found, will use installed package")
+if not found_middleware:
+    print(f"[SETTINGS] WARNING: Local py-middleware not found, will use installed package")
+    # Also check if installed as editable (check .pth files or dist-info)
+    try:
+        import bsv_middleware
+        middleware_file = Path(bsv_middleware.__file__)
+        # For editable installs, the file might be a link or in a src directory
+        # Try going up from site-packages to find the source
+        if 'site-packages' in str(middleware_file):
+            # Try to find the source directory
+            site_packages = middleware_file.parent.parent
+            # Check if there's a .pth file pointing to the source
+            for pth_file in site_packages.glob('*.pth'):
+                try:
+                    with open(pth_file, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('import'):
+                                pth_path = Path(line)
+                                if pth_path.exists() and (pth_path / 'examples' / 'django_example').exists():
+                                    sys.path.insert(0, str(pth_path))
+                                    print(f"[SETTINGS] Using editable py-middleware from: {pth_path}")
+                                    found_middleware = pth_path
+                                    break
+                except:
+                    pass
+    except ImportError:
+        pass
 
 
 # Quick-start development settings - unsuitable for production
@@ -86,10 +145,11 @@ MIDDLEWARE = [
 
     # ==========================================================================
     # BSV Middleware (py-middleware package)
-    # BRC-104 authentication is now enabled
+    # BRC-104 authentication ENABLED (signature formats now compatible)
+    # Production middleware from bsv_middleware.django
     # ==========================================================================
-    'adapter.auth_middleware.BSVAuthMiddleware',
-    # 'adapter.payment_middleware_complete.BSVPaymentMiddleware',  # Uncomment for payment
+    'bsv_middleware.django.auth_middleware.BSVAuthMiddleware',
+    # 'bsv_middleware.django.payment_middleware_complete.BSVPaymentMiddleware',  # Uncomment for payment
 ]
 
 ROOT_URLCONF = 'wallet_server.urls'
@@ -205,7 +265,8 @@ BSV_MIDDLEWARE = {
 
     # Allow unauthenticated requests (for development/testing)
     # Set to False in production to require BRC-104 authentication
-    'ALLOW_UNAUTHENTICATED': True,
+    'ALLOW_UNAUTHENTICATED': False,
+
 
     # Certificate requirements for mutual authentication
     'CERTIFICATE_REQUESTS': None,
@@ -218,6 +279,46 @@ BSV_MIDDLEWARE = {
 
     # Logging configuration
     'LOG_LEVEL': 'debug',  # 'debug', 'info', 'warn', 'error'
+}
+
+# =============================================================================
+# Django Logging Configuration
+# =============================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'wallet_app': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }
 
 

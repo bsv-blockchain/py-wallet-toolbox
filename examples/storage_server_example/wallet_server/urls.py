@@ -19,8 +19,7 @@ from django.urls import path
 from wallet_app import views
 
 urlpatterns = [
-    # BRC-104 Authentication endpoint (required for mutual authentication)
-    # This endpoint handles initialRequest/initialResponse handshake
+    # BRC-104 Authentication endpoint (let py-middleware handle the actual auth)
     path('.well-known/auth', views.well_known_auth_endpoint, name='well_known_auth'),
     # JSON-RPC endpoint at root (TypeScript StorageServer parity)
     path('', views.json_rpc_endpoint, name='json_rpc'),

@@ -72,84 +72,381 @@ def _extract_identity_key_from_params(params) -> str:
     return ''
 
 
-def _verify_identity_key(request: HttpRequest, params) -> tuple[bool, str]:
+def _is_brc104_general_message(request: HttpRequest) -> bool:
     """
-    Verify that the identity key in JSON-RPC params matches the authenticated identity.
-
-    Reference: go-wallet-toolbox/pkg/storage/internal/server/rpc_storage_provider.go:verifyAuthID
-
-    This security check ensures that when BRC-104 authentication is enabled,
-    a client cannot access another client's data by spoofing identity keys.
-
-    Args:
-        request: Django HttpRequest (may have request.auth from py-middleware)
-        params: JSON-RPC params (dict or list)
-
-    Returns:
-        Tuple of (is_valid, error_message)
-    """
-    # Get authenticated identity from py-middleware
-    authenticated_key = _get_authenticated_identity(request)
+    Check if the request is a BRC-104 general message.
     
-    # If no authentication was performed (middleware not enabled or allow_unauthenticated),
-    # skip verification
-    if authenticated_key is None:
-        return True, ""
+    BRC-104 general messages have x-bsv-auth-* headers indicating
+    they contain authenticated HTTP requests as binary payloads.
+    """
+    version_header = request.headers.get('x-bsv-auth-version')
+    message_type_header = request.headers.get('x-bsv-auth-message-type')
+    return version_header is not None and message_type_header == 'general'
 
-    # Extract identity key from params
-    params_identity_key = _extract_identity_key_from_params(params)
 
-    # If no identity key in params, allow (some methods don't require it)
-    if not params_identity_key:
-        return True, ""
+def _deserialize_http_request_from_payload(payload: bytes) -> tuple[bytes, str, str, str, dict, bytes]:
+    """
+    Deserialize HTTP request from BRC-104 binary payload.
+    
+    Reference:
+    - ts-sdk/src/auth/transports/SimplifiedFetchTransport.ts:deserializeRequestPayload
+    - go-sdk/auth/authpayload/http.go:ToHTTPRequest
+    - py-sdk/bsv/auth/transports/simplified_http_transport.py:_deserialize_request_payload
+    
+    Returns: (request_id_bytes, method, path, search, headers, body)
+    """
+    from bsv.utils.reader import Reader
+    
+    reader = Reader(payload)
+    
+    # Read request ID (32 bytes)
+    request_id_bytes = reader.read_bytes(32)
+    if len(request_id_bytes) != 32:
+        raise ValueError(f"Invalid request ID length: {len(request_id_bytes)}, expected 32")
+    
+    NEG_ONE = 0xFFFFFFFFFFFFFFFF
+    
+    # Read method
+    method_length = reader.read_var_int_num()
+    if method_length is None or method_length == 0 or method_length == NEG_ONE:
+        method = 'GET'
+    else:
+        method_bytes = reader.read_bytes(method_length)
+        if not method_bytes:
+            method = 'GET'
+        else:
+            method = method_bytes.decode('utf-8')
+    
+    # Read path
+    path_length = reader.read_var_int_num()
+    if path_length is None or path_length == 0 or path_length == NEG_ONE:
+        path = '/'
+    else:
+        path_bytes = reader.read_bytes(path_length)
+        if not path_bytes:
+            path = '/'
+        else:
+            path = path_bytes.decode('utf-8')
+    
+    # Read search (query string)
+    search_length = reader.read_var_int_num()
+    if search_length is None or search_length == 0 or search_length == NEG_ONE:
+        search = ''
+    else:
+        search_bytes = reader.read_bytes(search_length)
+        if not search_bytes:
+            search = ''
+        else:
+            search = search_bytes.decode('utf-8')
+    
+    # Read headers
+    headers = {}
+    n_headers = reader.read_var_int_num()
+    if n_headers is not None and n_headers > 0:
+        for _ in range(n_headers):
+            key_length = reader.read_var_int_num()
+            if key_length is not None and key_length > 0:
+                key_bytes = reader.read_bytes(key_length)
+                if key_bytes:
+                    key = key_bytes.decode('utf-8')
+                    
+                    value_length = reader.read_var_int_num()
+                    if value_length is not None and value_length > 0:
+                        value_bytes = reader.read_bytes(value_length)
+                        if value_bytes:
+                            value = value_bytes.decode('utf-8')
+                            headers[key] = value
+    
+    # Read body
+    body_length = reader.read_var_int_num()
+    if body_length is None or body_length == 0 or body_length == NEG_ONE:
+        body = b''
+    else:
+        body = reader.read_bytes(body_length)
+        if not body:
+            body = b''
+    
+    return request_id_bytes, method, path, search, headers, body
 
-    # Verify identity keys match
-    if authenticated_key != params_identity_key:
-        logger.warning(
-            f"Identity key mismatch: params={params_identity_key[:16]}..., "
-            f"authenticated={authenticated_key[:16]}..."
+
+def _serialize_http_response_to_payload(request_id_bytes: bytes, status_code: int, 
+                                        headers: dict, body: bytes) -> bytes:
+    """
+    Serialize HTTP response to BRC-104 binary payload.
+    
+    Reference:
+    - ts-sdk/src/auth/transports/SimplifiedFetchTransport.ts:serializeResponsePayload
+    - go-sdk/auth/authpayload/http.go:FromHTTPResponse
+    - py-sdk/bsv/auth/transports/simplified_http_transport.py:_serialize_response_payload
+    
+    Returns: Binary payload bytes
+    """
+    from bsv.utils.writer import Writer
+    
+    writer = Writer()
+    
+    # Write request ID
+    writer.write(request_id_bytes)
+    
+    # Write status code
+    writer.write_var_int_num(status_code)
+    
+    # Filter and write headers
+    # Include: x-bsv-* (excluding x-bsv-auth-*), authorization
+    included_headers = []
+    for key, value in headers.items():
+        key_lower = key.lower()
+        if ((key_lower.startswith('x-bsv-') and not key_lower.startswith('x-bsv-auth-')) or 
+            key_lower == 'authorization'):
+            included_headers.append((key_lower, value))
+    
+    # Sort headers
+    included_headers.sort(key=lambda x: x[0])
+    
+    # Write number of headers
+    writer.write_var_int_num(len(included_headers))
+    
+    # Write each header
+    for key, value in included_headers:
+        key_bytes = key.encode('utf-8')
+        writer.write_var_int_num(len(key_bytes))
+        writer.write(key_bytes)
+        
+        value_bytes = value.encode('utf-8')
+        writer.write_var_int_num(len(value_bytes))
+        writer.write(value_bytes)
+    
+    # Write body
+    if body and len(body) > 0:
+        writer.write_var_int_num(len(body))
+        writer.write(body)
+    else:
+        # -1 indicates no body (0xFFFFFFFFFFFFFFFF)
+        writer.write_var_int_num(0xFFFFFFFFFFFFFFFF)
+    
+    return writer.to_bytes()
+
+
+def _handle_brc104_general_message(request: HttpRequest) -> HttpResponse:
+    """
+    Handle BRC-104 general message containing HTTP request as binary payload.
+    
+    Process:
+    1. Extract BRC-104 headers
+    2. Deserialize HTTP request from binary payload
+    3. Extract JSON-RPC request from HTTP body
+    4. Process JSON-RPC request
+    5. Serialize JSON-RPC response to HTTP response
+    6. Create BRC-104 response with binary payload and headers
+    7. Sign response
+    """
+    import base64
+    import os
+    
+    try:
+        # Extract BRC-104 headers
+        version = request.headers.get('x-bsv-auth-version', '0.1')
+        client_identity_key = request.headers.get('x-bsv-auth-identity-key', '')
+        client_nonce = request.headers.get('x-bsv-auth-nonce', '')
+        server_nonce = request.headers.get('x-bsv-auth-your-nonce', '')  # This is our nonce echoed back
+        request_id_header = request.headers.get('x-bsv-auth-request-id', '')
+        
+        logger.info(f"[BRC104] General message from {client_identity_key[:20]}...")
+        
+        # Deserialize HTTP request from binary payload
+        try:
+            request_id_bytes, method, path, search, headers, body = _deserialize_http_request_from_payload(request.body)
+            request_id = base64.b64encode(request_id_bytes).decode('utf-8')
+        except Exception as e:
+            logger.error(f"[BRC104] Failed to deserialize request payload: {e}")
+            return JsonResponse({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32700,
+                    "message": f"Failed to parse BRC-104 payload: {str(e)}"
+                },
+                "id": None
+            }, status=400)
+        
+        # Verify request ID matches header
+        if request_id != request_id_header:
+            logger.warning(f"[BRC104] Request ID mismatch: header={request_id_header[:20]}..., payload={request_id[:20]}...")
+        
+        # Parse JSON-RPC request from HTTP body
+        try:
+            request_data = json.loads(body.decode('utf-8'))
+            request_id_json = request_data.get("id")
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            logger.warning(f"[BRC104] Invalid JSON in request body: {e}")
+            return JsonResponse({
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32700,
+                    "message": "Parse error"
+                },
+                "id": None
+            }, status=400)
+        
+        # Verify authentication matches params
+        params = request_data.get('params', {})
+        auth_valid, auth_error = _verify_identity_key(request, params)
+        if not auth_valid:
+            logger.warning(f"[BRC104] Auth verification failed: {auth_error}")
+            # Still need to return BRC-104 response
+            error_response_data = {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32600,
+                    "message": auth_error
+                },
+                "id": request_id_json
+            }
+            return _create_brc104_response(request, request_id_bytes, error_response_data, 401)
+        
+        # Get StorageServer instance and process JSON-RPC request
+        server = get_storage_server()
+        response_data = server.handle_json_rpc_request(request_data)
+        
+        # Create BRC-104 response
+        return _create_brc104_response(request, request_id_bytes, response_data, 200)
+        
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        logger.error(f"[BRC104] Unexpected error: {e}\n{error_detail}")
+        
+        # Try to get request_id from JSON if available
+        request_id_json = None
+        try:
+            if request.body:
+                _, _, _, _, _, body = _deserialize_http_request_from_payload(request.body)
+                if body:
+                    request_data = json.loads(body.decode('utf-8'))
+                    request_id_json = request_data.get("id")
+        except Exception:
+            pass
+        
+        error_response_data = {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            },
+            "id": request_id_json
+        }
+        
+        try:
+            request_id_bytes = base64.b64decode(request.headers.get('x-bsv-auth-request-id', ''))
+            if len(request_id_bytes) != 32:
+                request_id_bytes = os.urandom(32)
+        except Exception:
+            request_id_bytes = os.urandom(32)
+        
+        return _create_brc104_response(request, request_id_bytes, error_response_data, 500)
+
+
+def _create_brc104_response(request: HttpRequest, request_id_bytes: bytes, 
+                            json_rpc_response: dict, http_status_code: int) -> HttpResponse:
+    """
+    Create BRC-104 general message response.
+    
+    Wraps JSON-RPC response in binary payload and adds BRC-104 headers.
+    """
+    import base64
+    import os
+    
+    try:
+        # Get server wallet for signing
+        server_wallet = get_server_wallet()
+        
+        # Get server identity key
+        server_identity_key = server_wallet.get_public_key({
+            'identityKey': True
+        })
+        if isinstance(server_identity_key, dict):
+            server_identity_key = server_identity_key.get('publicKey', '')
+        
+        # Extract client info from request headers
+        client_identity_key = request.headers.get('x-bsv-auth-identity-key', '')
+        client_nonce = request.headers.get('x-bsv-auth-nonce', '')
+        server_nonce = request.headers.get('x-bsv-auth-your-nonce', '')
+        
+        # If we don't have server_nonce from header, generate a new one
+        # (This shouldn't happen in normal flow, but handle gracefully)
+        if not server_nonce:
+            server_nonce = base64.b64encode(os.urandom(32)).decode('utf-8')
+            logger.warning("[BRC104] Missing server nonce in request, generated new one")
+        
+        # Serialize JSON-RPC response to HTTP response
+        response_body = json.dumps(json_rpc_response, cls=BytesEncoder).encode('utf-8')
+        response_headers = {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        }
+        
+        # Serialize HTTP response to binary payload
+        response_payload = _serialize_http_response_to_payload(
+            request_id_bytes, http_status_code, response_headers, response_body
         )
-        return False, "identityKey does not match authentication"
-
-    return True, ""
-
-
-@csrf_exempt
-@require_http_methods(["POST", "OPTIONS"])
-def json_rpc_endpoint(request: HttpRequest):
-    """
-    JSON-RPC 2.0 endpoint for wallet operations.
-
-    Accepts JSON-RPC requests and forwards them to the StorageServer.
-    
-    When py-middleware is enabled:
-    - Authentication is handled by BSVAuthMiddleware
-    - Identity key in params is verified against authenticated identity
-    - Payment is handled by BSVPaymentMiddleware (if enabled)
-
-    Request format:
-    {
-        "jsonrpc": "2.0",
-        "method": "createAction",
-        "params": {"auth": {...}, "args": {...}},
-        "id": 1
-    }
-
-    Response format:
-    {
-        "jsonrpc": "2.0",
-        "result": {...},
-        "id": 1
-    }
-    """
-    # Handle OPTIONS for CORS preflight
-    if request.method == 'OPTIONS':
-        response = JsonResponse({})
+        
+        # Create response nonce for signing
+        response_nonce = base64.b64encode(os.urandom(32)).decode('utf-8')
+        
+        # Sign the response payload
+        # Reference: py-sdk/bsv/auth/peer.py:toPeer (general message signing)
+        signature_result = server_wallet.create_signature({
+            'data': response_payload,
+            'protocolID': [2, 'auth message signature'],
+            'keyID': f"{response_nonce} {server_nonce}",
+            'counterparty': client_identity_key
+        })
+        
+        # Extract signature
+        if isinstance(signature_result, dict):
+            signature = signature_result.get('signature', b'')
+        elif hasattr(signature_result, 'signature'):
+            signature = signature_result.signature
+        else:
+            signature = bytes(signature_result) if signature_result else b''
+        
+        # Convert signature to hex string
+        if isinstance(signature, bytes):
+            signature_hex = signature.hex()
+        elif isinstance(signature, list):
+            signature_hex = bytes(signature).hex()
+        else:
+            signature_hex = ''
+        
+        # Create HTTP response with BRC-104 headers
+        response = HttpResponse(response_payload, status=200, content_type='application/octet-stream')
+        
+        # Set BRC-104 headers
+        response['x-bsv-auth-version'] = '0.1'
+        response['x-bsv-auth-message-type'] = 'general'
+        response['x-bsv-auth-identity-key'] = server_identity_key
+        response['x-bsv-auth-nonce'] = response_nonce
+        response['x-bsv-auth-your-nonce'] = client_nonce
+        response['x-bsv-auth-signature'] = signature_hex
+        response['x-bsv-auth-request-id'] = base64.b64encode(request_id_bytes).decode('utf-8')
         response['Access-Control-Allow-Origin'] = '*'
-        response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        response['Access-Control-Allow-Headers'] = '*'
+        
+        logger.info(f"[BRC104] Sending general response with signature length: {len(signature)}")
+        
         return response
+        
+    except Exception as e:
+        import traceback
+        logger.error(f"[BRC104] Failed to create BRC-104 response: {e}\n{traceback.format_exc()}")
+        # Fallback to plain JSON response
+        return JsonResponse(json_rpc_response, status=http_status_code, encoder=BytesEncoder)
 
+
+def _handle_plain_json_rpc(request: HttpRequest) -> JsonResponse:
+    """
+    Handle plain JSON-RPC request (non-BRC-104).
+    
+    This is the original implementation for backward compatibility.
+    """
     request_id = None
 
     try:
@@ -211,6 +508,102 @@ def json_rpc_endpoint(request: HttpRequest):
         }, status=500)
 
 
+def _verify_identity_key(request: HttpRequest, params) -> tuple[bool, str]:
+    """
+    Verify that the identity key in JSON-RPC params matches the authenticated identity.
+
+    Reference: go-wallet-toolbox/pkg/storage/internal/server/rpc_storage_provider.go:verifyAuthID
+
+    This security check ensures that when BRC-104 authentication is enabled,
+    a client cannot access another client's data by spoofing identity keys.
+
+    Args:
+        request: Django HttpRequest (may have request.auth from py-middleware)
+        params: JSON-RPC params (dict or list)
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    # Get authenticated identity from py-middleware
+    authenticated_key = _get_authenticated_identity(request)
+    
+    # If no authentication was performed (middleware not enabled or allow_unauthenticated),
+    # skip verification
+    if authenticated_key is None:
+        return True, ""
+
+    # Extract identity key from params
+    params_identity_key = _extract_identity_key_from_params(params)
+
+    # If no identity key in params, allow (some methods don't require it)
+    if not params_identity_key:
+        return True, ""
+
+    # Verify identity keys match
+    if authenticated_key != params_identity_key:
+        logger.warning(
+            f"Identity key mismatch: params={params_identity_key[:16]}..., "
+            f"authenticated={authenticated_key[:16]}..."
+        )
+        return False, "identityKey does not match authentication"
+
+    return True, ""
+
+
+@csrf_exempt
+@require_http_methods(["POST", "OPTIONS"])
+def json_rpc_endpoint(request: HttpRequest):
+    """
+    JSON-RPC 2.0 endpoint for wallet operations.
+
+    Accepts JSON-RPC requests and forwards them to the StorageServer.
+    
+    Supports two modes:
+    1. Plain JSON-RPC: Direct JSON-RPC request in body
+    2. BRC-104 General Message: HTTP request wrapped in BRC-104 binary payload
+    
+    When py-middleware is enabled:
+    - Authentication is handled by BSVAuthMiddleware
+    - Identity key in params is verified against authenticated identity
+    - Payment is handled by BSVPaymentMiddleware (if enabled)
+
+    Request format (plain JSON-RPC):
+    {
+        "jsonrpc": "2.0",
+        "method": "createAction",
+        "params": {"auth": {...}, "args": {...}},
+        "id": 1
+    }
+
+    Request format (BRC-104 general message):
+    - Headers: x-bsv-auth-version, x-bsv-auth-message-type, x-bsv-auth-identity-key,
+               x-bsv-auth-nonce, x-bsv-auth-your-nonce, x-bsv-auth-signature, x-bsv-auth-request-id
+    - Body: Binary payload containing serialized HTTP request with JSON-RPC in body
+
+    Response format:
+    {
+        "jsonrpc": "2.0",
+        "result": {...},
+        "id": 1
+    }
+    
+    For BRC-104 general messages, response is wrapped in binary payload with BRC-104 headers.
+    """
+    # Handle OPTIONS for CORS preflight
+    if request.method == 'OPTIONS':
+        response = JsonResponse({})
+        response['Access-Control-Allow-Origin'] = '*'
+        response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response['Access-Control-Allow-Headers'] = '*'
+        return response
+
+    # The middleware handles BRC-104 general messages
+    # Our view just processes JSON-RPC requests (the middleware extracts the body from the payload)
+    return _handle_plain_json_rpc(request)
+
+
+# Mark this view to bypass BSV middleware authentication
+# Since py-middleware and TypeScript SDK have incompatible signature formats
 @csrf_exempt
 @require_http_methods(["POST", "OPTIONS"])
 def well_known_auth_endpoint(request: HttpRequest):
@@ -305,30 +698,84 @@ def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonRes
         
         logger.info(f"[AUTH] Server identity: {server_identity_key[:20]}...")
         
-        # Create signature over the message
-        # Reference: go-sdk/auth/peer.go signMessage()
-        # Sign: version + messageType + yourNonce + nonce
-        message_to_sign = f"{version}initialResponse{client_nonce}{server_nonce}"
-        message_bytes = message_to_sign.encode('utf-8')
-        message_hash = sha256(message_bytes)
+        # Create signature over the nonces
+        # Reference: py-sdk/bsv/auth/peer.py _compute_initial_sig_data()
+        # Must match the order used by py-sdk: client_nonce + server_nonce
+        try:
+            client_nonce_bytes = base64.b64decode(client_nonce)
+            server_nonce_bytes = base64.b64decode(server_nonce)
+            # py-sdk order: client_nonce + server_nonce
+            sig_data = client_nonce_bytes + server_nonce_bytes
+        except Exception as e:
+            logger.error(f"[AUTH] Failed to decode nonces: {e}")
+            return JsonResponse({
+                'status': 'error',
+                'code': 'ERR_INVALID_NONCE',
+                'description': f'Failed to decode nonces: {e}'
+            }, status=400)
         
-        # Sign using wallet
+        # Sign using wallet - try different parameters to match Go server
+        # The Go server works, so the Python implementation must match exactly
         signature_result = server_wallet.create_signature({
-            'data': list(message_hash),
-            'protocolID': [2, 'auth'],
-            'keyID': '1',
-            'counterparty': client_identity_key
+            'data': sig_data,
+            'protocolID': [2, 'auth message signature'],
+            'keyID': f"{client_nonce} {server_nonce}",
+            'counterparty': client_identity_key  # Use client as counterparty like py-middleware
         })
         
-        signature_hex = ''
+        # Convert signature to array of integers (bytes)
+        # TypeScript SDK expects signature as number[] (list of byte values)
+        # Signature should be DER-encoded ECDSA signature (starts with 0x30)
+        signature_array = []
+        
+        # Extract signature from result
         if isinstance(signature_result, dict):
             sig = signature_result.get('signature', b'')
-            if isinstance(sig, bytes):
-                signature_hex = sig.hex()
-            elif isinstance(sig, list):
-                signature_hex = bytes(sig).hex()
-            else:
-                signature_hex = str(sig)
+        elif hasattr(signature_result, 'signature'):
+            sig = signature_result.signature
+        else:
+            logger.error(f"[AUTH] Invalid signature result type: {type(signature_result)}")
+            raise ValueError(f"Invalid signature result type: {type(signature_result)}")
+        
+        # Convert signature to list of integers
+        if isinstance(sig, bytes):
+            signature_array = list(sig)
+        elif isinstance(sig, list):
+            signature_array = sig
+        else:
+            # Try to convert to bytes first
+            try:
+                signature_array = list(bytes(sig))
+            except Exception as e:
+                logger.error(f"[AUTH] Invalid signature format: {type(sig)}, error: {e}")
+                raise ValueError(f"Invalid signature format: {type(sig)}")
+        
+        # Verify signature is DER format (starts with 0x30 = 48)
+        if not signature_array:
+            logger.error("[AUTH] Signature is empty")
+            raise ValueError("Signature is empty")
+        
+        # Log signature details for debugging (use print for visibility)
+        print(f"[AUTH DEBUG] Signature details: length={len(signature_array)}, first_byte=0x{signature_array[0]:02x} ({signature_array[0]})")
+        print(f"[AUTH DEBUG] First 10 bytes: {[hex(b) for b in signature_array[:10]]}")
+        print(f"[AUTH DEBUG] First 10 bytes (decimal): {signature_array[:10]}")
+        first_byte_hex = f"0x{signature_array[0]:02x}"
+        first_10_hex = [hex(b) for b in signature_array[:10]]
+        logger.info(f"[AUTH] Signature details: length={len(signature_array)}, first_byte={first_byte_hex}, first_10_bytes={first_10_hex}")
+        
+        if signature_array[0] != 48:  # 0x30
+            error_msg = f"[AUTH ERROR] Signature does not start with 0x30 (DER format). First byte: 0x{signature_array[0]:02x} ({signature_array[0]})"
+            print(error_msg)
+            print(f"[AUTH ERROR] Signature (first 20 bytes): {signature_array[:20]}")
+            print(f"[AUTH ERROR] Signature (hex): {bytes(signature_array[:20]).hex()}")
+            print(f"[AUTH ERROR] Signature result type: {type(signature_result)}, sig type: {type(sig)}")
+            logger.error(error_msg)
+            logger.error(f"[AUTH] Signature (first 20 bytes): {signature_array[:20]}")
+            logger.error(f"[AUTH] Signature (hex): {bytes(signature_array[:20]).hex()}")
+            logger.error(f"[AUTH] Signature result type: {type(signature_result)}, sig type: {type(sig)}")
+            logger.error(f"[AUTH] Signature result: {signature_result}")
+            # Don't send invalid signature - this will help identify the issue
+            raise ValueError(f"Invalid signature format: does not start with 0x30. First byte: 0x{signature_array[0]:02x}")
         
         # Build initialResponse
         response_data = {
@@ -338,14 +785,20 @@ def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonRes
             'identityKey': server_identity_key,
             'nonce': server_nonce,
             'yourNonce': client_nonce,
-            'initialNonce': client_nonce,
+            'initialNonce': server_nonce,  # FIX: This should be server_nonce, not client_nonce
             'certificates': [],
-            'signature': signature_hex
+            'signature': signature_array
         }
         
-        logger.info(f"[AUTH] Sending initialResponse with signature: {signature_hex[:40]}...")
+        first_byte_info = f"0x{signature_array[0]:02x}" if signature_array else "N/A"
+        print(f"[AUTH DEBUG] Sending initialResponse with signature length: {len(signature_array)} bytes, first byte: {first_byte_info}")
+        logger.info(f"[AUTH] Sending initialResponse with signature length: {len(signature_array)} bytes, first byte: {first_byte_info}")
         
-        response = JsonResponse(response_data)
+        # Debug: Log the signature being sent
+        print(f"[AUTH DEBUG] Sending signature to client: {signature_array[:10]}... (length: {len(signature_array)})")
+
+        # Use BytesEncoder to ensure proper serialization of byte arrays
+        response = JsonResponse(response_data, encoder=BytesEncoder)
         response['Access-Control-Allow-Origin'] = '*'
         return response
         
