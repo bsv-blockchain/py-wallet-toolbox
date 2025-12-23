@@ -38,7 +38,7 @@ class TestCreateEngineFromUrl:
         url = "mysql+pymysql://user:pass@host/db"
         engine = create_engine_from_url(url)
         assert engine is not None
-        assert str(engine.url) == url
+        assert engine.url.render_as_string(hide_password=False) == url
 
     @pytest.mark.skipif(not _has_module("psycopg2"), reason="psycopg2 not available")
     def test_create_postgres_engine(self) -> None:
@@ -46,7 +46,7 @@ class TestCreateEngineFromUrl:
         url = "postgresql+psycopg2://user:pass@host/db"
         engine = create_engine_from_url(url)
         assert engine is not None
-        assert str(engine.url) == url
+        assert engine.url.render_as_string(hide_password=False) == url
 
     def test_normalize_async_sqlite_url(self) -> None:
         """Test normalizing async SQLite URLs to sync."""
@@ -60,7 +60,7 @@ class TestCreateEngineFromUrl:
         url = "mysql+aiomysql://user:pass@host/db"
         engine = create_engine_from_url(url)
         assert engine is not None
-        assert str(engine.url) == "mysql+pymysql://user:pass@host/db"
+        assert engine.url.render_as_string(hide_password=False) == "mysql+pymysql://user:pass@host/db"
 
     @pytest.mark.skipif(not _has_module("psycopg2"), reason="psycopg2 not available")
     def test_normalize_async_postgres_url(self) -> None:
@@ -68,7 +68,7 @@ class TestCreateEngineFromUrl:
         url = "postgresql+asyncpg://user:pass@host/db"
         engine = create_engine_from_url(url)
         assert engine is not None
-        assert str(engine.url) == "postgresql+psycopg2://user:pass@host/db"
+        assert engine.url.render_as_string(hide_password=False) == "postgresql+psycopg2://user:pass@host/db"
 
     def test_echo_parameter(self) -> None:
         """Test echo parameter is passed through."""
