@@ -32,12 +32,18 @@ from typing import Any, Literal
 
 from dotenv import load_dotenv
 
+from bsv.constants import Network
 from bsv.hd.bip32 import bip32_derive_xprv_from_mnemonic
 from bsv.hd.bip39 import mnemonic_from_entropy
-from bsv.keys import PrivateKey
+from bsv.keys import PrivateKey, PublicKey
 from bsv.wallet import KeyDeriver
 from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.brc29 import KeyID, address_for_self, lock_for_counterparty
+from bsv_wallet_toolbox.brc29 import (
+    KeyID,
+    address_for_counterparty,
+    address_for_self,
+    lock_for_counterparty,
+)
 from bsv_wallet_toolbox.rpc import StorageClient
 from bsv_wallet_toolbox.services import Services, create_default_options
 from bsv_wallet_toolbox.storage import StorageProvider
@@ -281,6 +287,22 @@ def send_wallet_payment(
     }
 
     key_id = KeyID(derivation_prefix=prefix_raw, derivation_suffix=suffix_raw)
+    # Explorer-friendly trace:
+    # - from: sender identity P2PKH address (not necessarily the exact UTXO source address)
+    # - to  : derived P2PKH address used in the output locking script
+    network = Network.TESTNET if chain == "test" else Network.MAINNET
+    from_identity_address = PublicKey(sender_identity_key).address(network=network)
+    to_derived_address = address_for_counterparty(
+        sender_private_key=wallet_from.key_deriver,
+        key_id=key_id,
+        recipient_public_key=recipient_identity_key,
+        testnet=(chain == "test"),
+    )["address_string"]
+    print("\n=== Wallet payment routing (for explorer correlation) ===")
+    print(f"from (sender identity): {from_identity_address}")
+    print(f"to   (derived address) : {to_derived_address}")
+    print(f"key_id                : {key_id}")
+
     locking_script = lock_for_counterparty(
         sender_private_key=wallet_from.key_deriver,
         key_id=key_id,
