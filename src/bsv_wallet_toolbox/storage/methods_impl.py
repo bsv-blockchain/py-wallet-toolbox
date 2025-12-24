@@ -19,7 +19,8 @@ Reference:
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Callable, Optional
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -30,8 +31,15 @@ from bsv_wallet_toolbox.errors import WalletError
 # Beef class for BEEF construction/merging (py-sdk now exports it)
 try:
     from bsv.transaction import Beef  # type: ignore
+    from bsv.transaction.beef import new_beef_from_bytes  # type: ignore
 except ImportError:
     Beef = None  # type: ignore
+    new_beef_from_bytes = None  # type: ignore
+
+try:
+    from bsv.merkle_path import MerklePath  # type: ignore
+except ImportError:
+    MerklePath = None  # type: ignore
 
 try:
     import requests
@@ -950,175 +958,482 @@ def internalize_action(storage: Any, auth: dict[str, Any], args: dict[str, Any])
     return result
 
 
+# ============================================================================
+# BEEF Generation Types (TS/Go Parity)
+# ============================================================================
+
+
+# Constants matching Go/TS
+MAX_RECURSION_DEPTH = 12
+
+# BEEF version constants (BRC-64 / BRC-96)
+BEEF_V1 = 4022206465  # 0x0100BEEF little-endian
+BEEF_V2 = 4022206466  # 0x0200BEEF little-endian
+
+
+@dataclass
+class StorageGetBeefOptions:
+    """Options for BEEF generation.
+
+    TS parity: mirrors StorageGetBeefOptions interface.
+    Go parity: mirrors wdk.StorageGetBeefOptions struct.
+
+    Reference:
+        - wallet-toolbox/src/sdk/WalletStorage.interfaces.ts
+        - go-wallet-toolbox/pkg/wdk/get_beef_options.go
+    """
+
+    merge_to_beef: Any = None
+    trust_self: str | None = None  # None, 'known'
+    known_txids: list[str] = field(default_factory=list)
+    ignore_storage: bool = False
+    ignore_services: bool = False
+    ignore_new_proven: bool = False
+    min_proof_level: int = 0
+    max_recursion_depth: int = MAX_RECURSION_DEPTH
+
+
+@dataclass
+class RawTxWithMerklePath:
+    """Holds fetched tx data from services.
+
+    Go parity: mirrors rawTxWithMerklePath struct in get_beef.go
+    """
+
+    raw_tx: bytes
+    merkle_path: Any = None
+    header: dict[str, Any] | None = None
+
+
 def get_beef_for_transaction(
     storage: Any,
     auth: dict[str, Any],
     txid: str,
     options: dict[str, Any] | None = None,
-) -> str:
+) -> bytes:
     """Generate complete BEEF (Blockchain Envelope Extending Format) for transaction.
 
     Creates a BEEF containing the transaction and all its input proofs.
+    Uses storage to retrieve proven transactions and their merkle paths,
+    or proven_tx_req record with beef of external inputs.
+    Otherwise external services are used.
 
     TS parity:
-        Mirrors TypeScript getBeefForTransaction for proof generation.
+        Mirrors TypeScript getBeefForTransaction from
+        wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
+
+    Go parity:
+        Mirrors Go GetBeefForTransaction from
+        go-wallet-toolbox/pkg/storage/provider.go
 
     Args:
-        storage: StorageProvider instance
-        auth: Authentication context
-        txid: Transaction ID to generate BEEF for
-        options: Optional configuration for BEEF generation
+        storage: StorageProvider instance with access to proven txs and services
+        auth: Authentication context (not used, kept for API compatibility)
+        txid: Transaction ID to generate BEEF for (64-hex string)
+        options: Optional configuration for BEEF generation:
+            - mergeToBeef: Existing Beef to merge into
+            - trustSelf: If 'known', proven txs are represented as txid-only
+            - knownTxids: List of txids to represent as txid-only
+            - ignoreStorage: Skip storage lookup, use services only
+            - ignoreServices: Skip services lookup, storage only
+            - ignoreNewProven: Don't save newly proven txs to storage
+            - minProofLevel: Minimum recursion depth for proof acceptance
+            - maxRecursionDepth: Maximum recursion depth (default 12)
 
     Returns:
-        BEEF string in hex format
+        bytes: Complete BEEF binary containing the transaction and all required proofs
 
     Raises:
         WalletError: If transaction not found or proof generation fails
 
     Reference:
-        toolbox/ts-wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
+        - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
+        - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
     if not storage:
-        raise WalletError("storage is required for getBeefForTransaction")
+        raise WalletError("storage is required for get_beef_for_transaction")
 
-    if not txid:
-        raise WalletError("txid is required")
+    if not txid or len(txid) != 64:
+        raise WalletError("txid must be a 64-character hex string")
 
-    options = options or {}
+    if Beef is None:
+        raise WalletError("Beef class not available from py-sdk")
 
-    # Step 1: Query proven transaction from storage
-    proven_tx = storage.findOne("ProvenTx", {"txid": txid, "isDeleted": False})
+    opts = _parse_get_beef_options(options)
 
-    if not proven_tx:
-        # Step 2: Try to find raw transaction from ProvenTxReq
-        proven_req = storage.findOne("ProvenTxReq", {"txid": txid, "isDeleted": False})
+    # Go parity: if txid is in known list, return txid-only beef immediately
+    if txid in opts.known_txids:
+        return _beef_for_known_id(txid)
 
-        if not proven_req:
-            raise WalletError(f"Transaction '{txid}' not found in proven transactions or requests")
+    # Track service-fetched transactions for potential persistence
+    service_fetched_txs: dict[str, RawTxWithMerklePath] = {}
 
-        # Use beef from request
-        beef_data = proven_req.get("beef", "")
+    # Initialize or deserialize beef
+    if opts.merge_to_beef is None:
+        beef = Beef(version=BEEF_V2)
+    elif isinstance(opts.merge_to_beef, bytes):
+        beef = new_beef_from_bytes(opts.merge_to_beef)
+    elif isinstance(opts.merge_to_beef, Beef):
+        beef = opts.merge_to_beef
+    else:
+        beef = Beef(version=BEEF_V2)
 
-        if not beef_data:
-            raise WalletError(f"No BEEF available for transaction '{txid}' in requests")
+    # Try storage first (unless ignored)
+    if not opts.ignore_storage:
+        beef = _get_beef_from_storage(storage, txid, beef, opts, service_fetched_txs)
 
-        return beef_data
+        # Persist newly proven transactions if allowed
+        if not opts.ignore_new_proven:
+            for fetched_txid, fetched in service_fetched_txs.items():
+                _persist_new_proven(storage, txid, fetched_txid, fetched)
 
-    # Step 3: Extract BEEF data from proven transaction
-    beef_hex = proven_tx.get("beef", "")
+        return beef.to_binary()
 
-    if not beef_hex:
-        # Step 4: Construct BEEF from proven transaction components
-        raw_tx = proven_tx.get("rawTx", "")
-        merkle_path = proven_tx.get("merklePath", "")
+    # Use services only
+    if not opts.ignore_services:
+        beef = _get_beef_from_services(storage, txid, opts)
+        return beef.to_binary()
 
-        if not raw_tx:
-            raise WalletError(f"No raw transaction data available for '{txid}'")
+    raise WalletError(f"No storage or services provided to get BEEF for transaction {txid}")
 
-        # Construct Beef object with:
-        # 1. Raw transaction
-        # 2. Merkle path (bump)
-        # 3. Recursive input proofs
-        # 4. Serialize to binary/hex
-        if Beef is not None:
-            try:
-                beef = Beef()
-                beef.merge_raw_tx(raw_tx)
-                if merkle_path:
-                    beef.merge_bump(merkle_path)
-                beef_hex = beef.to_hex()
-            except (AttributeError, Exception):
-                # Fallback if Beef operations fail
-                beef_hex = raw_tx
+
+def _parse_get_beef_options(options: dict[str, Any] | None) -> StorageGetBeefOptions:
+    """Parse options dict into StorageGetBeefOptions."""
+    if options is None:
+        return StorageGetBeefOptions()
+
+    return StorageGetBeefOptions(
+        merge_to_beef=options.get("mergeToBeef"),
+        trust_self=options.get("trustSelf"),
+        known_txids=options.get("knownTxids") or [],
+        ignore_storage=options.get("ignoreStorage", False),
+        ignore_services=options.get("ignoreServices", False),
+        ignore_new_proven=options.get("ignoreNewProven", False),
+        min_proof_level=options.get("minProofLevel", 0),
+        max_recursion_depth=options.get("maxRecursionDepth", MAX_RECURSION_DEPTH),
+    )
+
+
+def _beef_for_known_id(txid: str) -> bytes:
+    """Create a BEEF with only a txid-only entry.
+
+    Go parity: mirrors beefForKnownID in get_beef.go
+    """
+    beef = Beef(version=BEEF_V2)
+    beef.merge_txid_only(txid)
+    return beef.to_binary()
+
+
+def _get_beef_from_storage(
+    storage: Any,
+    txid: str,
+    beef: Any,
+    options: StorageGetBeefOptions,
+    service_fetched_txs: dict[str, RawTxWithMerklePath],
+) -> Any:
+    """Get BEEF from storage with recursive building.
+
+    Go parity: mirrors getFromStorage in get_beef.go
+    """
+    # Create tx getter function for services fallback
+    tx_getter: Callable[[str], tuple[bytes, Any]] | None = None
+    if not options.ignore_services:
+        tx_getter = _make_tx_getter(storage, service_fetched_txs)
+
+    _recursive_build_valid_beef(storage, 0, beef, txid, options, tx_getter)
+
+    return beef
+
+
+def _make_tx_getter(
+    storage: Any,
+    service_fetched_txs: dict[str, RawTxWithMerklePath],
+) -> Callable[[str], tuple[bytes, Any]]:
+    """Create a function to fetch tx from services.
+
+    Go parity: mirrors makeTxGetter in get_beef.go
+    """
+
+    def tx_getter(txid: str) -> tuple[bytes, Any]:
+        services = storage.get_services() if hasattr(storage, "get_services") else None
+        if services is None:
+            raise WalletError(f"Services not available for txid {txid}")
+
+        # Get raw transaction
+        raw_tx_result = services.get_raw_tx(txid)
+        if not raw_tx_result:
+            raise WalletError(f"Raw transaction for txid {txid} is nil")
+
+        # Convert to bytes
+        if isinstance(raw_tx_result, str):
+            raw_tx = bytes.fromhex(raw_tx_result)
+        elif isinstance(raw_tx_result, bytes):
+            raw_tx = raw_tx_result
         else:
-            # Fallback if py-sdk Beef not available
-            beef_hex = raw_tx
+            raw_tx = bytes.fromhex(raw_tx_result) if raw_tx_result else b""
 
-    # Step 5: Handle BEEF merging if requested
-    merge_to_beef = options.get("mergeToBeef")
-    if merge_to_beef and Beef is not None:
-        # Merge provided BEEF with computed BEEF
+        # Try to get merkle path
+        merkle_path = None
+        header = None
+
         try:
-            existing_beef = Beef.from_hex(merge_to_beef)
-            new_beef = Beef.from_hex(beef_hex)
-            # Merge the BEEFs
-            existing_beef.merge(new_beef)
-            beef_hex = existing_beef.to_hex()
-        except (AttributeError, Exception):
-            # If merging fails, keep computed BEEF
+            merkle_result = services.get_merkle_path(txid)
+            if merkle_result and merkle_result.get("merklePath"):
+                mp = merkle_result["merklePath"]
+                if hasattr(mp, "path") or hasattr(mp, "to_binary"):
+                    merkle_path = mp
+                header = merkle_result.get("header")
+
+                # Store for potential persistence
+                service_fetched_txs[txid] = RawTxWithMerklePath(
+                    raw_tx=raw_tx,
+                    merkle_path=merkle_path,
+                    header=header,
+                )
+        except Exception:
+            # Not found is okay, will recurse for inputs
             pass
 
-    # Step 6: Apply recursion depth limits
-    max_recursion = options.get("maxRecursionDepth", 100)
-    _trust_self = options.get("trustSelf", False)
-    known_txids = options.get("knownTxids", [])
-    ignore_storage = options.get("ignoreStorage", False)
-    ignore_services = options.get("ignoreServices", False)
-    _min_proof_level = options.get("minProofLevel")
+        return raw_tx, merkle_path
 
-    # Step 7: Recursive input proof gathering
-    if not ignore_storage:
-        # For each input in transaction:
+    return tx_getter
+
+
+def _recursive_build_valid_beef(
+    storage: Any,
+    depth: int,
+    beef: Any,
+    txid: str,
+    options: StorageGetBeefOptions,
+    tx_getter: Callable[[str], tuple[bytes, Any]] | None,
+) -> None:
+    """Recursively build a valid BEEF for the given txid.
+
+    Go parity: mirrors recursiveBuildValidBEEF in known_tx_get_beef.go
+    TS parity: mirrors mergeBeefForTransactionRecurse in getBeefForTransaction.ts
+    """
+    # Check max depth
+    if depth > options.max_recursion_depth:
+        raise WalletError(f"Max depth of recursion reached: {options.max_recursion_depth}")
+
+    # Check if txid is known
+    if txid in options.known_txids:
+        beef.merge_txid_only(txid)
+        return
+
+    # Try to get from storage
+    result = storage.get_proven_or_raw_tx(txid)
+
+    proven = result.get("proven")
+    raw_tx = result.get("rawTx")
+    input_beef = result.get("inputBEEF")
+    merkle_path = result.get("merklePath")
+
+    # If not in storage, try services
+    if not raw_tx and not proven:
+        if tx_getter is None:
+            raise WalletError(f"Transaction txid: {txid!r} is not known to storage")
+
+        raw_tx, merkle_path = tx_getter(txid)
+
+    # Trust self as known - return txid-only
+    elif options.trust_self == "known" and proven:
+        beef.merge_txid_only(txid)
+        return
+
+    if not raw_tx:
+        raise WalletError(f"Raw tx is nil in transaction {txid}")
+
+    # Ensure raw_tx is bytes
+    if isinstance(raw_tx, str):
+        raw_tx = bytes.fromhex(raw_tx)
+    elif isinstance(raw_tx, (list, tuple)):
+        raw_tx = bytes(raw_tx)
+
+    # Parse transaction
+    tx = Transaction.from_hex(raw_tx)
+    if tx is None:
+        raise WalletError(f"Failed to build transaction object from raw tx (id: {txid})")
+
+    # Check if we should ignore merkle proof at this depth
+    ignore_merkle_proof = options.min_proof_level > 0 and depth < options.min_proof_level
+
+    # If has merkle path and not ignoring, merge with proof and done
+    if merkle_path and not ignore_merkle_proof:
+        if isinstance(merkle_path, bytes):
+            mp = MerklePath.from_binary(merkle_path)
+        elif isinstance(merkle_path, (list, tuple)):
+            mp = MerklePath.from_binary(bytes(merkle_path))
+        elif hasattr(merkle_path, "to_binary"):
+            mp = merkle_path
+        else:
+            mp = None
+
+        if mp is not None:
+            beef.merge_raw_tx(raw_tx)
+            beef.merge_bump(mp)
+            return
+
+    # Validate all inputs have source txid
+    for i, tx_input in enumerate(tx.inputs or []):
+        source_txid = getattr(tx_input, "source_txid", None)
+        if not source_txid:
+            raise WalletError(f"Input of tx (id: {txid}) has empty SourceTXID at index {i}")
+
+    # Merge raw tx
+    beef.merge_raw_tx(raw_tx)
+
+    # Merge input BEEF if available
+    if input_beef:
+        if isinstance(input_beef, bytes) and len(input_beef) > 0:
+            try:
+                beef.merge_beef_bytes(input_beef)
+            except Exception:
+                pass  # Ignore merge errors for input beef
+        elif isinstance(input_beef, (list, tuple)) and len(input_beef) > 0:
+            try:
+                beef.merge_beef_bytes(bytes(input_beef))
+            except Exception:
+                pass
+
+    # Check if tx already has merkle path after merge
+    subject_tx = beef.find_transaction(txid)
+    if subject_tx and getattr(subject_tx, "bump_index", None) is not None:
+        return  # Already has proof
+
+    # Recurse for each input
+    for tx_input in tx.inputs or []:
+        source_txid = getattr(tx_input, "source_txid", None)
+        if source_txid:
+            # Check if already in beef
+            existing = beef.find_transaction(source_txid)
+            if existing is None or getattr(existing, "data_format", 0) == 2:  # TxIDOnly = 2
+                _recursive_build_valid_beef(
+                    storage,
+                    depth + 1,
+                    beef,
+                    source_txid,
+                    options,
+                    tx_getter,
+                )
+
+
+def _get_beef_from_services(
+    storage: Any,
+    txid: str,
+    options: StorageGetBeefOptions,
+) -> Any:
+    """Get BEEF directly from services.
+
+    Go parity: mirrors getFromServices and services.GetBEEF in services.go
+    """
+    services = storage.get_services() if hasattr(storage, "get_services") else None
+    if services is None:
+        raise WalletError(f"Services not available for txid {txid}")
+
+    beef = Beef(version=BEEF_V2)
+    known_txids_set = set(options.known_txids)
+
+    def tx_getter_recursive(current_txid: str, depth: int) -> None:
+        if depth > options.max_recursion_depth:
+            raise WalletError(f"Max depth of recursion reached: {options.max_recursion_depth}")
+
+        # Get raw transaction
+        raw_tx_result = services.get_raw_tx(current_txid)
+        if not raw_tx_result:
+            raise WalletError(f"Raw transaction for txid {current_txid} is nil")
+
+        if isinstance(raw_tx_result, str):
+            raw_tx = bytes.fromhex(raw_tx_result)
+        else:
+            raw_tx = raw_tx_result
+
+        tx = Transaction.from_hex(raw_tx)
+        if tx is None:
+            raise WalletError(f"Failed to create transaction from raw bytes for txid {current_txid}")
+
+        # Try to get merkle path
+        merkle_path = None
         try:
-            # Parse transaction to get inputs
-            # Note: Requires bsv Transaction parsing
-            tx = Transaction.from_hex(beef_hex)
-            inputs = tx.get_inputs() if hasattr(tx, "get_inputs") else []
-
-            for inp in inputs:
-                prev_txid = inp.get("prevTxid") if hasattr(inp, "get") else getattr(inp, "prevTxid", "")
-                if prev_txid and prev_txid not in known_txids:
-                    try:
-                        # Recursively get BEEF for input txid
-                        input_beef = get_beef_for_transaction(
-                            storage, auth, prev_txid, {"maxRecursionDepth": max_recursion - 1}
-                        )
-                        # Merge into main BEEF
-                        if input_beef:
-                            try:
-                                main_beef = Beef.from_hex(beef_hex)
-                                input_beef_obj = Beef.from_hex(input_beef)
-                                main_beef.merge(input_beef_obj)
-                                beef_hex = main_beef.to_hex()
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
+            merkle_result = services.get_merkle_path(current_txid)
+            if merkle_result and merkle_result.get("merklePath"):
+                merkle_path = merkle_result["merklePath"]
         except Exception:
             pass
 
-    # If proofs missing and not ignore_services:
-    if not ignore_services:
-        # Query external services for missing proofs
-        try:
-            # Call services for external proofs
-            if hasattr(storage, "getServices"):
-                services = storage.getServices()
-                try:
-                    # Parse transaction to get inputs
-                    tx = Transaction.from_hex(beef_hex)
-                    inputs = tx.get_inputs() if hasattr(tx, "get_inputs") else []
+        is_mined = merkle_path is not None
 
-                    for inp in inputs:
-                        prev_txid = inp.get("prevTxid") if hasattr(inp, "get") else getattr(inp, "prevTxid", "")
-                        if prev_txid and prev_txid not in known_txids and Beef is not None:
-                            try:
-                                # Query services for proof
-                                proof = services.getRawTx(prev_txid)
-                                if proof:
-                                    # Merge proof into BEEF
-                                    main_beef = Beef.from_hex(beef_hex)
-                                    proof_beef = Beef.from_hex(proof)
-                                    main_beef.merge(proof_beef)
-                                    beef_hex = main_beef.to_hex()
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        if is_mined:
+            # Attach merkle path to transaction and merge
+            beef.merge_raw_tx(raw_tx)
+            if isinstance(merkle_path, bytes):
+                mp = MerklePath.from_binary(merkle_path)
+            elif hasattr(merkle_path, "to_binary"):
+                mp = merkle_path
+            else:
+                mp = None
+            if mp:
+                beef.merge_bump(mp)
+        else:
+            beef.merge_raw_tx(raw_tx)
 
-    return beef_hex
+        if is_mined:
+            return
+
+        # Recurse for inputs
+        for tx_input in tx.inputs or []:
+            source_txid = getattr(tx_input, "source_txid", None)
+            if source_txid:
+                existing = beef.find_transaction(source_txid)
+                if existing is None:
+                    if source_txid in known_txids_set:
+                        beef.merge_txid_only(source_txid)
+                    else:
+                        tx_getter_recursive(source_txid, depth + 1)
+
+    tx_getter_recursive(txid, 0)
+    return beef
+
+
+def _persist_new_proven(
+    storage: Any,
+    subject_txid: str,
+    txid: str,
+    fetched: RawTxWithMerklePath,
+) -> None:
+    """Persist a newly proven transaction to storage.
+
+    Go parity: mirrors persistNewProven in get_beef.go
+    """
+    if not fetched.merkle_path or not fetched.header or not fetched.raw_tx:
+        return
+
+    try:
+        # Create empty input beef
+        empty_beef = Beef(version=BEEF_V2)
+        empty_beef_bytes = empty_beef.to_binary()
+
+        # Get merkle path binary
+        if hasattr(fetched.merkle_path, "to_binary"):
+            mp_bytes = fetched.merkle_path.to_binary()
+        elif isinstance(fetched.merkle_path, bytes):
+            mp_bytes = fetched.merkle_path
+        else:
+            mp_bytes = b""
+
+        # Insert/update proven tx
+        storage.insert_proven_tx({
+            "txid": txid,
+            "rawTx": fetched.raw_tx,
+            "inputBEEF": empty_beef_bytes,
+            "height": fetched.header.get("height", 0),
+            "merklePath": mp_bytes,
+            "merkleRoot": fetched.header.get("merkleRoot", "0" * 64),
+            "blockHash": fetched.header.get("hash", "0" * 64),
+        })
+    except Exception:
+        # Log error but don't fail the main operation
+        pass
 
 
 def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: list[str]) -> dict[str, Any]:

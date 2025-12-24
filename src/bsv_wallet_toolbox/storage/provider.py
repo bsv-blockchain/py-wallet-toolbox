@@ -4241,33 +4241,50 @@ class StorageProvider:
 
         return self.insert_certificate(cert_data)
 
-    def get_beef_for_transaction(self, txid: str) -> bytes | None:
-        """Retrieve BEEF (Binary Encoded Expression Format) for a transaction.
+    def get_beef_for_transaction(
+        self,
+        txid: str,
+        options: dict[str, Any] | None = None,
+    ) -> bytes:
+        """Generate complete BEEF for a transaction with recursive proof gathering.
 
-        BEEF is a compact binary format for transaction proofs including merkle paths.
-        Returns the input_beef field if available for the transaction.
+        Creates a BEEF containing the transaction and all its input proofs.
+        Uses storage to retrieve proven transactions and merkle paths,
+        falls back to external services when needed.
+
+        TS parity:
+            Mirrors TypeScript getBeefForTransaction from
+            wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
+
+        Go parity:
+            Mirrors Go GetBeefForTransaction from
+            go-wallet-toolbox/pkg/storage/provider.go
 
         Args:
-            txid: Transaction ID hex string to look up
+            txid: Transaction ID hex string (64 characters)
+            options: Optional configuration for BEEF generation:
+                - mergeToBeef: Existing Beef to merge into
+                - trustSelf: If 'known', proven txs are represented as txid-only
+                - knownTxids: List of txids to represent as txid-only
+                - ignoreStorage: Skip storage lookup, use services only
+                - ignoreServices: Skip services lookup, storage only
+                - ignoreNewProven: Don't save newly proven txs to storage
+                - minProofLevel: Minimum recursion depth for proof acceptance
+                - maxRecursionDepth: Maximum recursion depth (default 12)
 
         Returns:
-            bytes: BEEF binary data if transaction exists and has BEEF; None otherwise
+            bytes: Complete BEEF binary containing transaction and all required proofs
+
+        Raises:
+            WalletError: If transaction not found or proof generation fails
 
         Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (getBeefForTransaction)
+            - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
+            - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
         """
-        session = self.SessionLocal()
-        try:
-            query = select(TransactionModel).where(TransactionModel.txid == txid)
-            result = session.execute(query)
-            tx = result.scalar_one_or_none()
+        from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl
 
-            if tx and tx.input_beef:
-                return tx.input_beef
-
-            return None
-        finally:
-            session.close()
+        return _impl(self, {}, txid, options)
 
     def attempt_to_post_reqs_to_network(self, reqs: list[dict[str, Any]]) -> dict[str, Any]:
         """Attempt to post ProvenTxReq records to the network.

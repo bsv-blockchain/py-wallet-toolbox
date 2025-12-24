@@ -147,12 +147,36 @@ def internalize_action(storage: Any, auth: dict[str, Any], args: dict[str, Any])
     return storage.internalize_action(auth, args)
 
 
-def get_beef_for_transaction(storage: Any, txid: str) -> bytes | None:
+def get_beef_for_transaction(
+    storage: Any,
+    txid: str,
+    auth: dict[str, Any] | None = None,
+    options: dict[str, Any] | None = None,
+) -> bytes:
     """Get BEEF for a transaction.
-    
-    Wrapper around StorageProvider.get_beef_for_transaction().
+
+    Uses the new TS/Go parity implementation that supports:
+    - Recursive input proof gathering
+    - Storage and services fallback
+    - knownTxids, trustSelf, minProofLevel options
+    - Automatic persistence of newly proven transactions
+
+    Args:
+        storage: StorageProvider instance
+        txid: Transaction ID (64-hex string)
+        auth: Authentication context (optional, for API compatibility)
+        options: BEEF generation options dict
+
+    Returns:
+        bytes: Complete BEEF binary
+
+    Reference:
+        - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
+        - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
-    return storage.get_beef_for_transaction(txid)
+    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl
+
+    return _impl(storage, auth or {}, txid, options)
 
 
 def attempt_to_post_reqs_to_network(storage: Any, reqs: list[dict[str, Any]]) -> dict[str, Any]:
