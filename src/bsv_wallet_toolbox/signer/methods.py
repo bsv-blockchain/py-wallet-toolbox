@@ -430,6 +430,12 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}".strip()
                     locker_pub = pdi.unlocker_pub_key
 
+                if not key_id:
+                    raise WalletError(
+                        "wallet-managed input is missing BRC-29 derivation data (derivationPrefix/derivationSuffix). "
+                        "Internalize as 'wallet payment' with paymentRemittance."
+                    )
+
                 if locker_pub:
                     from bsv.keys import PublicKey as PubKey
 
@@ -1320,6 +1326,30 @@ def _setup_wallet_payment_for_output(
         expected_script_hex = expected_lock_script.hex()
 
         if current_script_hex != expected_script_hex:
+            # Rich debug context for E2E analysis (enabled under DEBUG loglevel).
+            logger.debug(
+                "wallet_payment_debug mismatch index=%s senderIdentityKey=%s key_id=%s "
+                "derivationPrefix(b64)=%s derivationSuffix(b64)=%s derivationPrefix(raw)=%s derivationSuffix(raw)=%s "
+                "expected_pkh=%s",
+                output_index,
+                sender_identity_key,
+                key_id,
+                derivation_prefix_b64,
+                derivation_suffix_b64,
+                derivation_prefix,
+                derivation_suffix,
+                pub_key_hash.hex(),
+            )
+            try:
+                for i, out in enumerate(getattr(tx, "outputs", []) or []):
+                    try:
+                        os_hex = out.locking_script.hex()
+                    except Exception:
+                        os_hex = "<unavailable>"
+                    logger.debug("wallet_payment_debug tx_output vout=%s lockingScript=%s", i, os_hex)
+            except Exception:
+                pass
+
             logger.debug(
                 "wallet_payment_script_mismatch hypothesis=H4 index=%s expected=%s actual=%s",
                 output_index,
