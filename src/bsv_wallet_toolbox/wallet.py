@@ -3307,8 +3307,27 @@ class Wallet:
         # Use special operation for efficient balance calculation.
         # Some remote storage servers require an explicit positive `limit` even for SpecOps.
         result = self.list_outputs({"basket": specOpWalletBalance, "limit": 1})
+        total = result.get("totalOutputs", 0)
 
-        return {"total": result.get("totalOutputs", 0)}
+        # Interop fallback:
+        # Some servers do not implement SpecOps baskets (they treat the specOp basket
+        # as a normal basket name and return 0). In that case, compute balance by
+        # listing outputs in the "default" basket and summing satoshis client-side.
+        if not isinstance(total, int) or total == 0:
+            try:
+                trace(logger, "wallet.balance.specop.fallback", specOpBasket=specOpWalletBalance)
+                page = self.list_outputs({"basket": "default", "limit": 1000, "offset": 0})
+                outputs = page.get("outputs", []) if isinstance(page, dict) else []
+                computed = 0
+                for o in outputs:
+                    if isinstance(o, dict):
+                        computed += int(o.get("satoshis", 0) or 0)
+                trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=len(outputs))
+                return {"total": computed}
+            except Exception as e:
+                trace(logger, "wallet.balance.specop.fallback.error", error=str(e), exc_type=type(e).__name__)
+
+        return {"total": total if isinstance(total, int) else 0}
 
     def review_spendable_outputs(
         self, all: bool = False, release: bool = False, optional_args: dict[str, Any] | None = None
