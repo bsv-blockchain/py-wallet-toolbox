@@ -1381,8 +1381,31 @@ class Services(WalletServices):
                 detail = f"{parse_error!s}; {exc!s}" if parse_error else str(exc)
                 raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
-        # Try each provider in priority order
-        last_error: str | None = None
+        def _fmt_arc_error(res: Any) -> str:
+            # ARC.broadcast returns PostTxResultForTxid.
+            # When it fails, res.data is typically PostTxResultForTxidError with:
+            #   - status: HTTP status code as string
+            #   - detail: ARC "detail" message
+            data = getattr(res, "data", None)
+            status = getattr(res, "status", None)
+            txid_local = getattr(res, "txid", None)
+            if data is None:
+                return f"ARC error (status={status}, txid={txid_local})"
+            detail = getattr(data, "detail", None)
+            http_status = getattr(data, "status", None)
+            more = getattr(data, "more", None)
+            parts: list[str] = []
+            if http_status:
+                parts.append(f"HTTP {http_status}")
+            if detail:
+                parts.append(str(detail))
+            elif more:
+                parts.append(str(more))
+            else:
+                parts.append(str(data))
+            return "ARC: " + " - ".join(parts)
+
+        provider_errors: dict[str, str] = {}
 
         # Debug: high-level broadcast context
         self.logger.debug(
@@ -1420,14 +1443,14 @@ class Services(WalletServices):
                         "doubleSpend": True,
                         "message": getattr(res, "description", "Double spend detected"),
                     }
-                last_error = getattr(res, "description", "GorillaPool broadcast failed")
+                provider_errors["arcGorillaPool"] = _fmt_arc_error(res)
                 self.logger.debug(
                     "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
                     getattr(res, "status", None),
                     getattr(res, "double_spend", None),
                 )
             except Exception as e:
-                last_error = str(e)
+                provider_errors["arcGorillaPool"] = str(e)
                 self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
 
         # 2. Try ARC TAAL (if configured)
@@ -1456,14 +1479,14 @@ class Services(WalletServices):
                         "doubleSpend": True,
                         "message": getattr(res, "description", "Double spend detected"),
                     }
-                last_error = getattr(res, "description", "TAAL broadcast failed")
+                provider_errors["arcTaal"] = _fmt_arc_error(res)
                 self.logger.debug(
                     "Services.post_beef: TAAL broadcast non-success, status=%r, double_spend=%r",
                     getattr(res, "status", None),
                     getattr(res, "double_spend", None),
                 )
             except Exception as e:
-                last_error = str(e)
+                provider_errors["arcTaal"] = str(e)
                 self.logger.debug("Services.post_beef: TAAL broadcast exception: %s", e)
 
         # 3. Try Bitails (if configured)
@@ -1475,11 +1498,11 @@ class Services(WalletServices):
                 if isinstance(res, dict) and res.get("accepted"):
                     return res
                 if isinstance(res, dict):
-                    last_error = res.get("message", "Bitails broadcast failed")
+                    provider_errors["bitails"] = res.get("message", "Bitails broadcast failed")
                 else:
-                    last_error = "Bitails broadcast failed"
+                    provider_errors["bitails"] = "Bitails broadcast failed"
             except Exception as e:
-                last_error = str(e)
+                provider_errors["bitails"] = str(e)
                 self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
 
         # Fallback: If no providers configured, return mocked success for test compatibility
@@ -1488,12 +1511,28 @@ class Services(WalletServices):
             return {"accepted": True, "txid": txid, "message": "mocked"}
 
         # Otherwise return failure
+        # Prefer ARC error details (when available) because they tend to be most actionable.
+        if "arcTaal" in provider_errors:
+            message = provider_errors["arcTaal"]
+        elif "arcGorillaPool" in provider_errors:
+            message = provider_errors["arcGorillaPool"]
+        elif "bitails" in provider_errors:
+            message = provider_errors["bitails"]
+        else:
+            message = "No broadcast providers available"
+
+        if len(provider_errors) > 1:
+            # Include other provider failures for completeness.
+            extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
+            if extras:
+                message = f"{message}; other_failures: {extras}"
+
         self.logger.debug(
             "Services.post_beef: all providers failed, last_error=%r, txids=%s",
-            last_error,
+            message,
             txids,
         )
-        return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
+        return {"accepted": False, "txid": None, "message": message, "providerErrors": provider_errors}
 
     def verify_beef(self, beef: str | bytes) -> bool:
         """Verify BEEF data using the chaintracker.

@@ -76,6 +76,30 @@ def _configure_logging() -> None:
 _configure_logging()
 
 
+def _debug_enabled() -> bool:
+    """Return True if the user explicitly requested DEBUG output via env vars."""
+    level = (os.getenv("PY_WALLET_TOOLBOX_LOG_LEVEL") or os.getenv("LOGLEVEL") or "").upper()
+    return level == "DEBUG"
+
+
+def _maybe_print_broadcast_rawtx_hex(result: dict[str, Any] | None, context: str) -> None:
+    """Print raw tx hex for explorer debugging when LOGLEVEL=DEBUG."""
+    if not _debug_enabled():
+        return
+    if not result or not isinstance(result, dict):
+        return
+    tx_bytes = result.get("tx")
+    if not isinstance(tx_bytes, list) or not tx_bytes:
+        return
+    try:
+        raw_hex = bytes(tx_bytes).hex()
+    except Exception:  # noqa: BLE001
+        return
+    print(f"\n=== DEBUG broadcast rawTxHex ({context}) ===")
+    print(f"len={len(raw_hex)} hex chars")
+    print(raw_hex)
+
+
 def load_environment() -> None:
     """Load .env file from the script's directory."""
     script_dir = Path(__file__).parent
@@ -265,12 +289,21 @@ def _print_review_actions_error(err: ReviewActionsError, context: str) -> None:
     print(f"\n❌ {context} requires review (undelayed mode).")
     if err.txid:
         print(f"   txid: {err.txid}")
+    if err.tx:
+        try:
+            raw_hex = bytes(err.tx).hex()
+            print(f"   rawTxHex (len={len(raw_hex)} hex chars):")
+            print(f"   {raw_hex}")
+        except Exception as e:  # noqa: BLE001
+            print(f"   rawTxHex: <unable to render> ({e})")
     print(f"   review_action_results ({len(err.review_action_results)}):")
     for i, r in enumerate(err.review_action_results):
         status = r.get("status", "unknown")
         txid = r.get("txid", "n/a")
+        fatal = r.get("fatal")
+        message = r.get("message")
         competing = r.get("competingTxs") or []
-        print(f"     - [{i}] status={status} txid={txid} competingTxs={competing}")
+        print(f"     - [{i}] status={status} txid={txid} fatal={fatal} message={message} competingTxs={competing}")
     print(f"   send_with_results ({len(err.send_with_results)}):")
     for i, r in enumerate(err.send_with_results):
         print(f"     - [{i}] {r}")
@@ -345,6 +378,7 @@ def send_wallet_payment(
                 "options": {"signAndProcess": True, "acceptDelayedBroadcast": False},
             }
         )
+        _maybe_print_broadcast_rawtx_hex(action_result, context="create_action")
     except ReviewActionsError as err:
         _print_review_actions_error(err, context="create_action")
         return None, None, None
@@ -359,6 +393,7 @@ def send_wallet_payment(
             return None, None, None
         try:
             signed = wallet_from.sign_action({"reference": reference, "accept": True})
+            _maybe_print_broadcast_rawtx_hex(signed, context="sign_action")
         except ReviewActionsError as err:
             _print_review_actions_error(err, context="sign_action")
             return None, None, None
