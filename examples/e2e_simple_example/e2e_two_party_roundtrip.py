@@ -44,6 +44,7 @@ from bsv_wallet_toolbox.brc29 import (
     address_for_self,
     lock_for_counterparty,
 )
+from bsv_wallet_toolbox.errors.wallet_errors import ReviewActionsError
 from bsv_wallet_toolbox.rpc import StorageClient
 from bsv_wallet_toolbox.services import Services, create_default_options
 from bsv_wallet_toolbox.storage import StorageProvider
@@ -259,6 +260,24 @@ def internalize_faucet_tx(wallet: Wallet, txid: str, services: Services, output_
     )
 
 
+def _print_review_actions_error(err: ReviewActionsError, context: str) -> None:
+    """Print structured diagnostics when create_action/sign_action requires review."""
+    print(f"\n❌ {context} requires review (undelayed mode).")
+    if err.txid:
+        print(f"   txid: {err.txid}")
+    print(f"   review_action_results ({len(err.review_action_results)}):")
+    for i, r in enumerate(err.review_action_results):
+        status = r.get("status", "unknown")
+        txid = r.get("txid", "n/a")
+        competing = r.get("competingTxs") or []
+        print(f"     - [{i}] status={status} txid={txid} competingTxs={competing}")
+    print(f"   send_with_results ({len(err.send_with_results)}):")
+    for i, r in enumerate(err.send_with_results):
+        print(f"     - [{i}] {r}")
+    if err.no_send_change:
+        print(f"   no_send_change: {err.no_send_change}")
+
+
 def send_wallet_payment(
     wallet_from: Wallet,
     wallet_to: Wallet,
@@ -326,6 +345,9 @@ def send_wallet_payment(
                 "options": {"signAndProcess": True, "acceptDelayedBroadcast": False},
             }
         )
+    except ReviewActionsError as err:
+        _print_review_actions_error(err, context="create_action")
+        return None, None, None
     except Exception as err:  # noqa: BLE001
         print(f"❌ Create action failed: {err}")
         return None, None, None
@@ -335,7 +357,14 @@ def send_wallet_payment(
         reference = signable.get("reference")
         if not reference:
             return None, None, None
-        signed = wallet_from.sign_action({"reference": reference, "accept": True})
+        try:
+            signed = wallet_from.sign_action({"reference": reference, "accept": True})
+        except ReviewActionsError as err:
+            _print_review_actions_error(err, context="sign_action")
+            return None, None, None
+        except Exception as err:  # noqa: BLE001
+            print(f"❌ sign_action failed: {err}")
+            return None, None, None
         txid = signed.get("txid") or signed.get("txID")
         return txid, 0, remittance
 
