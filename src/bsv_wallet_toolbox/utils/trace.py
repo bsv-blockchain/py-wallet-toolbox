@@ -1,11 +1,10 @@
-<<<<<<< HEAD
+
 """Tracing utility for debug logging.
 
 This module provides a trace function for structured debug logging throughout
 the wallet toolbox.
 """
 
-=======
 """Single-line JSON debug tracing utilities.
 
 Design goals:
@@ -18,12 +17,9 @@ from __future__ import annotations
 
 import hashlib
 import json
->>>>>>> da99dbf (modifications for some errors)
 import logging
 from typing import Any
 
-
-<<<<<<< HEAD
 def trace(logger: logging.Logger, event: str, **kwargs: Any) -> None:
     """Log a trace event with optional context information.
 
@@ -52,7 +48,7 @@ def trace(logger: logging.Logger, event: str, **kwargs: Any) -> None:
             logger.debug(f"[{event}] {context}")
         else:
             logger.debug(f"[{event}]")
-=======
+
 def _bytes_summary(data: bytes, hex_prefix_bytes: int = 32) -> dict[str, Any]:
     hx = data.hex()
     prefix = hx[: hex_prefix_bytes * 2]
@@ -95,7 +91,3 @@ def trace(logger: logging.Logger, event: str, **fields: Any) -> None:
         return
     payload = {"event": event, **{k: to_trace_value(v) for k, v in fields.items()}}
     logger.debug("AUTH_TRACE %s", json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
-
-
-
->>>>>>> da99dbf (modifications for some errors)

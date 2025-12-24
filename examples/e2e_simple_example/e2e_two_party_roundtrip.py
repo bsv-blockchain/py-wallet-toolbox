@@ -213,15 +213,175 @@ def create_wallet(wallet_name: str, chain: Chain, services: Services, use_remote
     return wallet, root_private_key
 
 
-def get_wallet_balance(wallet: Wallet) -> int:
-    """Return the wallet's spendable balance in satoshis (best-effort)."""
+def _print_storage_backend(wallet: Wallet, wallet_name: str) -> None:
+    """Print which storage backend is actually in use (remote vs local)."""
+    storage = getattr(wallet, "storage", None)
+    if storage is None:
+        print(f"🧩 Storage backend for {wallet_name}: (none)")
+        return
+    if isinstance(storage, StorageClient):
+        print(f"🧩 Storage backend for {wallet_name}: remote StorageClient ({storage.endpoint_url})")
+        return
+    if isinstance(storage, StorageProvider):
+        print(f"🧩 Storage backend for {wallet_name}: local SQLite (StorageProvider)")
+        return
+    print(f"🧩 Storage backend for {wallet_name}: {type(storage).__name__}")
+
+
+def build_atomic_beef_for_txid(chain: Chain, txid: str, services: Services) -> bytes:
+    """Build an Atomic BEEF for the given txid."""
+    print(f"\n🔎 Fetching raw transaction for txid={txid}")
+    raw_hex = services.get_raw_tx(txid)
+    if not raw_hex:
+        raise RuntimeError(f"Unable to fetch raw transaction for {txid}")
+
+    print(f"✅ Raw transaction fetched ({len(raw_hex)} hex chars)")
+    print("🔎 Fetching merkle path...")
+    merkle_result = services.get_merkle_path_for_transaction(txid)
+
+    beef = Beef(version=BEEF_V2)
+    bump_index = None
+    if merkle_result and isinstance(merkle_result, dict):
+        merkle_path = merkle_result.get("merklePath")
+        if isinstance(merkle_path, dict) and "blockHeight" in merkle_path:
+            from bsv.merkle_path import MerklePath as PyMerklePath
+
+            bump_path = PyMerklePath(
+                merkle_path["blockHeight"], merkle_path.get("path", [])
+            )
+            bump_index = merge_bump(beef, bump_path)
+
+    merge_raw_tx(beef, bytes.fromhex(raw_hex), bump_index)
+    print("✅ Atomic BEEF built successfully")
+    return to_binary_atomic(beef, txid)
+
+
+def internalize_faucet_tx(
+    wallet: Wallet, txid: str, chain: Chain, services: Services, output_index: int = 0
+) -> bool:
+    """Internalize a Faucet transaction.
+
+    NOTE:
+        A faucet deposit is a plain P2PKH payment and does NOT come with a BRC-29
+        payment remittance. Therefore, we must internalize it via "basket insertion"
+        rather than "wallet payment", otherwise the wallet correctly rejects it as
+        non-conformant (locking script mismatch).
+
+    Args:
+        wallet: Alice's wallet
+        txid: Transaction ID to internalize
+        chain: Network (for BEEF building)
+        services: Services for fetching transaction data
+        output_index: Output index to internalize
+
+    Returns:
+        True if successful, False otherwise
+    """
     try:
-        result = wallet.balance()
-        if isinstance(result, dict):
-            return int(result.get("total", 0) or 0)
-    except Exception:  # noqa: BLE001
-        pass
-    return 0
+        atomic_beef = build_atomic_beef_for_txid(chain, txid, services)
+    except Exception as err:  # noqa: BLE001
+        print(f"❌ Failed to build Atomic BEEF: {err}")
+        return False
+
+    print("\n🚀 Internalizing faucet transaction via basket insertion...")
+    internalize_args: dict[str, Any] = {
+        # JSON-RPC payload must be JSON-serializable; represent bytes as list[int] (0-255).
+        "tx": list(atomic_beef),
+        "outputs": [
+            {
+                "outputIndex": output_index,
+                "protocol": "basket insertion",
+                "insertionRemittance": {"basket": "default"},
+            }
+        ],
+        "description": "Internalize faucet transaction",
+        "labels": [f"txid:{txid}", "faucet"],
+    }
+
+    # region agent log
+    agent_log(
+        "H2",
+        "internalize_faucet_tx",
+        "Preparing faucet internalize",
+        {
+            "wallet_id": id(wallet),
+            "txid": txid,
+            "outputIndex": output_index,
+            "protocol": "basket insertion",
+            "basket": "default",
+        },
+    )
+    # endregion
+
+    try:
+        result = wallet.internalize_action(internalize_args)
+        print("\n✅ Transaction internalized successfully")
+        print(f"   accepted : {result.get('accepted')}")
+        print(f"   txid     : {result.get('txid', 'n/a')}")
+        print(f"   satoshis : {result.get('satoshis', 'n/a')}")
+        return True
+    except Exception as err:  # noqa: BLE001
+        print(f"❌ Internalize failed: {err}")
+        return False
+
+
+def internalize_standard_tx(
+    wallet: Wallet,
+    txid: str,
+    output_indexes: list[int],
+    services: Services,
+    chain: Chain,
+    description: str = "Internalize received transaction",
+) -> bool:
+    """Internalize a standard P2PKH transaction (basket insertion)."""
+    try:
+        atomic_beef = build_atomic_beef_for_txid(chain, txid, services)
+    except Exception as err:  # noqa: BLE001
+        print(f"❌ Failed to build Atomic BEEF: {err}")
+        return False
+
+    outputs = []
+    for idx in output_indexes:
+        outputs.append(
+            {
+                "outputIndex": idx,
+                "protocol": "basket insertion",
+                "insertionRemittance": {"basket": "default"},
+            }
+        )
+
+    internalize_args: dict[str, Any] = {
+        # JSON-RPC payload must be JSON-serializable; represent bytes as list[int] (0-255).
+        "tx": list(atomic_beef),
+        "outputs": outputs,
+        "description": description,
+        "labels": [f"txid:{txid}", "p2pkh"],
+    }
+
+    # region agent log
+    agent_log(
+        "H2",
+        "internalize_standard_tx",
+        "Preparing standard internalize",
+        {
+            "wallet_id": id(wallet),
+            "txid": txid,
+            "outputIndexes": output_indexes,
+            "description": description,
+        },
+    )
+    # endregion
+
+    try:
+        result = wallet.internalize_action(internalize_args)
+        print("\n✅ Transaction internalized successfully")
+        print(f"   accepted : {result.get('accepted')}")
+        print(f"   txid     : {result.get('txid', 'n/a')}")
+        print(f"   satoshis : {result.get('satoshis', 'n/a')}")
+        return True
+    except Exception as err:  # noqa: BLE001
+        print(f"❌ Internalize failed: {err}")
+        return False
 
 
 def internalize_wallet_payment_tx(
