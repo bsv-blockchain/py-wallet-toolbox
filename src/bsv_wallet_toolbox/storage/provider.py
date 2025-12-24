@@ -204,6 +204,34 @@ class StorageProvider:
         self._randomizer = randomizer
         return self
 
+    def set_active(self, auth: dict[str, Any], new_active_storage_identity_key: str) -> int:
+        """Set active storage identity key for authenticated user.
+
+        Summary:
+            Updates the user's active storage identity key.
+        TS parity:
+            Mirrors TS setActive implementation.
+        Args:
+            auth: Auth dict with identityKey
+            new_active_storage_identity_key: New active storage identity key
+        Returns:
+            Number of updated records (0 or 1)
+        Raises:
+            sqlalchemy.exc.SQLAlchemyError: On database errors.
+        Reference:
+            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
+        """
+        with session_scope(self.SessionLocal) as s:
+            # Find user by identity key
+            identity_key = auth["identityKey"]
+            user_q = select(User).where(User.identity_key == identity_key)
+            user_result = s.execute(user_q)
+            user = user_result.scalar_one()
+
+            # Update user's active storage identity key
+            user.active_storage = new_active_storage_identity_key
+            return 1
+
     def _generate_random_base64(self, length: int) -> str:
         """Generate random base64 string using randomizer if available.
 
@@ -521,9 +549,25 @@ class StorageProvider:
             is_new = False
             if u is None:
                 is_new = True
-                u = User(identity_key=identity_key)
+                # When creating a new user, set their active_storage to this storage's identity key
+                # This matches Go implementation: provider.go:312-315
+                u = User(
+                    identity_key=identity_key,
+                    active_storage=self.storage_identity_key
+                )
                 s.add(u)
                 try:
+                    s.flush()
+                    
+                    # Create default basket for the new user
+                    # This matches Go implementation: users.go:44-54 and wdk/constants.go:5,15,19
+                    default_basket = OutputBasket(
+                        user_id=u.user_id,
+                        name="default",  # BasketNameForChange
+                        number_of_desired_utxos=32,  # NumberOfDesiredUTXOsForChange
+                        minimum_desired_utxo_value=1000  # MinimumDesiredUTXOValueForChange
+                    )
+                    s.add(default_basket)
                     s.flush()
                 except IntegrityError:
                     s.rollback()
@@ -5420,35 +5464,8 @@ class InternalizeActionContext:
                 session.add(output_tag_map)
                 session.flush()
 
-    def set_active(self, auth: dict[str, Any], new_active_storage_identity_key: str) -> int:
-        """Set active storage identity key for authenticated user.
 
-        Summary:
-            Updates the user's active storage identity key.
-        TS parity:
-            Mirrors TS setActive implementation.
-        Args:
-            auth: Auth dict with identityKey
-            new_active_storage_identity_key: New active storage identity key
-        Returns:
-            Number of updated records (0 or 1)
-        Raises:
-            sqlalchemy.exc.SQLAlchemyError: On database errors.
-        Reference:
-            toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
-        """
-        with session_scope(self.SessionLocal) as s:
-            # Find user by identity key
-            identity_key = auth["identityKey"]
-            user_q = select(User).where(User.identity_key == identity_key)
-            user_result = s.execute(user_q)
-            user = user_result.scalar_one()
-
-            # Update user's active storage identity key
-            user.active_storage = new_active_storage_identity_key
-            return 1
-
-    # Entity Accessor Methods (Go parity)
+# Entity Accessor Methods would go here if needed for InternalizeActionContext
     def commission_entity(self) -> 'CommissionAccessor':
         """Get commission entity accessor for CRUD operations.
 
