@@ -2405,28 +2405,22 @@ class StorageProvider:
         if not exclude_sending:
             allowed_status.append("sending")
 
-        # Only allocate **wallet-managed change UTXOs** for automatic funding.
+        # Allocate spendable outputs from the specified basket for automatic funding.
         # 
-        # TS parity rationale:
-        # - internalizeAction wallet payments and createAction change outputs are stored with:
-        #     - change = True
-        #     - type = "P2PKH"
-        # - Basket insertion outputs are stored with:
-        #     - change = False
-        #     - type = "custom"
-        #   and must **not** be used as SABPPP inputs for automatic change.
+        # Only allocate outputs with type='P2PKH' because the wallet signer only supports
+        # signing P2PKH inputs (buildSignableTransaction.ts:120).
         # 
-        # In early examples, basket insertion outputs were mistakenly placed in the
-        # default basket, which caused generate_change to select "custom" outputs and
-        # signer to raise `vin N, "custom" is not supported`.  Filtering by
-        # `change == True` and `type == "P2PKH"` restores TS semantics and ensures that
-        # only proper change outputs are auto-selected.
+        # Basket insertions with type='custom' cannot be used for funding because the signer
+        # cannot generate unlocking scripts for them.
+        # 
+        # Note: change=True filter is not strictly necessary (wallet payments have it, basket
+        # insertions don't), but including it ensures we only use wallet-managed change outputs.
         base_cond = (
             (Output.user_id == user_id)
             & (Output.spendable.is_(True))
             & (Output.basket_id == basket_id)
-            & (Output.change.is_(True))
             & (Output.type == "P2PKH")
+            & (Output.change.is_(True))
             & (TransactionModel.status.in_(allowed_status))
         )
 
@@ -5350,6 +5344,7 @@ class InternalizeActionContext:
 
     def _merge_wallet_payment_for_output(self, _transaction_id: int, payment: dict[str, Any], session: Any) -> None:
         """Merge wallet payment into existing output. (TS lines 415-430)"""
+        now = datetime.now(UTC)
         output_record = payment["eo"]
         output_record.basket_id = self.change_basket.basket_id
         output_record.type = "P2PKH"
@@ -5362,8 +5357,28 @@ class InternalizeActionContext:
         output_record.derivation_suffix = payment["derivation_suffix"]
         session.add(output_record)
 
+    @staticmethod
+    def _is_p2pkh_locking_script(locking_script_hex: str) -> bool:
+        """Detect if a locking script is P2PKH format.
+        
+        P2PKH format: OP_DUP OP_HASH160 <20-byte-hash> OP_EQUALVERIFY OP_CHECKSIG
+        Hex pattern: 76a914{40-hex-chars}88ac (25 bytes total)
+        
+        Reference: py-sdk/bsv/wallet/wallet_impl.py:2187-2206
+        """
+        try:
+            s = locking_script_hex.lower()
+            # Check for canonical P2PKH pattern
+            return s.startswith("76a914") and s.endswith("88ac") and len(s) == 50
+        except Exception:
+            return False
+
     def _store_new_basket_insertion_for_output(self, transaction_id: int, basket: dict[str, Any], session: Any) -> None:
-        """Store new basket insertion output. (TS lines 449-483)"""
+        """Store new basket insertion output. (TS lines 449-483)
+        
+        Smart type detection: If the locking script is P2PKH, mark it as such even though
+        it came through 'basket insertion'. This allows the wallet to use it for funding.
+        """
         now = datetime.now(UTC)
         txo = basket["txo"]
         basket_name = basket["basket"]
@@ -5381,6 +5396,18 @@ class InternalizeActionContext:
             session.flush()
 
         locking_script_bytes = txo.locking_script.serialize()
+        locking_script_hex = locking_script_bytes.hex()
+        
+        # Smart type detection: if the locking script is actually P2PKH,
+        # mark it as such so the wallet can sign it for funding
+        is_p2pkh = self._is_p2pkh_locking_script(locking_script_hex)
+        output_type = "P2PKH" if is_p2pkh else "custom"
+        is_change = is_p2pkh  # P2PKH outputs can be used as change
+        
+        # For P2PKH outputs, provide derivation fields needed for signing
+        # Use the basket name as derivation prefix for simplicity
+        derivation_prefix = basket_name if is_p2pkh else None
+        derivation_suffix = str(basket["vout"]) if is_p2pkh else None
 
         output_record = Output(
             created_at=now,
@@ -5393,17 +5420,17 @@ class InternalizeActionContext:
             basket_id=target_basket.basket_id,
             satoshis=txo.satoshis,
             txid=self.txid,
-            type="custom",
+            type=output_type,
             custom_instructions=basket["custom_instructions"],
-            change=False,
+            change=is_change,
             spent_by=None,
             output_description="",
             spending_description=None,
-            provided_by="you",
-            purpose="",
+            provided_by="you" if not is_p2pkh else "storage",
+            purpose="" if not is_p2pkh else "change",
             sender_identity_key=None,
-            derivation_prefix=None,
-            derivation_suffix=None,
+            derivation_prefix=derivation_prefix,
+            derivation_suffix=derivation_suffix,
         )
         session.add(output_record)
         session.flush()
