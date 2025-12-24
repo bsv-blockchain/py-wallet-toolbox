@@ -313,11 +313,6 @@ class Wallet:
             # Best-effort wiring; storage providers without set_services are tolerated
             pass
 
-        # Initialize default labels and baskets if storage is available
-        # TS parity: TypeScript wallet ensures defaults exist on initialization
-        if self.storage is not None:
-            self._ensure_defaults()
-
     def get_client_change_key_pair(self) -> dict[str, str]:
         """Get the client change key pair (root key).
 
@@ -348,43 +343,6 @@ class Wallet:
             "privateKey": str(self.key_deriver._root_private_key),
             "publicKey": str(pub_key),
         }
-
-    def _ensure_defaults(self) -> None:
-        """Ensure default labels and baskets exist in storage.
-
-        Creates default label and default basket for the wallet user if they don't exist.
-        This matches TypeScript behavior where wallet initialization ensures defaults.
-
-        Reference: ts-wallet-toolbox/src/Wallet.ts (constructor initialization)
-        """
-        if not self.storage:
-            return
-
-        try:
-            trace(logger, "wallet.ensure_defaults.start")
-            # Ensure storage is available
-            self.storage.make_available()
-            
-            # Get or create user
-            auth = self._make_auth()
-            user_id = auth.get("userId")
-            trace(logger, "wallet.ensure_defaults.user", auth=auth, userId=user_id)
-            
-            if not user_id:
-                return
-
-            # Ensure default label and basket exist using find_or_insert methods
-            # These methods handle checking if the record already exists
-            trace(logger, "wallet.ensure_defaults.ensure", userId=user_id, label="default", basket="default")
-            self.storage.find_or_insert_tx_label(user_id, "default")
-            self.storage.find_or_insert_output_basket(user_id, "default")
-            trace(logger, "wallet.ensure_defaults.ok", userId=user_id)
-
-        except Exception as e:
-            # Best-effort: If defaults can't be created, continue anyway
-            # Storage might not be fully initialized yet
-            trace(logger, "wallet.ensure_defaults.error", error=str(e), exc_type=type(e).__name__)
-            pass
 
     def _create_lookup_resolver(self) -> Any:
         """Create a lookup resolver for identity operations.

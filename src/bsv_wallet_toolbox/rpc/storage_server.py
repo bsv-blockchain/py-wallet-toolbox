@@ -302,8 +302,6 @@ class StorageServer:
             "getServices": "get_services",
             "getSettings": "get_settings",
             "findOrInsertUser": "find_or_insert_user",
-            "findOrInsertTxLabel": "find_or_insert_tx_label",
-            "findOrInsertOutputBasket": "find_or_insert_output_basket",
             "abortAction": "abort_action",
             "createAction": "create_action",
             "processAction": "process_action",

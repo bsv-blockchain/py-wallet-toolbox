@@ -446,32 +446,6 @@ class StorageClient:
         # This is a no-op on the client side
         pass
 
-    def find_or_insert_tx_label(self, user_id: int, label: str) -> dict[str, Any]:
-        """Find or insert transaction label.
-
-        Args:
-            user_id: User ID
-            label: Label name
-
-        Returns:
-            Label record dict
-        """
-        result = self._rpc_call("findOrInsertTxLabel", [user_id, label])
-        return result
-
-    def find_or_insert_output_basket(self, user_id: int, basket: str) -> dict[str, Any]:
-        """Find or insert output basket.
-
-        Args:
-            user_id: User ID
-            basket: Basket name
-
-        Returns:
-            Basket record dict
-        """
-        result = self._rpc_call("findOrInsertOutputBasket", [user_id, basket])
-        return result
-
     def find_or_insert_user(self, identity_key: str) -> dict[str, Any]:
         """Find or insert user.
 
