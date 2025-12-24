@@ -144,16 +144,6 @@ class SimpleStorageClient:
         user = result.get("user", {})
         return user.get("userId", user.get("user_id", 0))
 
-    def find_or_insert_tx_label(self, user_id: int, label: str) -> dict[str, Any]:
-        """Find or insert transaction label."""
-        result = self._rpc_call("findOrInsertTxLabel", [user_id, label])
-        return result
-
-    def find_or_insert_output_basket(self, user_id: int, basket: str) -> dict[str, Any]:
-        """Find or insert output basket."""
-        result = self._rpc_call("findOrInsertOutputBasket", [user_id, basket])
-        return result
-
     def list_outputs(
         self,
         auth: dict[str, Any],
