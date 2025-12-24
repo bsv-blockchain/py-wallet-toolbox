@@ -712,6 +712,7 @@ class StorageProvider:
         tag_query_mode = args.get("tagQueryMode", "any")  # 'any' | 'all'
         tags: list[str] = list(args.get("tags", []) or [])
         filter_change_only = False
+        filter_p2pkh_only = False
 
         # Basket SpecOps (TS parity). Support both constant values and friendly names.
         specop_invalid_change = "5a76fd430a311f8bc0553859061710a4475c19fed46e2ff95969aa918e612e57"
@@ -762,6 +763,10 @@ class StorageProvider:
             # This means excluding spent outputs, and optionally excluding locked outputs
             # if we had a way to check locks here. Currently 'spendable' flag handles this.
             include_spent = False
+            # TS parity: "wallet balance" is the wallet-managed spendable balance.
+            # In our storage model, this corresponds to change outputs only, and only P2PKH.
+            filter_change_only = True
+            filter_p2pkh_only = True
         elif specop == "invalid_change":
             basket_name = basket_name or "default"
             specop_ignore_limit = True
@@ -802,6 +807,8 @@ class StorageProvider:
 
             if filter_change_only:
                 q = q.where(Output.change.is_(True))
+            if filter_p2pkh_only:
+                q = q.where(Output.type == "P2PKH")
 
             # Optional basket name filter (may be overridden by SpecOp)
             if basket_name:

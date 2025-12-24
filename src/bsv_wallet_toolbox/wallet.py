@@ -3316,7 +3316,8 @@ class Wallet:
         if not isinstance(total, int) or total == 0:
             try:
                 trace(logger, "wallet.balance.specop.fallback", specOpBasket=specOpWalletBalance)
-                page = self.list_outputs({"basket": "default", "limit": 1000, "offset": 0})
+                # Fallback must match SpecOp semantics: wallet-managed change only.
+                page = self.list_outputs({"basket": "default", "limit": 1000, "offset": 0, "tags": ["change"]})
                 outputs = page.get("outputs", []) if isinstance(page, dict) else []
                 computed = 0
                 for o in outputs:
