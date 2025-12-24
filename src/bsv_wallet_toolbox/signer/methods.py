@@ -28,6 +28,10 @@ from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.utils.atomic_beef_utils import (
+    AtomicBeefBuildResult,
+    build_internalize_atomic_beef,
+)
 from bsv_wallet_toolbox.utils.trace import trace
 from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
@@ -651,7 +655,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     trace(logger, "signer.internalize_action.start", auth=auth, args=args)
     # Validate arguments
     validate_internalize_action_args(args)
-    vargs = args
+    vargs: dict[str, Any] = args
 
     # Validate and extract atomic BEEF
     tx_bytes = vargs.get("tx")
@@ -660,9 +664,11 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     subject_txid: str | None = None
     subject_tx: Transaction | None = None
     if tx_bytes:
+        if not isinstance(tx_bytes, (bytes, bytearray)):
+            raise WalletError("tx is not valid AtomicBEEF: expected bytes")
         try:
             trace(logger, "signer.internalize_action.parse_beef.call")
-            ab, subject_txid, subject_tx = parse_beef_ex(tx_bytes)
+            ab, subject_txid, subject_tx = parse_beef_ex(bytes(tx_bytes))
             trace(
                 logger,
                 "signer.internalize_action.parse_beef.ok",
@@ -673,7 +679,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
             trace(logger, "signer.internalize_action.parse_beef.error", error=str(exc), exc_type=type(exc).__name__)
             raise WalletError("tx is not valid AtomicBEEF") from exc
     else:
-        ab = Beef(version=1)
+        ab = Beef(version=BEEF_V2)
 
     # Note: Known txids (BRC-95 SpecOp support) are available in vargs.get("knownTxids", [])
     # They can be used for proof validation if needed
@@ -690,6 +696,32 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         raise WalletError(f"tx is not valid AtomicBEEF with newest txid of {txid}")
 
     trace(logger, "signer.internalize_action.target_tx", txid=txid, outputs_len=len(getattr(tx, "outputs", []) or []))
+
+    # IMPORTANT (TS parity / Go compatibility):
+    # Always normalize outgoing payload to a canonical BEEF_V2 AtomicBEEF binary.
+    # Some parsers are permissive and may accept rawTx bytes, but remote storage servers
+    # expect AtomicBEEF (BEEF.fromBinary(...) compatible) and will reject rawTx.
+    build_result: AtomicBeefBuildResult | None = None
+    if hasattr(wallet, "get_services") and callable(wallet.get_services):
+        try:
+            services = wallet.get_services()
+            build_result = build_internalize_atomic_beef(services, tx, txid)
+        except Exception:  # noqa: BLE001
+            build_result = None
+    if build_result is None:
+        raise WalletError("unable to build AtomicBEEF for internalizeAction (services unavailable)")
+
+    vargs["tx"] = build_result.atomic_bytes
+    trace(
+        logger,
+        "signer.internalize_action.atomic_beef.normalized",
+        txid=txid,
+        raw_len=len(tx.serialize()),
+        atomic_len=len(build_result.atomic_bytes),
+        has_merkle_path=build_result.has_merkle_path,
+        parents_total=build_result.parents_total,
+        parents_with_proof=build_result.parents_with_proof,
+    )
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]

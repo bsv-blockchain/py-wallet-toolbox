@@ -286,6 +286,11 @@ class Services(WalletServices):
         # getMerklePath collection
         self.get_merkle_path_services = ServiceCollection("getMerklePath")
         self.get_merkle_path_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path})
+        # ARC can sometimes provide merklePath earlier / when other indexers lag.
+        if self.arc_gorillapool:
+            self.get_merkle_path_services.add({"name": "arcGorillaPool", "service": self.arc_gorillapool.get_merkle_path})
+        if self.arc_taal:
+            self.get_merkle_path_services.add({"name": "arcTaal", "service": self.arc_taal.get_merkle_path})
         if self.bitails:
             self.get_merkle_path_services.add({"name": "Bitails", "service": self.bitails.get_merkle_path})
 

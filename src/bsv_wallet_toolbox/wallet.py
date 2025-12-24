@@ -313,6 +313,41 @@ class Wallet:
             # Best-effort wiring; storage providers without set_services are tolerated
             pass
 
+    def set_services(self, services: WalletServices | None) -> None:
+        """Attach (or clear) Services on the wallet and best-effort wire into storage.
+
+        Why:
+            Some flows (e.g. signer.internalize_action AtomicBEEF normalization) require
+            a Services handle at the Wallet layer. Remote storage clients are also
+            supported; wiring into storage is best-effort.
+        """
+        self.services = services
+        try:
+            if self.services is not None and self.storage is not None and hasattr(self.storage, "set_services"):
+                self.storage.set_services(self.services)
+        except Exception:
+            pass
+
+    def get_services(self) -> WalletServices:
+        """Return configured Services or raise.
+
+        Note:
+            `signer/methods.py` expects Wallet to expose `get_services()` for TS/Go parity.
+        """
+        if self.services is not None:
+            return self.services
+
+        # Best-effort fallback for callers that only wired services into a local StorageProvider.
+        if self.storage is not None and hasattr(self.storage, "get_services"):
+            try:
+                services = self.storage.get_services()
+                if services is not None:
+                    return services
+            except Exception:
+                pass
+
+        raise RuntimeError("Services must be configured on Wallet (pass services=... or call set_services()).")
+
     def get_client_change_key_pair(self) -> dict[str, str]:
         """Get the client change key pair (root key).
 
