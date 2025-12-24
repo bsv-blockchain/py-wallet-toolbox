@@ -381,15 +381,6 @@ class StorageClient:
     # Each method uses _rpc_call to invoke the corresponding server-side method via JSON-RPC.
     # =========================================================================
 
-    def is_available(self) -> bool:
-        """Check if storage is available.
-
-        Returns:
-            True if storage is available, False otherwise
-        """
-        result = self._rpc_call("isAvailable", [])
-        return bool(result)
-
     def make_available(self) -> dict[str, Any]:
         """Make storage available.
 
@@ -415,36 +406,6 @@ class StorageClient:
     def destroy(self) -> None:
         """Destroy storage."""
         self._rpc_call("destroy", [])
-
-    def get_services(self) -> dict[str, Any]:
-        """Get WalletServices.
-
-        Returns:
-            Services configuration
-        """
-        result = self._rpc_call("getServices", [])
-        return result
-
-    def get_settings(self) -> dict[str, Any]:
-        """Get storage settings.
-
-        Returns:
-            Table settings
-        """
-        result = self._rpc_call("getSettings", [])
-        return result
-
-    def set_services(self, services: Any) -> None:
-        """Set wallet services (no-op for remote client).
-
-        For remote storage, services are managed on the server side.
-
-        Args:
-            services: WalletServices instance (ignored)
-        """
-        # For remote storage, services are configured on the server
-        # This is a no-op on the client side
-        pass
 
     def find_or_insert_user(self, identity_key: str) -> dict[str, Any]:
         """Find or insert user.
@@ -504,7 +465,7 @@ class StorageClient:
         Returns:
             List of output baskets
         """
-        result = self._rpc_call("findOutputBasketsAuth", [auth, args])
+        result = self._rpc_call("findOutputBaskets", [auth, args])
         return result
 
     def find_outputs_auth(
