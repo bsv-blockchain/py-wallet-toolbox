@@ -282,6 +282,10 @@ class Wallet:
         self.random_vals: list | None = None  # Wave 4: randomVals setting
         self.pending_sign_actions: TTLCache = TTLCache(ttl_seconds=300.0)  # Wave 4: Pending action tracking with TTL
         self.return_txid_only: bool = False  # Wave 4: returnTxidOnly setting for BEEF verification
+        # TS parity: Wallet.ts sets `this.trustSelf = 'known'` and `createAction` applies
+        # `args.options.trustSelf ||= this.trustSelf`.
+        # TrustSelf is NOT a boolean; it is a string union with only "known".
+        self.trust_self: str | None = "known"
 
         # Initialize caches for Discovery methods (Wave 5)
         # Format: {cacheKey: {value: ..., expiresAt: timestamp}}
@@ -1334,7 +1338,7 @@ class Wallet:
                 - outputs: list - transaction outputs
                 - labels: list - action labels (optional)
                 - options: dict - transaction options (optional):
-                    - trustSelf: bool - trust wallet's own outputs
+                    - trustSelf: TrustSelf - TS: type TrustSelf = "known"
                     - knownTxids: list - pre-known transaction IDs
                     - isDelayed: bool - allow delayed results
             originator: Optional originator domain name (under 250 bytes)
@@ -1359,8 +1363,15 @@ class Wallet:
             args["options"] = {}
 
         # Apply wallet-level trustSelf setting (TS: args.options.trustSelf ||= this.trustSelf)
-        if "trustSelf" not in args["options"]:
-            args["options"]["trustSelf"] = getattr(self, "trust_self", False)
+        current_trust_self = args["options"].get("trustSelf")
+        if isinstance(current_trust_self, bool):
+            # Back-compat: old Python code used boolean. TS/Go do not.
+            current_trust_self = "known" if current_trust_self else None
+        if not current_trust_self:
+            # TS default: "known"
+            args["options"]["trustSelf"] = getattr(self, "trust_self", "known") or "known"
+        else:
+            args["options"]["trustSelf"] = current_trust_self
 
         # Apply autoKnownTxids if enabled (TS: this.autoKnownTxids && !args.options.knownTxids)
         if self.auto_known_txids and "knownTxids" not in args["options"]:
@@ -3336,17 +3347,36 @@ class Wallet:
         # Some servers do not implement SpecOps baskets (they treat the specOp basket
         # as a normal basket name and return 0). In that case, compute balance by
         # listing outputs in the "default" basket and summing satoshis client-side.
+        #
+        # TS parity: Wallet.balance() returns the total value (satoshis) of all
+        # spendable outputs in the 'default' basket. It is NOT limited to "change"
+        # tags; faucet/internalized deposits must be included too.
         if not isinstance(total, int) or total == 0:
             try:
                 trace(logger, "wallet.balance.specop.fallback", specOpBasket=specOpWalletBalance)
-                # Fallback must match SpecOp semantics: wallet-managed change only.
-                page = self.list_outputs({"basket": "default", "limit": 1000, "offset": 0, "tags": ["change"]})
-                outputs = page.get("outputs", []) if isinstance(page, dict) else []
                 computed = 0
-                for o in outputs:
-                    if isinstance(o, dict):
+                offset = 0
+                outputs_count = 0
+
+                while True:
+                    page = self.list_outputs({"basket": "default", "limit": 1000, "offset": offset})
+                    outputs = page.get("outputs", []) if isinstance(page, dict) else []
+                    if not outputs:
+                        break
+
+                    for o in outputs:
+                        if not isinstance(o, dict):
+                            continue
+                        # If spendable is present, only count spendable outputs.
+                        spendable = o.get("spendable")
+                        if spendable is False:
+                            continue
                         computed += int(o.get("satoshis", 0) or 0)
-                trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=len(outputs))
+                        outputs_count += 1
+
+                    offset += len(outputs)
+
+                trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=outputs_count)
                 return {"total": computed}
             except Exception as e:
                 trace(logger, "wallet.balance.specop.fallback.error", error=str(e), exc_type=type(e).__name__)

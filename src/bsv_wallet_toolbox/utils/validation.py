@@ -377,6 +377,19 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
         raise InvalidParameterError("inputs", "a list")
 
     # Normalize and compute flags
+    # --- Validate options (TS parity) ---
+    if "options" in args and args["options"] is not None:
+        if not isinstance(args["options"], dict):
+            raise InvalidParameterError("options", "a dict")
+        trust_self = args["options"].get("trustSelf")
+        # TS: type TrustSelf = "known"; unset means undefined/absent.
+        if trust_self is not None:
+            if isinstance(trust_self, bool):
+                raise InvalidParameterError("trustSelf", 'TrustSelf type ("known") (not boolean)')
+            if not isinstance(trust_self, str):
+                raise InvalidParameterError("trustSelf", 'TrustSelf type ("known")')
+            if trust_self != "known":
+                raise InvalidParameterError("trustSelf", 'TrustSelf must be "known" when provided')
     vargs = {
         "description": desc,
         "inputBEEF": args.get("inputBEEF"),

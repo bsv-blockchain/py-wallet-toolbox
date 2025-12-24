@@ -173,6 +173,10 @@ def normalize_create_action_args(args: dict[str, Any]) -> NormalizedCreateAction
     inputs = list(args.get("inputs") or [])
 
     options_dict = dict(args.get("options") or {})
+    trust_self_raw = options_dict.get("trustSelf")
+    # TS parity: TrustSelf is "known" or undefined. (Never boolean.)
+    if isinstance(trust_self_raw, bool):
+        trust_self_raw = "known" if trust_self_raw else None
     options = CreateActionOptions(
         randomize_outputs=bool(options_dict.get("randomizeOutputs", False)),
         sign_and_process=bool(options_dict.get("signAndProcess", False)),
@@ -180,7 +184,7 @@ def normalize_create_action_args(args: dict[str, Any]) -> NormalizedCreateAction
         no_send_change=_normalize_no_send_change(options_dict.get("noSendChange")),
         known_txids=list(options_dict.get("knownTxids") or []),
         return_txid_only=bool(options_dict.get("returnTXIDOnly", False)),
-        trust_self=str(options_dict.get("trustSelf", "unknown")),
+        trust_self="known" if trust_self_raw == "known" else "",
         accept_delayed_broadcast=bool(options_dict.get("acceptDelayedBroadcast", True)),
         send_with=list(options_dict.get("sendWith") or []),
         include_all_source_transactions=bool(options_dict.get("includeAllSourceTransactions", False)),
