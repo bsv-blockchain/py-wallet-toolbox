@@ -216,6 +216,14 @@ def create_local_storage_provider(chain: Chain, wallet_name: str) -> StorageProv
     return storage
 
 
+def create_in_memory_storage_provider(chain: Chain, storage_identity_key: str) -> StorageProvider:
+    """Create an in-memory SQLite storage provider (bootstrap use only)."""
+    engine = create_engine("sqlite:///:memory:")
+    storage = StorageProvider(engine=engine, chain=chain, storage_identity_key=storage_identity_key)
+    storage.make_available()
+    return storage
+
+
 def create_storage_client(wallet: Wallet) -> StorageClient:
     """Create a StorageClient for the configured storage server (remote storage)."""
     url = get_storage_server_url()
@@ -256,11 +264,22 @@ def create_wallet(wallet_name: str, chain: Chain, services: Services, use_remote
     key_deriver, root_private_key = create_key_deriver(wallet_name)
 
     if use_remote:
-        temp_storage = create_local_storage_provider(chain, f"{wallet_name}_temp")
-        temp_wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=temp_storage)
-        storage_client = create_storage_client(temp_wallet)
+        # Remote storage (Go storage server) still needs BRC-104 authenticated requests.
+        # Our `StorageClient` signs those requests using a Wallet instance.
+        #
+        # Therefore we first create a "bootstrap" Wallet with a local StorageProvider
+        # just to have a fully-initialized Wallet object available for auth/signing.
+        # After the remote StorageClient is available, we swap the wallet's storage
+        # backend to the remote client and return the SAME wallet instance.
+        #
+        # This avoids the confusing (and error-prone) pattern of creating a second
+        # Wallet that uses a StorageClient bound to a different Wallet instance.
+        bootstrap_storage = create_in_memory_storage_provider(chain, storage_identity_key=f"{chain}-{wallet_name}-bootstrap")
+        wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=bootstrap_storage)
+
+        storage_client = create_storage_client(wallet)
         storage_client.make_available()
-        wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=storage_client)
+        wallet.storage = storage_client
         return wallet, root_private_key
 
     storage_provider = create_local_storage_provider(chain, wallet_name)
