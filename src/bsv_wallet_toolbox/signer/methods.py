@@ -703,7 +703,32 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
             _setup_wallet_payment_for_output(output_spec, tx, wallet, brc29_protocol_id)
         elif protocol == "basket insertion":
             # No additional validations for basket insertion
-            trace(logger, "signer.internalize_action.output.basket_insertion", outputIndex=output_index)
+            # Add explicit hints for remote storage servers that don't parse tx bytes fully.
+            # These fields are non-breaking (extra keys) and help diagnose and/or enable
+            # output attribution on the server side.
+            try:
+                out = tx.outputs[output_index]
+                satoshis = getattr(out, "satoshis", None)
+                locking_script = getattr(out, "locking_script", None)
+                locking_script_hex = locking_script.hex() if hasattr(locking_script, "hex") else None
+                output_spec.setdefault("satoshis", satoshis)
+                if locking_script_hex is not None:
+                    output_spec.setdefault("lockingScript", locking_script_hex)
+                trace(
+                    logger,
+                    "signer.internalize_action.output.basket_insertion",
+                    outputIndex=output_index,
+                    satoshis=satoshis,
+                    lockingScript=locking_script_hex,
+                )
+            except Exception as e:
+                trace(
+                    logger,
+                    "signer.internalize_action.output.basket_insertion.hints_error",
+                    outputIndex=output_index,
+                    error=str(e),
+                    exc_type=type(e).__name__,
+                )
             pass
         else:
             trace(logger, "signer.internalize_action.output.unexpected_protocol", protocol=protocol)

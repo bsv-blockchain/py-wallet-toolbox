@@ -379,7 +379,13 @@ def build_atomic_beef_for_txid(chain: Chain, txid: str, services: Services) -> b
 def internalize_faucet_tx(
     wallet: Wallet, txid: str, chain: Chain, services: Services, output_index: int = 0
 ) -> bool:
-    """Internalize a Faucet transaction using BRC-29 wallet payment protocol.
+    """Internalize a Faucet transaction.
+
+    NOTE:
+        A faucet deposit is a plain P2PKH payment and does NOT come with a BRC-29
+        payment remittance. Therefore, we must internalize it via "basket insertion"
+        rather than "wallet payment", otherwise the wallet correctly rejects it as
+        non-conformant (locking script mismatch).
 
     Args:
         wallet: Alice's wallet
@@ -397,28 +403,15 @@ def internalize_faucet_tx(
         print(f"❌ Failed to build Atomic BEEF: {err}")
         return False
 
-    # BRC-29 wallet payment protocol config
-    anyone_key = PrivateKey(1).public_key()
-    derivation_prefix_b64 = base64.b64encode(
-        FAUCET_DERIVATION_PREFIX.encode("utf-8")
-    ).decode("ascii")
-    derivation_suffix_b64 = base64.b64encode(
-        FAUCET_DERIVATION_SUFFIX.encode("utf-8")
-    ).decode("ascii")
-
-    print("\n🚀 Internalizing transaction via wallet payment protocol...")
+    print("\n🚀 Internalizing faucet transaction via basket insertion...")
     internalize_args: dict[str, Any] = {
         # JSON-RPC payload must be JSON-serializable; represent bytes as list[int] (0-255).
         "tx": list(atomic_beef),
         "outputs": [
             {
                 "outputIndex": output_index,
-                "protocol": "wallet payment",
-                "paymentRemittance": {
-                    "senderIdentityKey": anyone_key.hex(),
-                    "derivationPrefix": derivation_prefix_b64,
-                    "derivationSuffix": derivation_suffix_b64,
-                },
+                "protocol": "basket insertion",
+                "insertionRemittance": {"basket": "default"},
             }
         ],
         "description": "Internalize faucet transaction",
@@ -434,8 +427,8 @@ def internalize_faucet_tx(
             "wallet_id": id(wallet),
             "txid": txid,
             "outputIndex": output_index,
-            "derivationPrefix": FAUCET_DERIVATION_PREFIX,
-            "derivationSuffix": FAUCET_DERIVATION_SUFFIX,
+            "protocol": "basket insertion",
+            "basket": "default",
         },
     )
     # endregion
