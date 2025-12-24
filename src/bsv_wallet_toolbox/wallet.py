@@ -1803,6 +1803,30 @@ class Wallet:
         trace(logger, "wallet.make_auth.result", auth=auth)
         return auth
 
+    def ensure_initialized(self, *, ensure_default_basket: bool = True) -> dict[str, Any]:
+        """Ensure storage-side user state exists (and optionally the default basket).
+
+        Why:
+            Example scripts and consumers should not have to remember which call "implicitly"
+            creates user/basket records. A fresh wallet should be usable with `internalizeAction`
+            as the first operation.
+
+        What it does:
+        - Calls the wallet's auth bootstrap (creates/loads the user row).
+        - Best-effort: creates the default output basket ("default") when supported.
+
+        Returns:
+            The auth dict (`{"userId": int, "identityKey": str}`) used by storage calls.
+        """
+        auth = self._make_auth()
+        if ensure_default_basket and self.storage is not None and hasattr(self.storage, "find_or_insert_output_basket"):
+            try:
+                self.storage.find_or_insert_output_basket(int(auth["userId"]), "default")
+            except Exception:  # noqa: BLE001
+                # Best-effort: some storages may not implement this helper; other flows create it on demand.
+                pass
+        return auth
+
     def is_authenticated(
         self,
         _args: dict[str, Any],

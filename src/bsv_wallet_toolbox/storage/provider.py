@@ -5188,7 +5188,15 @@ class InternalizeActionContext:
             basket = _result.scalar_one_or_none()
 
             if not basket:
-                raise InvalidParameterError("basket", "user must have a 'default' output basket")
+                # TS parity: other flows (e.g. createAction) create the default basket on demand.
+                # internalizeAction is a valid "first call" into a fresh wallet, so we must also
+                # ensure the invariant here instead of failing.
+                created = self.storage.find_or_insert_output_basket(self.user_id, "default")
+                basket_id = created.get("basketId") if isinstance(created, dict) else None
+                basket = s.get(OutputBasket, basket_id) if basket_id is not None else None
+                if not basket:
+                    # If we still cannot materialize it as an ORM object, fall back to the old error.
+                    raise InvalidParameterError("basket", "user must have a 'default' output basket")
 
             self.change_basket = basket
             self.baskets = {}
