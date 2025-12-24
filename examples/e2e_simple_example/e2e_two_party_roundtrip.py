@@ -27,6 +27,7 @@ import base64
 import logging
 import os
 import sys
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -80,6 +81,61 @@ def _debug_enabled() -> bool:
     """Return True if the user explicitly requested DEBUG output via env vars."""
     level = (os.getenv("PY_WALLET_TOOLBOX_LOG_LEVEL") or os.getenv("LOGLEVEL") or "").upper()
     return level == "DEBUG"
+
+
+class _LineFilteringWriter:
+    """A line-buffering writer that can drop noisy lines in non-debug runs.
+
+    This is intentionally conservative: it only filters known spammy prefixes emitted
+    by upstream dependencies that use unconditional print().
+    """
+
+    def __init__(self, underlying, drop_line_regexes: list[re.Pattern[str]]):
+        self._underlying = underlying
+        self._drop = drop_line_regexes
+        self._buf = ""
+
+    def write(self, s: str) -> int:
+        self._buf += s
+        written = 0
+        while True:
+            nl = self._buf.find("\n")
+            if nl < 0:
+                break
+            line = self._buf[: nl + 1]
+            self._buf = self._buf[nl + 1 :]
+            if any(r.match(line) for r in self._drop):
+                written += len(line)
+                continue
+            written += self._underlying.write(line)
+        return written
+
+    def flush(self) -> None:
+        if self._buf:
+            line = self._buf
+            self._buf = ""
+            if not any(r.match(line) for r in self._drop):
+                self._underlying.write(line)
+        self._underlying.flush()
+
+
+def _install_stdout_filters_for_non_debug() -> None:
+    """Suppress extremely noisy dependency prints unless LOGLEVEL=DEBUG."""
+    if _debug_enabled():
+        return
+    drop = [
+        re.compile(r"^\[create_nonce\] "),
+        re.compile(r"^\[verify_nonce\] "),
+        re.compile(r"^\[Wallet\.verify_hmac\] "),
+        re.compile(r"^\[WALLET\.verify_signature\] "),
+        re.compile(r"^\[WALLET VERIFY\] "),
+        re.compile(r"^\[DEBUG ProtoWallet\."),
+        re.compile(r"^\[TRACE\] "),
+    ]
+    sys.stdout = _LineFilteringWriter(sys.stdout, drop)  # type: ignore[assignment]
+
+
+_install_stdout_filters_for_non_debug()
 
 
 def _maybe_print_broadcast_rawtx_hex(result: dict[str, Any] | None, context: str) -> None:
