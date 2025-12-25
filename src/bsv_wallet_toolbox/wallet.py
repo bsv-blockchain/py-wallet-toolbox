@@ -3371,19 +3371,6 @@ class Wallet:
         # Some servers do not implement SpecOps baskets (they treat the specOp basket
         # as a normal basket name and return 0). In that case, compute balance by
         # listing outputs in the "default" basket and summing satoshis client-side.
-<<<<<<< HEAD
-        if not isinstance(total, int) or total == 0:
-            try:
-                trace(logger, "wallet.balance.specop.fallback", specOpBasket=specOpWalletBalance)
-                # Fallback must match SpecOp semantics: wallet-managed change only.
-                page = self.list_outputs({"basket": "default", "limit": 1000, "offset": 0, "tags": ["change"]})
-                outputs = page.get("outputs", []) if isinstance(page, dict) else []
-                computed = 0
-                for o in outputs:
-                    if isinstance(o, dict):
-                        computed += int(o.get("satoshis", 0) or 0)
-                trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=len(outputs))
-=======
         #
         # TS parity: Wallet.balance() returns the total value (satoshis) of all
         # spendable outputs in the 'default' basket. It is NOT limited to "change"
@@ -3414,7 +3401,6 @@ class Wallet:
                     offset += len(outputs)
 
                 trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=outputs_count)
->>>>>>> fix/for-test-run
                 return {"total": computed}
             except Exception as e:
                 trace(logger, "wallet.balance.specop.fallback.error", error=str(e), exc_type=type(e).__name__)
