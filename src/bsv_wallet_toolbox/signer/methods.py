@@ -149,7 +149,12 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
         trace(logger, "signer.create_action.completed", txid=result.txid)
         beef = Beef(version=1)
         if prior.dcr.get("inputBeef"):
-            input_beef = parse_beef(prior.dcr["inputBeef"])
+            # Remote storage servers encode bytes as list[int] in JSON-RPC.
+            # Normalize to bytes for py-sdk parse_beef().
+            ib = prior.dcr["inputBeef"]
+            if isinstance(ib, list):
+                ib = bytes(ib)
+            input_beef = parse_beef(ib)
             beef.merge_beef(input_beef)
         beef.merge_transaction(prior.tx)
 
@@ -163,7 +168,8 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
         result.no_send_change_output_vouts = prior.dcr.get("noSendChangeOutputVouts")
         if not vargs.get("options", {}).get("returnTxidOnly"):
             # BRC-100 spec: return raw transaction bytes, not BEEF
-            result.tx = prior.tx.serialize()
+            # py-sdk may return memoryview/bytearray depending on implementation; normalize to bytes.
+            result.tx = bytes(prior.tx.serialize())
             trace(logger, "signer.create_action.tx_bytes", tx=result.tx)
 
     trace(
@@ -200,7 +206,10 @@ def build_signable_transaction(
     """
     change_keys = wallet.get_client_change_key_pair()
 
-    input_beef = parse_beef(args["inputBeef"]) if args.get("inputBeef") else None
+    input_beef_raw = args.get("inputBeef")
+    if isinstance(input_beef_raw, list):
+        input_beef_raw = bytes(input_beef_raw)
+    input_beef = parse_beef(input_beef_raw) if input_beef_raw else None
 
     storage_inputs = dctr.get("inputs", [])
     storage_outputs = dctr.get("outputs", [])
@@ -553,7 +562,8 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         "isDelayed": vargs.get("isDelayed"),
         "reference": prior.reference,
         "txid": prior.tx.txid(),
-        "rawTx": prior.tx.serialize(),
+        # Normalize to bytes to ensure RPC layer serializes as byte-array, not string.
+        "rawTx": bytes(prior.tx.serialize()),
         "sendWith": vargs.get("options", {}).get("sendWith", []) if vargs.get("isSendWith") else [],
     }
 

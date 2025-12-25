@@ -237,6 +237,51 @@ class StorageClient:
             # PublicKey objects etc: fall back to string representation
             return str(value)
 
+        # NOTE (TS parity / python ergonomics):
+        # Remote JSON-RPC servers encode bytes as number[] (list[int]) because JSON has no bytes type.
+        # We must de-serialize those fields back to `bytes` on the client side so downstream code
+        # (py-sdk Beef/Transaction parsers) can operate on real bytes.
+        _BYTES_KEYS: set[str] = {
+            # BEEF / tx payloads
+            "inputBeef",
+            "inputBEEF",
+            "outputBeef",
+            "outputBEEF",
+            "beef",
+            "tx",
+            "rawTx",
+            "atomicBeef",
+            # proofs / ancillary binary blobs
+            "merklePath",
+        }
+
+        def _looks_like_byte_array(value: Any) -> bool:
+            if not isinstance(value, list):
+                return False
+            # empty list can represent empty bytes
+            if len(value) == 0:
+                return True
+            for x in value:
+                if not isinstance(x, int):
+                    return False
+                if x < 0 or x > 255:
+                    return False
+            return True
+
+        def _dejsonify(value: Any, parent_key: str | None = None) -> Any:
+            # Convert known byte-array fields back to bytes
+            if parent_key in _BYTES_KEYS:
+                if isinstance(value, (bytes, bytearray)):
+                    return bytes(value)
+                if _looks_like_byte_array(value):
+                    return bytes(value)
+            if isinstance(value, dict):
+                return {k: _dejsonify(v, k) for k, v in value.items()}
+            if isinstance(value, list):
+                # For non-byte fields, preserve list structure and recurse.
+                return [_dejsonify(v, None) for v in value]
+            return value
+
         # Build request body (TS: body)
         request_body = {
             "jsonrpc": "2.0",
@@ -350,7 +395,7 @@ class StorageClient:
                 raise requests.RequestException(msg)
 
             # Return result on success
-            result = response_data.get("result")
+            result = _dejsonify(response_data.get("result"))
             trace(logger, "rpc.result", method=method, id=request_id, endpoint=self.endpoint_url, result=result)
             logger.debug(
                 f"RPC call succeeded: {method} (id={request_id})",

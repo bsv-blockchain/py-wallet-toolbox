@@ -687,7 +687,6 @@ class UserUTXO(Base):
         "basketName",
         String(300),
         nullable=False,
-        index=True,
     )
     satoshis: Mapped[int] = mapped_column(
         BigInteger,
@@ -703,7 +702,6 @@ class UserUTXO(Base):
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
-        index=True,
     )
     reserved_by_id: Mapped[int | None] = mapped_column(
         "reservedById",
