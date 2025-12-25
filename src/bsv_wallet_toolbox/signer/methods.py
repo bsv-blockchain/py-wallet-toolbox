@@ -295,9 +295,12 @@ def build_signable_transaction(
                     source_output_index=args_input.get("outpoint", {}).get("vout", 0),
                     source_transaction=source_transaction,
                     unlocking_script=unlock,
-                    sequence=args_input.get("sequence_number", 0xFFFFFFFF),
+                    sequence=args_input.get("sequenceNumber", 0xFFFFFFFF),
                 )
             )
+            # IMPORTANT (TS parity):
+            # When args_input is present, this input is already added. Do NOT add a second placeholder input.
+            continue
         else:
             # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
             if storage_input.get("type") != "P2PKH":
@@ -305,49 +308,56 @@ def build_signable_transaction(
                     f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported'
                 )
 
-        # Record pending storage input metadata for later BRC-29 signing
+        # ---- Storage-provided (wallet-managed) input ----
+        # StorageCreateTransactionSdkInput uses camelCase keys (TS parity / @wallet-infra).
+        # We intentionally do NOT accept snake_case here: the storage boundary must be consistent.
+        source_txid = storage_input.get("sourceTxid") or ""
+        if not isinstance(source_txid, str) or len(source_txid) != 64:
+            raise WalletError(
+                "storage_input.sourceTxid must be a 64-hex txid. "
+                f"vin={storage_input.get('vin')} value={source_txid!r}"
+            )
+
+        # Record pending storage input metadata for later BRC-29 signing (TS parity)
+        derivation_prefix_b64 = storage_input.get("derivationPrefix") or ""
+        derivation_suffix_b64 = storage_input.get("derivationSuffix") or ""
         pending_storage_inputs.append(
             PendingStorageInput(
                 vin=len(tx.inputs),
-                derivation_prefix=_decode_remittance_component(
-                    storage_input.get("derivation_prefix", "")
-                ),
-                derivation_suffix=_decode_remittance_component(
-                    storage_input.get("derivation_suffix", "")
-                ),
-                unlocker_pub_key=storage_input.get("sender_identity_key", ""),
-                source_satoshis=storage_input.get("source_satoshis", 0),
-                locking_script=storage_input.get("source_locking_script", ""),
+                derivation_prefix=_decode_remittance_component(derivation_prefix_b64),
+                derivation_suffix=_decode_remittance_component(derivation_suffix_b64),
+                unlocker_pub_key=storage_input.get("senderIdentityKey") or "",
+                source_satoshis=storage_input.get("sourceSatoshis") or 0,
+                locking_script=storage_input.get("sourceLockingScript") or "",
             )
         )
 
-        # Attach source transaction / metadata for SABPPP inputs
-        source_tx_binary = storage_input.get("source_transaction")
-        source_tx = Transaction.from_hex(source_tx_binary) if source_tx_binary else None
+        # Attach source transaction / metadata for SABPPP inputs (optional)
+        source_tx_raw = storage_input.get("sourceTransaction")
+        if isinstance(source_tx_raw, list):
+            source_tx_raw = bytes(source_tx_raw)
+        source_tx = Transaction.from_hex(source_tx_raw) if isinstance(source_tx_raw, (bytes, bytearray, str)) and source_tx_raw else None
 
         # Create a TransactionInput placeholder; unlocking_script will be filled later via BRC-29 template
         tx_input = TransactionInput(
-            source_txid=storage_input.get("source_txid", ""),
-            source_output_index=storage_input.get("source_vout", 0),
+            source_txid=source_txid,
+            source_output_index=storage_input.get("sourceVout") or 0,
             source_transaction=source_tx,
             unlocking_script=Script(),
             sequence=0xFFFFFFFF,
         )
         # Populate satoshis and locking_script so that template.sign() can compute correct sighash
-        tx_input.satoshis = storage_input.get("source_satoshis", 0)
-        ls_hex = storage_input.get("source_locking_script", "")
+        tx_input.satoshis = storage_input.get("sourceSatoshis") or 0
+        ls_hex = storage_input.get("sourceLockingScript") or ""
         if isinstance(ls_hex, str) and ls_hex:
             try:
-                # py-bsv Script コンストラクタは hex 文字列を直接受け取る
                 tx_input.locking_script = Script(ls_hex)
             except Exception:  # noqa: BLE001
                 # Debug-only: locking script parse failure should surface as WalletError later if critical
                 pass
 
         tx.add_input(tx_input)
-        total_change_inputs += validate_satoshis(
-            storage_input.get("source_satoshis", 0), "storage_input.source_satoshis"
-        )
+        total_change_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
 
     # Calculate amount (total non-foreign inputs minus change outputs)
     total_change_outputs = sum(
