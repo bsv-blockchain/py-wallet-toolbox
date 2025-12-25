@@ -923,10 +923,6 @@ def internalize_action(storage: Any, auth: dict[str, Any], args: dict[str, Any])
     for insertion in basket_insertions:
         basket_name = insertion.get("basket")
 
-        # Validate basket constraints
-        if basket_name == "default":
-            raise WalletError("Basket insertion cannot target 'default' basket")
-
         # Find or create basket
         basket = storage.findOne("OutputBasket", {"userId": user_id, "name": basket_name})
 

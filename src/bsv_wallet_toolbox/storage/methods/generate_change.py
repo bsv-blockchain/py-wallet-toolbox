@@ -202,14 +202,21 @@ def generate_change_sdk(
         def size_func(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
             input_script_lengths = [x.unlocking_script_length for x in fixed_inputs] + \
                                    [params.change_unlocking_script_length] * (len(r.allocated_change_inputs) + added_change_inputs)
-            
+
             output_script_lengths = [x.locking_script_length for x in fixed_outputs] + \
                                     [params.change_locking_script_length] * (len(r.change_outputs) + added_change_outputs)
-            
-            return transaction_size(input_script_lengths, output_script_lengths)
+
+            size = transaction_size(input_script_lengths, output_script_lengths)
+            print(f"DEBUG: size_func: fixed_inputs={len(fixed_inputs)}, allocated_change_inputs={len(r.allocated_change_inputs)}, added_change_inputs={added_change_inputs}, change_unlocking_length={params.change_unlocking_script_length}")
+            print(f"DEBUG: size_func: fixed_outputs={len(fixed_outputs)}, change_outputs={len(r.change_outputs)}, added_change_outputs={added_change_outputs}, change_locking_length={params.change_locking_script_length}")
+            print(f"DEBUG: size_func: input_lengths={input_script_lengths}, output_lengths={output_script_lengths}, total_size={size}")
+            return size
 
         def fee_target(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
-            return math.ceil((size_func(added_change_inputs, added_change_outputs) / 1000) * sats_per_kb)
+            size = size_func(added_change_inputs, added_change_outputs)
+            fee = math.ceil((size / 1000) * sats_per_kb)
+            print(f"DEBUG: fee_target: size={size}, sats_per_kb={sats_per_kb}, fee={fee}")
+            return fee
 
         fee_excess_now = 0
 
@@ -257,8 +264,11 @@ def generate_change_sdk(
                     pass 
 
                 ao = 1 if add_output_to_balance_new_input() else 0
-                target_satoshis = -fee_excess(1, ao) + (2 * params.change_initial_satoshis if ao == 1 else 0)
-                
+                fee_excess_val = fee_excess(1, ao)
+                target_satoshis = -fee_excess_val + (2 * params.change_initial_satoshis if ao == 1 else 0)
+
+                print(f"DEBUG: Fee calculation: fee_excess={fee_excess_val}, ao={ao}, change_initial_satoshis={params.change_initial_satoshis}, target_satoshis={target_satoshis}")
+
                 allocated_input = allocate_change_input(target_satoshis, exact_satoshis)
                 
                 if not allocated_input:
