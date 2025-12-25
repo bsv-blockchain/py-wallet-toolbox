@@ -39,6 +39,7 @@ from typing import Any
 import requests
 
 from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
+from bsv_wallet_toolbox.utils.merkle_path_utils import normalize_merkle_path_value
 
 
 @dataclass
@@ -81,7 +82,8 @@ class ArcMinerGetTxData:
     block_height: int
     competing_txs: list[str] | None
     extra_info: str
-    merkle_path: str
+    # ARC JSON may return different shapes (dict/list/str). Keep it flexible.
+    merkle_path: Any
     timestamp: str
     txid: str
     tx_status: str
@@ -485,6 +487,52 @@ class ARC:
             pass
 
         return None
+
+    def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:
+        """Fetch Merkle path via ARC /v1/tx/{txid} (TS-compatible response shape).
+
+        This is a best-effort provider used when other sources (WoC/Bitails) fail.
+        It returns the same object shape as other providers:
+          {"header": {...}, "merklePath": {"blockHeight":..., "path":[...]}, "name": "...", "notes":[...]}
+        """
+        now = datetime.now(timezone.utc).isoformat()
+        result: dict[str, Any] = {"name": "ARC", "notes": []}
+
+        dr = self.get_tx_data(txid)
+        if dr is None:
+            result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathNoData"})
+            return result
+
+        # ARC may return merklePath only after mined; when absent, treat as no-data.
+        mp_raw: Any = getattr(dr, "merkle_path", None)
+        if not mp_raw:
+            result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathNoData"})
+            return result
+
+        # Resolve header using Services if possible (block hash is usually present).
+        header: dict[str, Any] | None = None
+        try:
+            block_hash = getattr(dr, "block_hash", None)
+            if isinstance(block_hash, str) and len(block_hash) == 64 and hasattr(services, "hash_to_header"):
+                header = services.hash_to_header(block_hash)
+        except Exception:  # noqa: BLE001
+            header = None
+
+        # Normalize merklePath into wallet-toolbox dict format.
+        try:
+            mp_norm = normalize_merkle_path_value(txid, mp_raw, block_height=getattr(dr, "block_height", None))
+        except Exception as exc:  # noqa: PERF203
+            result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathNoData", "error": str(exc)})
+            return result
+
+        if mp_norm is None:
+            result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathNoData"})
+            return result
+
+        result["merklePath"] = mp_norm
+        result["header"] = header
+        result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathSuccess"})
+        return result
 
     def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
         """Get transaction status for a given txid (TS-compatible response shape).

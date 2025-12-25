@@ -5,9 +5,5 @@
 Django>=4.2.0
 djangorestframework>=3.14.0
 
-<<<<<<< HEAD
--e ../../../py-middleware
-=======
->>>>>>> e9b4fb7 (add missing dependency for python-middleware)
 # Local py-wallet-toolbox (with PushDrop fix)
 -e ../..

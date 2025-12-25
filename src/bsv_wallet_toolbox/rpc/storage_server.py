@@ -293,23 +293,16 @@ class StorageServer:
         # TS parity: JSON-RPC method names must match TypeScript StorageClient interface
         json_rpc_to_python_methods = {
             # Core StorageProvider methods
-            "isStorageProvider": "is_storage_provider",
-            "isAvailable": "is_available",
             "makeAvailable": "make_available",
             "migrate": "migrate",
             "destroy": "destroy",
-            "setServices": "set_services",
-            "getServices": "get_services",
-            "getSettings": "get_settings",
             "findOrInsertUser": "find_or_insert_user",
-            "findOrInsertTxLabel": "find_or_insert_tx_label",
-            "findOrInsertOutputBasket": "find_or_insert_output_basket",
             "abortAction": "abort_action",
             "createAction": "create_action",
             "processAction": "process_action",
             "internalizeAction": "internalize_action",
             "findCertificatesAuth": "find_certificates",  # Note: TS has Auth suffix
-            "findOutputBasketsAuth": "find_output_baskets",  # Note: TS has Auth suffix
+            "findOutputBaskets": "find_output_baskets",
             "findOutputsAuth": "find_outputs",  # Note: TS has Auth suffix
             "findProvenTxReqs": "find_proven_tx_reqs",
             "listActions": "list_actions",

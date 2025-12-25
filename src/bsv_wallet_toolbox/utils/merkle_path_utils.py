@@ -7,6 +7,7 @@ Reference: toolbox/ts-wallet-toolbox/src/utility/tscProofToMerklePath.ts
 
 from __future__ import annotations
 
+import json
 from typing import Any, TypedDict
 
 
@@ -80,3 +81,49 @@ def convert_proof_to_merkle_path(txid: str, proof: TscMerkleProofApi) -> dict[st
         index = index >> 1
 
     return {"blockHeight": block_height, "path": path}
+
+
+def normalize_merkle_path_value(txid: str, merkle_path_value: Any, *, block_height: int | None = None) -> dict[str, Any] | None:
+    """Normalize various merklePath representations into wallet-toolbox MerklePath dict.
+
+    Supported inputs:
+    - Already-normalized dict: {"blockHeight": int, "path": list}
+    - JSON string containing a dict/list
+    - TSC-like dict: {"index": int, "nodes": [hex or '*', ...], ("height" optional)}
+
+    Returns:
+        dict compatible with bsv.merkle_path.MerklePath initialization:
+          {"blockHeight": int, "path": [...]}
+        or None if it cannot be normalized.
+    """
+    mp: Any = merkle_path_value
+
+    # JSON string → object
+    if isinstance(mp, str):
+        s = mp.strip()
+        if s.startswith("{") or s.startswith("["):
+            try:
+                mp = json.loads(s)
+            except Exception:  # noqa: BLE001
+                return None
+        else:
+            return None
+
+    # Already-normalized
+    if isinstance(mp, dict) and isinstance(mp.get("blockHeight"), int) and isinstance(mp.get("path"), list):
+        return mp
+
+    # TSC-like: {"nodes": [...], "index": n, "height": h?}
+    if isinstance(mp, dict) and isinstance(mp.get("nodes"), list):
+        height_val = mp.get("height", None)
+        height = int(height_val) if isinstance(height_val, int) else int(block_height or 0)
+        if height <= 0:
+            return None
+        proof: TscMerkleProofApi = {
+            "height": height,
+            "index": int(mp.get("index", 0) or 0),
+            "nodes": mp.get("nodes") or [],
+        }
+        return convert_proof_to_merkle_path(txid, proof)
+
+    return None

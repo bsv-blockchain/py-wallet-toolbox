@@ -73,6 +73,12 @@ from bsv_wallet_toolbox.utils.validation import (
     validate_process_action_args,
     validate_satoshis,
 )
+from bsv_wallet_toolbox.utils.wallet_payment_utils import (
+    internalize_wallet_payment,
+    make_wallet_payment_remittance,
+    send_wallet_payment,
+    send_wallet_payment_ex,
+)
 
 
 class Setup:
@@ -405,6 +411,10 @@ __all__ = [
     "validate_process_action_args",
     "validate_satoshis",
     "validate_seconds_since_epoch",
+    "internalize_wallet_payment",
+    "make_wallet_payment_remittance",
+    "send_wallet_payment",
+    "send_wallet_payment_ex",
     "verify_hex_string",
     "verify_id",
     "verify_integer",

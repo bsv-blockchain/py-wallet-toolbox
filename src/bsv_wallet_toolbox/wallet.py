@@ -282,6 +282,10 @@ class Wallet:
         self.random_vals: list | None = None  # Wave 4: randomVals setting
         self.pending_sign_actions: TTLCache = TTLCache(ttl_seconds=300.0)  # Wave 4: Pending action tracking with TTL
         self.return_txid_only: bool = False  # Wave 4: returnTxidOnly setting for BEEF verification
+        # TS parity: Wallet.ts sets `this.trustSelf = 'known'` and `createAction` applies
+        # `args.options.trustSelf ||= this.trustSelf`.
+        # TrustSelf is NOT a boolean; it is a string union with only "known".
+        self.trust_self: str | None = "known"
 
         # Initialize caches for Discovery methods (Wave 5)
         # Format: {cacheKey: {value: ..., expiresAt: timestamp}}
@@ -313,10 +317,40 @@ class Wallet:
             # Best-effort wiring; storage providers without set_services are tolerated
             pass
 
-        # Initialize default labels and baskets if storage is available
-        # TS parity: TypeScript wallet ensures defaults exist on initialization
-        if self.storage is not None:
-            self._ensure_defaults()
+    def set_services(self, services: WalletServices | None) -> None:
+        """Attach (or clear) Services on the wallet and best-effort wire into storage.
+
+        Why:
+            Some flows (e.g. signer.internalize_action AtomicBEEF normalization) require
+            a Services handle at the Wallet layer. Remote storage clients are also
+            supported; wiring into storage is best-effort.
+        """
+        self.services = services
+        try:
+            if self.services is not None and self.storage is not None and hasattr(self.storage, "set_services"):
+                self.storage.set_services(self.services)
+        except Exception:
+            pass
+
+    def get_services(self) -> WalletServices:
+        """Return configured Services or raise.
+
+        Note:
+            `signer/methods.py` expects Wallet to expose `get_services()` for TS/Go parity.
+        """
+        if self.services is not None:
+            return self.services
+
+        # Best-effort fallback for callers that only wired services into a local StorageProvider.
+        if self.storage is not None and hasattr(self.storage, "get_services"):
+            try:
+                services = self.storage.get_services()
+                if services is not None:
+                    return services
+            except Exception:
+                pass
+
+        raise RuntimeError("Services must be configured on Wallet (pass services=... or call set_services()).")
 
     def get_client_change_key_pair(self) -> dict[str, str]:
         """Get the client change key pair (root key).
@@ -348,43 +382,6 @@ class Wallet:
             "privateKey": str(self.key_deriver._root_private_key),
             "publicKey": str(pub_key),
         }
-
-    def _ensure_defaults(self) -> None:
-        """Ensure default labels and baskets exist in storage.
-
-        Creates default label and default basket for the wallet user if they don't exist.
-        This matches TypeScript behavior where wallet initialization ensures defaults.
-
-        Reference: ts-wallet-toolbox/src/Wallet.ts (constructor initialization)
-        """
-        if not self.storage:
-            return
-
-        try:
-            trace(logger, "wallet.ensure_defaults.start")
-            # Ensure storage is available
-            self.storage.make_available()
-            
-            # Get or create user
-            auth = self._make_auth()
-            user_id = auth.get("userId")
-            trace(logger, "wallet.ensure_defaults.user", auth=auth, userId=user_id)
-            
-            if not user_id:
-                return
-
-            # Ensure default label and basket exist using find_or_insert methods
-            # These methods handle checking if the record already exists
-            trace(logger, "wallet.ensure_defaults.ensure", userId=user_id, label="default", basket="default")
-            self.storage.find_or_insert_tx_label(user_id, "default")
-            self.storage.find_or_insert_output_basket(user_id, "default")
-            trace(logger, "wallet.ensure_defaults.ok", userId=user_id)
-
-        except Exception as e:
-            # Best-effort: If defaults can't be created, continue anyway
-            # Storage might not be fully initialized yet
-            trace(logger, "wallet.ensure_defaults.error", error=str(e), exc_type=type(e).__name__)
-            pass
 
     def _create_lookup_resolver(self) -> Any:
         """Create a lookup resolver for identity operations.
@@ -1341,7 +1338,7 @@ class Wallet:
                 - outputs: list - transaction outputs
                 - labels: list - action labels (optional)
                 - options: dict - transaction options (optional):
-                    - trustSelf: bool - trust wallet's own outputs
+                    - trustSelf: TrustSelf - TS: type TrustSelf = "known"
                     - knownTxids: list - pre-known transaction IDs
                     - isDelayed: bool - allow delayed results
             originator: Optional originator domain name (under 250 bytes)
@@ -1366,8 +1363,15 @@ class Wallet:
             args["options"] = {}
 
         # Apply wallet-level trustSelf setting (TS: args.options.trustSelf ||= this.trustSelf)
-        if "trustSelf" not in args["options"]:
-            args["options"]["trustSelf"] = getattr(self, "trust_self", False)
+        current_trust_self = args["options"].get("trustSelf")
+        if isinstance(current_trust_self, bool):
+            # Back-compat: old Python code used boolean. TS/Go do not.
+            current_trust_self = "known" if current_trust_self else None
+        if not current_trust_self:
+            # TS default: "known"
+            args["options"]["trustSelf"] = getattr(self, "trust_self", "known") or "known"
+        else:
+            args["options"]["trustSelf"] = current_trust_self
 
         # Apply autoKnownTxids if enabled (TS: this.autoKnownTxids && !args.options.knownTxids)
         if self.auto_known_txids and "knownTxids" not in args["options"]:
@@ -1797,6 +1801,30 @@ class Wallet:
 
         auth = {"userId": user_id, "identityKey": identity_key_hex}
         trace(logger, "wallet.make_auth.result", auth=auth)
+        return auth
+
+    def ensure_initialized(self, *, ensure_default_basket: bool = True) -> dict[str, Any]:
+        """Ensure storage-side user state exists (and optionally the default basket).
+
+        Why:
+            Example scripts and consumers should not have to remember which call "implicitly"
+            creates user/basket records. A fresh wallet should be usable with `internalizeAction`
+            as the first operation.
+
+        What it does:
+        - Calls the wallet's auth bootstrap (creates/loads the user row).
+        - Best-effort: creates the default output basket ("default") when supported.
+
+        Returns:
+            The auth dict (`{"userId": int, "identityKey": str}`) used by storage calls.
+        """
+        auth = self._make_auth()
+        if ensure_default_basket and self.storage is not None and hasattr(self.storage, "find_or_insert_output_basket"):
+            try:
+                self.storage.find_or_insert_output_basket(int(auth["userId"]), "default")
+            except Exception:  # noqa: BLE001
+                # Best-effort: some storages may not implement this helper; other flows create it on demand.
+                pass
         return auth
 
     def is_authenticated(
@@ -2965,32 +2993,58 @@ class Wallet:
         # TS: return this.proto.verifySignature(args)
         # Go: return w.proto.VerifySignature(ctx, args, originator)
         if self.proto is not None:
-            # Debug: log input args
-            import sys
-            print(f"[WALLET.verify_signature] Input args keys: {list(args.keys())}", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] protocolID type: {type(args.get('protocolID'))}, value: {args.get('protocolID')}", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] keyID: {args.get('keyID')[:40] if args.get('keyID') else None}...", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] counterparty type: {type(args.get('counterparty'))}, value: {str(args.get('counterparty'))[:60] if args.get('counterparty') else None}...", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] data type: {type(args.get('data'))}, length: {len(args.get('data')) if args.get('data') else 0}", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] signature type: {type(args.get('signature'))}, length: {len(args.get('signature')) if args.get('signature') else 0}", file=sys.stdout, flush=True)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("[Wallet.verify_signature] Input args keys: %s", list(args.keys()))
+                logger.debug(
+                    "[Wallet.verify_signature] protocolID type=%s value=%s",
+                    type(args.get("protocolID")),
+                    args.get("protocolID"),
+                )
+                key_id = args.get("keyID")
+                logger.debug(
+                    "[Wallet.verify_signature] keyID prefix=%s",
+                    (key_id[:40] + "...") if isinstance(key_id, str) and key_id else None,
+                )
+                logger.debug(
+                    "[Wallet.verify_signature] counterparty type=%s value=%s",
+                    type(args.get("counterparty")),
+                    (str(args.get("counterparty"))[:60] + "...") if args.get("counterparty") else None,
+                )
+                logger.debug(
+                    "[Wallet.verify_signature] data type=%s length=%s",
+                    type(args.get("data")),
+                    len(args.get("data")) if args.get("data") else 0,
+                )
+                logger.debug(
+                    "[Wallet.verify_signature] signature type=%s length=%s",
+                    type(args.get("signature")),
+                    len(args.get("signature")) if args.get("signature") else 0,
+                )
             
             # Convert args from py-wallet-toolbox format (camelCase) to py-sdk format (snake_case)
             proto_args = self._convert_verify_signature_args_to_proto_format(args)
             
-            print(f"[WALLET.verify_signature] After conversion proto_args keys: {list(proto_args.keys())}", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] After conversion protocolID type: {type(proto_args.get('protocolID'))}, value: {proto_args.get('protocolID')}", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] After conversion counterparty type: {type(proto_args.get('counterparty'))}, value: {str(proto_args.get('counterparty'))[:60] if proto_args.get('counterparty') else None}...", file=sys.stdout, flush=True)
-            
-            print(f"[WALLET.verify_signature] About to call self.proto.verify_signature", file=sys.stdout, flush=True)
-            print(f"[WALLET.verify_signature] self.proto type: {type(self.proto)}", file=sys.stdout, flush=True)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("[Wallet.verify_signature] After conversion proto_args keys: %s", list(proto_args.keys()))
+                logger.debug(
+                    "[Wallet.verify_signature] After conversion protocolID type=%s value=%s",
+                    type(proto_args.get("protocolID")),
+                    proto_args.get("protocolID"),
+                )
+                logger.debug(
+                    "[Wallet.verify_signature] After conversion counterparty type=%s value=%s",
+                    type(proto_args.get("counterparty")),
+                    (str(proto_args.get("counterparty"))[:60] + "...") if proto_args.get("counterparty") else None,
+                )
+                logger.debug("[Wallet.verify_signature] About to call self.proto.verify_signature")
+                logger.debug("[Wallet.verify_signature] self.proto type=%s", type(self.proto))
             
             try:
                 result = self.proto.verify_signature(proto_args, originator)
-                print(f"[WALLET.verify_signature] proto.verify_signature returned: {result}", file=sys.stdout, flush=True)
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug("[Wallet.verify_signature] proto.verify_signature returned: %s", result)
             except Exception as e:
-                print(f"[WALLET.verify_signature] proto.verify_signature raised exception: {e}", file=sys.stdout, flush=True)
-                import traceback
-                traceback.print_exc()
+                logger.error("[Wallet.verify_signature] proto.verify_signature raised exception: %s", e)
                 raise
             
             # Handle error response from proto
@@ -3214,20 +3268,24 @@ class Wallet:
         # TS: return this.proto.verifyHMAC(args)
         # Go: return w.proto.VerifyHMAC(ctx, args, originator)
         if self.proto is not None:
-            print(f"[Wallet.verify_hmac] Input args: {args}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("[Wallet.verify_hmac] Input args: %s", args)
             proto_args = self._convert_verify_hmac_args_to_proto_format(args)
-            print(f"[Wallet.verify_hmac] Converted proto_args: {proto_args}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("[Wallet.verify_hmac] Converted proto_args: %s", proto_args)
             result = self.proto.verify_hmac(proto_args, originator)
-            print(f"[Wallet.verify_hmac] Proto result: {result}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("[Wallet.verify_hmac] Proto result: %s", result)
 
             # Handle error response from proto
             if "error" in result:
                 error_msg = f"verify_hmac failed: {result['error']}"
-                print(f"[Wallet.verify_hmac] ERROR: {error_msg}")
+                logger.error("[Wallet.verify_hmac] ERROR: %s", error_msg)
                 raise RuntimeError(error_msg)
 
             valid = bool(result.get("valid", False))
-            print(f"[Wallet.verify_hmac] Final result: valid={valid}")
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("[Wallet.verify_hmac] Final result: valid=%s", valid)
             return {"valid": valid}
 
         raise RuntimeError("proto is not configured")
@@ -3313,6 +3371,7 @@ class Wallet:
         # Some servers do not implement SpecOps baskets (they treat the specOp basket
         # as a normal basket name and return 0). In that case, compute balance by
         # listing outputs in the "default" basket and summing satoshis client-side.
+<<<<<<< HEAD
         if not isinstance(total, int) or total == 0:
             try:
                 trace(logger, "wallet.balance.specop.fallback", specOpBasket=specOpWalletBalance)
@@ -3324,6 +3383,38 @@ class Wallet:
                     if isinstance(o, dict):
                         computed += int(o.get("satoshis", 0) or 0)
                 trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=len(outputs))
+=======
+        #
+        # TS parity: Wallet.balance() returns the total value (satoshis) of all
+        # spendable outputs in the 'default' basket. It is NOT limited to "change"
+        # tags; faucet/internalized deposits must be included too.
+        if not isinstance(total, int) or total == 0:
+            try:
+                trace(logger, "wallet.balance.specop.fallback", specOpBasket=specOpWalletBalance)
+                computed = 0
+                offset = 0
+                outputs_count = 0
+
+                while True:
+                    page = self.list_outputs({"basket": "default", "limit": 1000, "offset": offset})
+                    outputs = page.get("outputs", []) if isinstance(page, dict) else []
+                    if not outputs:
+                        break
+
+                    for o in outputs:
+                        if not isinstance(o, dict):
+                            continue
+                        # If spendable is present, only count spendable outputs.
+                        spendable = o.get("spendable")
+                        if spendable is False:
+                            continue
+                        computed += int(o.get("satoshis", 0) or 0)
+                        outputs_count += 1
+
+                    offset += len(outputs)
+
+                trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=outputs_count)
+>>>>>>> fix/for-test-run
                 return {"total": computed}
             except Exception as e:
                 trace(logger, "wallet.balance.specop.fallback.error", error=str(e), exc_type=type(e).__name__)

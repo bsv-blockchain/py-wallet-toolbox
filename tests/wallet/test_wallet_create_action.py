@@ -273,7 +273,7 @@ class TestWalletCreateAction:
         assert call_log["auth"]["userId"] == user_id
         assert "options" in call_log["args"]
         # Options include normalized defaults
-        assert call_log["args"]["options"]["trustSelf"] is False
+        assert call_log["args"]["options"]["trustSelf"] == "known"
         assert result["signableTransaction"] == {"reference": "ref-456", "tx": [0xDE, 0xAD]}
         assert result["noSendChange"] == ["mock.txid.0"]
 

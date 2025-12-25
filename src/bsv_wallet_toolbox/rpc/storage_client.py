@@ -237,6 +237,51 @@ class StorageClient:
             # PublicKey objects etc: fall back to string representation
             return str(value)
 
+        # NOTE (TS parity / python ergonomics):
+        # Remote JSON-RPC servers encode bytes as number[] (list[int]) because JSON has no bytes type.
+        # We must de-serialize those fields back to `bytes` on the client side so downstream code
+        # (py-sdk Beef/Transaction parsers) can operate on real bytes.
+        _BYTES_KEYS: set[str] = {
+            # BEEF / tx payloads
+            "inputBeef",
+            "inputBEEF",
+            "outputBeef",
+            "outputBEEF",
+            "beef",
+            "tx",
+            "rawTx",
+            "atomicBeef",
+            # proofs / ancillary binary blobs
+            "merklePath",
+        }
+
+        def _looks_like_byte_array(value: Any) -> bool:
+            if not isinstance(value, list):
+                return False
+            # empty list can represent empty bytes
+            if len(value) == 0:
+                return True
+            for x in value:
+                if not isinstance(x, int):
+                    return False
+                if x < 0 or x > 255:
+                    return False
+            return True
+
+        def _dejsonify(value: Any, parent_key: str | None = None) -> Any:
+            # Convert known byte-array fields back to bytes
+            if parent_key in _BYTES_KEYS:
+                if isinstance(value, (bytes, bytearray)):
+                    return bytes(value)
+                if _looks_like_byte_array(value):
+                    return bytes(value)
+            if isinstance(value, dict):
+                return {k: _dejsonify(v, k) for k, v in value.items()}
+            if isinstance(value, list):
+                # For non-byte fields, preserve list structure and recurse.
+                return [_dejsonify(v, None) for v in value]
+            return value
+
         # Build request body (TS: body)
         request_body = {
             "jsonrpc": "2.0",
@@ -350,7 +395,7 @@ class StorageClient:
                 raise requests.RequestException(msg)
 
             # Return result on success
-            result = response_data.get("result")
+            result = _dejsonify(response_data.get("result"))
             trace(logger, "rpc.result", method=method, id=request_id, endpoint=self.endpoint_url, result=result)
             logger.debug(
                 f"RPC call succeeded: {method} (id={request_id})",
@@ -381,15 +426,6 @@ class StorageClient:
     # Each method uses _rpc_call to invoke the corresponding server-side method via JSON-RPC.
     # =========================================================================
 
-    def is_available(self) -> bool:
-        """Check if storage is available.
-
-        Returns:
-            True if storage is available, False otherwise
-        """
-        result = self._rpc_call("isAvailable", [])
-        return bool(result)
-
     def make_available(self) -> dict[str, Any]:
         """Make storage available.
 
@@ -415,62 +451,6 @@ class StorageClient:
     def destroy(self) -> None:
         """Destroy storage."""
         self._rpc_call("destroy", [])
-
-    def get_services(self) -> dict[str, Any]:
-        """Get WalletServices.
-
-        Returns:
-            Services configuration
-        """
-        result = self._rpc_call("getServices", [])
-        return result
-
-    def get_settings(self) -> dict[str, Any]:
-        """Get storage settings.
-
-        Returns:
-            Table settings
-        """
-        result = self._rpc_call("getSettings", [])
-        return result
-
-    def set_services(self, services: Any) -> None:
-        """Set wallet services (no-op for remote client).
-
-        For remote storage, services are managed on the server side.
-
-        Args:
-            services: WalletServices instance (ignored)
-        """
-        # For remote storage, services are configured on the server
-        # This is a no-op on the client side
-        pass
-
-    def find_or_insert_tx_label(self, user_id: int, label: str) -> dict[str, Any]:
-        """Find or insert transaction label.
-
-        Args:
-            user_id: User ID
-            label: Label name
-
-        Returns:
-            Label record dict
-        """
-        result = self._rpc_call("findOrInsertTxLabel", [user_id, label])
-        return result
-
-    def find_or_insert_output_basket(self, user_id: int, basket: str) -> dict[str, Any]:
-        """Find or insert output basket.
-
-        Args:
-            user_id: User ID
-            basket: Basket name
-
-        Returns:
-            Basket record dict
-        """
-        result = self._rpc_call("findOrInsertOutputBasket", [user_id, basket])
-        return result
 
     def find_or_insert_user(self, identity_key: str) -> dict[str, Any]:
         """Find or insert user.
@@ -530,7 +510,7 @@ class StorageClient:
         Returns:
             List of output baskets
         """
-        result = self._rpc_call("findOutputBasketsAuth", [auth, args])
+        result = self._rpc_call("findOutputBaskets", [auth, args])
         return result
 
     def find_outputs_auth(

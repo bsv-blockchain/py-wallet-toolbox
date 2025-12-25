@@ -114,14 +114,6 @@ class RemoteStorageClient:
             # Return empty sync state if not implemented
             return {"syncState": {}}
     
-    def find_or_insert_output_basket(self, user_id: int, name: str) -> dict:
-        """Find or insert output basket."""
-        return self._rpc_call("findOrInsertOutputBasket", [user_id, name])
-    
-    def find_or_insert_tx_label(self, user_id: int, label: str) -> dict:
-        """Find or insert tx label."""
-        return self._rpc_call("findOrInsertTxLabel", [user_id, label])
-    
     def list_outputs(self, auth: dict, args: dict) -> dict:
         """List outputs."""
         return self._rpc_call("listOutputs", [auth, args])
@@ -189,20 +181,9 @@ def main():
     remote_user_id = user.get("userId", user.get("user_id", 0))
     show.info("Remote user ID", str(remote_user_id))
     
-    # Setup default basket and label on remote with correct user_id
-    if remote_user_id > 0:
-        try:
-            remote_storage.find_or_insert_output_basket(remote_user_id, "default")
-            show.info("Created basket", f"default (user_id={remote_user_id})")
-        except Exception as e:
-            show.info("Basket exists or error", str(e)[:50])
-        
-        try:
-            remote_storage.find_or_insert_tx_label(remote_user_id, "default")
-            show.info("Created label", f"default (user_id={remote_user_id})")
-        except Exception as e:
-            show.info("Label exists or error", str(e)[:50])
-    else:
+    # NOTE: Do not attempt to create baskets/labels via RPC.
+    # Those helpers are internal to storage implementations and are not part of the remote WalletStorage RPC contract.
+    if remote_user_id <= 0:
         show.error("Failed to get remote user ID")
     
     # Create WalletStorageManager with local as active

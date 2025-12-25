@@ -28,6 +28,10 @@ from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.utils.atomic_beef_utils import (
+    AtomicBeefBuildResult,
+    build_internalize_atomic_beef,
+)
 from bsv_wallet_toolbox.utils.trace import trace
 from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
@@ -145,7 +149,12 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
         trace(logger, "signer.create_action.completed", txid=result.txid)
         beef = Beef(version=1)
         if prior.dcr.get("inputBeef"):
-            input_beef = parse_beef(prior.dcr["inputBeef"])
+            # Remote storage servers encode bytes as list[int] in JSON-RPC.
+            # Normalize to bytes for py-sdk parse_beef().
+            ib = prior.dcr["inputBeef"]
+            if isinstance(ib, list):
+                ib = bytes(ib)
+            input_beef = parse_beef(ib)
             beef.merge_beef(input_beef)
         beef.merge_transaction(prior.tx)
 
@@ -159,7 +168,8 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
         result.no_send_change_output_vouts = prior.dcr.get("noSendChangeOutputVouts")
         if not vargs.get("options", {}).get("returnTxidOnly"):
             # BRC-100 spec: return raw transaction bytes, not BEEF
-            result.tx = prior.tx.serialize()
+            # py-sdk may return memoryview/bytearray depending on implementation; normalize to bytes.
+            result.tx = bytes(prior.tx.serialize())
             trace(logger, "signer.create_action.tx_bytes", tx=result.tx)
 
     trace(
@@ -196,7 +206,10 @@ def build_signable_transaction(
     """
     change_keys = wallet.get_client_change_key_pair()
 
-    input_beef = parse_beef(args["inputBeef"]) if args.get("inputBeef") else None
+    input_beef_raw = args.get("inputBeef")
+    if isinstance(input_beef_raw, list):
+        input_beef_raw = bytes(input_beef_raw)
+    input_beef = parse_beef(input_beef_raw) if input_beef_raw else None
 
     storage_inputs = dctr.get("inputs", [])
     storage_outputs = dctr.get("outputs", [])
@@ -282,9 +295,12 @@ def build_signable_transaction(
                     source_output_index=args_input.get("outpoint", {}).get("vout", 0),
                     source_transaction=source_transaction,
                     unlocking_script=unlock,
-                    sequence=args_input.get("sequence_number", 0xFFFFFFFF),
+                    sequence=args_input.get("sequenceNumber", 0xFFFFFFFF),
                 )
             )
+            # IMPORTANT (TS parity):
+            # When args_input is present, this input is already added. Do NOT add a second placeholder input.
+            continue
         else:
             # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
             if storage_input.get("type") != "P2PKH":
@@ -292,49 +308,56 @@ def build_signable_transaction(
                     f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported'
                 )
 
-        # Record pending storage input metadata for later BRC-29 signing
+        # ---- Storage-provided (wallet-managed) input ----
+        # StorageCreateTransactionSdkInput uses camelCase keys (TS parity / @wallet-infra).
+        # We intentionally do NOT accept snake_case here: the storage boundary must be consistent.
+        source_txid = storage_input.get("sourceTxid") or ""
+        if not isinstance(source_txid, str) or len(source_txid) != 64:
+            raise WalletError(
+                "storage_input.sourceTxid must be a 64-hex txid. "
+                f"vin={storage_input.get('vin')} value={source_txid!r}"
+            )
+
+        # Record pending storage input metadata for later BRC-29 signing (TS parity)
+        derivation_prefix_b64 = storage_input.get("derivationPrefix") or ""
+        derivation_suffix_b64 = storage_input.get("derivationSuffix") or ""
         pending_storage_inputs.append(
             PendingStorageInput(
                 vin=len(tx.inputs),
-                derivation_prefix=_decode_remittance_component(
-                    storage_input.get("derivation_prefix", "")
-                ),
-                derivation_suffix=_decode_remittance_component(
-                    storage_input.get("derivation_suffix", "")
-                ),
-                unlocker_pub_key=storage_input.get("sender_identity_key", ""),
-                source_satoshis=storage_input.get("source_satoshis", 0),
-                locking_script=storage_input.get("source_locking_script", ""),
+                derivation_prefix=_decode_remittance_component(derivation_prefix_b64),
+                derivation_suffix=_decode_remittance_component(derivation_suffix_b64),
+                unlocker_pub_key=storage_input.get("senderIdentityKey") or "",
+                source_satoshis=storage_input.get("sourceSatoshis") or 0,
+                locking_script=storage_input.get("sourceLockingScript") or "",
             )
         )
 
-        # Attach source transaction / metadata for SABPPP inputs
-        source_tx_binary = storage_input.get("source_transaction")
-        source_tx = Transaction.from_hex(source_tx_binary) if source_tx_binary else None
+        # Attach source transaction / metadata for SABPPP inputs (optional)
+        source_tx_raw = storage_input.get("sourceTransaction")
+        if isinstance(source_tx_raw, list):
+            source_tx_raw = bytes(source_tx_raw)
+        source_tx = Transaction.from_hex(source_tx_raw) if isinstance(source_tx_raw, (bytes, bytearray, str)) and source_tx_raw else None
 
         # Create a TransactionInput placeholder; unlocking_script will be filled later via BRC-29 template
         tx_input = TransactionInput(
-            source_txid=storage_input.get("source_txid", ""),
-            source_output_index=storage_input.get("source_vout", 0),
+            source_txid=source_txid,
+            source_output_index=storage_input.get("sourceVout") or 0,
             source_transaction=source_tx,
             unlocking_script=Script(),
             sequence=0xFFFFFFFF,
         )
         # Populate satoshis and locking_script so that template.sign() can compute correct sighash
-        tx_input.satoshis = storage_input.get("source_satoshis", 0)
-        ls_hex = storage_input.get("source_locking_script", "")
+        tx_input.satoshis = storage_input.get("sourceSatoshis") or 0
+        ls_hex = storage_input.get("sourceLockingScript") or ""
         if isinstance(ls_hex, str) and ls_hex:
             try:
-                # py-bsv Script コンストラクタは hex 文字列を直接受け取る
                 tx_input.locking_script = Script(ls_hex)
             except Exception:  # noqa: BLE001
                 # Debug-only: locking script parse failure should surface as WalletError later if critical
                 pass
 
         tx.add_input(tx_input)
-        total_change_inputs += validate_satoshis(
-            storage_input.get("source_satoshis", 0), "storage_input.source_satoshis"
-        )
+        total_change_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
 
     # Calculate amount (total non-foreign inputs minus change outputs)
     total_change_outputs = sum(
@@ -549,7 +572,8 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         "isDelayed": vargs.get("isDelayed"),
         "reference": prior.reference,
         "txid": prior.tx.txid(),
-        "rawTx": prior.tx.serialize(),
+        # Normalize to bytes to ensure RPC layer serializes as byte-array, not string.
+        "rawTx": bytes(prior.tx.serialize()),
         "sendWith": vargs.get("options", {}).get("sendWith", []) if vargs.get("isSendWith") else [],
     }
 
@@ -651,7 +675,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     trace(logger, "signer.internalize_action.start", auth=auth, args=args)
     # Validate arguments
     validate_internalize_action_args(args)
-    vargs = args
+    vargs: dict[str, Any] = args
 
     # Validate and extract atomic BEEF
     tx_bytes = vargs.get("tx")
@@ -660,9 +684,11 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     subject_txid: str | None = None
     subject_tx: Transaction | None = None
     if tx_bytes:
+        if not isinstance(tx_bytes, (bytes, bytearray)):
+            raise WalletError("tx is not valid AtomicBEEF: expected bytes")
         try:
             trace(logger, "signer.internalize_action.parse_beef.call")
-            ab, subject_txid, subject_tx = parse_beef_ex(tx_bytes)
+            ab, subject_txid, subject_tx = parse_beef_ex(bytes(tx_bytes))
             trace(
                 logger,
                 "signer.internalize_action.parse_beef.ok",
@@ -673,7 +699,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
             trace(logger, "signer.internalize_action.parse_beef.error", error=str(exc), exc_type=type(exc).__name__)
             raise WalletError("tx is not valid AtomicBEEF") from exc
     else:
-        ab = Beef(version=1)
+        ab = Beef(version=BEEF_V2)
 
     # Note: Known txids (BRC-95 SpecOp support) are available in vargs.get("knownTxids", [])
     # They can be used for proof validation if needed
@@ -690,6 +716,32 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         raise WalletError(f"tx is not valid AtomicBEEF with newest txid of {txid}")
 
     trace(logger, "signer.internalize_action.target_tx", txid=txid, outputs_len=len(getattr(tx, "outputs", []) or []))
+
+    # IMPORTANT (TS parity / Go compatibility):
+    # Always normalize outgoing payload to a canonical BEEF_V2 AtomicBEEF binary.
+    # Some parsers are permissive and may accept rawTx bytes, but remote storage servers
+    # expect AtomicBEEF (BEEF.fromBinary(...) compatible) and will reject rawTx.
+    build_result: AtomicBeefBuildResult | None = None
+    if hasattr(wallet, "get_services") and callable(wallet.get_services):
+        try:
+            services = wallet.get_services()
+            build_result = build_internalize_atomic_beef(services, tx, txid)
+        except Exception:  # noqa: BLE001
+            build_result = None
+    if build_result is None:
+        raise WalletError("unable to build AtomicBEEF for internalizeAction (services unavailable)")
+
+    vargs["tx"] = build_result.atomic_bytes
+    trace(
+        logger,
+        "signer.internalize_action.atomic_beef.normalized",
+        txid=txid,
+        raw_len=len(tx.serialize()),
+        atomic_len=len(build_result.atomic_bytes),
+        has_merkle_path=build_result.has_merkle_path,
+        parents_total=build_result.parents_total,
+        parents_with_proof=build_result.parents_with_proof,
+    )
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]
