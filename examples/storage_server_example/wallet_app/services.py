@@ -14,10 +14,16 @@ import logging
 import os
 from typing import Optional
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # Load .env file if it exists
+except ImportError:
+    pass  # python-dotenv not available, use environment variables directly
+
 from sqlalchemy import create_engine
 from bsv_wallet_toolbox.rpc import StorageServer
 from bsv_wallet_toolbox.storage import StorageProvider
-from bsv_wallet_toolbox.services import WalletServices
+from bsv_wallet_toolbox.services import Services
 from bsv_wallet_toolbox.wallet import Wallet as ToolboxWallet
 from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
 from bsv.keys import PrivateKey
@@ -134,11 +140,25 @@ def get_storage_server() -> StorageServer:
 
         # Initialize WalletServices for broadcast functionality
         try:
-            wallet_services = WalletServices(chain='test')
+            from bsv_wallet_toolbox.services.services import create_default_options
+            from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
+
+            # Create default options and configure API keys from environment
+            options: WalletServicesOptions = create_default_options('test')
+            api_key = os.getenv("TAAL_ARC_API_KEY") or os.getenv("TEST_TAAL_API_KEY") or options.get("arcApiKey")
+            options["arcApiKey"] = api_key
+            options["arcHeaders"] = options.get("arcHeaders")
+            # Prefer TAAL ARC for testnet, avoid GorillaPool/Bitails unless configured
+            options["bitailsApiKey"] = None
+            options["arcGorillaPoolUrl"] = None
+            options["arcGorillaPoolApiKey"] = None
+
+            wallet_services = Services(options)
             storage_provider.set_services(wallet_services)
-            logger.info("WalletServices initialized for testnet (broadcast enabled)")
         except Exception as e:
-            logger.warning(f"WalletServices initialization failed: {e}")
+            logger.error(f"WalletServices initialization failed: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
         # Create StorageServer with StorageProvider auto-registration
         _storage_server = StorageServer(storage_provider=storage_provider)

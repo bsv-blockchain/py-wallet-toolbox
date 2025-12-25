@@ -1471,7 +1471,8 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
 
     # Step 1: Fetch ProvenTxReq records for each txid
     for txid in txids:
-        req_record = storage.findOne("ProvenTxReq", {"txid": txid, "userId": user_id, "isDeleted": False})
+        req_records = storage.find_proven_tx_reqs({"txid": txid, "user_id": user_id, "is_deleted": False})
+        req_record = req_records[0] if req_records else None
 
         if not req_record:
             # Transaction not found in requests
@@ -1482,9 +1483,9 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
             }
             continue
 
-        # Step 2: Extract BEEF from request
-        beef = req_record.get("beef", "")
+        beef = req_record.get("inputBeef") or req_record.get("input_beef") or getattr(req_record, 'input_beef', None)
 
+        # Step 2: Check BEEF is available
         if not beef:
             result["failed_txids"].append(txid)
             result["results"][txid] = {
@@ -1494,37 +1495,61 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
             continue
 
         # Step 3: Post BEEF to network services
-        # Call ARC submitTransaction API (or equivalent)
+        # Use WalletServices for broadcasting
         try:
             post_status = "unsent"
-            if requests:
-                # Try to submit to ARC service
-                arc_url = os.environ.get("ARC_URL", "http://localhost:8080")
-                response = requests.post(
-                    f"{arc_url}/v1/transaction",
-                    json={"beef": beef},
-                    headers={"Content-Type": "application/json"},
-                    timeout=30,
-                )
-                if response.status_code == 200:
-                    post_status = "sent"
-                elif response.status_code == 409:
-                    post_status = "double_spend"
-                elif response.status_code in (400, 422):
+            services = storage.get_services()
+            if services:
+                # Use WalletServices.post_beef for broadcasting
+                from bsv.transaction import Transaction
+                try:
+                    # Parse BEEF to get transaction
+                    from bsv.transaction.beef import parse_beef_ex
+                    # beef might be bytes or hex string
+                    if isinstance(beef, str):
+                        beef_bytes = bytes.fromhex(beef)
+                    else:
+                        beef_bytes = beef
+                    beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
+                    if subject_tx:
+                        # Temporarily comment out the detailed output inspection to avoid attribute errors
+                        # for i, inp in enumerate(subject_tx.inputs):
+                        # for i, out in enumerate(subject_tx.outputs):
+
+                    if subject_tx:
+                        # Broadcast using services
+                        # services.post_beef expects hex string, not bytes
+                        beef_hex = beef_bytes.hex()
+                        result = services.post_beef(beef_hex)
+
+                        if result:
+                            # result is a single object, not a list
+                            if result.get("accepted"):
+                                post_status = "sent"
+                            elif result.get("rate_limited"):
+                                post_status = "rate_limited"
+                            elif result.get("doubleSpend"):
+                                post_status = "double_spend"
+                            else:
+                                post_status = "failed"
+                        else:
+                            post_status = "failed"
+                    else:
+                        post_status = "failed"
+                except Exception as parse_err:
                     post_status = "failed"
-                else:
-                    post_status = "failed"
-        except Exception:
+            else:
+                post_status = "failed"
+        except Exception as broadcast_err:
             # Network error - keep as unsent for retry
             post_status = "unsent"
 
         # Step 4: Update status in storage
-        storage.update(
-            "ProvenTxReq",
-            {"txid": txid, "userId": user_id},
+        storage.update_proven_tx_req(
+            req_record["proven_tx_req_id"],
             {
                 "status": post_status,
-                "lastUpdate": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             },
         )
 

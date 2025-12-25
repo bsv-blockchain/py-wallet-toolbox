@@ -756,9 +756,6 @@ def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonRes
             raise ValueError("Signature is empty")
         
         # Log signature details for debugging (use print for visibility)
-        print(f"[AUTH DEBUG] Signature details: length={len(signature_array)}, first_byte=0x{signature_array[0]:02x} ({signature_array[0]})")
-        print(f"[AUTH DEBUG] First 10 bytes: {[hex(b) for b in signature_array[:10]]}")
-        print(f"[AUTH DEBUG] First 10 bytes (decimal): {signature_array[:10]}")
         first_byte_hex = f"0x{signature_array[0]:02x}"
         first_10_hex = [hex(b) for b in signature_array[:10]]
         logger.info(f"[AUTH] Signature details: length={len(signature_array)}, first_byte={first_byte_hex}, first_10_bytes={first_10_hex}")
@@ -791,11 +788,7 @@ def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonRes
         }
         
         first_byte_info = f"0x{signature_array[0]:02x}" if signature_array else "N/A"
-        print(f"[AUTH DEBUG] Sending initialResponse with signature length: {len(signature_array)} bytes, first byte: {first_byte_info}")
         logger.info(f"[AUTH] Sending initialResponse with signature length: {len(signature_array)} bytes, first byte: {first_byte_info}")
-        
-        # Debug: Log the signature being sent
-        print(f"[AUTH DEBUG] Sending signature to client: {signature_array[:10]}... (length: {len(signature_array)})")
 
         # Use BytesEncoder to ensure proper serialization of byte arrays
         response = JsonResponse(response_data, encoder=BytesEncoder)
