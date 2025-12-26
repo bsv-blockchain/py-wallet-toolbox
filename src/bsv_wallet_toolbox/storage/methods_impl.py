@@ -1046,9 +1046,6 @@ def get_beef_for_transaction(
         - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
         - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
-    if not storage:
-        raise WalletError("storage is required for get_beef_for_transaction")
-
     if not txid or len(txid) != 64:
         raise WalletError("txid must be a 64-character hex string")
 

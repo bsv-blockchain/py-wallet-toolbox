@@ -3,24 +3,28 @@
 Re-exports from sub-modules.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
+
+from bsv_wallet_toolbox.utils.case_utils import convert_keys_to_snake_case
 
 # Note: Most storage methods are implemented as methods on the StorageProvider class.
 # Import StorageProvider and use its methods (e.g., storage_provider.process_action()).
 # The functions exported here are wrappers that delegate to StorageProvider methods.
 
 from .generate_change import (
-    GenerateChangeSdkInput,
-    GenerateChangeSdkOutput,
     GenerateChangeSdkChangeInput,
     GenerateChangeSdkChangeOutput,
+    GenerateChangeSdkInput,
+    GenerateChangeSdkOutput,
     GenerateChangeSdkParams,
     GenerateChangeSdkResult,
-    StorageFeeModel,
-    generate_change_sdk,
     InsufficientFundsError,
     InternalError,
+    StorageFeeModel,
+    generate_change_sdk,
 )
 
 # Type definitions for storage method arguments and results
@@ -72,7 +76,11 @@ class StorageProcessActionResults:
 # These maintain backward compatibility for code expecting standalone functions
 
 
-def process_action(storage: Any, auth: dict[str, Any], args: dict[str, Any] | StorageProcessActionArgs) -> StorageProcessActionResults:
+def process_action(
+    storage: Any,
+    auth: dict[str, Any],
+    args: dict[str, Any] | StorageProcessActionArgs,
+) -> StorageProcessActionResults:
     """Process a transaction action (finalize & sign).
     
     Wrapper around StorageProvider.process_action().
@@ -174,7 +182,7 @@ def get_beef_for_transaction(
         - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
         - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
-    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl
+    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl  # noqa: PLC0415
 
     return _impl(storage, auth or {}, txid, options)
 
@@ -192,7 +200,10 @@ def review_status(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
     
     Wrapper around StorageProvider.review_status().
     """
-    return storage.review_status(args)
+    result = storage.review_status(args)
+    if result is None:
+        return {}
+    return convert_keys_to_snake_case(result)
 
 
 def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
@@ -200,7 +211,10 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     
     Wrapper around StorageProvider.purge_data().
     """
-    return storage.purge_data(params)
+    result = storage.purge_data(params)
+    if result is None:
+        return {}
+    return convert_keys_to_snake_case(result)
 
 
 def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
@@ -219,7 +233,7 @@ def generate_change(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     raise NotImplementedError("Use generate_change_sdk() from generate_change module instead")
 
 
-__all__ = [
+__all__ = [  # noqa: RUF022
     # Types from generate_change
     "GenerateChangeSdkInput",
     "GenerateChangeSdkOutput",

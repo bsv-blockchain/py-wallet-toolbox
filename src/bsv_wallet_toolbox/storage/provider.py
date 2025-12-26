@@ -2585,9 +2585,7 @@ class StorageProvider:
             try:
                 o = session.get(Output, aci.output_id)
                 if o:
-                    # Create a detached copy or dict representation to avoid session issues
-                    o_dict = {c.key: getattr(o, c.key) for c in inspect(o).mapper.column_attrs}
-                    allocated_change_outputs.append(o_dict)
+                    allocated_change_outputs.append(self._model_to_dict(o))
             finally:
                 session.close()
 
@@ -3098,6 +3096,30 @@ class StorageProvider:
         "settings": Settings,
     }
 
+    # Explicit overrides for snake_case table identifiers that do not convert cleanly
+    _TABLE_NAME_OVERRIDES: ClassVar[dict[str, str]] = {
+        "certificate_field": "certificateField",
+        "certificate_fields": "certificateField",
+        "monitor_event": "monitorEvent",
+        "output_basket": "outputBasket",
+        "output_tag": "outputTag",
+        "output_tag_map": "outputTagMap",
+        "proven_tx": "provenTx",
+        "proven_tx_req": "provenTxReq",
+        "sync_state": "syncState",
+        "tx_label": "txLabel",
+        "tx_label_map": "txLabelMap",
+    }
+
+    @staticmethod
+    def _snake_to_camel_case(value: str) -> str:
+        """Convert snake_case table identifiers to camelCase."""
+        if not value or "_" not in value:
+            return value
+        parts = value.split("_")
+        first, rest = parts[0], parts[1:]
+        return first + "".join(segment[:1].upper() + segment[1:] for segment in rest if segment)
+
     def _get_model(self, table_name: str) -> type:
         """Return ORM model class for the given logical table name.
 
@@ -3122,9 +3144,16 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageReaderWriter.ts
         """
-        if table_name not in self._MODEL_MAP:
-            raise ValueError(f"Unknown table: {table_name}")
-        return self._MODEL_MAP[table_name]
+        if table_name in self._MODEL_MAP:
+            return self._MODEL_MAP[table_name]
+
+        normalized = self._TABLE_NAME_OVERRIDES.get(table_name)
+        if not normalized:
+            normalized = self._snake_to_camel_case(table_name)
+
+        if normalized in self._MODEL_MAP:
+            return self._MODEL_MAP[normalized]
+        raise ValueError(f"Unknown table: {table_name}")
 
     def _insert_generic(self, table_name: str, data: dict[str, Any], trx: Any = None) -> int:
         """Insert a row into the specified table, normalising key casing.
