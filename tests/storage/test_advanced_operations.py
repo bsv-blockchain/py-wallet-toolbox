@@ -16,7 +16,7 @@ class TestAdvancedStorageOperations:
 
         # Mock pending transactions
         provider.find_transactions = Mock(return_value=[
-            {"txid": "abc123", "transaction_id": 1, "status": "pending"}
+            {"txid": "abc123", "transactionId": 1, "status": "pending"}
         ])
 
         # Mock service response
@@ -41,7 +41,7 @@ class TestAdvancedStorageOperations:
         from datetime import datetime, timezone, timedelta
         old_time = datetime.now(timezone.utc) - timedelta(seconds=10)  # 10 seconds ago
         provider.find_transactions = Mock(return_value=[
-            {"txid": "abc123", "transaction_id": 1, "status": "waiting", "created_at": old_time}
+            {"txid": "abc123", "transactionId": 1, "status": "waiting", "createdAt": old_time}
         ])
 
         # Mock raw transaction
@@ -66,7 +66,7 @@ class TestAdvancedStorageOperations:
         from datetime import datetime, timezone
         old_time = datetime.now(timezone.utc)
         provider.find_transactions = Mock(return_value=[
-            {"transaction_id": 1, "status": "processing", "created_at": old_time}
+            {"transactionId": 1, "status": "processing", "createdAt": old_time}
         ])
 
         # Import and call the actual method
@@ -83,7 +83,7 @@ class TestAdvancedStorageOperations:
 
         # Mock failed transactions
         provider.find_transactions = Mock(return_value=[
-            {"txid": "abc123", "transaction_id": 1, "status": "failed"}
+            {"txid": "abc123", "transactionId": 1, "status": "failed"}
         ])
 
         # Mock service showing transaction is now confirmed

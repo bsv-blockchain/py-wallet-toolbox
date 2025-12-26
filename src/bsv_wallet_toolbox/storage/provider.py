@@ -580,8 +580,8 @@ class StorageProvider:
                     "userId": u.user_id,
                     "identityKey": u.identity_key,
                     "activeStorage": u.active_storage or "",
-                    "created_at": u.created_at.isoformat() if u.created_at else None,
-                    "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+                    "createdAt": u.created_at.isoformat() if u.created_at else None,
+                    "updatedAt": u.updated_at.isoformat() if u.updated_at else None,
                 },
                 "isNew": is_new,
             }
@@ -2036,22 +2036,22 @@ class StorageProvider:
         ctx = {
             "xinputs": existing_inputs,
             "xoutputs": xoutputs,
-            "change_basket": change_basket,
-            "change_basket_id": change_basket_id,
-            "no_send_change_in": no_send_change_in,
-            "available_change_count": available_change_count,
-            "fee_model": fee_model,
-            "transaction_id": new_tx.transaction_id,
+            "changeBasket": change_basket,
+            "changeBasketId": change_basket_id,
+            "noSendChangeIn": no_send_change_in,
+            "availableChangeCount": available_change_count,
+            "feeModel": fee_model,
+            "transactionId": new_tx.transaction_id,
         }
 
         funding_result = self.fund_new_transaction_sdk(user_id, vargs, ctx)
-        allocated_change = funding_result["allocated_change"]
-        change_outputs = funding_result["change_outputs"]
-        derivation_prefix = funding_result["derivation_prefix"]
-        max_possible_satoshis_adjustment = funding_result["max_possible_satoshis_adjustment"]
+        allocated_change = funding_result["allocatedChange"]
+        change_outputs = funding_result["changeOutputs"]
+        derivation_prefix = funding_result["derivationPrefix"]
+        max_possible_satoshis_adjustment = funding_result["maxPossibleSatoshisAdjustment"]
 
         if max_possible_satoshis_adjustment:
-            idx = max_possible_satoshis_adjustment["fixed_output_index"]
+            idx = max_possible_satoshis_adjustment["fixedOutputIndex"]
             sats = max_possible_satoshis_adjustment["satoshis"]
             if ctx["xoutputs"][idx].satoshis != MAX_POSSIBLE_SATOSHIS:
                 raise InternalError("Max possible output index mismatch")
@@ -2064,7 +2064,7 @@ class StorageProvider:
 
         outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs, derivation_prefix)
         outputs_payload = outputs_result["outputs"]
-        change_vouts = outputs_result["change_vouts"]
+        change_vouts = outputs_result["changeVouts"]
 
         input_beef_bytes = self._merge_allocated_change_beefs(user_id, vargs, allocated_change, storage_beef_bytes)
 
@@ -2168,7 +2168,7 @@ class StorageProvider:
         outputs_payload = []
         change_vouts = []
         created_at = self._now()
-        change_basket_id = ctx["change_basket_id"]
+        change_basket_id = ctx["changeBasketId"]
         
         for xo in ctx["xoutputs"]:
             basket_id = None
@@ -2178,7 +2178,7 @@ class StorageProvider:
             
             locking_script_bytes = xo.locking_script
             output_id = self.insert_output({
-                "transactionId": ctx["transaction_id"],
+                "transactionId": ctx["transactionId"],
                 "userId": user_id,
                 "satoshis": xo.satoshis,
                 "lockingScript": locking_script_bytes,
@@ -2215,13 +2215,13 @@ class StorageProvider:
             })
 
         next_vout = len(outputs_payload)
-        change_basket = ctx["change_basket"]
+        change_basket = ctx["changeBasket"]
         
         for co in change_outputs:
             derivation_suffix = self._generate_derivation_suffix()
             
             output_id = self.insert_output({
-                "transactionId": ctx["transaction_id"],
+                "transactionId": ctx["transactionId"],
                 "userId": user_id,
                 "satoshis": co.satoshis,
                 "lockingScript": b"",
@@ -2255,7 +2255,7 @@ class StorageProvider:
             })
             next_vout += 1
             
-        return {"outputs": outputs_payload, "change_vouts": change_vouts}
+        return {"outputs": outputs_payload, "changeVouts": change_vouts}
 
     def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes:
         return storage_beef_bytes
@@ -2265,8 +2265,8 @@ class StorageProvider:
         vin = 0
         
         for xi in ctx["xinputs"]:
-            source_txid = xi["source_txid"]
-            source_vout = xi["source_vout"]
+            source_txid = xi["sourceTxid"]
+            source_vout = xi["sourceVout"]
             
             session = self.SessionLocal()
             try:
@@ -2278,8 +2278,8 @@ class StorageProvider:
                 o = session.execute(q).scalar_one_or_none()
                 if o:
                     o.spendable = False
-                    o.spent_by = ctx["transaction_id"]
-                    o.spending_description = xi.get("input_description")
+                    o.spent_by = ctx["transactionId"]
+                    o.spending_description = xi.get("inputDescription")
                     session.add(o)
                     session.commit()
             finally:
@@ -2287,11 +2287,11 @@ class StorageProvider:
 
             inputs.append({
                 "vin": vin,
-                "source_txid": source_txid,
-                "source_vout": source_vout,
-                "source_satoshis": xi["source_satoshis"],
-                "source_locking_script": xi["source_locking_script"],
-                "unlocking_script_length": xi.get("unlocking_script_length"),
+                "sourceTxid": source_txid,
+                "sourceVout": source_vout,
+                "sourceSatoshis": xi["sourceSatoshis"],
+                "sourceLockingScript": xi["sourceLockingScript"],
+                "unlockingScriptLength": xi.get("unlockingScriptLength"),
                 "providedBy": xi.get("providedBy", "you"),
             })
             vin += 1
@@ -2300,19 +2300,19 @@ class StorageProvider:
             inputs.append(
                 {
                     "vin": vin,
-                    "source_txid": ac["txid"],
-                    "source_vout": ac["vout"],
-                    "source_satoshis": ac["satoshis"],
-                    "source_locking_script": (ac["locking_script"] or b"").hex(),
-                    "unlocking_script_length": 107,
-                    "providedBy": ac["provided_by"] or "storage",
+                    "sourceTxid": ac["txid"],
+                    "sourceVout": ac["vout"],
+                    "sourceSatoshis": ac["satoshis"],
+                    "sourceLockingScript": (ac["lockingScript"] or b"").hex(),
+                    "unlockingScriptLength": 107,
+                    "providedBy": ac["providedBy"] or "storage",
                     "type": ac["type"],
-                    "derivation_prefix": ac["derivation_prefix"],
-                    "derivation_suffix": ac["derivation_suffix"],
+                    "derivationPrefix": ac["derivationPrefix"],
+                    "derivationSuffix": ac["derivationSuffix"],
                     # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
                     # This allows signer.build_signable_transaction to derive the correct
                     # BRC-29 private key using sender_identity_key as counterparty when present.
-                    "sender_identity_key": ac.get("sender_identity_key") or "",
+                    "senderIdentityKey": ac.get("senderIdentityKey") or "",
                 }
             )
             vin += 1
@@ -2348,27 +2348,27 @@ class StorageProvider:
                     raise InvalidParameterError(f"inputs[{vin}]", "change outputs are managed by wallet")
 
                 unlocking_len = (
-                    user_input.get("unlocking_script_length")
+                    user_input.get("unlockingScriptLength")
                     or user_input.get("unlockingScriptLength")
-                    or user_input.get("unlockingScript_length")
+                    or user_input.get("unlockingScriptLength")
                     or 0
                 )
 
                 xinputs.append(
                     {
                         "vin": vin,
-                        "source_txid": txid,
-                        "source_vout": vout,
-                        "source_satoshis": output.satoshis or 0,
-                        "source_locking_script": (output.locking_script or b"").hex(),
-                        "source_transaction": None,
-                        "unlocking_script_length": unlocking_len or 0,
+                        "sourceTxid": txid,
+                        "sourceVout": vout,
+                        "sourceSatoshis": output.satoshis or 0,
+                        "sourceLockingScript": (output.locking_script or b"").hex(),
+                        "sourceTransaction": None,
+                        "unlockingScriptLength": unlocking_len or 0,
                         "providedBy": output.provided_by or "you",
                         "type": output.type or "custom",
-                        "derivation_prefix": output.derivation_prefix or "",
-                        "derivation_suffix": output.derivation_suffix or "",
-                        "sender_identity_key": output.sender_identity_key or "",
-                        "spending_description": user_input.get("inputDescription"),
+                        "derivationPrefix": output.derivation_prefix or "",
+                        "derivationSuffix": output.derivation_suffix or "",
+                        "senderIdentityKey": output.sender_identity_key or "",
+                        "spendingDescription": user_input.get("inputDescription"),
                     }
                 )
         finally:
@@ -2517,8 +2517,8 @@ class StorageProvider:
     def fund_new_transaction_sdk(self, user_id: int, vargs: Any, ctx: dict[str, Any]) -> dict[str, Any]:
         fixed_inputs = [
             GenerateChangeSdkInput(
-                satoshis=xi.get("source_satoshis", 0),
-                unlocking_script_length=xi.get("unlocking_script_length", 0),
+                satoshis=xi.get("sourceSatoshis", 0),
+                unlocking_script_length=xi.get("unlockingScriptLength", 0),
             )
             for xi in ctx["xinputs"]
         ]
@@ -2531,7 +2531,7 @@ class StorageProvider:
             for xo in ctx["xoutputs"]
         ]
 
-        change_basket = ctx["change_basket"]
+        change_basket = ctx["changeBasket"]
         # Handle both dict and object forms of change_basket
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
         min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
@@ -2539,12 +2539,12 @@ class StorageProvider:
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
             fixed_outputs=fixed_outputs,
-            fee_model=ctx["fee_model"],
+            fee_model=ctx["feeModel"],
             change_initial_satoshis=min_utxo_value,
             change_first_satoshis=max(1, round(min_utxo_value / 4)),
             change_locking_script_length=25,
             change_unlocking_script_length=107,
-            target_net_count=(change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5) - ctx["available_change_count"],
+            target_net_count=(change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5) - ctx["availableChangeCount"],
             random_vals=vargs.random_vals,
         )
 
@@ -2555,7 +2555,7 @@ class StorageProvider:
                 target_satoshis,
                 exact_satoshis,
                 not vargs.is_delayed,
-                ctx["transaction_id"],
+                ctx["transactionId"],
             )
             if o:
                 # Handle both dict and object forms
@@ -2592,10 +2592,10 @@ class StorageProvider:
                 session.close()
 
         return {
-            "allocated_change": allocated_change_outputs,
-            "change_outputs": result.change_outputs,
-            "derivation_prefix": self._generate_derivation_suffix(),  # Go uses same length for prefix
-            "max_possible_satoshis_adjustment": result.max_possible_satoshis_adjustment,
+            "allocatedChange": allocated_change_outputs,
+            "changeOutputs": result.change_outputs,
+            "derivationPrefix": self._generate_derivation_suffix(),  # Go uses same length for prefix
+            "maxPossibleSatoshisAdjustment": result.max_possible_satoshis_adjustment,
         }
 
     # ------------------------------------------------------------------
@@ -3082,19 +3082,19 @@ class StorageProvider:
     _MODEL_MAP: ClassVar[dict[str, type]] = {
         "user": User,
         "certificate": Certificate,
-        "certificate_field": CertificateField,
+        "certificateField": CertificateField,
         "commission": Commission,
-        "monitor_event": MonitorEvent,
+        "monitorEvent": MonitorEvent,
         "output": Output,
-        "output_basket": OutputBasket,
-        "output_tag": OutputTag,
-        "output_tag_map": OutputTagMap,
-        "proven_tx": ProvenTx,
-        "proven_tx_req": ProvenTxReq,
-        "sync_state": SyncState,
+        "outputBasket": OutputBasket,
+        "outputTag": OutputTag,
+        "outputTagMap": OutputTagMap,
+        "provenTx": ProvenTx,
+        "provenTxReq": ProvenTxReq,
+        "syncState": SyncState,
         "transaction": TransactionModel,
-        "tx_label": TxLabel,
-        "tx_label_map": TxLabelMap,
+        "txLabel": TxLabel,
+        "txLabelMap": TxLabelMap,
         "settings": Settings,
     }
 
@@ -3850,7 +3850,7 @@ class StorageProvider:
             - toolbox/go-wallet-toolbox/pkg/storage/internal/sync/find_or_insert_sync_state.go
         """
         # Try to find existing sync state
-        query = {"user_id": user_id, "storage_identity_key": storage_identity_key}
+        query = {"userId": user_id, "storageIdentityKey": storage_identity_key}
         existing = self.findOne("sync_state", query)
 
         if existing:
@@ -3860,14 +3860,14 @@ class StorageProvider:
         now = datetime.utcnow().isoformat()
 
         new_sync_state = {
-            "user_id": user_id,
-            "storage_identity_key": storage_identity_key,
-            "storage_name": storage_name,
+            "userId": user_id,
+            "storageIdentityKey": storage_identity_key,
+            "storageName": storage_name,
             "when": now,
-            "sync_version": 0,
-            "sync_map": "{}",  # Empty sync map initially
-            "created_at": now,
-            "updated_at": now,
+            "syncVersion": 0,
+            "syncMap": "{}",  # Empty sync map initially
+            "createdAt": now,
+            "updatedAt": now,
         }
 
         # Insert and return
@@ -4074,21 +4074,21 @@ class StorageProvider:
         # Get all users
         users = self.find_users()
         for user in users:
-            auth = {"userId": user["user_id"]}
+            auth = {"userId": user["userId"]}
             try:
                 # TODO: Implement review_status logic per user
                 # This should review and update transaction statuses for aged transactions
-                res = {"updated_count": 0, "aged_count": 0, "log": ""}
-                updated_count += res.get("updated_count", 0)
-                aged_count += res.get("aged_count", 0)
+                res = {"updatedCount": 0, "agedCount": 0, "log": ""}
+                updated_count += res.get("updatedCount", 0)
+                aged_count += res.get("agedCount", 0)
                 if res.get("log"):
-                    log += f"[User {user['user_id']}] {res['log']}\n"
+                    log += f"[User {user['userId']}] {res['log']}\n"
             except Exception as e:
-                log += f"[User {user['user_id']}] Error: {e!s}\n"
+                log += f"[User {user['userId']}] Error: {e!s}\n"
 
         return {
-            "updated_count": updated_count,
-            "aged_count": aged_count,
+            "updatedCount": updated_count,
+            "agedCount": aged_count,
             "log": log,
         }
 
@@ -4513,10 +4513,10 @@ class StorageProvider:
             # Add proof request metadata
             proof_metadata = {
                 "txid": txid,
-                "request_status": req.get("status", "unknown"),
+                "requestStatus": req.get("status", "unknown"),
                 "attempts": req.get("attempts", 0),
-                "proof_data": req.get("proof_data"),
-                "timestamp": req.get("created_at", self._now().isoformat())
+                "proofData": req.get("proofData"),
+                "timestamp": req.get("createdAt", self._now().isoformat())
             }
 
             # Add to BEEF metadata section
@@ -4552,7 +4552,7 @@ class StorageProvider:
             "version": 2,
             "transactions": [],  # Would contain actual transaction data
             "metadata": [],     # Custom metadata for proof requests
-            "original_beef": beef  # Keep original for fallback
+            "originalBeef": beef  # Keep original for fallback
         }
 
     def _serialize_enhanced_beef(self, beef_dict: dict[str, Any]) -> bytes:
@@ -4566,7 +4566,7 @@ class StorageProvider:
         """
         # Simplified serialization - real implementation would create proper BEEF format
         # For now, just return the original BEEF with a marker that it was enhanced
-        original_beef = beef_dict.get("original_beef", b"")
+        original_beef = beef_dict.get("originalBeef", b"")
         if not original_beef:
             # Create minimal BEEF if none provided
             return b"BEEF" + str(beef_dict).encode()
@@ -4628,10 +4628,10 @@ class StorageProvider:
             beef_data = {
                 "version": 2,
                 "transactions": [],
-                "proof_requests": [],
+                "proofRequests": [],
                 "metadata": {
-                    "created_at": self._now().isoformat(),
-                    "request_count": len(reqs)
+                    "createdAt": self._now().isoformat(),
+                    "requestCount": len(reqs)
                 }
             }
 
@@ -4645,19 +4645,19 @@ class StorageProvider:
                     "txid": txid,
                     "status": req.get("status", "pending"),
                     "attempts": req.get("attempts", 0),
-                    "created_at": req.get("created_at"),
-                    "proof_data": req.get("proof_data")
+                    "createdAt": req.get("createdAt"),
+                    "proofData": req.get("proofData")
                 }
-                beef_data["proof_requests"].append(proof_req)
+                beef_data["proofRequests"].append(proof_req)
 
                 # Try to get transaction data for this request
                 try:
                     tx_data = self.get_proven_or_raw_tx(txid)
-                    if tx_data and tx_data.get("raw_tx"):
+                    if tx_data and tx_data.get("rawTx"):
                         beef_data["transactions"].append({
                             "txid": txid,
-                            "raw_tx": tx_data["raw_tx"],
-                            "proof_request": proof_req
+                            "rawTx": tx_data["rawTx"],
+                            "proofRequest": proof_req
                         })
                 except Exception as e:
                     self.logger.warning(f"Could not get transaction data for {txid}: {e}")
@@ -4721,7 +4721,7 @@ class StorageProvider:
 
                 # Update local status if different
                 if current_status != tx["status"]:
-                    self.update_transaction(tx["transaction_id"], {"status": current_status})
+                    self.update_transaction(tx["transactionId"], {"status": current_status})
 
             except Exception as e:
                 # Log error but continue with other transactions
@@ -4765,7 +4765,7 @@ class StorageProvider:
         for tx in waiting_transactions:
             try:
                 # Check if transaction is old enough
-                created_at = tx.get("created_at")
+                created_at = tx.get("createdAt")
                 if isinstance(created_at, str):
                     from datetime import datetime
                     created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
@@ -4784,7 +4784,7 @@ class StorageProvider:
                 beef_result = self._services.post_beef(raw_tx)
                 if beef_result.get("success"):
                     # Update status to sent
-                    self.update_transaction(tx["transaction_id"], {"status": "sent"})
+                    self.update_transaction(tx["transactionId"], {"status": "sent"})
                     sent += 1
                 else:
                     failed += 1
@@ -4830,13 +4830,13 @@ class StorageProvider:
         abandoned_count = 0
 
         for tx in processing_transactions:
-            created_at = tx.get("created_at")
+            created_at = tx.get("createdAt")
             if isinstance(created_at, str):
                 created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
 
             if created_at and created_at < cutoff_time:
                 # Mark as failed
-                self.update_transaction(tx["transaction_id"], {"status": "failed"})
+                self.update_transaction(tx["transactionId"], {"status": "failed"})
                 abandoned_count += 1
 
         return {"abandoned": abandoned_count}
@@ -4873,7 +4873,7 @@ class StorageProvider:
 
                 # If now confirmed or other non-failed status, update
                 if current_status not in ["failed", "unknown"]:
-                    self.update_transaction(tx["transaction_id"], {"status": current_status})
+                    self.update_transaction(tx["transactionId"], {"status": current_status})
                     unfail_count += 1
 
             except Exception as e:
@@ -5101,9 +5101,9 @@ class InternalizeActionContext:
                 data,
             )
         for output_spec in self.vargs.get("outputs", []):
-            output_index = output_spec.get("output_index", output_spec.get("outputIndex", -1))
+            output_index = output_spec.get("outputIndex", output_spec.get("outputIndex", -1))
             protocol = output_spec.get("protocol", "")
-            _agent_log("H1", "processing_output_spec", {"output_index": output_index, "protocol": protocol})
+            _agent_log("H1", "processing_output_spec", {"outputIndex": output_index, "protocol": protocol})
 
             if output_index < 0 or output_index >= len(self.tx.outputs):
                 raise InvalidParameterError(
@@ -5125,7 +5125,7 @@ class InternalizeActionContext:
                     {
                         "spec": output_spec,
                         "basket": insertion_remittance.get("basket", "default"),
-                        "custom_instructions": insertion_remittance.get("customInstructions"),
+                        "customInstructions": insertion_remittance.get("customInstructions"),
                         "tags": insertion_remittance.get("tags", []),
                         "vout": output_index,
                         "txo": txo,
@@ -5146,19 +5146,19 @@ class InternalizeActionContext:
                     "H2",
                     "wallet_payment_params",
                     {
-                        "output_index": output_index,
-                        "sender_identity_key": sender_identity_key,
-                        "derivation_prefix": derivation_prefix,
-                        "derivation_suffix": derivation_suffix,
+                        "outputIndex": output_index,
+                        "senderIdentityKey": sender_identity_key,
+                        "derivationPrefix": derivation_prefix,
+                        "derivationSuffix": derivation_suffix,
                     },
                 )
 
                 self.wallet_payments.append(
                     {
                         "spec": output_spec,
-                        "sender_identity_key": sender_identity_key,
-                        "derivation_prefix": derivation_prefix,
-                        "derivation_suffix": derivation_suffix,
+                        "senderIdentityKey": sender_identity_key,
+                        "derivationPrefix": derivation_prefix,
+                        "derivationSuffix": derivation_suffix,
                         "vout": output_index,
                         "txo": txo,
                         "eo": None,
@@ -5172,7 +5172,7 @@ class InternalizeActionContext:
                 _agent_log(
                     "H3",
                     "wallet_payment_recorded",
-                    {"output_index": output_index, "script_hex": wallet_payment_script},
+                    {"outputIndex": output_index, "scriptHex": wallet_payment_script},
                 )
             else:
                 raise InvalidParameterError("protocol", f"'wallet payment' or 'basket insertion', got '{protocol}'")
@@ -5389,12 +5389,12 @@ class InternalizeActionContext:
             basket_id=self.change_basket.basket_id,
             satoshis=txo.satoshis,
             txid=self.txid,
-            sender_identity_key=payment["sender_identity_key"],
+            sender_identity_key=payment["senderIdentityKey"],
             type="P2PKH",
             provided_by="storage",
             purpose="change",
-            derivation_prefix=payment["derivation_prefix"],
-            derivation_suffix=payment["derivation_suffix"],
+            derivation_prefix=payment["derivationPrefix"],
+            derivation_suffix=payment["derivationSuffix"],
             change=True,
             spent_by=None,
             custom_instructions=None,
@@ -5415,9 +5415,9 @@ class InternalizeActionContext:
         output_record.change = True
         output_record.provided_by = "storage"
         output_record.purpose = "change"
-        output_record.sender_identity_key = payment["sender_identity_key"]
-        output_record.derivation_prefix = payment["derivation_prefix"]
-        output_record.derivation_suffix = payment["derivation_suffix"]
+        output_record.sender_identity_key = payment["senderIdentityKey"]
+        output_record.derivation_prefix = payment["derivationPrefix"]
+        output_record.derivation_suffix = payment["derivationSuffix"]
         session.add(output_record)
 
     @staticmethod
@@ -5519,7 +5519,7 @@ class InternalizeActionContext:
             satoshis=txo.satoshis,
             txid=self.txid,
             type=output_type,
-            custom_instructions=basket["custom_instructions"],
+            custom_instructions=basket["customInstructions"],
             change=is_change,
             spent_by=None,
             output_description="",
@@ -5556,7 +5556,7 @@ class InternalizeActionContext:
         output_record = basket["eo"]
         output_record.basket_id = target_basket.basket_id
         output_record.type = "custom"
-        output_record.custom_instructions = basket["custom_instructions"]
+        output_record.custom_instructions = basket["customInstructions"]
         output_record.change = False
         output_record.provided_by = "you"
         output_record.purpose = ""

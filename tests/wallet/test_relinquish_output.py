@@ -427,9 +427,9 @@ class TestWalletRelinquishOutput:
         # Given - Add extra parameters
         args_with_extra = valid_relinquish_output_args.copy()
         args_with_extra.update({
-            "extra_param": "should_be_ignored",
-            "another_param": 123,
-            "nested_param": {"key": "value"}
+            "extraParam": "should_be_ignored",
+            "anotherParam": 123,
+            "nestedParam": {"key": "value"}
         })
 
         # When

@@ -355,7 +355,7 @@ class TestArcServices:
         services, _, mock_client = mock_services
 
         malformed_requests = [
-            {"beef": "invalid_hex_data", "extra_field": "unexpected"},
+            {"beef": "invalid_hex_data", "extraField": "unexpected"},
             {"beef": "", "metadata": {}},
             {"beef": None},
             {"beef": 12345},

@@ -1439,7 +1439,7 @@ class Services(WalletServices):
                 elif getattr(res, "status", "") == "rate_limited":
                     return {
                         "accepted": False,
-                        "rate_limited": True,
+                        "rateLimited": True,
                         "message": getattr(res, "description", "Rate limited"),
                     }
                 elif getattr(res, "double_spend", False):
@@ -1475,7 +1475,7 @@ class Services(WalletServices):
                 elif getattr(res, "status", "") == "rate_limited":
                     return {
                         "accepted": False,
-                        "rate_limited": True,
+                        "rateLimited": True,
                         "message": getattr(res, "description", "Rate limited"),
                     }
                 elif getattr(res, "double_spend", False):

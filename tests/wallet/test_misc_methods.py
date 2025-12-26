@@ -79,7 +79,7 @@ def valid_wallet_params():
     key_deriver = KeyDeriver(root_key)
     return {
         "chain": "main",
-        "key_deriver": key_deriver
+        "keyDeriver": key_deriver
     }
 
 
@@ -93,11 +93,11 @@ def invalid_wallet_params():
         {"chain": 123},  # Wrong chain type
         {"chain": []},  # Wrong chain type
         {"chain": {}},  # Wrong chain type
-        {"key_deriver": None},  # None key_deriver
-        {"key_deriver": "not_a_key_deriver"},  # Wrong key_deriver type
-        {"key_deriver": 123},  # Wrong key_deriver type
-        {"key_deriver": []},  # Wrong key_deriver type
-        {"key_deriver": {}},  # Wrong key_deriver type
+        {"keyDeriver": None},  # None key_deriver
+        {"keyDeriver": "not_a_key_deriver"},  # Wrong key_deriver type
+        {"keyDeriver": 123},  # Wrong key_deriver type
+        {"keyDeriver": []},  # Wrong key_deriver type
+        {"keyDeriver": {}},  # Wrong key_deriver type
         {},  # Empty params
     ]
 
@@ -244,7 +244,7 @@ class TestWalletGetHeader:
            Then: Extra parameters are ignored
         """
         # Given - Add extra parameters
-        args = {"height": 850000, "extra_param": "ignored", "another": 123}
+        args = {"height": 850000, "extraParam": "ignored", "another": 123}
 
         # When
         result = wallet_with_services.get_header(args)

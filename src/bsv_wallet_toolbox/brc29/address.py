@@ -61,7 +61,7 @@ def address_for_self(
     try:
         network = Network.TESTNET if testnet else Network.MAINNET
         address = public_key.address(network=network)
-        return {"address_string": address}
+        return {"addressString": address}
     except Exception as e:
         raise ValueError(f"failed to create brc29 address from public key: {e}") from e
 
@@ -130,7 +130,7 @@ def address_for_counterparty(
         # Generate address from the derived public key
         network = Network.TESTNET if testnet else Network.MAINNET
         address = derived_pub_key.address(network=network)
-        return {"address_string": address}
+        return {"addressString": address}
 
     except Exception as e:
         raise ValueError(f"failed to create brc29 address for recipient from public key: {e}") from e

@@ -265,17 +265,17 @@ class TestGenerateChangeExtended:
         # The actual function is a placeholder that raises NotImplementedError
         with patch('bsv_wallet_toolbox.storage.methods.generate_change') as mock_generate_change:
             mock_generate_change.return_value = {
-                "selected_change": [GenerateChangeInput(satoshis=100000, locking_script="script1")],
-                "total_satoshis": 100000,
-                "locked_outputs": []
+                "selectedChange": [GenerateChangeInput(satoshis=100000, locking_script="script1")],
+                "totalSatoshis": 100000,
+                "lockedOutputs": []
             }
 
             auth = {"userId": 1}
             available_change = [GenerateChangeInput(satoshis=100000, locking_script="script1")]
             params = {
                 "auth": auth,
-                "available_change": available_change,
-                "target_amount": 50000
+                "availableChange": available_change,
+                "targetAmount": 50000
             }
 
             # Import here to get the patched version
@@ -293,12 +293,12 @@ class TestGenerateChangeExtended:
         # Mock generate_change to return expected result structure
         with patch('bsv_wallet_toolbox.storage.methods.generate_change') as mock_generate_change:
             mock_generate_change.return_value = {
-                "selected_change": [
+                "selectedChange": [
                     GenerateChangeInput(satoshis=50000, locking_script="script1"),
                     GenerateChangeInput(satoshis=75000, locking_script="script2"),
                 ],
-                "total_satoshis": 125000,
-                "locked_outputs": []
+                "totalSatoshis": 125000,
+                "lockedOutputs": []
             }
 
             auth = {"userId": 1}
@@ -308,8 +308,8 @@ class TestGenerateChangeExtended:
             ]
             params = {
                 "auth": auth,
-                "available_change": available_change,
-                "target_amount": 100000
+                "availableChange": available_change,
+                "targetAmount": 100000
             }
 
             # Import here to get the patched version
@@ -318,7 +318,7 @@ class TestGenerateChangeExtended:
 
             assert isinstance(result, dict)
             assert "selected_change" in result
-            assert result["total_satoshis"] >= 100000
+            assert result["totalSatoshis"] >= 100000
 
     def test_generate_change_insufficient_outputs(self) -> None:
         """Test generate_change when insufficient outputs available."""
@@ -331,8 +331,8 @@ class TestGenerateChangeExtended:
             available_change = [GenerateChangeInput(satoshis=1000, locking_script="script1")]
             params = {
                 "auth": auth,
-                "available_change": available_change,
-                "target_amount": 1000000
+                "availableChange": available_change,
+                "targetAmount": 1000000
             }
 
             # Import here to get the patched version
@@ -606,7 +606,7 @@ class TestPurgeDataExtended:
         """Test purge_data without agedBeforeDate."""
         mock_storage = Mock()
         mock_storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
+            "deletedTransactions": 0,
             "log": ""
         })
 
@@ -621,7 +621,7 @@ class TestPurgeDataExtended:
         """Test purge_data with agedBeforeDate."""
         mock_storage = Mock()
         mock_storage.purge_data = Mock(return_value={
-            "deleted_transactions": 5,
+            "deletedTransactions": 5,
             "log": ""
         })
 
@@ -630,7 +630,7 @@ class TestPurgeDataExtended:
         result = purge_data(mock_storage, params)
 
         assert isinstance(result, dict)
-        assert result["deleted_transactions"] == 5
+        assert result["deletedTransactions"] == 5
 
 
 class TestGetSyncChunkExtended:
@@ -1402,12 +1402,12 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=500, locking_script="script1"),
                 GenerateChangeInput(satoshis=300, locking_script="script2"),
             ],
-            "target_amount": 1000,
-            "exact_satoshis": 1000
+            "targetAmount": 1000,
+            "exactSatoshis": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1419,10 +1419,10 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=500, locking_script="script1"),
             ],
-            "target_amount": 1000
+            "targetAmount": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1434,11 +1434,11 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
                 GenerateChangeInput(satoshis=500, locking_script="script2"),
             ],
-            "target_amount": 1200
+            "targetAmount": 1200
         }
 
         # The wrapper function raises NotImplementedError
@@ -1450,12 +1450,12 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
                 GenerateChangeInput(satoshis=500, locking_script="script2"),
                 GenerateChangeInput(satoshis=200, locking_script="script3"),
             ],
-            "target_amount": 600
+            "targetAmount": 600
         }
 
         # The wrapper function raises NotImplementedError
@@ -1467,11 +1467,11 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
             ],
-            "target_amount": 800,
-            "exact_satoshis": 1000
+            "targetAmount": 800,
+            "exactSatoshis": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1644,8 +1644,8 @@ class TestReviewStatus:
         """Test review_status with successful execution."""
         storage = Mock()
         storage.review_status = Mock(return_value={
-            "updated_count": 1,
-            "aged_count": 0
+            "updatedCount": 1,
+            "agedCount": 0
         })
 
         aged_limit = datetime(2023, 1, 1, 11, 30, 0)  # 1.5 hours ago
@@ -1660,15 +1660,15 @@ class TestReviewStatus:
         """Test review_status with no aged transactions."""
         storage = Mock()
         storage.review_status = Mock(return_value={
-            "updated_count": 0,
-            "aged_count": 0
+            "updatedCount": 0,
+            "agedCount": 0
         })
 
         args = {"agedLimit": datetime(2023, 1, 1, 12, 0, 0)}
         result = review_status(storage, args)
 
-        assert result["updated_count"] == 0
-        assert result["aged_count"] == 0
+        assert result["updatedCount"] == 0
+        assert result["agedCount"] == 0
 
 
 class TestPurgeData:
@@ -1682,24 +1682,24 @@ class TestPurgeData:
     def test_purge_data_success(self) -> None:
         """Test purge_data with successful execution."""
         storage = Mock()
-        storage.purge_data = Mock(return_value={"deleted_transactions": 5, "log": ""})
+        storage.purge_data = Mock(return_value={"deletedTransactions": 5, "log": ""})
 
         params = {"agedBeforeDate": "2023-01-01"}
         result = purge_data(storage, params)
 
         assert isinstance(result, dict)
         assert "deleted_transactions" in result
-        assert result["deleted_transactions"] == 5
+        assert result["deletedTransactions"] == 5
 
     def test_purge_data_no_matches(self) -> None:
         """Test purge_data with no matching records."""
         storage = Mock()
-        storage.purge_data = Mock(return_value={"deleted_transactions": 0, "log": ""})
+        storage.purge_data = Mock(return_value={"deletedTransactions": 0, "log": ""})
 
         params = {"agedBeforeDate": "2023-01-01"}
         result = purge_data(storage, params)
 
-        assert result["deleted_transactions"] == 0
+        assert result["deletedTransactions"] == 0
 
 
 class TestGetSyncChunk:

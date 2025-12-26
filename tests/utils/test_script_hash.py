@@ -33,32 +33,32 @@ class TestScriptHashSuccessCases:
         tests = [
             {
                 "name": "Valid P2PKH",
-                "script_hex": "76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac",
-                "expected_le": "db46d31e84e16e7fb031b3ab375131a7bb65775c0818dc17fe0d4444efb3d0aa",
+                "scriptHex": "76a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba88ac",
+                "expectedLe": "db46d31e84e16e7fb031b3ab375131a7bb65775c0818dc17fe0d4444efb3d0aa",
             },
             {
                 "name": "Empty script",
-                "script_hex": "",
-                "expected_le": "55b852781b9995a44c939b64e441ae2724b96f99c8f4fb9a141cfc9842c4b0e3",
+                "scriptHex": "",
+                "expectedLe": "55b852781b9995a44c939b64e441ae2724b96f99c8f4fb9a141cfc9842c4b0e3",
             },
             {
                 "name": "Short script 0x00",
-                "script_hex": "00",
-                "expected_le": "1da0af1706a31185763837b33f1d90782c0a78bbe644a59c987ab3ff9c0b346e",
+                "scriptHex": "00",
+                "expectedLe": "1da0af1706a31185763837b33f1d90782c0a78bbe644a59c987ab3ff9c0b346e",
             },
             {
                 "name": "Valid P2SH",
-                "script_hex": "a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba87",
-                "expected_le": "e7e41b1311c9fc8248e8f6e87cc382ca4b1af9c3189bb896712c3aebdf018639",
+                "scriptHex": "a91489abcdefabbaabbaabbaabbaabbaabbaabbaabba87",
+                "expectedLe": "e7e41b1311c9fc8248e8f6e87cc382ca4b1af9c3189bb896712c3aebdf018639",
             },
         ]
 
         for test in tests:
             # When
-            result = hash_output_script(test["script_hex"])
+            result = hash_output_script(test["scriptHex"])
 
             # Then
-            assert result == test["expected_le"], f"Test '{test['name']}' failed"
+            assert result == test["expectedLe"], f"Test '{test['name']}' failed"
 
 
 class TestScriptHashErrorCases:
@@ -79,15 +79,15 @@ class TestScriptHashErrorCases:
         tests = [
             {
                 "name": "Invalid hex input",
-                "script_hex": "zzzz",
+                "scriptHex": "zzzz",
             },
             {
                 "name": "Odd-length hex input",
-                "script_hex": "abc",
+                "scriptHex": "abc",
             },
         ]
 
         for test in tests:
             # When/Then
             with pytest.raises(Exception):
-                hash_output_script(test["script_hex"])
+                hash_output_script(test["scriptHex"])

@@ -158,7 +158,7 @@ class SQLAlchemyStorageQueries:
             session = self._get_session()
             session.query(LiveHeadersModel).filter(
                 LiveHeadersModel.header_id == header_id
-            ).update({"is_chain_tip": is_chain_tip})
+            ).update({"isChainTip": is_chain_tip})
             return None
         except Exception as e:
             logger.error(f"Failed to set chain tip by ID: {e}")
@@ -178,7 +178,7 @@ class SQLAlchemyStorageQueries:
             session = self._get_session()
             session.query(LiveHeadersModel).filter(
                 LiveHeadersModel.header_id == header_id
-            ).update({"is_active": is_active})
+            ).update({"isActive": is_active})
             return None
         except Exception as e:
             logger.error(f"Failed to set active by ID: {e}")

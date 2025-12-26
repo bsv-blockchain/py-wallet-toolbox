@@ -492,8 +492,8 @@ class TestSignerHelperFunctions:
 
         args = {
             "inputs": [
-                {"unlocking_script": "script1", "other": "value1"},
-                {"unlocking_script": "script2", "other": "value2"},
+                {"unlockingScript": "script1", "other": "value1"},
+                {"unlockingScript": "script2", "other": "value2"},
             ]
         }
 

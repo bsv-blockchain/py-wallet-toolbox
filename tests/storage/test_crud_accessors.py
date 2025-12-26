@@ -18,7 +18,7 @@ class TestCommissionAccessor:
         provider = Mock()
         accessor = CommissionAccessor(provider)
 
-        data = {"user_id": 1, "amount": 1000}
+        data = {"userId": 1, "amount": 1000}
         accessor.create(data)
 
         provider.insert_commission.assert_called_once_with(data)

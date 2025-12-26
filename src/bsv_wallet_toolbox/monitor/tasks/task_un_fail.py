@@ -52,7 +52,7 @@ class TaskUnFail(WalletMonitorTask):
 
             for req in current_batch:
                 txid = req.get("txid")
-                req_id = req.get("proven_tx_req_id")
+                req_id = req.get("provenTxReqId")
                 if not txid or not req_id:
                     continue
 
@@ -65,7 +65,7 @@ class TaskUnFail(WalletMonitorTask):
                         log_lines.append(f"Req {req_id}: unfailed. status is now 'unmined'")
 
                         # Unfail related transaction and outputs
-                        raw_tx = req.get("raw_tx")
+                        raw_tx = req.get("rawTx")
                         if raw_tx:
                             try:
                                 self._unfail_req(req, raw_tx, log_lines)
@@ -99,8 +99,8 @@ class TaskUnFail(WalletMonitorTask):
             log_lines.append(f"transaction {txid} was not found")
             return
         tx = txs[0]
-        tx_id = tx.get("transaction_id")
-        user_id = tx.get("user_id")
+        tx_id = tx.get("transactionId")
+        user_id = tx.get("userId")
 
         if not tx_id or not user_id:
             return
@@ -119,7 +119,7 @@ class TaskUnFail(WalletMonitorTask):
         # ... (omitted detailed input matching logic for brevity/risk avoidance without exact matching API)
 
         # Update outputs (spendable)
-        outputs = self.monitor.storage.find_outputs({"transaction_id": tx_id})
+        outputs = self.monitor.storage.find_outputs({"transactionId": tx_id})
         for o in outputs:
             # Validate locking script - simplified
             # Check UTXO status

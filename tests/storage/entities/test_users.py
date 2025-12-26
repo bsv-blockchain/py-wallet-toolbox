@@ -47,8 +47,8 @@ class TestUsersEntity:
         now = datetime.now()
         api_object = {
             "userId": 42,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "identityKey": "testIdentityKey",
             "activeStorage": "",
         }
@@ -103,8 +103,8 @@ class TestUsersEntity:
             {
                 "userId": 2,
                 "identityKey": "key1",
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
                 "activeStorage": "",
             }
         )
@@ -112,8 +112,8 @@ class TestUsersEntity:
         user2_api = {
             "userId": 3,  # Different ID
             "identityKey": "key1",  # Same key
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "activeStorage": "",
         }
 
@@ -136,8 +136,8 @@ class TestUsersEntity:
             {
                 "userId": 4,
                 "identityKey": "key2",
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
                 "activeStorage": "",
             }
         )
@@ -145,8 +145,8 @@ class TestUsersEntity:
         user2_api = {
             "userId": 5,  # Different ID
             "identityKey": "key3",  # Different key
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "activeStorage": "",
         }
 
@@ -168,7 +168,7 @@ class TestUsersEntity:
         now = datetime.now()
         past_date = datetime.fromtimestamp(now.timestamp() - 1000000)
 
-        partial_api_object = {"userId": 123, "created_at": past_date}
+        partial_api_object = {"userId": 123, "createdAt": past_date}
 
         # When
         user = User(partial_api_object)
@@ -195,8 +195,8 @@ class TestUsersEntity:
 
         api_object = {
             "userId": large_user_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "identityKey": long_identity_key,
             "activeStorage": "",
         }
@@ -290,8 +290,8 @@ class TestUsersEntity:
         user = User(
             {
                 "userId": 1,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 1),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 1),
                 "identityKey": "oldKey",
                 "activeStorage": "oldStorage",
             }
@@ -299,8 +299,8 @@ class TestUsersEntity:
 
         updated_ei = {
             "userId": 1,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 2, 1),  # Newer updated_at
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 2, 1),  # Newer updated_at
             "identityKey": "oldKey",
             "activeStorage": "newStorage",
         }
@@ -313,9 +313,9 @@ class TestUsersEntity:
             update_called = True
             assert user_id == 1
             assert data["activeStorage"] == "newStorage"
-            assert isinstance(data["updated_at"], datetime)
+            assert isinstance(data["updatedAt"], datetime)
 
-        mock_storage = type("MockStorage", (), {"update_user": mock_update_user})()
+        mock_storage = type("MockStorage", (), {"updateUser": mock_update_user})()
 
         # When
         result = user.merge_existing(mock_storage, None, updated_ei, None)
@@ -338,8 +338,8 @@ class TestUsersEntity:
         user = User(
             {
                 "userId": 1,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 2, 1),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 2, 1),
                 "identityKey": "oldKey",
                 "activeStorage": "oldStorage",
             }
@@ -347,8 +347,8 @@ class TestUsersEntity:
 
         older_ei = {
             "userId": 1,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 1),  # Older updated_at
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 1),  # Older updated_at
             "identityKey": "oldKey",
             "activeStorage": "newStorage",
         }
@@ -357,7 +357,7 @@ class TestUsersEntity:
         def mock_update_user(user_id: int, data: dict[str, Any]) -> None:
             raise AssertionError("This should not be called")
 
-        mock_storage = type("MockStorage", (), {"update_user": mock_update_user})()
+        mock_storage = type("MockStorage", (), {"updateUser": mock_update_user})()
 
         # When
         result = user.merge_existing(mock_storage, None, older_ei, None)
@@ -379,8 +379,8 @@ class TestUsersEntity:
         user = User(
             {
                 "userId": 1,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 1),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 1),
                 "identityKey": "oldKey",
                 "activeStorage": "oldStorage",
             }
@@ -388,8 +388,8 @@ class TestUsersEntity:
 
         updated_ei = {
             "userId": 1,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 2, 1),  # Newer updated_at
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 2, 1),  # Newer updated_at
             "identityKey": "oldKey",
             "activeStorage": "newStorage",
         }
@@ -404,10 +404,10 @@ class TestUsersEntity:
             update_called = True
             assert user_id == 1
             assert data["activeStorage"] == "newStorage"
-            assert isinstance(data["updated_at"], datetime)
+            assert isinstance(data["updatedAt"], datetime)
             assert trx == mock_trx
 
-        mock_storage = type("MockStorage", (), {"update_user": mock_update_user})()
+        mock_storage = type("MockStorage", (), {"updateUser": mock_update_user})()
 
         # When
         result = user.merge_existing(mock_storage, None, updated_ei, None, mock_trx)

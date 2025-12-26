@@ -25,7 +25,7 @@ class TestSimpleWalletManagerInitialization:
     def test_manager_with_config(self) -> None:
         """Test creating manager with configuration."""
         try:
-            config = {"chain": "main", "storage_url": "sqlite:///:memory:"}
+            config = {"chain": "main", "storageUrl": "sqlite:///:memory:"}
             manager = SimpleWalletManager(config=config)
             assert manager is not None
         except (TypeError, KeyError):
@@ -193,7 +193,7 @@ class TestSimpleWalletManagerErrorHandling:
     def test_manager_invalid_config(self) -> None:
         """Test manager with invalid configuration."""
         try:
-            config = {"invalid_key": "invalid_value"}
+            config = {"invalidKey": "invalid_value"}
             manager = SimpleWalletManager(config=config)
             # Might accept it or raise
             assert manager is not None

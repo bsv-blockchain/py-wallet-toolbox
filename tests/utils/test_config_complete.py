@@ -298,32 +298,32 @@ class TestCreateActionTxAssembler:
         """Test that assembler config has fee_rate field."""
         assembler = create_action_tx_assembler()
         assert 'fee_rate' in assembler
-        assert isinstance(assembler['fee_rate'], (int, float))
+        assert isinstance(assembler['feeRate'], (int, float))
 
     def test_create_assembler_has_dust_limit(self) -> None:
         """Test that assembler config has dust_limit field."""
         assembler = create_action_tx_assembler()
         assert 'dust_limit' in assembler
-        assert isinstance(assembler['dust_limit'], (int, float))
+        assert isinstance(assembler['dustLimit'], (int, float))
 
     def test_create_assembler_has_randomize_outputs(self) -> None:
         """Test that assembler config has randomize_outputs field."""
         assembler = create_action_tx_assembler()
         assert 'randomize_outputs' in assembler
-        assert isinstance(assembler['randomize_outputs'], bool)
+        assert isinstance(assembler['randomizeOutputs'], bool)
 
     def test_create_assembler_has_use_all_inputs(self) -> None:
         """Test that assembler config has use_all_inputs field."""
         assembler = create_action_tx_assembler()
         assert 'use_all_inputs' in assembler
-        assert isinstance(assembler['use_all_inputs'], bool)
+        assert isinstance(assembler['useAllInputs'], bool)
 
     def test_create_assembler_has_change_derivation_path(self) -> None:
         """Test that assembler config has change_derivation_path field."""
         assembler = create_action_tx_assembler()
         assert 'change_derivation_path' in assembler
         # Can be None or string
-        assert assembler['change_derivation_path'] is None or isinstance(assembler['change_derivation_path'], str)
+        assert assembler['changeDerivationPath'] is None or isinstance(assembler['changeDerivationPath'], str)
 
     def test_create_assembler_default_values(self) -> None:
         """Test that assembler has sensible default values."""
@@ -334,8 +334,8 @@ class TestCreateActionTxAssembler:
         assert assembler['lockTime'] == 0
         assert len(assembler['inputs']) == 0
         assert len(assembler['outputs']) == 0
-        assert assembler['fee_rate'] >= 0
-        assert assembler['dust_limit'] >= 0
+        assert assembler['feeRate'] >= 0
+        assert assembler['dustLimit'] >= 0
 
     def test_create_assembler_multiple_calls(self) -> None:
         """Test that multiple calls return independent configs."""
@@ -356,8 +356,8 @@ class TestCreateActionTxAssembler:
         assembler['version'] = 2
         assert assembler['version'] == 2
         
-        assembler['custom_field'] = 'custom_value'
-        assert assembler['custom_field'] == 'custom_value'
+        assembler['customField'] = 'custom_value'
+        assert assembler['customField'] == 'custom_value'
         
         # Modifications shouldn't affect future calls
         new_assembler = create_action_tx_assembler()
@@ -386,11 +386,11 @@ class TestConfigIntegration:
         # Simulate adding inputs and outputs
         assembler['inputs'].append({'txid': 'abc123', 'vout': 0})
         assembler['outputs'].append({'satoshis': 1000, 'script': '76a9...'})
-        assembler['fee_rate'] = 50
+        assembler['feeRate'] = 50
         
         assert len(assembler['inputs']) == 1
         assert len(assembler['outputs']) == 1
-        assert assembler['fee_rate'] == 50
+        assert assembler['feeRate'] == 50
 
 
 

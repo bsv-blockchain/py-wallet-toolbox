@@ -143,8 +143,8 @@ def aggregate_results(results: list[dict[str, Any]]) -> dict[str, Any] | None:
 
     # Add summary statistics
     if aggregated["values"]:
-        aggregated["total_value"] = sum(aggregated["values"])
-        aggregated["avg_value"] = aggregated["total_value"] / len(aggregated["values"])
+        aggregated["totalValue"] = sum(aggregated["values"])
+        aggregated["avgValue"] = aggregated["totalValue"] / len(aggregated["values"])
 
     return aggregated
 

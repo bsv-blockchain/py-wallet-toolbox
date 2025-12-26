@@ -59,8 +59,8 @@ class TestBulkIngestorWOCSynchronize:
             {
                 "filename": "mainNet_0.headers",
                 "url": "https://example.com/mainNet_0.headers",
-                "height_range": HeightRange(0, 99999),
-                "file_id": 0
+                "heightRange": HeightRange(0, 99999),
+                "fileId": 0
             }
         ]
 
@@ -112,9 +112,9 @@ class TestBulkIngestorWOCFetchBulkHeaderFilesInfo:
             assert len(result) == 2
             assert result[0]["filename"] == "mainNet_0.headers"
             assert "height_range" in result[0]
-            assert result[0]["file_id"] == 0
+            assert result[0]["fileId"] == 0
             assert result[1]["filename"] == "mainNet_1.headers"
-            assert result[1]["file_id"] == 1
+            assert result[1]["fileId"] == 1
 
     def test_fetch_bulk_header_files_info_empty_response(self, ingestor: BulkIngestorWOC) -> None:
         """Test fetching files info when API returns empty list."""
@@ -290,8 +290,8 @@ class TestBulkIngestorWOCEdgeCases:
         mock_file_infos = [{
             "filename": "mainNet_0.headers",
             "url": "https://example.com/mainNet_0.headers",
-            "height_range": HeightRange(0, 99999),
-            "file_id": 0
+            "heightRange": HeightRange(0, 99999),
+            "fileId": 0
         }]
 
         with patch.object(ingestor, '_fetch_bulk_header_files_info', return_value=mock_file_infos):

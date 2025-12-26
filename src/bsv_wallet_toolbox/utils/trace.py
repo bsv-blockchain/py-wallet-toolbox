@@ -21,7 +21,7 @@ def _bytes_summary(data: bytes, hex_prefix_bytes: int = 32) -> dict[str, Any]:
         "type": "bytes",
         "len": len(data),
         "sha256": hashlib.sha256(data).hexdigest(),
-        "hex_prefix": prefix,
+        "hexPrefix": prefix,
     }
 
 

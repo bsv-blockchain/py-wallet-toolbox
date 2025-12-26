@@ -709,7 +709,7 @@ class TestSignerMethodsHighImpactCoverage:
         mock_pending.pdi = []
 
         # Mock wallet.pending_sign_actions
-        mock_wallet.pending_sign_actions = {"test_ref": mock_pending}
+        mock_wallet.pending_sign_actions = {"testRef": mock_pending}
 
         args = {
             "reference": "test_ref",
@@ -721,7 +721,7 @@ class TestSignerMethodsHighImpactCoverage:
              patch('bsv_wallet_toolbox.signer.methods._verify_unlock_scripts') as mock_verify:
 
             mock_beef = Mock(spec=Beef)
-            mock_beef.txs = {"test_txid": Mock()}  # Mock the txs dict for verification
+            mock_beef.txs = {"testTxid": Mock()}  # Mock the txs dict for verification
             mock_parse_beef.return_value = mock_beef
             mock_tx = Mock()
             mock_tx.txid.return_value = "test_txid"
@@ -739,7 +739,7 @@ class TestSignerMethodsHighImpactCoverage:
         """Test internalize_action vout mismatch error (line 173)."""
         # Mock storage outputs with mismatched vout to exercise the error path
         mock_wallet.storage.list_outputs = Mock(return_value=[
-            {"vout": 1, "satoshis": 1000, "provided_by": "user", "purpose": "output"}
+            {"vout": 1, "satoshis": 1000, "providedBy": "user", "purpose": "output"}
         ])
 
         args = {
@@ -798,7 +798,7 @@ class TestSignerMethodsHighImpactCoverage:
                 {
                     "outpoint": {"txid": "input_txid", "vout": 0},
                     "unlockingScript": "script_hex",
-                    "sequence_number": 0xFFFFFFFF
+                    "sequenceNumber": 0xFFFFFFFF
                 }
             ],
             "options": {"returnTxidOnly": False}
@@ -819,13 +819,13 @@ class TestSignerMethodsHighImpactCoverage:
                 {
                     "vin": 0,
                     "type": "P2PKH",
-                    "derivation_prefix": "m/0",
-                    "derivation_suffix": "/0/0",
-                    "sender_identity_key": "pub_key",
-                    "source_satoshis": 50000,
-                    "source_locking_script": "script_hex",
-                    "source_txid": "source_txid",
-                    "source_vout": 0
+                    "derivationPrefix": "m/0",
+                    "derivationSuffix": "/0/0",
+                    "senderIdentityKey": "pub_key",
+                    "sourceSatoshis": 50000,
+                    "sourceLockingScript": "script_hex",
+                    "sourceTxid": "source_txid",
+                    "sourceVout": 0
                 }
             ],
             "storageOutputs": [],
@@ -858,7 +858,7 @@ class TestSignerMethodsHighImpactCoverage:
         mock_pending.tx = Mock()
         mock_pending.pdi = []  # Empty list to avoid iteration errors
 
-        mock_wallet.pending_sign_actions = {"test_ref": mock_pending}
+        mock_wallet.pending_sign_actions = {"testRef": mock_pending}
 
         args = {"reference": "test_ref", "options": {"returnTxidOnly": False}}
 
@@ -998,33 +998,33 @@ class TestSignerMethodsHighImpactCoverage:
                 {
                     "vin": 0,
                     "type": "P2PKH",
-                    "derivation_prefix": "m/0",
-                    "derivation_suffix": "/0/0",
-                    "sender_identity_key": "pub_key_0",
-                    "source_satoshis": 25000,
-                    "source_locking_script": "script_0",
-                    "source_txid": "txid_0",
-                    "source_vout": 0
+                    "derivationPrefix": "m/0",
+                    "derivationSuffix": "/0/0",
+                    "senderIdentityKey": "pub_key_0",
+                    "sourceSatoshis": 25000,
+                    "sourceLockingScript": "script_0",
+                    "sourceTxid": "txid_0",
+                    "sourceVout": 0
                 },
                 {
                     "vin": 1,
                     "type": "P2PKH",
-                    "derivation_prefix": "m/0",
-                    "derivation_suffix": "/0/1",
-                    "sender_identity_key": "pub_key_1",
-                    "source_satoshis": 35000,
-                    "source_locking_script": "script_1",
-                    "source_txid": "txid_1",
-                    "source_vout": 1
+                    "derivationPrefix": "m/0",
+                    "derivationSuffix": "/0/1",
+                    "senderIdentityKey": "pub_key_1",
+                    "sourceSatoshis": 35000,
+                    "sourceLockingScript": "script_1",
+                    "sourceTxid": "txid_1",
+                    "sourceVout": 1
                 }
             ],
             "storageOutputs": [
                 {
                     "vout": 0,
                     "satoshis": 50000,
-                    "provided_by": "storage",
+                    "providedBy": "storage",
                     "purpose": "change",
-                    "locking_script": "change_script"
+                    "lockingScript": "change_script"
                 }
             ],
             "result": "create_data"
@@ -1056,7 +1056,7 @@ class TestSignerMethodsHighImpactCoverage:
         mock_pending.tx = Mock()
         mock_pending.pdi = []  # Empty to avoid iteration issues
 
-        mock_wallet.pending_sign_actions = {"error_ref": mock_pending}
+        mock_wallet.pending_sign_actions = {"errorRef": mock_pending}
 
         args = {"reference": "error_ref", "options": {"returnTxidOnly": False}}
 
@@ -1125,21 +1125,21 @@ class TestSignerMethodsHighImpactCoverage:
                 {
                     "vin": 0,
                     "type": "P2PKH",
-                    "derivation_prefix": "m/44'/0'/0'",
-                    "derivation_suffix": "/0/0",
-                    "sender_identity_key": "identity_key",
-                    "source_satoshis": 100000,
-                    "source_locking_script": "locking_script_hex",
-                    "source_txid": "source_txid_123",
-                    "source_vout": 0,
-                    "source_transaction": "source_tx_hex"
+                    "derivationPrefix": "m/44'/0'/0'",
+                    "derivationSuffix": "/0/0",
+                    "senderIdentityKey": "identity_key",
+                    "sourceSatoshis": 100000,
+                    "sourceLockingScript": "locking_script_hex",
+                    "sourceTxid": "source_txid_123",
+                    "sourceVout": 0,
+                    "sourceTransaction": "source_tx_hex"
                 }
             ],
             "storageOutputs": [
                 {
                     "vout": 0,
                     "satoshis": 95000,
-                    "provided_by": "storage",
+                    "providedBy": "storage",
                     "purpose": "change"
                 }
             ],

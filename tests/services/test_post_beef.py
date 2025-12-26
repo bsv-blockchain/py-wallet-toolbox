@@ -21,8 +21,8 @@ def valid_services_config():
         "chain": "main",
         "arcUrl": "https://arc.mock",
         "arcApiKey": "test_key_123",
-        "whatsonchain_api_key": "woc_key_456",
-        "taal_api_key": "taal_key_789"
+        "whatsonchainApiKey": "woc_key_456",
+        "taalApiKey": "taal_key_789"
     }
 
 
@@ -107,13 +107,13 @@ def double_spend_scenarios():
             "name": "same_transaction_twice",
             "beef1": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
             "beef2": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
-            "expect_double_spend": True
+            "expectDoubleSpend": True
         },
         {
             "name": "different_transactions",
             "beef1": "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
             "beef2": "01000000020000000000000000000000000000000000000000000000000000000000000000ffffffff0200f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac00000000",
-            "expect_double_spend": False
+            "expectDoubleSpend": False
         }
     ]
 

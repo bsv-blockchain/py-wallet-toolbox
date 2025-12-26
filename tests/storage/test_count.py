@@ -19,7 +19,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_proven_txs": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countProvenTxs": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_proven_txs({"partial": {}})
@@ -37,7 +37,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_proven_tx_reqs": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countProvenTxReqs": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_proven_tx_reqs({"partial": {}})
@@ -55,7 +55,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_users": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countUsers": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_users({"partial": {}})
@@ -73,7 +73,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_certificates": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countCertificates": lambda self, query: 0})()
 
         # When - empty filter
         count_all = mock_storage.count_certificates({"partial": {}})
@@ -99,7 +99,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_certificate_fields": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countCertificateFields": lambda self, query: 0})()
 
         # When - empty filter
         count_all = mock_storage.count_certificate_fields({"partial": {}})
@@ -125,7 +125,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_output_baskets": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countOutputBaskets": lambda self, query: 0})()
 
         # When - empty filter
         count_all = mock_storage.count_output_baskets({"partial": {}})
@@ -147,7 +147,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_transactions": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countTransactions": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_transactions({"partial": {}})
@@ -165,7 +165,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_commissions": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countCommissions": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_commissions({"partial": {}})
@@ -183,7 +183,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_outputs": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countOutputs": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_outputs({"partial": {}})
@@ -201,7 +201,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_output_tags": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countOutputTags": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_output_tags({"partial": {}})
@@ -219,7 +219,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_output_tag_maps": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countOutputTagMaps": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_output_tag_maps({"partial": {}})
@@ -237,7 +237,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_tx_labels": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countTxLabels": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_tx_labels({"partial": {}})
@@ -255,7 +255,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_tx_label_maps": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countTxLabelMaps": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_tx_label_maps({"partial": {}})
@@ -275,7 +275,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_monitor_events": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countMonitorEvents": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_monitor_events({"partial": {}})
@@ -295,7 +295,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_sync_states": lambda self, query: 0})()
+        mock_storage = type("MockStorage", (), {"countSyncStates": lambda self, query: 0})()
 
         # When
         count = mock_storage.count_sync_states({"partial": {}})

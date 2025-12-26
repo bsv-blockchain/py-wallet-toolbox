@@ -38,11 +38,11 @@ def _normalize_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     # Handle protocol_id -> protocolID normalization
     if "protocol_id" in args and "protocolID" not in args:
-        args["protocolID"] = args["protocol_id"]
+        args["protocolID"] = args["protocolId"]
 
     # Handle key_id -> keyID normalization
     if "key_id" in args and "keyID" not in args:
-        args["keyID"] = args["key_id"]
+        args["keyID"] = args["keyId"]
 
     return args
 
@@ -372,17 +372,17 @@ class PrivilegedKeyManager:
         if "hashToDirectlySign" in args:
             hash_val = args["hashToDirectlySign"]
             if isinstance(hash_val, list):
-                proto_args["hash_to_directly_sign"] = bytes(hash_val)
+                proto_args["hashToDirectlySign"] = bytes(hash_val)
             else:
-                proto_args["hash_to_directly_sign"] = hash_val
+                proto_args["hashToDirectlySign"] = hash_val
             
         # hashToDirectlyVerify -> hash_to_directly_verify  
         if "hashToDirectlyVerify" in args:
             hash_val = args["hashToDirectlyVerify"]
             if isinstance(hash_val, list):
-                proto_args["hash_to_directly_verify"] = bytes(hash_val)
+                proto_args["hashToDirectlyVerify"] = bytes(hash_val)
             else:
-                proto_args["hash_to_directly_verify"] = hash_val
+                proto_args["hashToDirectlyVerify"] = hash_val
             
         # signature - convert to bytes if it's a list
         if "signature" in args:

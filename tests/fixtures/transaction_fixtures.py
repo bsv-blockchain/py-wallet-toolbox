@@ -66,8 +66,8 @@ def create_test_transaction(
         "version": 1,
         "lockTime": 0,
         "rawTx": raw_tx,
-        "created_at": now,
-        "updated_at": now,
+        "createdAt": now,
+        "updatedAt": now,
     }
 
 

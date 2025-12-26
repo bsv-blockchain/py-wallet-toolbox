@@ -302,7 +302,7 @@ class TestServicesErrorHandling:
             invalid_configs = [
                 {},  # Empty config
                 {"chain": "main"},  # Missing other required fields
-                {"api_keys": {}},  # Only API keys
+                {"apiKeys": {}},  # Only API keys
                 None,  # None config
             ]
 
@@ -337,9 +337,9 @@ class TestServicesErrorHandling:
             for invalid_key in invalid_api_keys:
                 config = {
                     "chain": "main",
-                    "whatsonchain_api_key": invalid_key,
-                    "taal_api_key": invalid_key,
-                    "arc_api_key": invalid_key,
+                    "whatsonchainApiKey": invalid_key,
+                    "taalApiKey": invalid_key,
+                    "arcApiKey": invalid_key,
                 }
 
                 try:
@@ -415,23 +415,23 @@ class TestServicesErrorHandling:
 
             invalid_provider_configs = [
                 # Invalid URLs
-                {"chain": "main", "arc_url": "not-a-url", "arc_api_key": "key"},
-                {"chain": "main", "whatsonchain_url": "", "whatsonchain_api_key": "key"},
-                {"chain": "main", "taal_url": None, "taal_api_key": "key"},
+                {"chain": "main", "arcUrl": "not-a-url", "arcApiKey": "key"},
+                {"chain": "main", "whatsonchainUrl": "", "whatsonchainApiKey": "key"},
+                {"chain": "main", "taalUrl": None, "taalApiKey": "key"},
 
                 # Invalid API keys with URLs
-                {"chain": "main", "arc_url": "https://arc.example.com", "arc_api_key": ""},
-                {"chain": "main", "whatsonchain_url": "https://woc.com", "whatsonchain_api_key": None},
+                {"chain": "main", "arcUrl": "https://arc.example.com", "arcApiKey": ""},
+                {"chain": "main", "whatsonchainUrl": "https://woc.com", "whatsonchainApiKey": None},
 
                 # Invalid chain with valid URLs
-                {"chain": "invalid", "arc_url": "https://arc.example.com", "arc_api_key": "key"},
+                {"chain": "invalid", "arcUrl": "https://arc.example.com", "arcApiKey": "key"},
 
                 # Conflicting configurations
                 {
                     "chain": "main",
-                    "arc_url": "https://arc1.com",
-                    "arc_url_backup": "https://arc1.com",  # Same as primary
-                    "arc_api_key": "key"
+                    "arcUrl": "https://arc1.com",
+                    "arcUrlBackup": "https://arc1.com",  # Same as primary
+                    "arcApiKey": "key"
                 },
             ]
 
@@ -533,8 +533,8 @@ class TestServicesErrorHandling:
 
             config = {
                 "chain": "main",
-                "whatsonchain_api_key": "test_key",
-                "custom_timeout": 30,
+                "whatsonchainApiKey": "test_key",
+                "customTimeout": 30,
             }
 
             services = Services(config)

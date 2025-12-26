@@ -47,7 +47,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_with_ec_publickey_as_sender_public_key_source(self) -> None:
         """Given: Sender public key as ec.PublicKey object, key ID, recipient private key
@@ -71,7 +71,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_with_sender_key_deriver_as_sender_public_key_source(self) -> None:
         """Given: Sender key deriver, key ID, recipient private key
@@ -97,7 +97,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_with_ec_privatekey_as_recipient_private_key_source(self) -> None:
         """Given: Sender public key, key ID, recipient private key as ec.PrivateKey object
@@ -121,7 +121,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_testnet_address_created_with_brc29_by_recipient(self) -> None:
         """Given: Sender public key, key ID, recipient private key, testnet option
@@ -142,7 +142,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_TESTNET_ADDRESS
+        assert address["addressString"] == EXPECTED_TESTNET_ADDRESS
 
 
 class TestBRC29AddressByRecipientErrors:
@@ -331,7 +331,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_wif_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as WIF string, key ID, recipient public key
@@ -351,7 +351,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_ec_privatekey_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as ec.PrivateKey object, key ID, recipient public key
@@ -375,7 +375,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_key_deriver_as_sender_private_key_source(self) -> None:
         """Given: Sender key deriver, key ID, recipient public key
@@ -401,7 +401,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_ec_publickey_as_receiver_public_key_source(self) -> None:
         """Given: Sender private key, key ID, recipient public key as ec.PublicKey object
@@ -425,7 +425,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_testnet_address_created_with_brc29(self) -> None:
         """Given: Sender private key, key ID, recipient public key, testnet option
@@ -450,7 +450,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_TESTNET_ADDRESS
+        assert address["addressString"] == EXPECTED_TESTNET_ADDRESS
 
 
 class TestBRC29AddressErrors:

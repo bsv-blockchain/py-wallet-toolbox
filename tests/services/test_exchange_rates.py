@@ -25,7 +25,7 @@ def valid_services_config():
     """Fixture providing valid services configuration."""
     return {
         "chain": "main",
-        "exchangeratesapi_key": "test_api_key_123"
+        "exchangeratesapiKey": "test_api_key_123"
     }
 
 
@@ -404,7 +404,7 @@ class TestExchangeRates:
         for invalid_key in invalid_api_keys:
             # Create options with invalid API key
             invalid_options = services.options.copy()
-            invalid_options["exchangeratesapi_key"] = invalid_key
+            invalid_options["exchangeratesapiKey"] = invalid_key
 
             try:
                 result = asyncio.run(update_exchangeratesapi(valid_currencies, invalid_options))

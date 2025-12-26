@@ -896,7 +896,7 @@ class TestServicesErrorHandling:
             [],
             {"chain": "invalid"},
             {"chain": None},
-            {"invalid_key": "value"},
+            {"invalidKey": "value"},
         ]
 
         for invalid_option in invalid_options:

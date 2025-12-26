@@ -113,7 +113,7 @@ def validate_generate_change_sdk_params(params: GenerateChangeSdkParams) -> dict
                     f"fixedOutputs[{i}].satoshis",
                     "valid satoshis amount. Only one 'maxPossibleSatoshis' output allowed."
                 )
-            r["has_max_possible_output"] = i
+            r["hasMaxPossibleOutput"] = i
 
     if params.fee_model.model != "sat/kb":
         raise InvalidParameterError("feeModel.model", "'sat/kb'")
@@ -322,13 +322,13 @@ def generate_change_sdk(
         fund_transaction()
 
         if fee_excess() < 0 and "has_max_possible_output" in vgcpr:
-            idx = vgcpr["has_max_possible_output"]
+            idx = vgcpr["hasMaxPossibleOutput"]
             if fixed_outputs[idx].satoshis != MAX_POSSIBLE_SATOSHIS:
                 raise InternalError()
             
             fixed_outputs[idx].satoshis += fee_excess()
             r.max_possible_satoshis_adjustment = {
-                "fixed_output_index": idx,
+                "fixedOutputIndex": idx,
                 "satoshis": fixed_outputs[idx].satoshis
             }
 

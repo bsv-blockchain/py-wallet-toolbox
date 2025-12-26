@@ -316,11 +316,11 @@ class TestPurgeData:
         storage = Mock()
 
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -342,11 +342,11 @@ class TestPurgeData:
         storage = Mock()
 
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -359,22 +359,22 @@ class TestPurgeData:
         result = purge_data(storage, params)
 
         # Verify result structure
-        assert result["deleted_transactions"] == 0
-        assert result["deleted_outputs"] == 0
-        assert result["deleted_certificates"] == 0
-        assert result["deleted_requests"] == 0
-        assert result["deleted_labels"] == 0
+        assert result["deletedTransactions"] == 0
+        assert result["deletedOutputs"] == 0
+        assert result["deletedCertificates"] == 0
+        assert result["deletedRequests"] == 0
+        assert result["deletedLabels"] == 0
 
     def test_purge_data_empty_params(self) -> None:
         """Test purge_data with empty parameters."""
         storage = Mock()
 
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -398,8 +398,8 @@ class TestReviewStatus:
         storage = Mock()
 
         storage.review_status = Mock(return_value={
-            "updated_count": 1,
-            "aged_count": 0,
+            "updatedCount": 1,
+            "agedCount": 0,
             "log": ""
         })
 
@@ -416,8 +416,8 @@ class TestReviewStatus:
         storage = Mock()
 
         storage.review_status = Mock(return_value={
-            "updated_count": 0,
-            "aged_count": 0,
+            "updatedCount": 0,
+            "agedCount": 0,
             "log": ""
         })
 
@@ -425,15 +425,15 @@ class TestReviewStatus:
         result = review_status(storage, args)
 
         # Should handle None aged_limit gracefully
-        assert result["aged_count"] == 0
+        assert result["agedCount"] == 0
 
     def test_review_status_with_aged_requests(self) -> None:
         """Test review_status identifies aged requests correctly."""
         storage = Mock()
 
         storage.review_status = Mock(return_value={
-            "updated_count": 1,
-            "aged_count": 1,
+            "updatedCount": 1,
+            "agedCount": 1,
             "log": ""
         })
 
@@ -580,11 +580,11 @@ class TestStorageMethodIntegration:
 
         # Now test purge (should work with the created sync state)
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -600,8 +600,8 @@ class TestStorageMethodIntegration:
 
         # Setup review status
         storage.review_status = Mock(return_value={
-            "updated_count": 0,
-            "aged_count": 0,
+            "updatedCount": 0,
+            "agedCount": 0,
             "log": ""
         })
 

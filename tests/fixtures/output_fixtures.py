@@ -72,8 +72,8 @@ def create_test_output(
         "type": output_type,
         "txid": txid,
         "lockingScript": locking_script,
-        "created_at": now,
-        "updated_at": now,
+        "createdAt": now,
+        "updatedAt": now,
     }
 
 

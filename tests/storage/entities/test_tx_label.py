@@ -49,8 +49,8 @@ class TestTxLabelEntity:
             "label": "Test Label",
             "userId": 101,
             "isDeleted": False,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
         }
 
         # When
@@ -113,8 +113,8 @@ class TestTxLabelEntity:
                 "label": "Original Label",
                 "userId": 1,
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 2, 1),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 2, 1),
             }
         )
 
@@ -123,8 +123,8 @@ class TestTxLabelEntity:
             "label": "Outdated Label",
             "userId": 1,
             "isDeleted": True,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 1),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 1),
         }
 
         mock_storage = type("MockStorage", (), {})()
@@ -155,8 +155,8 @@ class TestTxLabelEntity:
                 "userId": 1,
                 "label": "Test Label",
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 
@@ -166,8 +166,8 @@ class TestTxLabelEntity:
                 "userId": 1,
                 "label": "Test Label",
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 
@@ -192,8 +192,8 @@ class TestTxLabelEntity:
                 "userId": 1,
                 "label": "Label A",
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 
@@ -203,8 +203,8 @@ class TestTxLabelEntity:
                 "userId": 1,
                 "label": "Label B",
                 "isDeleted": True,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 

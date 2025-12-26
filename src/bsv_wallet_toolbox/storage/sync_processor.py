@@ -76,7 +76,7 @@ class SyncChunkProcessor:
                     "updated": 0,
                     "errors": [],
                     "done": True,
-                    "maxUpdated_at": None
+                    "maxUpdatedAt": None
                 }
 
             # Process each entity type
@@ -104,7 +104,7 @@ class SyncChunkProcessor:
                 "updated": total,
                 "errors": self.errors,
                 "done": False,
-                "maxUpdated_at": datetime.now().isoformat()
+                "maxUpdatedAt": datetime.now().isoformat()
             }
 
         except Exception as e:
@@ -117,7 +117,7 @@ class SyncChunkProcessor:
                 "updated": 0,
                 "errors": [error_msg],
                 "done": False,
-                "maxUpdated_at": None
+                "maxUpdatedAt": None
             }
 
     def _is_empty_chunk(self) -> bool:
@@ -219,16 +219,16 @@ class SyncChunkProcessor:
                 # Insert transaction (provider handles upsert logic)
                 user_id = self._get_user_id()
                 tx_data = {
-                    'user_id': user_id,
+                    'userId': user_id,
                     'txid': txid,
                     'status': tx.get('status', 'unprocessed'),
                     'reference': tx.get('reference', ''),
-                    'is_outgoing': tx.get('isOutgoing', False),
+                    'isOutgoing': tx.get('isOutgoing', False),
                     'satoshis': tx.get('satoshis', 0),
                     'description': tx.get('description', ''),
                     'version': tx.get('version', 1),
-                    'lock_time': tx.get('lockTime', 0),
-                    'input_beef': tx.get('inputBEEF'),
+                    'lockTime': tx.get('lockTime', 0),
+                    'inputBeef': tx.get('inputBEEF'),
                 }
                 self.provider.insert_transaction(tx_data)
                 self.inserts_count += 1
@@ -249,21 +249,21 @@ class SyncChunkProcessor:
                 # Insert output (provider handles upsert)
                 user_id = self._get_user_id()
                 output_data = {
-                    'user_id': user_id,
+                    'userId': user_id,
                     'txid': txid,
                     'vout': vout,
                     'satoshis': output.get('satoshis', 0),
-                    'locking_script': output.get('lockingScript', b''),
+                    'lockingScript': output.get('lockingScript', b''),
                     'spendable': output.get('spendable', True),
                     'change': output.get('change', False),
                     'spent': output.get('spent', False),
-                    'output_description': output.get('outputDescription', ''),
-                    'basket_id': output.get('basketId'),
-                    'derivation_prefix': output.get('derivationPrefix'),
-                    'derivation_suffix': output.get('derivationSuffix'),
-                    'custom_instructions': output.get('customInstructions'),
-                    'sender_identity_key': output.get('senderIdentityKey'),
-                    'provided_by': output.get('providedBy', 'you'),
+                    'outputDescription': output.get('outputDescription', ''),
+                    'basketId': output.get('basketId'),
+                    'derivationPrefix': output.get('derivationPrefix'),
+                    'derivationSuffix': output.get('derivationSuffix'),
+                    'customInstructions': output.get('customInstructions'),
+                    'senderIdentityKey': output.get('senderIdentityKey'),
+                    'providedBy': output.get('providedBy', 'you'),
                     'purpose': output.get('purpose', 'change'),
                     'type': output.get('type', 'P2PKH'),
                 }
@@ -364,7 +364,7 @@ class SyncChunkProcessor:
         user_data = self.chunk.get('user')
         if user_data:
             # Check both camelCase and snake_case
-            user_id = user_data.get('userId') or user_data.get('user_id')
+            user_id = user_data.get('userId') or user_data.get('userId')
             if user_id:
                 return user_id
 

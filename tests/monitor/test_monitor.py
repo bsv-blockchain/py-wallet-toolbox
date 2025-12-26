@@ -575,7 +575,7 @@ class TestMonitor:
         
         if reqs:
             # Access dict key, not attribute
-            req_id = reqs[0].get("provenTxReqId") or reqs[0].get("proven_tx_req_id")
+            req_id = reqs[0].get("provenTxReqId") or reqs[0].get("provenTxReqId")
             if req_id:
                 storage.update_proven_tx_req(req_id, {"status": "invalid"})
             # Try to update transaction if it exists

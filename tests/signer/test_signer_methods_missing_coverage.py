@@ -66,19 +66,19 @@ class TestBuildSignableTransactionEdgeCases:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "mock_script"}],
-            "storage_inputs": [{
+            "storageInputs": [{
                 "vin": 0,
                 "type": "UNSUPPORTED_TYPE",
-                "derivation_prefix": "prefix",
-                "derivation_suffix": "suffix",
-                "sender_identity_key": "key",
-                "source_satoshis": 1000,
-                "source_locking_script": "script",
-                "source_txid": "txid",
-                "source_vout": 0,
-                "source_transaction": "deadbeef"
+                "derivationPrefix": "prefix",
+                "derivationSuffix": "suffix",
+                "senderIdentityKey": "key",
+                "sourceSatoshis": 1000,
+                "sourceLockingScript": "script",
+                "sourceTxid": "txid",
+                "sourceVout": 0,
+                "sourceTransaction": "deadbeef"
             }],
-            "storage_outputs": []
+            "storageOutputs": []
         }
 
         args = {"description": "test"}
@@ -100,19 +100,19 @@ class TestBuildSignableTransactionEdgeCases:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
-            "storage_inputs": [{
+            "storageInputs": [{
                 "vin": 0,
                 "type": "P2PKH",
-                "derivation_prefix": "prefix",
-                "derivation_suffix": "suffix",
-                "sender_identity_key": "key",
-                "source_satoshis": 2000,
-                "source_locking_script": "script",
-                "source_txid": "txid",
-                "source_vout": 0,
-                "source_transaction": "deadbeef"
+                "derivationPrefix": "prefix",
+                "derivationSuffix": "suffix",
+                "senderIdentityKey": "key",
+                "sourceSatoshis": 2000,
+                "sourceLockingScript": "script",
+                "sourceTxid": "txid",
+                "sourceVout": 0,
+                "sourceTransaction": "deadbeef"
             }],
-            "storage_outputs": [
+            "storageOutputs": [
                 {"purpose": "change", "satoshis": 500, "vout": 1},
                 {"purpose": "change", "satoshis": 300, "vout": 2}
             ]
@@ -147,7 +147,7 @@ class TestCompleteSignedTransactionEdgeCases:
 
         spends = {
             0: {
-                "unlocking_script": "deadbeef" * 10  # 80 hex chars = 40 bytes, exceeds 10
+                "unlockingScript": "deadbeef" * 10  # 80 hex chars = 40 bytes, exceeds 10
             }
         }
 
@@ -165,7 +165,7 @@ class TestCompleteSignedTransactionEdgeCases:
 
         spends = {
             0: {
-                "unlocking_script": "deadbeef"
+                "unlockingScript": "deadbeef"
             }
         }
 
@@ -217,8 +217,8 @@ class TestSignerHelperFunctionsEdgeCases:
         """Test _remove_unlock_scripts with None values."""
         args = {
             "inputs": [
-                {"unlocking_script": "script1"},
-                {"unlocking_script": None},
+                {"unlockingScript": "script1"},
+                {"unlockingScript": None},
                 {}  # Missing unlocking_script
             ]
         }

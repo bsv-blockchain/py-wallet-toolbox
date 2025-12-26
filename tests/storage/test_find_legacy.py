@@ -119,7 +119,7 @@ class TestfindLegacy:
             "MockStorage",
             (),
             {
-                "find_outputs": lambda self, query: [
+                "findOutputs": lambda self, query: [
                     {"txid": "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26", "vout": 2}
                 ]
             },

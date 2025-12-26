@@ -59,105 +59,105 @@ class TestChangeDistribution:
         """
         tests = {
             "single output": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 1,
                 "amount": 5500,
                 "expected": [5500],
             },
             "single output with one satoshi": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 1,
                 "amount": 1,
                 "expected": [1],
             },
             "zero outputs": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 0,
                 "amount": 5500,
                 "expected": [],
             },
             "zero amount": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 0,
                 "expected": [],
             },
             "zero amount & zero count": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 0,
                 "amount": 0,
                 "expected": [],
             },
             "not saturated: reminder + (count-1) * initialValue": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 5500,
                 "expected": [500, 1000, 1000, 1000, 1000, 1000],
             },
             "not saturated: initialValue/4 + (count-1) * initialValue": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 5250,
                 "expected": [250, 1000, 1000, 1000, 1000, 1000],
             },
             "equally saturated: (count) * initialValue": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 6000,
                 "expected": [1000, 1000, 1000, 1000, 1000, 1000],
             },
             "saturated: equal distribution +1": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_max_randomizer,
                 "count": 6,
                 "amount": 6001,
                 "expected": [1000, 1000, 1000, 1000, 1000, 1001],
             },
             "saturated: equal distribution": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 7200,
                 "expected": [1200, 1200, 1200, 1200, 1200, 1200],
             },
             "saturated: not equal distribution": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 7201,
                 "expected": [1201, 1200, 1200, 1200, 1200, 1200],
             },
             "saturated: not equal distribution - mockMaxRandomizer": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_max_randomizer,
                 "count": 6,
                 "amount": 7205,
                 "expected": [1200, 1200, 1200, 1200, 1200, 1205],
             },
             "saturated: not equal distribution - constRandomizer": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_const_randomizer(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
                 "count": 6,
                 "amount": 7205,
                 "expected": [1305, 1260, 1220, 1180, 1140, 1100],
             },
             "saturated: zero initialValue": {
-                "initial_value": 0,
+                "initialValue": 0,
                 "randomizer": mock_max_randomizer,
                 "count": 6,
                 "amount": 7201,
                 "expected": [1200, 1200, 1200, 1200, 1200, 1201],
             },
             "not saturated, minimal value: 1 + (count-1) * initialValue": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 5001,
@@ -167,7 +167,7 @@ class TestChangeDistribution:
 
         for _name, test in tests.items():
             # Given
-            dist = ChangeDistribution(test["initial_value"], test["randomizer"])
+            dist = ChangeDistribution(test["initialValue"], test["randomizer"])
 
             # When
             values = list(dist.distribute(test["count"], test["amount"]))
@@ -193,19 +193,19 @@ class TestChangeDistributionPanics:
         """
         tests = {
             "reduced count: (count-1) * initialValue": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 5000,
             },
             "not saturated, reduced count: (count-1) * initialValue": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 4999,
             },
             "not saturated, reduced count to one": {
-                "initial_value": 1000,
+                "initialValue": 1000,
                 "randomizer": mock_zero_randomizer,
                 "count": 6,
                 "amount": 1,
@@ -214,7 +214,7 @@ class TestChangeDistributionPanics:
 
         for _name, test in tests.items():
             # Given
-            dist = ChangeDistribution(test["initial_value"], test["randomizer"])
+            dist = ChangeDistribution(test["initialValue"], test["randomizer"])
 
             # When/Then
             with pytest.raises(Exception):  # GO panic -> Python exception

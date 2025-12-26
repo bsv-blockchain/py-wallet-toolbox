@@ -220,8 +220,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     user_id = storage.insert_user({
         "identityKey": test_key_deriver._root_private_key.public_key().hex(),
         "activeStorage": "test",
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     })
 
     # Get or create default basket (use find_or_insert to match storage provider behavior)
@@ -242,8 +242,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "version": 1,
         "lockTime": 0,
         "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     })
 
     # Seed spendable UTXO (output at vout 0)
@@ -266,9 +266,9 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
         "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
         "txid": source_txid,
         "lockingScript": locking_script,
-        "spent_by": None,  # Explicitly set to None to ensure it's allocatable
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "spentBy": None,  # Explicitly set to None to ensure it's allocatable
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     })
 
     # Create mock Services instance for testing
@@ -357,60 +357,60 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
     certificates = [
         # 4 certificates with the main certifier (for certifier filtering tests)
         {
-            "user_id": user_id,
+            "userId": user_id,
             "type": cert_type_base64,
-            "serial_number": "01" * 16,  # 32 bytes as hex
+            "serialNumber": "01" * 16,  # 32 bytes as hex
             "subject": "test_subject_1",
             "certifier": certifier_pubkey,
-            "revocation_outpoint": "deadbeef" * 8 + ".1",
+            "revocationOutpoint": "deadbeef" * 8 + ".1",
             "signature": "test_signature_1",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         },
         {
-            "user_id": user_id,
+            "userId": user_id,
             "type": "different_type_base64",  # Different type
-            "serial_number": "02" * 16,  # 32 bytes as hex
+            "serialNumber": "02" * 16,  # 32 bytes as hex
             "subject": "test_subject_2",
             "certifier": certifier_pubkey,
-            "revocation_outpoint": "beefdead" * 8 + ".2",
+            "revocationOutpoint": "beefdead" * 8 + ".2",
             "signature": "test_signature_2",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         },
         {
-            "user_id": user_id,
+            "userId": user_id,
             "type": cert_type_base64,
-            "serial_number": "03" * 16,  # 32 bytes as hex
+            "serialNumber": "03" * 16,  # 32 bytes as hex
             "subject": "test_subject_3",
             "certifier": certifier_pubkey,
-            "revocation_outpoint": "feeddead" * 8 + ".3",
+            "revocationOutpoint": "feeddead" * 8 + ".3",
             "signature": "test_signature_3",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         },
         {
-            "user_id": user_id,
+            "userId": user_id,
             "type": "another_type_base64",  # Different type
-            "serial_number": "04" * 16,  # 32 bytes as hex
+            "serialNumber": "04" * 16,  # 32 bytes as hex
             "subject": "test_subject_4",
             "certifier": certifier_pubkey,
-            "revocation_outpoint": "deedbeef" * 8 + ".4",
+            "revocationOutpoint": "deedbeef" * 8 + ".4",
             "signature": "test_signature_4",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         },
         # 1 certificate with different certifier (for multiple certifiers test)
         {
-            "user_id": user_id,
+            "userId": user_id,
             "type": cert_type_base64,
-            "serial_number": "05" * 16,
+            "serialNumber": "05" * 16,
             "subject": "test_subject_5",
             "certifier": "03cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17",  # Different certifier
-            "revocation_outpoint": "beefdeed" * 8 + ".5",
+            "revocationOutpoint": "beefdeed" * 8 + ".5",
             "signature": "test_signature_5",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
     ]
 

@@ -22,8 +22,8 @@ def valid_services_config():
     """Fixture providing valid services configuration."""
     return {
         "chain": "main",
-        "whatsonchain_api_key": "test_woc_key",
-        "taal_api_key": "test_taal_key"
+        "whatsonchainApiKey": "test_woc_key",
+        "taalApiKey": "test_taal_key"
     }
 
 

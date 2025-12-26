@@ -50,7 +50,7 @@ class TestCreateAction:
 
     def test_create_action_success(self, mock_wallet: Mock) -> None:
         """Test successful create_action execution."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"description": "test action", "outputs": [], "isNewTx": False}
 
         with patch('bsv_wallet_toolbox.signer.methods.process_action') as mock_process:
@@ -63,7 +63,7 @@ class TestCreateAction:
 
     def test_create_action_wallet_error(self, mock_wallet: Mock) -> None:
         """Test create_action with wallet error."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"description": "test action", "isNewTx": True}
 
         with patch('bsv_wallet_toolbox.signer.methods._create_new_tx') as mock_create_tx:
@@ -102,17 +102,17 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
-            "storage_inputs": [{
+            "storageInputs": [{
                 "vin": 0,
                 "type": "P2PKH",
-                "derivation_prefix": "m/44'/0'/0'/0",
-                "derivation_suffix": "0",
-                "sender_identity_key": "key",
-                "source_satoshis": 2000,
-                "source_locking_script": "script",
-                "source_txid": "txid",
-                "source_vout": 0,
-                "source_transaction": "deadbeef"
+                "derivationPrefix": "m/44'/0'/0'/0",
+                "derivationSuffix": "0",
+                "senderIdentityKey": "key",
+                "sourceSatoshis": 2000,
+                "sourceLockingScript": "script",
+                "sourceTxid": "txid",
+                "sourceVout": 0,
+                "sourceTransaction": "deadbeef"
             }]
         }
         args = {"description": "test"}
@@ -135,17 +135,17 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}],
-            "storage_inputs": [{
+            "storageInputs": [{
                 "vin": 0,
                 "type": "P2PKH",
-                "derivation_prefix": "invalid",
-                "derivation_suffix": "0",
-                "sender_identity_key": "key",
-                "source_satoshis": 2000,
-                "source_locking_script": "script",
-                "source_txid": "txid",
-                "source_vout": 0,
-                "source_transaction": "deadbeef"
+                "derivationPrefix": "invalid",
+                "derivationSuffix": "0",
+                "senderIdentityKey": "key",
+                "sourceSatoshis": 2000,
+                "sourceLockingScript": "script",
+                "sourceTxid": "txid",
+                "sourceVout": 0,
+                "sourceTransaction": "deadbeef"
             }]
         }
         args = {"description": "test"}
@@ -160,17 +160,17 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}],
-            "storage_inputs": [{
+            "storageInputs": [{
                 "vin": 0,
                 "type": "UNSUPPORTED_TYPE",
-                "derivation_prefix": "prefix",
-                "derivation_suffix": "suffix",
-                "sender_identity_key": "key",
-                "source_satoshis": 1000,
-                "source_locking_script": "script",
-                "source_txid": "txid",
-                "source_vout": 0,
-                "source_transaction": "deadbeef"
+                "derivationPrefix": "prefix",
+                "derivationSuffix": "suffix",
+                "senderIdentityKey": "key",
+                "sourceSatoshis": 1000,
+                "sourceLockingScript": "script",
+                "sourceTxid": "txid",
+                "sourceVout": 0,
+                "sourceTransaction": "deadbeef"
             }]
         }
         args = {"description": "test"}
@@ -183,7 +183,7 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
-            "storage_outputs": [
+            "storageOutputs": [
                 {"purpose": "change", "satoshis": 500, "vout": 1}
             ]
         }
@@ -260,13 +260,13 @@ class TestCompleteSignedTransaction:
         input_mock = Mock()
         prior.tx.inputs = [input_mock]
         prior.inputs = [Mock(unlocking_script_length=10)]
-        prior.args = {"inputs": [{"unlocking_script_length": 10}]}
+        prior.args = {"inputs": [{"unlockingScriptLength": 10}]}
         prior.pdi = []
 
         spends = {
             0: {
-                "unlocking_script": "deadbeef",  # 8 hex chars = 4 bytes, within limit
-                "sequence_number": 0xFFFFFFFF
+                "unlockingScript": "deadbeef",  # 8 hex chars = 4 bytes, within limit
+                "sequenceNumber": 0xFFFFFFFF
             }
         }
 
@@ -285,12 +285,12 @@ class TestCompleteSignedTransaction:
         input_mock = Mock()
         prior.tx.inputs = [input_mock]
         prior.inputs = [Mock(unlocking_script_length=5)]  # Max 5 bytes
-        prior.args = {"inputs": [{"unlocking_script_length": 5}]}
+        prior.args = {"inputs": [{"unlockingScriptLength": 5}]}
         prior.pdi = []
 
         spends = {
             0: {
-                "unlocking_script": "deadbeef12345678",  # 16 hex chars = 8 bytes, exceeds limit
+                "unlockingScript": "deadbeef12345678",  # 16 hex chars = 8 bytes, exceeds limit
             }
         }
 
@@ -309,7 +309,7 @@ class TestCompleteSignedTransaction:
 
         spends = {
             0: {
-                "unlocking_script": "deadbeef",
+                "unlockingScript": "deadbeef",
             }
         }
 
@@ -323,13 +323,13 @@ class TestCompleteSignedTransaction:
         input_mock = Mock()
         prior.tx.inputs = [input_mock]
         prior.inputs = [Mock(unlocking_script_length=10)]
-        prior.args = {"inputs": [{"unlocking_script_length": 10}]}
+        prior.args = {"inputs": [{"unlockingScriptLength": 10}]}
         prior.pdi = []
 
         spends = {
             0: {
-                "unlocking_script": "deadbeef",
-                "sequence_number": 12345
+                "unlockingScript": "deadbeef",
+                "sequenceNumber": 12345
             }
         }
 
@@ -349,14 +349,14 @@ class TestCompleteSignedTransaction:
             Mock(unlocking_script_length=15)
         ]
         prior.args = {"inputs": [
-            {"unlocking_script_length": 10},
-            {"unlocking_script_length": 15}
+            {"unlockingScriptLength": 10},
+            {"unlockingScriptLength": 15}
         ]}
         prior.pdi = []
 
         spends = {
-            0: {"unlocking_script": "deadbeef"},
-            1: {"unlocking_script": "beefdead"}
+            0: {"unlockingScript": "deadbeef"},
+            1: {"unlockingScript": "beefdead"}
         }
 
         result = complete_signed_transaction(prior, spends, mock_wallet)
@@ -390,7 +390,7 @@ class TestProcessAction:
 
     def test_process_action_without_prior(self, mock_wallet: Mock) -> None:
         """Test process_action without prior action."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"description": "test", "outputs": []}
 
         # Mock the storage process_action call to return a dict
@@ -423,7 +423,7 @@ class TestProcessAction:
         prior.tx.serialize.return_value = "raw_tx_data"
         prior.amount = 1000
 
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"isSignAction": True, "spends": {}}
 
         # Mock the storage process_action call to return a dict
@@ -444,7 +444,7 @@ class TestProcessAction:
         prior.tx.txid.return_value = "prior_txid"
         prior.tx.serialize.return_value = "raw_tx_data"
 
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"isInternalizeAction": True}
 
         # Mock the storage process_action call to return a dict
@@ -458,7 +458,7 @@ class TestProcessAction:
 
     def test_process_action_error_handling(self, mock_wallet: Mock) -> None:
         """Test process_action error handling."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"description": "test"}
 
         with patch('bsv_wallet_toolbox.signer.methods._create_new_tx') as mock_create_tx:
@@ -479,7 +479,7 @@ class TestSignAction:
 
     def test_sign_action_success(self, mock_wallet: Mock) -> None:
         """Test successful sign_action execution."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
         with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
@@ -505,7 +505,7 @@ class TestSignAction:
 
     def test_sign_action_no_prior_found(self, mock_wallet: Mock) -> None:
         """Test sign_action when no prior action is found."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
         with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
@@ -526,11 +526,11 @@ class TestInternalizeAction:
 
     def test_internalize_action_success(self, mock_wallet: Mock) -> None:
         """Test successful internalize_action execution."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         args = {
             "reference": "test_ref",
             "tx": b"test_beef_data",
-            "outputs": [{"amount": 1000, "script": "test_script", "protocol": "wallet payment", "output_index": 0, "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"}, "payment_remittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"}}],
+            "outputs": [{"amount": 1000, "script": "test_script", "protocol": "wallet payment", "outputIndex": 0, "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"}, "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"}}],
             "description": "Test transaction description"
         }
 
@@ -556,7 +556,7 @@ class TestInternalizeAction:
 
     def test_internalize_action_no_prior_found(self, mock_wallet: Mock) -> None:
         """Test internalize_action when no prior action is found."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
         with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
@@ -577,7 +577,7 @@ class TestAcquireDirectCertificate:
 
     def test_acquire_direct_certificate_success(self, mock_wallet: Mock) -> None:
         """Test successful acquire_direct_certificate execution."""
-        auth = {"identity_key": "test_key", "userId": "test_user"}
+        auth = {"identityKey": "test_key", "userId": "test_user"}
         vargs = {"type": "identity", "fields": {}, "subject": "test_subject", "certifier": "test_certifier"}
 
         with patch('bsv_wallet_toolbox.signer.methods.create_action') as mock_create:
@@ -591,7 +591,7 @@ class TestAcquireDirectCertificate:
 
     def test_acquire_direct_certificate_error(self, mock_wallet: Mock) -> None:
         """Test acquire_direct_certificate with validation error."""
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         vargs = {"type": "identity"}
 
         with pytest.raises(ValueError, match="Certificate acquisition failed"):
@@ -609,8 +609,8 @@ class TestProveCertificate:
 
     def test_prove_certificate_success(self, mock_wallet: Mock) -> None:
         """Test successful prove_certificate execution."""
-        auth = {"identity_key": "test_key"}
-        vargs = {"certificate_txid": "cert_txid"}
+        auth = {"identityKey": "test_key"}
+        vargs = {"certificateTxid": "cert_txid"}
 
         with patch('bsv_wallet_toolbox.signer.methods.create_action') as mock_create:
             mock_create.return_value = {"txid": "proof_txid"}
@@ -623,8 +623,8 @@ class TestProveCertificate:
 
     def test_prove_certificate_error(self, mock_wallet: Mock) -> None:
         """Test prove_certificate with error."""
-        auth = {"identity_key": "test_key"}
-        vargs = {"certificate_txid": "cert_txid"}
+        auth = {"identityKey": "test_key"}
+        vargs = {"certificateTxid": "cert_txid"}
 
         mock_wallet.storage.list_certificates.return_value = {"certificates": []}
 
@@ -639,9 +639,9 @@ class TestHelperFunctions:
         """Test _remove_unlock_scripts basic functionality."""
         args = {
             "inputs": [
-                {"unlocking_script": "script1", "other_field": "value1"},
-                {"unlocking_script": "script2", "other_field": "value2"},
-                {"other_field": "value3"}  # No unlocking_script
+                {"unlockingScript": "script1", "otherField": "value1"},
+                {"unlockingScript": "script2", "otherField": "value2"},
+                {"otherField": "value3"}  # No unlocking_script
             ]
         }
 
@@ -657,8 +657,8 @@ class TestHelperFunctions:
         """Test _remove_unlock_scripts with None values."""
         args = {
             "inputs": [
-                {"unlocking_script": None},
-                {"unlocking_script": "valid_script"}
+                {"unlockingScript": None},
+                {"unlockingScript": "valid_script"}
             ]
         }
 
@@ -680,8 +680,8 @@ class TestHelperFunctions:
 
     def test_make_change_lock_success(self) -> None:
         """Test _make_change_lock success."""
-        out = {"key_id": "test_key"}
-        dctr = {"derivation_prefix": "m/44'/0'/0'/1", "derivation_suffix": "0"}
+        out = {"keyId": "test_key"}
+        dctr = {"derivationPrefix": "m/44'/0'/0'/1", "derivationSuffix": "0"}
         args = {}
         change_keys = Mock()
         wallet = Mock()
@@ -723,8 +723,8 @@ class TestHelperFunctions:
 
     def test_make_change_lock_derivation_error(self) -> None:
         """Test _make_change_lock with derivation error."""
-        out = {"key_id": "test_key"}
-        dctr = {"derivation_prefix": "invalid", "derivation_suffix": "0"}
+        out = {"keyId": "test_key"}
+        dctr = {"derivationPrefix": "invalid", "derivationSuffix": "0"}
         args = {}
         change_keys = Mock()
         wallet = Mock()
@@ -802,7 +802,7 @@ class TestHelperFunctions:
 
     def test_merge_prior_options_basic(self) -> None:
         """Test _merge_prior_options basic functionality."""
-        ca_vargs = {"options": {"accept_delayed_broadcast": True}}
+        ca_vargs = {"options": {"acceptDelayedBroadcast": True}}
         sa_args = {"option2": "value2"}
 
         result = _merge_prior_options(ca_vargs, sa_args)
@@ -810,7 +810,7 @@ class TestHelperFunctions:
         assert isinstance(result, dict)
         assert "option2" in result
         assert "options" in result
-        assert result["options"]["accept_delayed_broadcast"] is True
+        assert result["options"]["acceptDelayedBroadcast"] is True
 
     def test_merge_prior_options_empty(self) -> None:
         """Test _merge_prior_options with empty args."""
@@ -829,7 +829,7 @@ class TestHelperFunctions:
 
     def test_setup_wallet_payment_for_output_success(self) -> None:
         """Test _setup_wallet_payment_for_output success."""
-        output_spec = {"satoshis": 1000, "payment_remittance": {"derivation_prefix": "m/44'/0'/0'/1", "derivation_suffix": "0"}}
+        output_spec = {"satoshis": 1000, "paymentRemittance": {"derivationPrefix": "m/44'/0'/0'/1", "derivationSuffix": "0"}}
         tx = Mock()
         tx.outputs = [Mock()]
         # Set locking_script as a string to avoid isinstance check with mocked Script
@@ -890,7 +890,7 @@ class TestHelperFunctions:
     def test_recover_action_from_storage_found(self) -> None:
         """Test _recover_action_from_storage when action is found."""
         wallet = Mock()
-        auth = {"identity_key": "test_key", "userId": "test_user"}
+        auth = {"identityKey": "test_key", "userId": "test_user"}
         reference = "test_ref"
 
         # Mock storage.find to return a transaction record
@@ -912,7 +912,7 @@ class TestHelperFunctions:
     def test_recover_action_from_storage_not_found(self) -> None:
         """Test _recover_action_from_storage when action is not found."""
         wallet = Mock()
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         reference = "test_ref"
 
         wallet.get_action_by_reference.return_value = None
@@ -924,7 +924,7 @@ class TestHelperFunctions:
     def test_recover_action_from_storage_error(self) -> None:
         """Test _recover_action_from_storage with error."""
         wallet = Mock()
-        auth = {"identity_key": "test_key", "userId": "test_user"}
+        auth = {"identityKey": "test_key", "userId": "test_user"}
         reference = "test_ref"
 
         # Make storage.find raise an exception
@@ -941,7 +941,7 @@ class TestTransactionHelpers:
     def test_create_new_tx_success(self) -> None:
         """Test _create_new_tx success."""
         wallet = Mock()
-        auth = {"identity_key": "test_key"}
+        auth = {"identityKey": "test_key"}
         args = {"description": "test"}
 
         # Mock wallet.storage.create_action

@@ -60,7 +60,7 @@ class TestLoadConfig:
     def test_load_config_with_defaults(self) -> None:
         """Test loading config with default values."""
         try:
-            defaults = {"default_key": "default_value"}
+            defaults = {"defaultKey": "default_value"}
             config = load_config(defaults=defaults)
             assert isinstance(config, dict)
         except (NameError, TypeError):
@@ -74,7 +74,7 @@ class TestGetConfigValue:
     def test_get_existing_value(self) -> None:
         """Test getting existing config value."""
         try:
-            config = {"test_key": "test_value"}
+            config = {"testKey": "test_value"}
             value = get_config_value(config, "test_key")
             assert value == "test_value"
         except (NameError, TypeError, KeyError):
@@ -143,7 +143,7 @@ class TestSetConfigValue:
         try:
             config = {}
             set_config_value(config, "new_key", "new_value")
-            assert config.get("new_key") == "new_value"
+            assert config.get("newKey") == "new_value"
         except (NameError, TypeError):
             pass
 
@@ -270,7 +270,7 @@ class TestConfigAdvanced:
         try:
             config = {
                 "key-with-dash": "value1",
-                "key_with_underscore": "value2",
+                "keyWithUnderscore": "value2",
                 "key.with.dots": "value3"
             }
             

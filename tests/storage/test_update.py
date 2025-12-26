@@ -9,7 +9,7 @@ def _first(records):
 
 def test_update_proventx(storage_seeded) -> None:
     storage, seed = storage_seeded
-    record = seed["proven_tx"]
+    record = seed["provenTx"]
     new_time = datetime(2001, 1, 2, 12, 0, 0)
 
     updated = storage.update_proven_tx(
@@ -28,7 +28,7 @@ def test_update_proventx(storage_seeded) -> None:
 
 def test_update_proventx_all_fields(storage_seeded) -> None:
     storage, seed = storage_seeded
-    record = seed["proven_tx"]
+    record = seed["provenTx"]
     updated = storage.update_proven_tx(
         record["provenTxId"],
         {
@@ -53,7 +53,7 @@ def test_update_proventx_all_fields(storage_seeded) -> None:
 
 def test_update_proventxreq(storage_seeded) -> None:
     storage, seed = storage_seeded
-    record = seed["proven_tx_reqs"]["pending"]
+    record = seed["provenTxReqs"]["pending"]
     updated = storage.update_proven_tx_req(
         record["provenTxReqId"],
         {
@@ -111,7 +111,7 @@ def test_update_certificate(storage_seeded) -> None:
 
 def test_update_certificate_field(storage_seeded) -> None:
     storage, seed = storage_seeded
-    field = seed["certificate_fields"]["primary_name"]
+    field = seed["certificateFields"]["primaryName"]
     field_id = field["certificateFieldId"]
     updated = storage.update_certificate_field(
         field_id,
@@ -130,7 +130,7 @@ def test_update_certificate_field(storage_seeded) -> None:
 
 def test_update_output_basket(storage_seeded) -> None:
     storage, seed = storage_seeded
-    basket = seed["output_baskets"][0]
+    basket = seed["outputBaskets"][0]
     updated = storage.update_output_basket(
         basket["basketId"],
         {
@@ -202,7 +202,7 @@ def test_update_output(storage_seeded) -> None:
 
 def test_update_output_tag(storage_seeded) -> None:
     storage, seed = storage_seeded
-    tag = seed["output_tags"]["tag1"]
+    tag = seed["outputTags"]["tag1"]
     updated = storage.update_output_tag(
         tag["outputTagId"],
         {
@@ -217,7 +217,7 @@ def test_update_output_tag(storage_seeded) -> None:
 
 def test_update_monitor_event(storage_seeded) -> None:
     storage, seed = storage_seeded
-    event = seed["monitor_event"]
+    event = seed["monitorEvent"]
     updated = storage.update_monitor_event(
         event["id"],
         {
@@ -232,7 +232,7 @@ def test_update_monitor_event(storage_seeded) -> None:
 
 def test_update_sync_state(storage_seeded) -> None:
     storage, seed = storage_seeded
-    sync_state = seed["sync_state"]
+    sync_state = seed["syncState"]
     updated = storage.update_sync_state(
         sync_state["syncStateId"],
         {
@@ -249,7 +249,7 @@ def test_update_sync_state(storage_seeded) -> None:
 
 def test_update_tx_label(storage_seeded) -> None:
     storage, seed = storage_seeded
-    label = seed["tx_labels"]["label1"]
+    label = seed["txLabels"]["label1"]
     updated = storage.update_tx_label(
         label["txLabelId"],
         {

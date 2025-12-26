@@ -188,7 +188,7 @@ class TestCacheManager:
         test_dict = {"name": "test", "value": 123, "nested": {"key": "val"}}
         cache.set("dict_key", test_dict, 5000)
 
-        result = cache.get("dict_key")
+        result = cache.get("dictKey")
         assert result == test_dict
         assert result is test_dict  # Same object reference
 
@@ -199,7 +199,7 @@ class TestCacheManager:
         test_list = [1, 2, 3, "four", {"five": 5}]
         cache.set("list_key", test_list, 5000)
 
-        result = cache.get("list_key")
+        result = cache.get("listKey")
         assert result == test_list
 
     def test_multiple_keys_different_ttls(self) -> None:
@@ -212,8 +212,8 @@ class TestCacheManager:
         # Wait for short TTL to expire
         time.sleep(0.002)
 
-        assert cache.get("short_ttl") is None
-        assert cache.get("long_ttl") == "expires_later"
+        assert cache.get("shortTtl") is None
+        assert cache.get("longTtl") == "expires_later"
 
     def test_cache_manager_with_complex_types(self) -> None:
         """Test cache manager with complex nested types."""
@@ -242,7 +242,7 @@ class TestCacheManager:
         # Even immediately, it might be considered expired
         # Let's verify the behavior
         time.sleep(0.001)  # Small wait
-        result = cache.get("zero_ttl")
+        result = cache.get("zeroTtl")
 
         # With 0 TTL, it should expire immediately
         assert result is None

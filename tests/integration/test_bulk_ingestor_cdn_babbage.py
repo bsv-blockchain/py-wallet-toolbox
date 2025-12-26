@@ -63,7 +63,7 @@ class TestBulkIngestorCDNBabbage:
         # Then
         assert cdn.available_bulk_files is not None
         assert len(cdn.available_bulk_files.files) > 8
-        assert len(r["live_headers"]) == 0
+        assert len(r["liveHeaders"]) == 0
         assert r["reader"].range.min_height == 0
         assert r["reader"].range.max_height > 800000
 
@@ -84,7 +84,7 @@ class TestBulkIngestorCDNBabbage:
         # Then
         assert cdn.available_bulk_files is not None
         assert len(cdn.available_bulk_files.files) > 15
-        assert len(r["live_headers"]) == 0
+        assert len(r["liveHeaders"]) == 0
         assert r["reader"].range.min_height == 0
         assert r["reader"].range.max_height > 1500000
 
@@ -105,7 +105,7 @@ class TestBulkIngestorCDNBabbage:
         local_sqlite = {
             "client": "sqlite3",
             "connection": {"filename": fs.path_join(ROOT_FOLDER, f"BulkIngestorCDNBabbage.test_{test}.sqlite")},
-            "use_null_as_default": True,
+            "useNullAsDefault": True,
         }
         knex_instance = knex.make_knex(local_sqlite)
         knex_options = ChaintracksStorageKnex.create_storage_knex_options(chain, knex_instance)
@@ -131,4 +131,4 @@ class TestBulkIngestorCDNBabbage:
             await storage.destroy()
 
         # Then
-        return {"cdn": cdn, "r": {"reader": reader, "live_headers": live_headers}}
+        return {"cdn": cdn, "r": {"reader": reader, "liveHeaders": live_headers}}

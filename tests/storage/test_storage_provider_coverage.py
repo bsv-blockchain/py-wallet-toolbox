@@ -685,8 +685,8 @@ class TestTagAndLabelManagement:
         result2 = storage_provider.find_or_insert_tx_label(test_user, label)
 
         # Should return same ID
-        label_id1 = result1.get("txLabelId") or result1.get("tx_label_id")
-        label_id2 = result2.get("txLabelId") or result2.get("tx_label_id")
+        label_id1 = result1.get("txLabelId") or result1.get("txLabelId")
+        label_id2 = result2.get("txLabelId") or result2.get("txLabelId")
         assert label_id1 == label_id2
 
     def test_find_or_insert_output_tag(self, storage_provider, test_user) -> None:
@@ -706,8 +706,8 @@ class TestTagAndLabelManagement:
         result2 = storage_provider.find_or_insert_output_tag(test_user, tag)
 
         # Should return same ID
-        tag_id1 = result1.get("outputTagId") or result1.get("output_tag_id")
-        tag_id2 = result2.get("outputTagId") or result2.get("output_tag_id")
+        tag_id1 = result1.get("outputTagId") or result1.get("outputTagId")
+        tag_id2 = result2.get("outputTagId") or result2.get("outputTagId")
         assert tag_id1 == tag_id2
 
     def test_get_tags_for_output_id(self, storage_provider) -> None:
@@ -1103,9 +1103,9 @@ class TestTransactionMethods:
 
         # Test different flag combinations
         test_cases = [
-            {"isNoSend": True, "expected_tx_status": "nosend"},
-            {"isNoSend": False, "isDelayed": True, "expected_tx_status": "unprocessed"},
-            {"isNoSend": False, "isDelayed": False, "expected_tx_status": "unprocessed"},
+            {"isNoSend": True, "expectedTxStatus": "nosend"},
+            {"isNoSend": False, "isDelayed": True, "expectedTxStatus": "unprocessed"},
+            {"isNoSend": False, "isDelayed": False, "expectedTxStatus": "unprocessed"},
         ]
 
         for i, flags in enumerate(test_cases):
@@ -1545,7 +1545,7 @@ class TestGenericCRUDOperationsExtended:
     def test_update_generic(self, storage_provider, test_user) -> None:
         """Test generic update operation."""
         table_name = "user"
-        patch = {"updated_at": datetime.now(UTC)}
+        patch = {"updatedAt": datetime.now(UTC)}
         result = storage_provider._update_generic(table_name, test_user, patch)
         assert isinstance(result, int)
 

@@ -23,7 +23,7 @@ def storage():
 @pytest.fixture
 def user(storage):
     """Create test user in storage."""
-    user_data = {"identity_key": "03" + "0" * 64, "active_storage": ""}
+    user_data = {"identityKey": "03" + "0" * 64, "activeStorage": ""}
     user_id = storage.insert_user(user_data)
     return user_id
 
@@ -43,12 +43,12 @@ class Testinsert:
             "txid": "1" * 64,
             "height": 100,
             "index": 0,
-            "merkle_path": b"",  # Empty bytes, not empty list
-            "raw_tx": b"test",
-            "block_hash": "block",
-            "merkle_root": "root",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "merklePath": b"",  # Empty bytes, not empty list
+            "rawTx": b"test",
+            "blockHash": "block",
+            "merkleRoot": "root",
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         ptx_id = storage.insert_proven_tx(ptx)
@@ -69,9 +69,9 @@ class Testinsert:
             "txid": "2" * 64,
             "status": "unsent",
             "attempts": 0,
-            "raw_tx": b"test",  # Required field
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "rawTx": b"test",  # Required field
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         ptxreq_id = storage.insert_proven_tx_req(ptxreq)
@@ -88,7 +88,7 @@ class Testinsert:
         Reference: test/storage/insert.test.ts
                   test('2 insert User')
         """
-        user = {"identity_key": "03" + "1" * 64, "active_storage": "test"}
+        user = {"identityKey": "03" + "1" * 64, "activeStorage": "test"}
 
         user_id = storage.insert_user(user)
         assert user_id > 0
@@ -104,15 +104,15 @@ class Testinsert:
         cert = {
             "userId": user,
             "type": "test_type",
-            "serial_number": "serial123",
+            "serialNumber": "serial123",
             "subject": "test_subject",
             "certifier": "03" + "0" * 64,
             "signature": "",
             "verifier": None,
             "revocationOutpoint": "0000000000000000000000000000000000000000000000000000000000000000.0",  # Required field
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         cert_id = storage.insert_certificate(cert)
@@ -129,26 +129,26 @@ class Testinsert:
         cert = {
             "userId": user,
             "type": "test_type",
-            "serial_number": "serial123",
+            "serialNumber": "serial123",
             "subject": "test_subject",
             "certifier": "03" + "0" * 64,
             "signature": "",
             "verifier": None,
             "revocationOutpoint": "0000000000000000000000000000000000000000000000000000000000000000.0",  # Required field
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         cert_id = storage.insert_certificate(cert)
 
         field = {
-            "certificate_id": cert_id,
+            "certificateId": cert_id,
             "userId": user,
-            "field_name": "prize",
-            "field_value": "starship",
-            "master_key": "master123",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "fieldName": "prize",
+            "fieldValue": "starship",
+            "masterKey": "master123",
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         field_id = storage.insert_certificate_field(field)
@@ -165,11 +165,11 @@ class Testinsert:
         basket = {
             "userId": user,
             "name": "test_basket",
-            "number_of_desired_utxos": 10,
-            "minimum_desired_utxo_value": 1000,
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "numberOfDesiredUTXOs": 10,
+            "minimumDesiredUTXOValue": 1000,
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         basket_id = storage.insert_output_basket(basket)
@@ -188,11 +188,11 @@ class Testinsert:
             "txid": "5" * 64,
             "status": "sending",
             "reference": "ref123",
-            "is_outgoing": True,
+            "isOutgoing": True,
             "satoshis": 5000,
             "description": "Test transaction",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         tx_id = storage.insert_transaction(tx)
@@ -211,22 +211,22 @@ class Testinsert:
             "txid": "6" * 64,
             "status": "sending",
             "reference": "",
-            "is_outgoing": True,
+            "isOutgoing": True,
             "satoshis": 5000,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         tx_id = storage.insert_transaction(tx)
 
         commission = {
-            "transaction_id": tx_id,
+            "transactionId": tx_id,
             "userId": user,
             "isRedeemed": False,
-            "key_offset": "offset123",
-            "locking_script": b"\x01\x02\x03",  # Should be bytes, not list
+            "keyOffset": "offset123",
+            "lockingScript": b"\x01\x02\x03",  # Should be bytes, not list
             "satoshis": 500,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         comm_id = storage.insert_commission(commission)
@@ -245,22 +245,22 @@ class Testinsert:
             "txid": "7" * 64,
             "status": "sending",
             "reference": "",
-            "is_outgoing": True,
+            "isOutgoing": True,
             "satoshis": 5000,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         tx_id = storage.insert_transaction(tx)
 
         output = {
-            "transaction_id": tx_id,
+            "transactionId": tx_id,
             "userId": user,
             "vout": 0,
             "satoshis": 101,
-            "locking_script": b"\x01\x02\x03",  # Should be bytes, not list
+            "lockingScript": b"\x01\x02\x03",  # Should be bytes, not list
             "spendable": True,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         output_id = storage.insert_output(output)
@@ -277,9 +277,9 @@ class Testinsert:
         tag = {
             "userId": user,
             "tag": "test_tag",
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         tag_id = storage.insert_output_tag(tag)
@@ -298,40 +298,40 @@ class Testinsert:
             "txid": "8" * 64,
             "status": "sending",
             "reference": "",
-            "is_outgoing": True,
+            "isOutgoing": True,
             "satoshis": 5000,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         tx_id = storage.insert_transaction(tx)
 
         output = {
-            "transaction_id": tx_id,
+            "transactionId": tx_id,
             "userId": user,
             "vout": 0,
             "satoshis": 101,
-            "locking_script": b"\x01\x02\x03",  # Should be bytes, not list
+            "lockingScript": b"\x01\x02\x03",  # Should be bytes, not list
             "spendable": True,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         output_id = storage.insert_output(output)
 
         tag = {
             "userId": user,
             "tag": "test_tag",
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         tag_id = storage.insert_output_tag(tag)
 
         tagmap = {
-            "output_id": output_id,
-            "output_tag_id": tag_id,
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "outputId": output_id,
+            "outputTagId": tag_id,
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         storage.insert_output_tag_map(tagmap)
@@ -347,9 +347,9 @@ class Testinsert:
         label = {
             "userId": user,
             "label": "test_label",
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         label_id = storage.insert_tx_label(label)
@@ -368,28 +368,28 @@ class Testinsert:
             "txid": "9" * 64,
             "status": "sending",
             "reference": "",
-            "is_outgoing": True,
+            "isOutgoing": True,
             "satoshis": 5000,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         tx_id = storage.insert_transaction(tx)
 
         label = {
             "userId": user,
             "label": "test_label",
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
         label_id = storage.insert_tx_label(label)
 
         labelmap = {
-            "transaction_id": tx_id,
-            "tx_label_id": label_id,
-            "is_deleted": False,
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "transactionId": tx_id,
+            "txLabelId": label_id,
+            "isDeleted": False,
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         storage.insert_tx_label_map(labelmap)
@@ -403,7 +403,7 @@ class Testinsert:
                   test('13 insert MonitorEvent')
         """
         event = {
-            "created_at": datetime.now(),
+            "createdAt": datetime.now(),
             "event": "test_event",
             "details": "{}",  # Correct field name is 'details', not 'data'
         }
@@ -421,13 +421,13 @@ class Testinsert:
         """
         state = {
             "userId": user,
-            "storage_identity_key": "03" + "0" * 64,
-            "storage_name": "test_storage",  # Required field
+            "storageIdentityKey": "03" + "0" * 64,
+            "storageName": "test_storage",  # Required field
             "status": "unknown",  # Correct field name (not sync_status)
-            "ref_num": "0",  # Correct field name (not sync_ref_num), and should be string
-            "sync_map": "{}",  # Required field
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "refNum": "0",  # Correct field name (not sync_ref_num), and should be string
+            "syncMap": "{}",  # Required field
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
         }
 
         state_id = storage.insert_sync_state(state)

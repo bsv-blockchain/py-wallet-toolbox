@@ -243,7 +243,7 @@ class TestCommissionEntity:
         commission.updated_at = datetime.now()
         old_time = commission.updated_at - timedelta(hours=1)
 
-        result = commission.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = commission.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_commission_merge_existing_with_update(self) -> None:
@@ -253,7 +253,7 @@ class TestCommissionEntity:
         new_time = commission.updated_at + timedelta(hours=1)
 
         result = commission.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "satoshis": 2000,
             "isRedeemed": True,
             "keyOffset": "new_offset",
@@ -439,7 +439,7 @@ class TestOutputEntity:
         output.updated_at = datetime.now()
         old_time = output.updated_at - timedelta(hours=1)
 
-        result = output.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = output.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_output_merge_existing_with_update(self) -> None:
@@ -449,7 +449,7 @@ class TestOutputEntity:
         new_time = output.updated_at + timedelta(hours=1)
 
         result = output.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "satoshis": 2000,
             "vout": 1,
             "lockingScript": [4, 5, 6],
@@ -590,7 +590,7 @@ class TestOutputBasketEntity:
         basket.updated_at = datetime.now()
         old_time = basket.updated_at - timedelta(hours=1)
 
-        result = basket.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = basket.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_output_basket_merge_existing_with_update(self) -> None:
@@ -600,7 +600,7 @@ class TestOutputBasketEntity:
         new_time = basket.updated_at + timedelta(hours=1)
 
         result = basket.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "name": "new_name",
             "numberOfDesiredUTXOs": 20,
             "minimumDesiredUTXOValue": 2000,
@@ -696,7 +696,7 @@ class TestOutputTagEntity:
         tag.updated_at = datetime.now()
         old_time = tag.updated_at - timedelta(hours=1)
 
-        result = tag.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = tag.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_output_tag_merge_existing_with_update(self) -> None:
@@ -706,7 +706,7 @@ class TestOutputTagEntity:
         new_time = tag.updated_at + timedelta(hours=1)
 
         result = tag.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "tag": "new_tag",
             "isDeleted": True,
         }, None, None)
@@ -789,7 +789,7 @@ class TestOutputTagMapEntity:
         tag_map.updated_at = datetime.now()
         old_time = tag_map.updated_at - timedelta(hours=1)
 
-        result = tag_map.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = tag_map.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_output_tag_map_merge_existing_with_update(self) -> None:
@@ -799,7 +799,7 @@ class TestOutputTagMapEntity:
         new_time = tag_map.updated_at + timedelta(hours=1)
 
         result = tag_map.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "isDeleted": True,
         }, None, None)
 
@@ -927,7 +927,7 @@ class TestTransactionEntity:
         tx.updated_at = datetime.now()
         old_time = tx.updated_at - timedelta(hours=1)
 
-        result = tx.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = tx.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_transaction_merge_existing_with_update(self) -> None:
@@ -941,7 +941,7 @@ class TestTransactionEntity:
         mock_storage.update_transaction = Mock()
 
         result = tx.merge_existing(mock_storage, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "txid": "new_txid",
             "status": "new_status",
             "reference": "new_ref",
@@ -1203,7 +1203,7 @@ class TestProvenTxReqEntity:
         req.updated_at = datetime.now()
         old_time = req.updated_at - timedelta(hours=1)
 
-        result = req.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = req.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_proven_tx_req_merge_existing_with_update(self) -> None:
@@ -1212,7 +1212,7 @@ class TestProvenTxReqEntity:
         req.updated_at = datetime.now()
         new_time = req.updated_at + timedelta(hours=1)
 
-        result = req.merge_existing(None, None, {"updated_at": new_time}, None, None)
+        result = req.merge_existing(None, None, {"updatedAt": new_time}, None, None)
         assert result is True
 
     def test_proven_tx_req_is_terminal_status(self) -> None:
@@ -1365,7 +1365,7 @@ class TestCertificateEntity:
         cert.updated_at = datetime.now()
         old_time = cert.updated_at - timedelta(hours=1)
 
-        result = cert.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = cert.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_certificate_merge_existing_with_update(self) -> None:
@@ -1375,7 +1375,7 @@ class TestCertificateEntity:
         new_time = cert.updated_at + timedelta(hours=1)
 
         result = cert.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "type": "new_type",
             "serialNumber": "new_serial",
             "subject": "new_subject",
@@ -1495,7 +1495,7 @@ class TestCertificateFieldEntity:
         field.updated_at = datetime.now()
         old_time = field.updated_at - timedelta(hours=1)
 
-        result = field.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = field.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_certificate_field_merge_existing_with_update(self) -> None:
@@ -1505,7 +1505,7 @@ class TestCertificateFieldEntity:
         new_time = field.updated_at + timedelta(hours=1)
 
         result = field.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "fieldValue": "new_value",
             "masterKey": "new_key",
         }, None, None)
@@ -1610,7 +1610,7 @@ class TestSyncStateEntity:
         sync_state.updated_at = datetime.now()
         old_time = sync_state.updated_at - timedelta(hours=1)
 
-        result = sync_state.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = sync_state.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_sync_state_merge_existing_with_update(self) -> None:
@@ -1620,7 +1620,7 @@ class TestSyncStateEntity:
         new_time = sync_state.updated_at + timedelta(hours=1)
 
         result = sync_state.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "status": "new_status",
             "refNum": 456,
             "syncMap": "new_map",
@@ -1707,7 +1707,7 @@ class TestTxLabelEntity:
         label.updated_at = datetime.now()
         old_time = label.updated_at - timedelta(hours=1)
 
-        result = label.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = label.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_tx_label_merge_existing_with_update(self) -> None:
@@ -1717,7 +1717,7 @@ class TestTxLabelEntity:
         new_time = label.updated_at + timedelta(hours=1)
 
         result = label.merge_existing(None, None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "isDeleted": True,
         }, None, None)
 
@@ -1813,7 +1813,7 @@ class TestTxLabelMapEntity:
         label_map.updated_at = datetime.now()
         old_time = label_map.updated_at - timedelta(hours=1)
 
-        result = label_map.merge_existing(None, None, {"updated_at": old_time}, None, None)
+        result = label_map.merge_existing(None, None, {"updatedAt": old_time}, None, None)
         assert result is False
 
     def test_tx_label_map_merge_existing_with_update(self) -> None:
@@ -1823,7 +1823,7 @@ class TestTxLabelMapEntity:
         new_time = label_map.updated_at + timedelta(hours=1)
 
         result = label_map.merge_existing("mock_storage", None, {
-            "updated_at": new_time,
+            "updatedAt": new_time,
             "isDeleted": True,
         }, None, None)
 

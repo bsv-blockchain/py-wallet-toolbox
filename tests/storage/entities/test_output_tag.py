@@ -25,8 +25,8 @@ class TestOutputTagEntity:
 
         initial_data = {
             "outputTagId": 401,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag1",
             "userId": 1,
             "isDeleted": False,
@@ -35,7 +35,7 @@ class TestOutputTagEntity:
         entity = OutputTag(initial_data)
 
         # Updated data with later timestamp
-        updated_data = {**initial_data, "updated_at": datetime(2023, 1, 3), "isDeleted": True}
+        updated_data = {**initial_data, "updatedAt": datetime(2023, 1, 3), "isDeleted": True}
 
         sync_map = {"outputTag": {"idMap": {401: 401}}}
         mock_storage = type("MockStorage", (), {})()
@@ -59,8 +59,8 @@ class TestOutputTagEntity:
 
         initial_data = {
             "outputTagId": 402,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag2",
             "userId": 1,
             "isDeleted": False,
@@ -69,7 +69,7 @@ class TestOutputTagEntity:
         entity = OutputTag(initial_data)
 
         # Earlier data
-        earlier_data = {**initial_data, "updated_at": datetime(2023, 1, 1), "isDeleted": True}
+        earlier_data = {**initial_data, "updatedAt": datetime(2023, 1, 1), "isDeleted": True}
 
         sync_map = {"outputTag": {"idMap": {1: 1}}}
         mock_storage = type("MockStorage", (), {})()
@@ -93,8 +93,8 @@ class TestOutputTagEntity:
 
         data = {
             "outputTagId": 403,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag3",
             "userId": 1,
             "isDeleted": False,
@@ -118,8 +118,8 @@ class TestOutputTagEntity:
 
         data1 = {
             "outputTagId": 404,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag4",
             "userId": 1,
             "isDeleted": False,
@@ -144,8 +144,8 @@ class TestOutputTagEntity:
 
         data1 = {
             "outputTagId": 405,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag5",
             "userId": 1,
             "isDeleted": False,
@@ -170,8 +170,8 @@ class TestOutputTagEntity:
 
         data = {
             "outputTagId": 406,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag6",
             "userId": 1,
             "isDeleted": False,
@@ -197,8 +197,8 @@ class TestOutputTagEntity:
 
         data1 = {
             "outputTagId": 407,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "tag": "tag7",
             "userId": 1,
             "isDeleted": False,

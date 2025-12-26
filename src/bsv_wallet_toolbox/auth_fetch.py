@@ -102,7 +102,7 @@ def _normalize_requested_certificates(requested: Any) -> dict[str, Any]:
         certifiers = requested.get("certifiers") or []
         certificate_types = (
             requested.get("certificateTypes")
-            or requested.get("certificate_types")
+            or requested.get("certificateTypes")
             or requested.get("types")
             or {}
         )
@@ -304,7 +304,7 @@ class WalletAdapter:
         _auth_trace("wallet.get_public_key.result", originator=originator, result=result)
         
         if isinstance(result, dict):
-            pub_key_hex = result.get('publicKey') or result.get('public_key')
+            pub_key_hex = result.get("publicKey")
             if pub_key_hex:
                 # Create an object with the expected attributes
                 class PublicKeyResult:
@@ -324,10 +324,10 @@ class WalletAdapter:
         """
         _auth_trace("wallet.create_signature.call", originator=originator, args=args)
         # Transform encryption_args to flat format
-        enc_args = args.get('encryption_args', {})
+        enc_args = args.get('encryptionArgs', {})
         if enc_args:
             # Extract protocol_id and convert to protocolID format
-            protocol_id = enc_args.get('protocol_id') or enc_args.get('protocolID') or {}
+            protocol_id = enc_args.get('protocolId') or enc_args.get('protocolID') or {}
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 2)
                 protocol = protocol_id.get('protocol', 'auth')
@@ -354,7 +354,7 @@ class WalletAdapter:
             # Build flat args for py-wallet-toolbox
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('key_id') or enc_args.get('keyID') or '1',
+                'keyID': enc_args.get('keyId') or enc_args.get('keyID') or '1',
                 'counterparty': counterparty_hex,
                 'data': args.get('data'),
             }
@@ -392,12 +392,12 @@ class WalletAdapter:
             counterparty = 'anyone' or hex_string
         """
         _auth_trace("wallet.create_hmac.call", originator=originator, args=args)
-        enc_args = args.get('encryption_args', {})
+        enc_args = args.get('encryptionArgs', {})
         data = args.get('data')
         
         if enc_args:
             # Extract protocol_id
-            protocol_id = enc_args.get('protocol_id') or enc_args.get('protocolID') or {}
+            protocol_id = enc_args.get('protocolId') or enc_args.get('protocolID') or {}
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 1)
                 protocol = protocol_id.get('protocol', 'server hmac')
@@ -423,7 +423,7 @@ class WalletAdapter:
             # Build flat args for py-wallet-toolbox Wallet (BRC-100)
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('key_id') or enc_args.get('keyID') or '',
+                'keyID': enc_args.get('keyId') or enc_args.get('keyID') or '',
                 'counterparty': counterparty,
                 # Wallet.create_hmac accepts bytes/bytearray; keep bytes as-is.
                 'data': data,
@@ -443,12 +443,12 @@ class WalletAdapter:
     def verify_hmac(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for verify_hmac."""
         _auth_trace("wallet.verify_hmac.call", originator=originator, args=args)
-        enc_args = args.get('encryption_args', {})
+        enc_args = args.get('encryptionArgs', {})
         data = args.get('data')
         hmac_value = args.get('hmac')
         
         if enc_args:
-            protocol_id = enc_args.get('protocol_id') or enc_args.get('protocolID') or {}
+            protocol_id = enc_args.get('protocolId') or enc_args.get('protocolID') or {}
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 1)
                 protocol = protocol_id.get('protocol', 'server hmac')
@@ -472,7 +472,7 @@ class WalletAdapter:
             
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('key_id') or enc_args.get('keyID') or '',
+                'keyID': enc_args.get('keyId') or enc_args.get('keyID') or '',
                 'counterparty': counterparty,
                 # Wallet.verify_hmac accepts bytes/bytearray; keep bytes as-is.
                 'data': data,
@@ -497,12 +497,12 @@ class WalletAdapter:
             counterparty = hex_string
         """
         _auth_trace("wallet.verify_signature.call", originator=originator, args=args)
-        enc_args = args.get('encryption_args', {})
+        enc_args = args.get('encryptionArgs', {})
         data = args.get('data')
         signature = args.get('signature')
         
         if enc_args:
-            protocol_id = enc_args.get('protocol_id', {})
+            protocol_id = enc_args.get('protocolId', {})
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 2)
                 protocol = protocol_id.get('protocol', 'auth')
@@ -531,7 +531,7 @@ class WalletAdapter:
             
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('key_id', '1'),
+                'keyID': enc_args.get('keyId', '1'),
                 'counterparty': counterparty_hex,
                 'data': list(data) if isinstance(data, bytes) else data,
                 'signature': signature,

@@ -152,11 +152,11 @@ def _normalize_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
     """
     # Handle protocol_id -> protocolID normalization
     if "protocol_id" in args and "protocolID" not in args:
-        args["protocolID"] = args["protocol_id"]
+        args["protocolID"] = args["protocolId"]
 
     # Handle key_id -> keyID normalization
     if "key_id" in args and "keyID" not in args:
-        args["keyID"] = args["key_id"]
+        args["keyID"] = args["keyId"]
 
     return args
 
@@ -485,12 +485,12 @@ class Wallet:
         # Convert hashToDirectlySign -> hash_to_directly_sign
         hash_to_sign = args.get("hashToDirectlySign")
         if hash_to_sign is not None:
-            proto_args["hash_to_directly_sign"] = _as_bytes(hash_to_sign, "hashToDirectlySign")
+            proto_args["hashToDirectlySign"] = _as_bytes(hash_to_sign, "hashToDirectlySign")
 
         # forSelf -> for_self
         for_self = args.get("forSelf")
         if for_self is not None:
-            proto_args["for_self"] = for_self
+            proto_args["forSelf"] = for_self
 
         return proto_args
 
@@ -511,7 +511,7 @@ class Wallet:
         # Convert hashToDirectlyVerify -> hash_to_directly_verify
         hash_to_verify = args.get("hashToDirectlyVerify")
         if hash_to_verify is not None:
-            proto_args["hash_to_directly_verify"] = _as_bytes(hash_to_verify, "hashToDirectlyVerify")
+            proto_args["hashToDirectlyVerify"] = _as_bytes(hash_to_verify, "hashToDirectlyVerify")
 
         # signature stays the same but normalize to bytes
         signature = args.get("signature")
@@ -652,7 +652,7 @@ class Wallet:
 
         return {
             "plaintext": plaintext,
-            "encryption_args": encryption_args,
+            "encryptionArgs": encryption_args,
         }
 
     def _convert_decrypt_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -705,7 +705,7 @@ class Wallet:
 
         return {
             "ciphertext": ciphertext,
-            "encryption_args": encryption_args,
+            "encryptionArgs": encryption_args,
         }
 
     def _convert_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -758,7 +758,7 @@ class Wallet:
 
         return {
             "data": data,
-            "encryption_args": encryption_args,
+            "encryptionArgs": encryption_args,
         }
 
     def _convert_verify_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -826,19 +826,19 @@ class Wallet:
         proto_args: dict[str, Any] = {
             "counterparty": counterparty,
             "verifier": verifier,
-            "key_id": key_id,
+            "keyId": key_id,
             "seekPermission": args.get("seekPermission", False),
         }
 
         # Convert protocolID format
         if protocol_id is not None:
             if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                proto_args["protocol_id"] = {
-                    "security_level": protocol_id[0],
+                proto_args["protocolId"] = {
+                    "securityLevel": protocol_id[0],
                     "protocol": protocol_id[1],
                 }
             elif isinstance(protocol_id, dict):
-                proto_args["protocol_id"] = protocol_id
+                proto_args["protocolId"] = protocol_id
             else:
                 proto_args["protocolID"] = protocol_id
 
@@ -3523,7 +3523,7 @@ class Wallet:
         # Extract trusted certifier keys, sorted for stable cache key
         certifiers = sorted(
             [
-                c.get("identityKey") or c.get("identity_key", "")
+                c.get("identityKey") or c.get("identityKey", "")
                 for c in trust_settings.get("trustedCertifiers", [])
                 if isinstance(c, dict)
             ]
@@ -3607,7 +3607,7 @@ class Wallet:
         # Extract trusted certifier keys, sorted for stable cache key
         certifiers = sorted(
             [
-                c.get("identityKey") or c.get("identity_key", "")
+                c.get("identityKey") or c.get("identityKey", "")
                 for c in trust_settings.get("trustedCertifiers", [])
                 if isinstance(c, dict)
             ]
@@ -3712,7 +3712,7 @@ class Wallet:
             raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
 
         # Validate batch_size if provided
-        batch_size = options.get("batch_size")
+        batch_size = options.get("batchSize")
         if batch_size is not None:
             if not isinstance(batch_size, int):
                 raise InvalidParameterError(f"batch_size must be an integer, got {type(batch_size).__name__}")
@@ -3735,7 +3735,7 @@ class Wallet:
                 return {"inserts": 1, "updates": 0, "log": "stub sync"}
 
         # Get progress logging function
-        prog_log = options.get("prog_log")
+        prog_log = options.get("progLog")
         
         # Use WalletStorageManager for actual sync
         if hasattr(self, 'storage') and self.storage:
@@ -3811,7 +3811,7 @@ class Wallet:
             raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
         
         # Get progress logging function
-        prog_log = options.get("prog_log")
+        prog_log = options.get("progLog")
         
         # Use WalletStorageManager for actual sync
         if hasattr(self, 'storage') and self.storage:
@@ -3865,7 +3865,7 @@ class Wallet:
             raise InvalidParameterError("args must be a dictionary")
         
         # Get progress logging function
-        prog_log = args.get("prog_log")
+        prog_log = args.get("progLog")
         
         # Use WalletStorageManager for actual sync
         if hasattr(self, 'storage') and self.storage:
@@ -3913,7 +3913,7 @@ class Wallet:
         if backup_first is not None:
             if not isinstance(args, dict):
                 args = {}
-            args["backup_first"] = backup_first
+            args["backupFirst"] = backup_first
 
         # Validate args
         if not isinstance(args, dict):
@@ -3931,7 +3931,7 @@ class Wallet:
         # Validate backup_first - required parameter
         if "backup_first" not in args:
             raise InvalidParameterError("backup_first is required")
-        backup_first_value = args.get("backup_first")
+        backup_first_value = args.get("backupFirst")
         if backup_first_value is None:
             raise InvalidParameterError("backup_first cannot be None")
         if not isinstance(backup_first_value, bool):

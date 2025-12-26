@@ -616,8 +616,8 @@ class WalletPermissionsManager:
                     if authorized >= satoshis:
                         # Decrement tracked spending
                         if "tracked_spending" not in token:
-                            token["tracked_spending"] = 0  # type: ignore
-                        token["tracked_spending"] += satoshis  # type: ignore
+                            token["trackedSpending"] = 0  # type: ignore
+                        token["trackedSpending"] += satoshis  # type: ignore
                         return True
         return False
 
@@ -1136,12 +1136,12 @@ class WalletPermissionsManager:
         if isinstance(originator, dict):
             args = originator
             originator = args.get("originator")
-            protocol_id = args.get("protocolID", args.get("protocol_id"))
+            protocol_id = args.get("protocolID", args.get("protocolId"))
             counterparty = args.get("counterparty")
             reason = args.get("reason")
             privileged = args.get("privileged", False)
-            seek_permission = args.get("seekPermission", args.get("seek_permission", True))
-            usage_type = args.get("usageType", args.get("usage_type", "generic"))
+            seek_permission = args.get("seekPermission", args.get("seekPermission", True))
+            usage_type = args.get("usageType", args.get("usageType", "generic"))
 
         # Set defaults
         privileged = privileged if privileged is not None else False
@@ -1307,7 +1307,7 @@ class WalletPermissionsManager:
         # Look for existing active request with same cache_key
         existing_request_id = None
         for req_id, req_data in self._active_requests.items():
-            if req_data.get("cache_key") == cache_key:
+            if req_data.get("cacheKey") == cache_key:
                 existing_request_id = req_id
                 break
 
@@ -1323,7 +1323,7 @@ class WalletPermissionsManager:
         active_request = {
             "request": request,
             "pending": [future],
-            "cache_key": cache_key
+            "cacheKey": cache_key
         }
         self._active_requests[request_id] = active_request
 
@@ -1394,8 +1394,8 @@ class WalletPermissionsManager:
             originator = args.get("originator")
             basket = args.get("basket")
             reason = args.get("reason")
-            seek_permission = args.get("seekPermission", args.get("seek_permission", True))
-            usage_type = args.get("usageType", args.get("usage_type", "insertion"))
+            seek_permission = args.get("seekPermission", args.get("seekPermission", True))
+            usage_type = args.get("usageType", args.get("usageType", "insertion"))
 
         # Admin bypass
         if originator == self._admin_originator:
@@ -1444,7 +1444,7 @@ class WalletPermissionsManager:
         active_request = {
             "request": request,
             "pending": [future],
-            "cache_key": None  # Basket requests don't coalesce
+            "cacheKey": None  # Basket requests don't coalesce
         }
         self._active_requests[request_id] = active_request
 
@@ -1590,11 +1590,11 @@ class WalletPermissionsManager:
             "verify": "seekProtocolPermissionsForSigning",
             "hmac": "seekProtocolPermissionsForHMAC",
             "publicKey": "seekPermissionsForPublicKeyRevelation",
-            "public_key": "seekPermissionsForPublicKeyRevelation",
+            "publicKey": "seekPermissionsForPublicKeyRevelation",
             "identityKey": "seekPermissionsForIdentityKeyRevelation",
-            "identity_key": "seekPermissionsForIdentityKeyRevelation",
+            "identityKey": "seekPermissionsForIdentityKeyRevelation",
             "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
-            "linkage_revelation": "seekPermissionsForKeyLinkageRevelation",
+            "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
         }
 
         config_key = config_key_map.get(operation)
@@ -1733,9 +1733,9 @@ class WalletPermissionsManager:
         # Check config flags
         config_key_map = {
             "resolve": "seekPermissionsForIdentityResolution",
-            "key_reveal": "seekPermissionsForIdentityKeyRevelation",
-            "linkage_reveal": "seekPermissionsForKeyLinkageRevelation",
-            "public_key_reveal": "seekPermissionsForPublicKeyRevelation",
+            "keyReveal": "seekPermissionsForIdentityKeyRevelation",
+            "linkageReveal": "seekPermissionsForKeyLinkageRevelation",
+            "publicKeyReveal": "seekPermissionsForPublicKeyRevelation",
         }
 
         config_key = config_key_map.get(operation)
@@ -2062,7 +2062,7 @@ class WalletPermissionsManager:
         active_request = {
             "request": grouped_request,
             "pending": [future],
-            "cache_key": None  # Grouped requests don't coalesce
+            "cacheKey": None  # Grouped requests don't coalesce
         }
         self._active_requests[grouped_request["requestID"]] = active_request
 
@@ -2165,7 +2165,7 @@ class WalletPermissionsManager:
         # Check if any token covers the requested amount
         for token in valid_tokens:
             authorized_amount = token.get("authorizedAmount", 0)
-            tracked_spending = token.get("tracked_spending", 0)
+            tracked_spending = token.get("trackedSpending", 0)
 
             if authorized_amount - tracked_spending >= satoshis:
                 return True
@@ -2206,11 +2206,11 @@ class WalletPermissionsManager:
                     token.get("expiry", 0) > current_time):
 
                     authorized_amount = token.get("authorizedAmount", 0)
-                    tracked_spending = token.get("tracked_spending", 0)
+                    tracked_spending = token.get("trackedSpending", 0)
 
                     if authorized_amount - tracked_spending >= satoshis:
                         # Track the spending
-                        token["tracked_spending"] = tracked_spending + satoshis  # type: ignore
+                        token["trackedSpending"] = tracked_spending + satoshis  # type: ignore
                         break
 
     # --- Wallet Interface Proxy Methods ---
