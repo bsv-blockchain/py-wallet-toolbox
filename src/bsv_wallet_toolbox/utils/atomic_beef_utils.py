@@ -59,6 +59,8 @@ def build_internalize_atomic_beef(
     *,
     retry: RawTxRetryConfig | None = None,
     max_inputs: int = 16,
+    max_depth: int = 4,
+    max_txs: int = 64,
 ) -> AtomicBeefBuildResult:
     """Build AtomicBEEF for internalizeAction with best-effort validation anchoring.
 
@@ -77,6 +79,8 @@ def build_internalize_atomic_beef(
             txid,
             retry=retry,
             max_inputs=max_inputs,
+            max_depth=max_depth,
+            max_txs=max_txs,
         )
         # Subject merkle path is usually absent for mempool tx; we don't treat that as failure.
         return AtomicBeefBuildResult(
@@ -106,6 +110,8 @@ def build_atomic_beef_from_tx_with_proven_inputs(
     *,
     retry: RawTxRetryConfig | None = None,
     max_inputs: int = 16,
+    max_depth: int = 4,
+    max_txs: int = 64,
 ) -> tuple[bytes, int, int]:
     """Build AtomicBEEF for a (possibly unmined) tx by including proven parents.
 
@@ -123,14 +129,33 @@ def build_atomic_beef_from_tx_with_proven_inputs(
     retry = retry or RawTxRetryConfig()
     beef = Beef(version=BEEF_V2)
 
-    inputs = list(getattr(tx, "inputs", []) or [])
     parents_total = 0
     parents_with_proof = 0
 
-    for txin in inputs[:max_inputs]:
-        parent_txid = getattr(txin, "source_txid", None)
-        if not isinstance(parent_txid, str) or len(parent_txid) != 64:
+    # Strategy note (TS parity / Go server behavior):
+    # Storage validates AtomicBEEF via Beef.verify(chaintracker, allowTxidOnly=false).
+    # For mempool tx, the subject has no merkle path. To still be "valid", the BEEF must
+    # include at least one ancestry chain that anchors to a proven transaction (with merkle path).
+    #
+    # So we recursively include parents until we reach transactions that have merkle paths, or we
+    # hit safety limits (depth / total txs).
+
+    def _enqueue_inputs(t: Any, depth: int) -> list[tuple[str, int]]:
+        nxt: list[tuple[str, int]] = []
+        for txin in list(getattr(t, "inputs", []) or [])[:max_inputs]:
+            parent_txid = getattr(txin, "source_txid", None)
+            if isinstance(parent_txid, str) and len(parent_txid) == 64:
+                nxt.append((parent_txid, depth))
+        return nxt
+
+    visited: set[str] = set()
+    queue: list[tuple[str, int]] = _enqueue_inputs(tx, 1)
+
+    while queue and len(visited) < max_txs:
+        parent_txid, depth = queue.pop(0)
+        if parent_txid in visited:
             continue
+        visited.add(parent_txid)
         parents_total += 1
 
         try:
@@ -150,12 +175,18 @@ def build_atomic_beef_from_tx_with_proven_inputs(
             except Exception:  # noqa: BLE001
                 bump_index = None
 
-        # Merge parent raw tx (optionally with bump index)
         try:
-            merge_raw_tx(beef, bytes.fromhex(raw_hex), bump_index)
+            btx = merge_raw_tx(beef, bytes.fromhex(raw_hex), bump_index)
         except Exception:  # noqa: BLE001
-            # Skip malformed parent tx payloads
             continue
+
+        # If this parent is also unmined (no bump), try to expand its parents too.
+        # This is essential when the subject spends an unconfirmed output (common in
+        # roundtrip E2E: Bob->Alice spends Alice->Bob), and we need to reach a proven ancestor.
+        if bump_index is None and depth < max_depth:
+            parent_tx_obj = getattr(btx, "tx_obj", None)
+            if parent_tx_obj is not None:
+                queue.extend(_enqueue_inputs(parent_tx_obj, depth + 1))
 
     # Finally, merge the subject tx (typically without a bump if unmined)
     merge_raw_tx(beef, tx.serialize(), None)
