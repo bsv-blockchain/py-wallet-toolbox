@@ -371,18 +371,16 @@ class PrivilegedKeyManager:
         # hashToDirectlySign -> hash_to_directly_sign
         if "hashToDirectlySign" in args:
             hash_val = args["hashToDirectlySign"]
-            if isinstance(hash_val, list):
-                proto_args["hashToDirectlySign"] = bytes(hash_val)
-            else:
-                proto_args["hashToDirectlySign"] = hash_val
+            direct_hash = bytes(hash_val) if isinstance(hash_val, list) else hash_val
+            proto_args["hashToDirectlySign"] = direct_hash
+            proto_args["hash_to_directly_sign"] = direct_hash
             
         # hashToDirectlyVerify -> hash_to_directly_verify  
         if "hashToDirectlyVerify" in args:
             hash_val = args["hashToDirectlyVerify"]
-            if isinstance(hash_val, list):
-                proto_args["hashToDirectlyVerify"] = bytes(hash_val)
-            else:
-                proto_args["hashToDirectlyVerify"] = hash_val
+            direct_verify_hash = bytes(hash_val) if isinstance(hash_val, list) else hash_val
+            proto_args["hashToDirectlyVerify"] = direct_verify_hash
+            proto_args["hash_to_directly_verify"] = direct_verify_hash
             
         # signature - convert to bytes if it's a list
         if "signature" in args:

@@ -6,8 +6,24 @@ Reference: wallet-toolbox/test/storage/update2.test.ts
 """
 
 from datetime import datetime
+import re
 
 import pytest
+
+
+def _camel_to_snake(name: str) -> str:
+    s1 = re.sub("([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def _build_mock_storage(methods: dict[str, object]) -> object:
+    attrs: dict[str, object] = {}
+    for key, value in methods.items():
+        attrs[key] = value
+        snake_key = _camel_to_snake(key)
+        if snake_key != key and snake_key not in attrs:
+            attrs[snake_key] = value
+    return type("MockStorage", (), attrs)()
 
 
 class Testupdate2:
@@ -23,14 +39,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findProvenTxs": lambda self, query: [{"provenTxId": 1, "blockHash": "old"}],
                 "updateProvenTx": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         time = datetime(2001, 1, 2, 12, 0, 0)
 
@@ -54,14 +68,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findProvenTxs": lambda self, query: [{"provenTxId": 1}],
                 "updateProvenTx": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         test_values = {
             "txid": "mockTxid",
@@ -93,14 +105,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findProvenTxs": lambda self, query: [{"provenTxId": 1}],
                 "updateProvenTx": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         scenarios = [
             {
@@ -136,15 +146,13 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "insertProvenTx": lambda self, record: 3,
                 "findProvenTxs": lambda self, query: [{"provenTxId": 3}],
                 "updateProvenTx": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         initial_record = {
             "provenTxId": 3,
@@ -177,14 +185,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findProvenTxReqs": lambda self, query: [{"provenTxReqId": 1}],
                 "updateProvenTxReq": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         test_values = {
             "provenTxId": 1,
@@ -217,14 +223,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findProvenTxReqs": lambda self, query: [{"provenTxReqId": 1}],
                 "updateProvenTxReq": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         scenarios = [
             {
@@ -259,11 +263,9 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
-            {"insertProvenTxReq": lambda self, record: 3, "updateProvenTxReq": lambda self, id, updates: 1},
-        )()
+        mock_storage = _build_mock_storage(
+            {"insertProvenTxReq": lambda self, record: 3, "updateProvenTxReq": lambda self, id, updates: 1}
+        )
 
         reference_time = datetime.now()
         initial_record = {
@@ -299,15 +301,13 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findUsers": lambda self, query: [{"userId": 1}],
                 "updateUser": lambda self, id, updates: 1,
                 "getSettings": lambda self: {"storageIdentityKey": "test_key"},
-            },
-        )()
+            }
+        )
 
         test_values = {
             "identityKey": "mockUpdatedIdentityKey-1",
@@ -334,11 +334,9 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
-            {"findUsers": lambda self, query: [{"userId": 1}], "updateUser": lambda self, id, updates: 1},
-        )()
+        mock_storage = _build_mock_storage(
+            {"findUsers": lambda self, query: [{"userId": 1}], "updateUser": lambda self, id, updates: 1}
+        )
 
         scenarios = [
             {
@@ -376,7 +374,7 @@ class Testupdate2:
         def _raise_unique_error(self, id, updates):
             raise Exception("UNIQUE constraint failed")
 
-        mock_storage = type("MockStorage", (), {"updateUser": _raise_unique_error})()
+        mock_storage = _build_mock_storage({"updateUser": _raise_unique_error})
 
         # When/Then - should trigger unique constraint error
         with pytest.raises(Exception):
@@ -395,7 +393,7 @@ class Testupdate2:
         def _raise_fk_error(self, id, updates):
             raise Exception("FOREIGN KEY constraint failed")
 
-        mock_storage = type("MockStorage", (), {"updateUser": _raise_fk_error})()
+        mock_storage = _build_mock_storage({"updateUser": _raise_fk_error})
 
         # When/Then - should trigger foreign key constraint error
         with pytest.raises(Exception):
@@ -411,15 +409,13 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "insertUser": lambda self, record: 3,
                 "updateUser": lambda self, id, updates: 1,
                 "getSettings": lambda self: {"storageIdentityKey": "test_key"},
-            },
-        )()
+            }
+        )
 
         initial_record = {
             "userId": 3,
@@ -446,14 +442,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findCertificates": lambda self, query: [{"certificateId": 1}],
                 "updateCertificate": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         test_values = {
             "type": "mockType",
@@ -486,14 +480,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
                 "findCertificates": lambda self, query: [{"certificateId": 1}],
                 "updateCertificate": lambda self, id, updates: 1,
-            },
-        )()
+            }
+        )
 
         scenarios = [
             {
@@ -531,7 +523,7 @@ class Testupdate2:
         def _raise_unique_error(self, id, updates):
             raise Exception("UNIQUE constraint failed")
 
-        mock_storage = type("MockStorage", (), {"updateCertificate": _raise_unique_error})()
+        mock_storage = _build_mock_storage({"updateCertificate": _raise_unique_error})
 
         # When/Then - should trigger unique constraint error
         with pytest.raises(Exception):
@@ -550,7 +542,7 @@ class Testupdate2:
         def _raise_fk_error(self, id, updates):
             raise Exception("FOREIGN KEY constraint failed")
 
-        mock_storage = type("MockStorage", (), {"updateCertificate": _raise_fk_error})()
+        mock_storage = _build_mock_storage({"updateCertificate": _raise_fk_error})
 
         # When/Then - should trigger foreign key constraint error
         with pytest.raises(Exception):

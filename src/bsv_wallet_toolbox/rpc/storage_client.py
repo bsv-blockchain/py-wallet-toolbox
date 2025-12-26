@@ -325,8 +325,28 @@ class StorageClient:
                 extra={"method": method, "statusCode": response.status_code, "responseHeaders": dict(response.headers)},
             )
 
-            # Parse JSON response (even on HTTP errors).
+            # Parse JSON response (even on HTTP errors) when the server advertises JSON.
             # Some servers return JSON-RPC errors with HTTP 500; the JSON-RPC error is the real signal.
+            content_type = (response.headers or {}).get("Content-Type", "")
+            expects_json = "json" in content_type.lower()
+            if not response.ok and not expects_json:
+                msg = f"JSON-RPC call failed: HTTP {response.status_code} {response.reason}"
+                trace(
+                    logger,
+                    "rpc.http_error",
+                    method=method,
+                    id=request_id,
+                    endpoint=self.endpoint_url,
+                    http_status=response.status_code,
+                    reason=response.reason,
+                    response_body=None,
+                )
+                logger.error(
+                    msg,
+                    extra={"method": method, "id": request_id, "responseHeaders": dict(response.headers)},
+                )
+                raise requests.RequestException(msg)
+
             try:
                 response_data = response.json()
             except json.JSONDecodeError as e:

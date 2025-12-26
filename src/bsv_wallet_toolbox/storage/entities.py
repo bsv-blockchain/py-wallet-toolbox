@@ -750,9 +750,10 @@ class Transaction:
                 self.input_beef = ib if isinstance(ib, list) else None
             self.updated_at = ei.get("updatedAt", datetime.now())
             if storage:
-            updater = _get_callable(storage, "updateTransaction")
-            if updater:
-                updater(self.transaction_id, self.to_api())
+                if hasattr(storage, "update_transaction"):
+                    storage.update_transaction(self.transaction_id, self.to_api())
+                elif hasattr(storage, "updateTransaction"):
+                    storage.updateTransaction(self.transaction_id, self.to_api())
             return True
         return False
 
@@ -782,8 +783,13 @@ class Transaction:
 
         # Get outputs that reference this transaction as spentBy
         if storage:
-            finder = _get_callable(storage, "findOutputs")
-            if finder:
+            finder = None
+            if hasattr(storage, "find_outputs"):
+                finder = getattr(storage, "find_outputs")
+            elif hasattr(storage, "findOutputs"):
+                finder = getattr(storage, "findOutputs")
+
+            if callable(finder):
                 outputs = finder({"spentBy": self.transaction_id})
                 inputs.extend(outputs)
 

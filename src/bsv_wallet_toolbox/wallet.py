@@ -485,7 +485,9 @@ class Wallet:
         # Convert hashToDirectlySign -> hash_to_directly_sign
         hash_to_sign = args.get("hashToDirectlySign")
         if hash_to_sign is not None:
-            proto_args["hashToDirectlySign"] = _as_bytes(hash_to_sign, "hashToDirectlySign")
+            direct_hash = _as_bytes(hash_to_sign, "hashToDirectlySign")
+            proto_args["hashToDirectlySign"] = direct_hash
+            proto_args["hash_to_directly_sign"] = direct_hash
 
         # forSelf -> for_self
         for_self = args.get("forSelf")
@@ -511,7 +513,9 @@ class Wallet:
         # Convert hashToDirectlyVerify -> hash_to_directly_verify
         hash_to_verify = args.get("hashToDirectlyVerify")
         if hash_to_verify is not None:
-            proto_args["hashToDirectlyVerify"] = _as_bytes(hash_to_verify, "hashToDirectlyVerify")
+            direct_verify_hash = _as_bytes(hash_to_verify, "hashToDirectlyVerify")
+            proto_args["hashToDirectlyVerify"] = direct_verify_hash
+            proto_args["hash_to_directly_verify"] = direct_verify_hash
 
         # signature stays the same but normalize to bytes
         signature = args.get("signature")
@@ -635,7 +639,7 @@ class Wallet:
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
                     encryption_args["protocolID"] = {
                         "securityLevel": protocol_id[0],
-                        "protocol": protocol_id[1]
+                        "protocol": protocol_id[1],
                     }
                 else:
                     encryption_args["protocolID"] = protocol_id
@@ -652,7 +656,7 @@ class Wallet:
 
         return {
             "plaintext": plaintext,
-            "encryptionArgs": encryption_args,
+            "encryption_args": encryption_args,
         }
 
     def _convert_decrypt_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -690,7 +694,7 @@ class Wallet:
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
                     encryption_args["protocolID"] = {
                         "securityLevel": protocol_id[0],
-                        "protocol": protocol_id[1]
+                        "protocol": protocol_id[1],
                     }
                 else:
                     encryption_args["protocolID"] = protocol_id
@@ -705,7 +709,7 @@ class Wallet:
 
         return {
             "ciphertext": ciphertext,
-            "encryptionArgs": encryption_args,
+            "encryption_args": encryption_args,
         }
 
     def _convert_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -743,7 +747,7 @@ class Wallet:
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
                     encryption_args["protocolID"] = {
                         "securityLevel": protocol_id[0],
-                        "protocol": protocol_id[1]
+                        "protocol": protocol_id[1],
                     }
                 else:
                     encryption_args["protocolID"] = protocol_id
@@ -758,7 +762,7 @@ class Wallet:
 
         return {
             "data": data,
-            "encryptionArgs": encryption_args,
+            "encryption_args": encryption_args,
         }
 
     def _convert_verify_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:

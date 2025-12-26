@@ -111,7 +111,7 @@ class TestBulkIngestorWOCFetchBulkHeaderFilesInfo:
 
             assert len(result) == 2
             assert result[0]["filename"] == "mainNet_0.headers"
-            assert "height_range" in result[0]
+            assert "heightRange" in result[0]
             assert result[0]["fileId"] == 0
             assert result[1]["filename"] == "mainNet_1.headers"
             assert result[1]["fileId"] == 1

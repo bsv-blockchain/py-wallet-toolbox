@@ -619,7 +619,7 @@ class TestProveCertificate:
             result = prove_certificate(mock_wallet, auth, vargs)
 
             assert isinstance(result, dict)
-            assert "keyring_for_verifier" in result
+            assert "keyringForVerifier" in result
 
     def test_prove_certificate_error(self, mock_wallet: Mock) -> None:
         """Test prove_certificate with error."""
@@ -650,8 +650,8 @@ class TestHelperFunctions:
         assert result is not None
         assert len(result["inputs"]) == 3
         for input_data in result["inputs"]:
-            assert "unlocking_script" not in input_data
-            assert "other_field" in input_data
+            assert "unlockingScript" not in input_data
+            assert "otherField" in input_data
 
     def test_remove_unlock_scripts_none_values(self) -> None:
         """Test _remove_unlock_scripts with None values."""
@@ -667,7 +667,7 @@ class TestHelperFunctions:
         assert result is not None
         assert len(result["inputs"]) == 2
         for input_data in result["inputs"]:
-            assert "unlocking_script" not in input_data
+            assert "unlockingScript" not in input_data
 
     def test_remove_unlock_scripts_empty_inputs(self) -> None:
         """Test _remove_unlock_scripts with empty inputs."""

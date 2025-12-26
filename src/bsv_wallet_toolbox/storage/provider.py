@@ -5509,8 +5509,12 @@ class InternalizeActionContext:
         # Smart type detection: if the locking script is actually P2PKH,
         # mark it as such so the wallet can sign it for funding
         is_p2pkh = self._is_p2pkh_locking_script(locking_script_hex)
+        output_type = "P2PKH" if is_p2pkh else "custom"
+        is_change = is_p2pkh  # P2PKH outputs can be used as change
 
-        print(f"DEBUG: Basket insertion P2PKH detection: is_p2pkh={is_p2pkh}, type={output_type}, change={is_change}")
+        print(
+            f"DEBUG: Basket insertion P2PKH detection: is_p2pkh={is_p2pkh}, type={output_type}, change={is_change}",
+        )
 
         # TEMPORARY FIX: For basket insertions in default basket, assume P2PKH
         # since they come from WhatOnChain faucet which uses standard P2PKH
@@ -5518,9 +5522,6 @@ class InternalizeActionContext:
             print(f"TEMP FIX: Forcing P2PKH detection for default basket output with script: {locking_script_hex[:20]}...")
             is_p2pkh = True
 
-        output_type = "P2PKH" if is_p2pkh else "custom"
-        is_change = is_p2pkh  # P2PKH outputs can be used as change
-        
         # For P2PKH outputs in the default basket, generate proper BRC-29 derivation fields
         # These are required for signing when the output is used as a change input
         # Generate random base64-encoded strings (like TypeScript does)

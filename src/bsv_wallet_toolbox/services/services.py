@@ -919,7 +919,7 @@ class Services(WalletServices):
             raise InvalidParameterError("txid", "a valid hexadecimal string")
 
         # Generate cache key
-        cache_key = f"merkle_path:{txid}"
+        cache_key = f"merklePath:{txid}"
 
         # Check cache first
         cached = self.merkle_path_cache.get(cache_key)
@@ -1116,7 +1116,7 @@ class Services(WalletServices):
                 raise InvalidParameterError("output", "64 hex characters")
 
         # Generate cache key from parameters
-        cache_key = f"utxo:{output}:{output_format}:{outpoint}"
+        cache_key = f"utxoCache:{output}:{output_format}:{outpoint}"
 
         # Check cache first
         cached = self.utxo_status_cache.get(cache_key)
@@ -1204,7 +1204,7 @@ class Services(WalletServices):
         except ValueError:
             raise InvalidParameterError("script_hash", "a valid hexadecimal string")
         # Generate cache key
-        cache_key = f"script_history:{script_hash}"
+        cache_key = f"scriptHistory:{script_hash}"
 
         # Check cache first
         cached = self.script_history_cache.get(cache_key)
@@ -1286,7 +1286,7 @@ class Services(WalletServices):
             raise InvalidParameterError("txid", "a valid hexadecimal string")
 
         # Generate cache key
-        cache_key = f"tx_status:{txid}"
+        cache_key = f"txStatus:{txid}"
 
         # Check cache first
         cached = self.transaction_status_cache.get(cache_key)

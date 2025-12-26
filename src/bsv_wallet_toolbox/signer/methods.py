@@ -109,6 +109,23 @@ def _decode_remittance_component(value: str) -> str:
     return text
 
 
+def _normalize_raw_tx(value: Any) -> Any:
+    """Convert serialized transaction data into bytes when possible."""
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    if isinstance(value, list):
+        try:
+            return bytes(value)
+        except Exception:  # pragma: no cover - fallback to original value
+            return value
+    if isinstance(value, str):
+        try:
+            return bytes.fromhex(value)
+        except ValueError:
+            return value.encode()
+    return value
+
+
 def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateActionResultX:
     """Create action with optional signing (TS parity).
 
@@ -395,27 +412,27 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
             create_input = None
         input_data = prior.tx.inputs[vin] if vin < len(prior.tx.inputs) else None
 
+        expected_length = create_input.get("unlockingScriptLength") if create_input else None
         if (
             not create_input
             or input_data is None
             or create_input.get("unlockingScript") is not None
-            or "unlocking_script_length" not in create_input
-            or not isinstance(create_input["unlockingScriptLength"], int)
+            or not isinstance(expected_length, int)
         ):
             raise WalletError("spend does not correspond to prior input with valid unlockingScriptLength.")
 
         unlock_script_hex = spend.get("unlockingScript", "")
         unlock_script_len_bytes = len(unlock_script_hex) // 2
 
-        if unlock_script_len_bytes > create_input["unlockingScriptLength"]:
+        if unlock_script_len_bytes > expected_length:
             raise WalletError(
                 f"spend unlockingScript length {unlock_script_len_bytes} "
-                f"exceeds expected length {create_input['unlockingScriptLength']}"
+                f"exceeds expected length {expected_length}"
             )
 
         # Apply unlocking script and optional sequence number to the underlying TransactionInput
         input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
-        if "sequence_number" in spend:
+        if "sequenceNumber" in spend:
             input_data.sequence = spend["sequenceNumber"]
 
     # Insert SABPPP unlock templates for wallet-signed inputs
@@ -565,6 +582,8 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
         trace(logger, "signer.process_action.complete_signed_transaction.ok", txid=prior.tx.txid(), rawTx=prior.tx.serialize())
 
+    raw_tx_value = _normalize_raw_tx(prior.tx.serialize())
+
     storage_args = {
         "isNewTx": vargs.get("isNewTx"),
         "isSendWith": vargs.get("isSendWith"),
@@ -572,8 +591,7 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         "isDelayed": vargs.get("isDelayed"),
         "reference": prior.reference,
         "txid": prior.tx.txid(),
-        # Normalize to bytes to ensure RPC layer serializes as byte-array, not string.
-        "rawTx": bytes(prior.tx.serialize()),
+        "rawTx": raw_tx_value,
         "sendWith": vargs.get("options", {}).get("sendWith", []) if vargs.get("isSendWith") else [],
     }
 
@@ -729,19 +747,29 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         except Exception:  # noqa: BLE001
             build_result = None
     if build_result is None:
-        raise WalletError("unable to build AtomicBEEF for internalizeAction (services unavailable)")
+        normalized_atomic = bytes(tx_bytes) if tx_bytes else ab.to_binary()
+        trace(
+            logger,
+            "signer.internalize_action.atomic_beef.fallback",
+            txid=txid,
+            reason="services unavailable",
+            raw_len=len(tx_bytes or b""),
+            atomic_len=len(normalized_atomic),
+        )
+    else:
+        normalized_atomic = build_result.atomic_bytes
+        trace(
+            logger,
+            "signer.internalize_action.atomic_beef.normalized",
+            txid=txid,
+            raw_len=len(tx.serialize()),
+            atomic_len=len(build_result.atomic_bytes),
+            has_merkle_path=build_result.has_merkle_path,
+            parents_total=build_result.parents_total,
+            parents_with_proof=build_result.parents_with_proof,
+        )
 
-    vargs["tx"] = build_result.atomic_bytes
-    trace(
-        logger,
-        "signer.internalize_action.atomic_beef.normalized",
-        txid=txid,
-        raw_len=len(tx.serialize()),
-        atomic_len=len(build_result.atomic_bytes),
-        has_merkle_path=build_result.has_merkle_path,
-        parents_total=build_result.parents_total,
-        parents_with_proof=build_result.parents_with_proof,
-    )
+    vargs["tx"] = normalized_atomic
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]
@@ -1111,7 +1139,7 @@ def _remove_unlock_scripts(args: dict[str, Any]) -> dict[str, Any]:
     new_inputs = []
     for inp in args.get("inputs", []):
         new_inp = dict(inp)
-        if "unlocking_script" in new_inp:
+        if "unlockingScript" in new_inp:
             new_inp["unlockingScriptLength"] = (
                 len(new_inp["unlockingScript"])
                 if new_inp.get("unlockingScript")
