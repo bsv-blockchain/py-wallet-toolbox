@@ -138,25 +138,24 @@ def _to_byte_list(value: bytes | bytearray) -> list[int]:
     return list(bytes(value))
 
 
-def _normalize_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
-    """Normalize protocol parameters to handle both protocolID and protocol_id formats.
+def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate protocol-related arguments to enforce camelCase keys.
 
-    The wallet API expects protocolID (camelCase), but tests may pass protocol_id (snake_case).
-    This function ensures both formats are accepted and normalized to protocolID.
+    The wallet API only accepts camelCase keys (protocolID/keyID). Any snake_case variants
+    are treated as configuration errors so that issues are caught immediately instead of
+    being silently transformed.
 
     Args:
         args: Arguments dictionary that may contain protocol parameters
 
     Returns:
-        Updated args dict with normalized protocol parameters
+        The original args dict (validation is performed in-place)
     """
-    # Handle protocol_id -> protocolID normalization
-    if "protocol_id" in args and "protocolID" not in args:
-        args["protocolID"] = args["protocolId"]
+    if "protocol_id" in args:
+        raise InvalidParameterError("protocolID", "use camelCase key (protocol_id is unsupported)")
 
-    # Handle key_id -> keyID normalization
-    if "key_id" in args and "keyID" not in args:
-        args["keyID"] = args["keyId"]
+    if "key_id" in args:
+        raise InvalidParameterError("keyID", "use camelCase key (key_id is unsupported)")
 
     return args
 
@@ -426,16 +425,17 @@ class Wallet:
         """Convert signature args from py-wallet-toolbox format to py-sdk format.
 
         py-wallet-toolbox uses camelCase (protocolID, keyID, hashToDirectlySign)
-        py-sdk ProtoWallet uses snake_case (protocol_id, key_id, hash_to_directly_sign)
+        py-sdk ProtoWallet historically used snake_case equivalents; this helper enforces
+        camelCase input and then maps values to the underlying proto representation.
 
         Args:
-            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
+            args: Arguments in py-wallet-toolbox format (camelCase only)
 
         Returns:
             Arguments in py-sdk format
         """
-        # Normalize protocol parameters first (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
         
         proto_args: dict[str, Any] = {}
 
@@ -498,13 +498,13 @@ class Wallet:
         """Convert verify signature args from py-wallet-toolbox format to py-sdk format.
 
         Args:
-            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
+            args: Arguments in py-wallet-toolbox format (camelCase only)
 
         Returns:
             Arguments in py-sdk format
         """
-        # Normalize protocol parameters first (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
         
         proto_args = self._convert_signature_args_to_proto_format(args)
 
@@ -527,13 +527,13 @@ class Wallet:
         py-sdk ProtoWallet.get_public_key expects the same format (it handles both).
 
         Args:
-            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
+            args: Arguments in py-wallet-toolbox format (camelCase only)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
         """
-        # Normalize protocol parameters first (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
         
         proto_args: dict[str, Any] = {}
 
@@ -603,7 +603,7 @@ class Wallet:
         py-sdk ProtoWallet expects: plaintext + encryption_args dict with snake_case
 
         Args:
-            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
+            args: Arguments in py-wallet-toolbox format (camelCase only)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
@@ -611,8 +611,8 @@ class Wallet:
         Raises:
             TypeError: If protocolID format is invalid
         """
-        # Normalize protocol parameters first (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
         
         plaintext = args.get("plaintext")
         if plaintext is not None:
@@ -659,7 +659,7 @@ class Wallet:
         """Convert decrypt args from py-wallet-toolbox format to py-sdk ProtoWallet format.
 
         Args:
-            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
+            args: Arguments in py-wallet-toolbox format (camelCase only)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
@@ -667,8 +667,8 @@ class Wallet:
         Raises:
             TypeError: If protocolID format is invalid
         """
-        # Normalize protocol parameters first (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
         
         ciphertext = args.get("ciphertext")
         if ciphertext is not None:
@@ -712,7 +712,7 @@ class Wallet:
         """Convert HMAC args from py-wallet-toolbox format to py-sdk ProtoWallet format.
 
         Args:
-            args: Arguments in py-wallet-toolbox format (or snake_case, will be normalized)
+            args: Arguments in py-wallet-toolbox format (camelCase only)
 
         Returns:
             Arguments in py-sdk ProtoWallet format
@@ -720,8 +720,8 @@ class Wallet:
         Raises:
             TypeError: If protocolID format is invalid
         """
-        # Normalize protocol parameters first (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
         
         data = args.get("data")
         if data is not None:
@@ -2778,8 +2778,8 @@ class Wallet:
             - go-wallet-toolbox/pkg/wallet/wallet.go RevealSpecificKeyLinkage
             - py-sdk ProtoWallet.reveal_specific_key_linkage
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -2850,8 +2850,8 @@ class Wallet:
             If privileged is provided in args and privileged_key_manager is configured,
             uses privileged_key_manager instead of key_deriver.
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Validate arguments
@@ -2915,8 +2915,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - toolbox/py-wallet-toolbox/tests/universal/test_signature_min.py
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested (TS/Go parity)
@@ -2980,8 +2980,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - toolbox/py-wallet-toolbox/tests/universal/test_signature_min.py
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested (TS/Go parity)
@@ -3088,8 +3088,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (encrypt)
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -3143,8 +3143,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (decrypt)
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -3256,8 +3256,8 @@ class Wallet:
         - toolbox/ts-wallet-toolbox/src/Wallet.ts
         - sdk/py-sdk/bsv/wallet/wallet_interface.py (verify_hmac)
         """
-        # Normalize protocol parameters (handle both protocolID and protocol_id)
-        args = _normalize_protocol_args(args)
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         self._validate_originator(originator)
 
         # Check if privileged mode is requested
@@ -3928,14 +3928,16 @@ class Wallet:
         if not isinstance(storage, str):
             raise InvalidParameterError(f"storage must be a string (storage identity key), got {type(storage).__name__}")
 
-        # Validate backup_first - required parameter
-        if "backup_first" not in args:
-            raise InvalidParameterError("backup_first is required")
+        # Validate backupFirst - required parameter
+        if "backup_first" in args:
+            raise InvalidParameterError("backupFirst", "use camelCase key (backup_first is unsupported)")
+        if "backupFirst" not in args:
+            raise InvalidParameterError("backupFirst", "is required")
         backup_first_value = args.get("backupFirst")
         if backup_first_value is None:
-            raise InvalidParameterError("backup_first cannot be None")
+            raise InvalidParameterError("backupFirst", "cannot be None")
         if not isinstance(backup_first_value, bool):
-            raise InvalidParameterError(f"backup_first must be a boolean, got {type(backup_first_value).__name__}")
+            raise InvalidParameterError("backupFirst", "must be a boolean")
 
         # Use WalletStorageManager for storage switching
         if hasattr(self, 'storage') and self.storage:

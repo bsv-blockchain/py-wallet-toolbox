@@ -3808,6 +3808,9 @@ class StorageProvider:
         partial, _ = self._split_query(query)
         return self._find_generic("output", partial)
 
+    # CamelCase alias for TS/Go parity
+    findOutputs = find_outputs
+
     def find_output_baskets(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find output baskets, supporting `since` filter like TS implementation.
 

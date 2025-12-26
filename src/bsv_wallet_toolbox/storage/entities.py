@@ -18,6 +18,15 @@ from typing import Any
 from bsv.transaction import Transaction as BsvTransaction
 
 
+def _get_callable(obj: Any, *names: str):
+    """Return first callable attribute matching given names."""
+    for name in names:
+        attr = getattr(obj, name, None)
+        if callable(attr):
+            return attr
+    return None
+
+
 class User:
     """User entity DTO - Represents a wallet user with authentication and storage configuration.
 
@@ -741,7 +750,9 @@ class Transaction:
                 self.input_beef = ib if isinstance(ib, list) else None
             self.updated_at = ei.get("updatedAt", datetime.now())
             if storage:
-                storage.update_transaction(self.transaction_id, self.to_api())
+            updater = _get_callable(storage, "updateTransaction")
+            if updater:
+                updater(self.transaction_id, self.to_api())
             return True
         return False
 
@@ -770,9 +781,11 @@ class Transaction:
         inputs = []
 
         # Get outputs that reference this transaction as spentBy
-        if storage and hasattr(storage, "find_outputs"):
-            outputs = storage.find_outputs({"spentBy": self.transaction_id})
-            inputs.extend(outputs)
+        if storage:
+            finder = _get_callable(storage, "findOutputs")
+            if finder:
+                outputs = finder({"spentBy": self.transaction_id})
+                inputs.extend(outputs)
 
         # Also include any raw transaction inputs
         raw_inputs = self.get_bsv_tx_ins()
@@ -784,9 +797,14 @@ class Transaction:
         """Get ProvenTx for this transaction by provenTxId."""
         if not self.proven_tx_id:
             return None
-        if not hasattr(storage, "find_proven_tx"):
+        finder = None
+        if hasattr(storage, "find_proven_tx"):
+            finder = getattr(storage, "find_proven_tx")
+        elif hasattr(storage, "findProvenTx"):
+            finder = getattr(storage, "findProvenTx")
+        if finder is None:
             return None
-        proven_tx_dict = storage.find_proven_tx(self.proven_tx_id)
+        proven_tx_dict = finder(self.proven_tx_id)
         return proven_tx_dict
 
 
@@ -915,7 +933,10 @@ class ProvenTx:
         try:
             # Get raw transaction if not provided
             if not result["rawTx"]:
-                raw_tx_response = services.get_raw_tx(txid)
+                get_raw_tx = _get_callable(services, "get_raw_tx", "getRawTx")
+                if not get_raw_tx:
+                    return result
+                raw_tx_response = get_raw_tx(txid)
                 if not raw_tx_response:
                     return result
 
@@ -928,7 +949,10 @@ class ProvenTx:
                 return result
 
             # Get merkle proof
-            merkle_response = services.get_merkle_path(txid)
+            get_merkle_path = _get_callable(services, "get_merkle_path", "getMerklePath")
+            if not get_merkle_path:
+                return result
+            merkle_response = get_merkle_path(txid)
             if not merkle_response:
                 return result
 
@@ -1156,17 +1180,21 @@ class ProvenTxReq:
 
     def update_storage(self, storage: Any) -> None:
         """Update this ProvenTxReq in storage."""
-        if storage and hasattr(storage, "update_proven_tx_req"):
-            storage.update_proven_tx_req(self.proven_tx_req_id, self.to_api())
+        if not storage:
+            return
+        updater = _get_callable(storage, "update_proven_tx_req", "updateProvenTxReq")
+        if updater:
+            updater(self.proven_tx_req_id, self.to_api())
 
     def insert_or_merge(self, storage: Any) -> Any:
         """Insert or merge this ProvenTxReq in storage."""
         if not storage:
             return None
-        if hasattr(storage, "insert_or_merge_proven_tx_req"):
-            return storage.insert_or_merge_proven_tx_req(self.to_api())
-        elif hasattr(storage, "insert_proven_tx_req"):
-            return storage.insert_proven_tx_req(self.to_api())
+        inserter = _get_callable(
+            storage, "insert_or_merge_proven_tx_req", "insertOrMergeProvenTxReq", "insert_proven_tx_req", "insertProvenTxReq"
+        )
+        if inserter:
+            return inserter(self.to_api())
         return None
 
     def merge_notify_transaction_ids(self, ei: dict[str, Any] | list[int]) -> bool:

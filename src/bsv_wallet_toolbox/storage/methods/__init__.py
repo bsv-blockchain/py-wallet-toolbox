@@ -8,8 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from bsv_wallet_toolbox.utils.case_utils import convert_keys_to_snake_case
-
 # Note: Most storage methods are implemented as methods on the StorageProvider class.
 # Import StorageProvider and use its methods (e.g., storage_provider.process_action()).
 # The functions exported here are wrappers that delegate to StorageProvider methods.
@@ -201,9 +199,7 @@ def review_status(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
     Wrapper around StorageProvider.review_status().
     """
     result = storage.review_status(args)
-    if result is None:
-        return {}
-    return convert_keys_to_snake_case(result)
+    return result or {}
 
 
 def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
@@ -212,9 +208,7 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     Wrapper around StorageProvider.purge_data().
     """
     result = storage.purge_data(params)
-    if result is None:
-        return {}
-    return convert_keys_to_snake_case(result)
+    return result or {}
 
 
 def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:

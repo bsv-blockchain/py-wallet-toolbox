@@ -137,7 +137,7 @@ class TestProvenTxReqEntity:
         proven_tx_req.update_storage(mock_storage)
 
         # Then
-        fetched = mock_storage.find_proven_tx_reqs({"partial": {"txid": "test-txid"}})
+        fetched = mock_storage.findProvenTxReqs({"partial": {"txid": "test-txid"}})
         assert len(fetched) == 1
         assert fetched[0]["txid"] == "test-txid"
 
@@ -170,7 +170,11 @@ class TestProvenTxReqEntity:
         def mock_insert_or_merge(data: dict[str, Any]) -> dict[str, Any]:
             return data
 
-        mock_storage = type("MockStorage", (), {"insertOrMergeProvenTxReq": staticmethod(mock_insert_or_merge)})()
+        mock_storage = type(
+            "MockStorage",
+            (),
+            {"insertOrMergeProvenTxReq": staticmethod(mock_insert_or_merge)},
+        )()
 
         # When
         result = proven_tx_req.insert_or_merge(mock_storage)

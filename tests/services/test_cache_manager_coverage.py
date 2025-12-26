@@ -71,7 +71,7 @@ class TestCacheManager:
     def test_set_and_get_value(self) -> None:
         """Test setting and getting a cached value."""
         cache: CacheManager[str] = CacheManager()
-        key = "test_key"
+        key = "testKey"
         value = "test_value"
         ttl = 5000  # 5 seconds
 
@@ -79,6 +79,13 @@ class TestCacheManager:
         result = cache.get(key)
 
         assert result == value
+
+    def test_set_with_snake_case_key_raises(self) -> None:
+        """Ensure snake_case keys are rejected to enforce camelCase policy."""
+        cache: CacheManager[str] = CacheManager()
+
+        with pytest.raises(ValueError, match="camelCase"):
+            cache.set("snake_key", "value", 1000)
 
     def test_get_nonexistent_key(self) -> None:
         """Test getting a non-existent key returns None."""
@@ -91,7 +98,7 @@ class TestCacheManager:
     def test_get_expired_value(self) -> None:
         """Test that expired values are removed and return None."""
         cache: CacheManager[str] = CacheManager()
-        key = "test_key"
+        key = "testKey"
         value = "test_value"
         ttl = 1  # 1 millisecond
 
@@ -109,7 +116,7 @@ class TestCacheManager:
     def test_overwrite_existing_key(self) -> None:
         """Test that setting a key again overwrites the old value."""
         cache: CacheManager[str] = CacheManager()
-        key = "test_key"
+        key = "testKey"
 
         cache.set(key, "old_value", 5000)
         cache.set(key, "new_value", 5000)
@@ -160,9 +167,9 @@ class TestCacheManager:
         """Test has() returns True for valid keys."""
         cache: CacheManager[str] = CacheManager()
 
-        cache.set("test_key", "test_value", 5000)
+        cache.set("testKey", "test_value", 5000)
 
-        assert cache.has("test_key") is True
+        assert cache.has("testKey") is True
 
     def test_has_nonexistent_key(self) -> None:
         """Test has() returns False for non-existent keys."""
@@ -174,19 +181,19 @@ class TestCacheManager:
         """Test has() returns False for expired keys."""
         cache: CacheManager[str] = CacheManager()
 
-        cache.set("test_key", "test_value", 1)  # 1 millisecond TTL
+        cache.set("testKey", "test_value", 1)  # 1 millisecond TTL
 
         # Wait for expiration
         time.sleep(0.002)
 
-        assert cache.has("test_key") is False
+        assert cache.has("testKey") is False
 
     def test_cache_with_dict_values(self) -> None:
         """Test caching dictionary values."""
         cache: CacheManager[dict] = CacheManager()
 
         test_dict = {"name": "test", "value": 123, "nested": {"key": "val"}}
-        cache.set("dict_key", test_dict, 5000)
+        cache.set("dictKey", test_dict, 5000)
 
         result = cache.get("dictKey")
         assert result == test_dict
@@ -197,7 +204,7 @@ class TestCacheManager:
         cache: CacheManager[list] = CacheManager()
 
         test_list = [1, 2, 3, "four", {"five": 5}]
-        cache.set("list_key", test_list, 5000)
+        cache.set("listKey", test_list, 5000)
 
         result = cache.get("listKey")
         assert result == test_list
@@ -206,14 +213,14 @@ class TestCacheManager:
         """Test multiple keys with different TTL values."""
         cache: CacheManager[str] = CacheManager()
 
-        cache.set("short_ttl", "expires_soon", 1)  # 1 ms
-        cache.set("long_ttl", "expires_later", 10000)  # 10 seconds
+        cache.set("shortTtl", "expiresSoon", 1)  # 1 ms
+        cache.set("longTtl", "expiresLater", 10000)  # 10 seconds
 
         # Wait for short TTL to expire
         time.sleep(0.002)
 
         assert cache.get("shortTtl") is None
-        assert cache.get("longTtl") == "expires_later"
+        assert cache.get("longTtl") == "expiresLater"
 
     def test_cache_manager_with_complex_types(self) -> None:
         """Test cache manager with complex nested types."""
@@ -237,7 +244,7 @@ class TestCacheManager:
         """Test cache with zero TTL (immediately expired)."""
         cache: CacheManager[str] = CacheManager()
 
-        cache.set("zero_ttl", "value", 0)
+        cache.set("zeroTtl", "value", 0)
 
         # Even immediately, it might be considered expired
         # Let's verify the behavior

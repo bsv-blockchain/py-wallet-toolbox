@@ -589,7 +589,7 @@ class TestPurgeDataExtended:
         result = purge_data(mock_storage, params)
 
         assert isinstance(result, dict)
-        assert "deleted_transactions" in result
+        assert "deletedTransactions" in result
 
     def test_purge_data_with_aged_before(self) -> None:
         """Test purge_data with agedBeforeDate."""
@@ -604,7 +604,7 @@ class TestPurgeDataExtended:
         result = purge_data(mock_storage, params)
 
         assert isinstance(result, dict)
-        assert result["deleted_transactions"] == 5
+        assert result["deletedTransactions"] == 5
 
 
 class TestGetSyncChunkExtended:

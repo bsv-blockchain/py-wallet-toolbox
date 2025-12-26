@@ -276,7 +276,7 @@ class TestTransactionEntity:
 
         # Then
         assert result is True
-        found_txs = mock_storage.find_transactions({"partial": {"transactionId": 123}})
+        found_txs = mock_storage.findTransactions({"partial": {"transactionId": 123}})
         assert found_txs[0]["txid"] == "newTxId"
 
     def test_getbsvtx_handles_undefined_rawtx(self) -> None:
@@ -342,7 +342,7 @@ class TestTransactionEntity:
                 return mock_proven_tx
             return None
 
-        mock_storage = type("MockStorage", (), {"findProvenTx": staticmethod(mock_find_proven_tx)})()
+        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
@@ -388,7 +388,7 @@ class TestTransactionEntity:
         def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
             return None  # No matching ProvenTx
 
-        mock_storage = type("MockStorage", (), {"findProvenTx": staticmethod(mock_find_proven_tx)})()
+        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
