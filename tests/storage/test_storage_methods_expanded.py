@@ -515,6 +515,21 @@ class TestGetBeefForTransaction:
         mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result == mock_beef_data
 
+    def test_get_beef_for_transaction_with_protocol(self) -> None:
+        """Test get_beef_for_transaction supports protocol-specific options."""
+        storage = Mock()
+        options = {"protocol": {"name": "arc", "version": 1}}
+        mock_beef_data = b"proto_beef_data"
+
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID, options=options)
+
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, options)
+        assert result == mock_beef_data
+
     def test_get_beef_for_transaction_with_auth(self) -> None:
         """Test get_beef_for_transaction forwards auth context."""
         storage = Mock()
