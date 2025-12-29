@@ -12,6 +12,7 @@ import time
 from typing import TYPE_CHECKING, Any, Literal
 
 from bsv.keys import PrivateKey, PublicKey
+from bsv.overlay_tools import LookupResolver, LookupResolverConfig
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol, ProtoWallet
@@ -198,6 +199,7 @@ class Wallet:
         storage_provider: Any | None = None,
         privileged_key_manager: PrivilegedKeyManager | None = None,
         settings_manager: WalletSettingsManager | None = None,
+        lookup_resolver: LookupResolver | None = None,
         monitor: "Monitor | None" = None,
     ) -> None:
         """Initialize wallet.
@@ -217,6 +219,8 @@ class Wallet:
                                    this manager's methods instead of key_deriver.
             settings_manager: Optional WalletSettingsManager for wallet configuration.
                            If None, a default WalletSettingsManager will be created.
+            lookup_resolver: Optional LookupResolver instance. When omitted, the wallet
+                           creates one using the chain -> network preset mapping.
             monitor: Optional Monitor instance for background task management.
 
         Note:
@@ -248,8 +252,7 @@ class Wallet:
         self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
 
         # Initialize lookup resolver (TS parity)
-        # TODO: Implement proper LookupResolver class
-        self.lookup_resolver = self._create_lookup_resolver()
+        self.lookup_resolver: LookupResolver | None = lookup_resolver or self._create_lookup_resolver()
 
         # Initialize settings manager (TS parity)
         self.settings_manager: WalletSettingsManager = settings_manager or WalletSettingsManager(self)
@@ -389,27 +392,24 @@ class Wallet:
             "publicKey": str(pub_key),
         }
 
-    def _create_lookup_resolver(self) -> Any:
-        """Create a lookup resolver for identity operations.
-
-        TS parity: Creates LookupResolver equivalent for overlay service queries.
-        For now, returns a simple mock resolver.
+    def _create_lookup_resolver(self) -> LookupResolver:
+        """Create a LookupResolver configured for the wallet network.
 
         Returns:
-            Resolver object with query method
+            LookupResolver: Resolver capable of performing overlay queries
+                against ls_identity, matching the TypeScript behavior.
         """
-        # TODO: Implement proper LookupResolver class
-        # For now, create a mock resolver that returns empty results for testing
-        class MockResolver:
-            async def query(self, params: dict[str, Any]) -> dict[str, Any]:
-                # Return empty result structure for tests that need resolver to exist
-                # This allows wire format tests to pass while resolver is being implemented
-                return {
-                    "type": "output-list",
-                    "outputs": []
-                }
-
-        return MockResolver()
+        network = self._to_wallet_network(self.chain)
+        config = LookupResolverConfig(network_preset=network)
+        try:
+            return LookupResolver(config)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error(
+                "wallet.lookup_resolver.init_failed",
+                extra={"chain": self.chain, "network": network},
+                exc_info=exc,
+            )
+            raise RuntimeError("Failed to initialize LookupResolver") from exc
 
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.

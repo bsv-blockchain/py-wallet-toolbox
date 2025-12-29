@@ -6,17 +6,18 @@ import logging
 import re
 import secrets
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any, ClassVar, Callable
 
 from bsv.merkle_path import MerklePath
 from bsv.transaction import Transaction
 from bsv.transaction import Transaction as BsvTransaction
 from bsv.transaction.beef import Beef, BEEF_V2, parse_beef, parse_beef_ex
-from sqlalchemy import func, inspect, select
+from sqlalchemy import delete, func, inspect, or_, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import exists
 
 from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log as util_stamp_log
@@ -4091,57 +4092,278 @@ class StorageProvider:
         finally:
             session.close()
 
-    def review_status(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Review and update transaction statuses.
-
-        Delegates to methods.review_status for each user in the system.
+    def review_status(self, args: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Review and update transaction/output statuses (TS parity).
 
         Args:
-            args: Dict containing 'agedLimit'.
+            args: Optional dict containing 'agedLimit' (reserved for future use).
 
         Returns:
-            Dict with results (aggregated).
+            Dict with total updated counts and human-readable log similar to TS.
         """
-        aged_limit = args.get("agedLimit")
-        log = ""
+        _ = args or {}
+        log_lines: list[str] = []
         updated_count = 0
-        aged_count = 0
 
-        # Get all users
-        users = self.find_users()
-        for user in users:
-            auth = {"userId": user["userId"]}
-            try:
-                # TODO: Implement review_status logic per user
-                # This should review and update transaction statuses for aged transactions
-                res = {"updatedCount": 0, "agedCount": 0, "log": ""}
-                updated_count += res.get("updatedCount", 0)
-                aged_count += res.get("agedCount", 0)
-                if res.get("log"):
-                    log += f"[User {user['userId']}] {res['log']}\n"
-            except Exception as e:
-                log += f"[User {user['userId']}] Error: {e!s}\n"
+        with session_scope(self.SessionLocal) as session:
+            invalid_req_exists = exists(
+                select(ProvenTxReq.proven_tx_req_id).where(
+                    ProvenTxReq.txid == TransactionModel.txid,
+                    ProvenTxReq.status == "invalid",
+                )
+            )
+            fail_stmt = (
+                update(TransactionModel)
+                .where(TransactionModel.status != "failed")
+                .where(invalid_req_exists)
+                .values(status="failed")
+                .execution_options(synchronize_session=False)
+            )
+            failed_rows = session.execute(fail_stmt).rowcount or 0
+            if failed_rows:
+                updated_count += failed_rows
+                log_lines.append(
+                    f"{failed_rows} transactions updated to status 'failed' where matching provenTxReq is 'invalid'"
+                )
+
+            failed_tx_exists = exists(
+                select(TransactionModel.transaction_id).where(
+                    TransactionModel.transaction_id == Output.spent_by,
+                    TransactionModel.status == "failed",
+                )
+            )
+            release_stmt = (
+                update(Output)
+                .where(failed_tx_exists)
+                .values(spent_by=None, spendable=True)
+                .execution_options(synchronize_session=False)
+            )
+            released_rows = session.execute(release_stmt).rowcount or 0
+            if released_rows:
+                updated_count += released_rows
+                log_lines.append(
+                    f"{released_rows} outputs set to spendable where spentBy referenced a failed transaction"
+                )
+
+            proven_id_subquery = (
+                select(ProvenTx.proven_tx_id)
+                .where(ProvenTx.txid == TransactionModel.txid)
+                .limit(1)
+                .scalar_subquery()
+            )
+            proven_exists = exists(
+                select(ProvenTx.proven_tx_id).where(ProvenTx.txid == TransactionModel.txid)
+            )
+            complete_stmt = (
+                update(TransactionModel)
+                .where(TransactionModel.proven_tx_id.is_(None))
+                .where(proven_exists)
+                .values(status="completed", proven_tx_id=proven_id_subquery)
+                .execution_options(synchronize_session=False)
+            )
+            completed_rows = session.execute(complete_stmt).rowcount or 0
+            if completed_rows:
+                updated_count += completed_rows
+                log_lines.append(
+                    f"{completed_rows} transactions updated to status 'completed' using matching proven_txs records"
+                )
 
         return {
             "updatedCount": updated_count,
-            "agedCount": aged_count,
-            "log": log,
+            "agedCount": 0,
+            "log": "\n".join(log_lines).strip(),
         }
 
-    def purge_data(self, params: dict[str, Any]) -> dict[str, Any]:
-        """Purge transient data according to params.
+    def purge_data(self, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Purge transient data according to params (TS parity)."""
+        params = params or {}
+        default_age_ms = 14 * 24 * 60 * 60 * 1000  # 14 days
+        log_lines: list[str] = []
+        total_count = 0
 
-        Delegates to methods.purge_data.
+        def _cutoff(age_key: str) -> datetime:
+            age_ms = params.get(age_key)
+            if not isinstance(age_ms, (int, float)) or age_ms <= 0:
+                age_ms = default_age_ms
+            cutoff = datetime.now(UTC) - timedelta(milliseconds=age_ms)
+            return cutoff.replace(tzinfo=None)
 
-        Args:
-            params: Purge parameters (purgeSpent, purgeFailed, ages...).
+        def _delete_transactions(
+            session: Session,
+            tx_ids: list[int],
+            reason: str,
+            mark_not_spent: bool,
+        ) -> int:
+            if not tx_ids:
+                return 0
 
-        Returns:
-            Dict with log and count.
-        """
-        # TODO: Implement purge_data logic
-        # This should purge transient data according to params
-        return {"log": "", "count": 0}
+            local_count = 0
+
+            output_ids = session.execute(
+                select(Output.output_id).where(Output.transaction_id.in_(tx_ids))
+            ).scalars().all()
+
+            if output_ids:
+                deleted = session.execute(
+                    delete(OutputTagMap).where(OutputTagMap.output_id.in_(output_ids))
+                ).rowcount or 0
+                if deleted:
+                    log_lines.append(f"{deleted} {reason} output_tags_map deleted")
+                    local_count += deleted
+
+                deleted = session.execute(
+                    delete(Output).where(Output.output_id.in_(output_ids))
+                ).rowcount or 0
+                if deleted:
+                    log_lines.append(f"{deleted} {reason} outputs deleted")
+                    local_count += deleted
+
+            deleted = session.execute(
+                delete(TxLabelMap).where(TxLabelMap.transaction_id.in_(tx_ids))
+            ).rowcount or 0
+            if deleted:
+                log_lines.append(f"{deleted} {reason} tx_labels_map deleted")
+                local_count += deleted
+
+            deleted = session.execute(
+                delete(Commission).where(Commission.transaction_id.in_(tx_ids))
+            ).rowcount or 0
+            if deleted:
+                log_lines.append(f"{deleted} {reason} commissions deleted")
+                local_count += deleted
+
+            if mark_not_spent:
+                updated = session.execute(
+                    update(Output)
+                    .where(Output.spent_by.in_(tx_ids))
+                    .values(spendable=True, spent_by=None)
+                    .execution_options(synchronize_session=False)
+                ).rowcount or 0
+                if updated:
+                    log_lines.append(f"{updated} outputs released from spentBy due to {reason} transactions")
+                    local_count += updated
+
+            deleted = session.execute(
+                delete(TransactionModel).where(TransactionModel.transaction_id.in_(tx_ids))
+            ).rowcount or 0
+            if deleted:
+                log_lines.append(f"{deleted} {reason} transactions deleted")
+                local_count += deleted
+
+            return local_count
+
+        with session_scope(self.SessionLocal) as session:
+            if params.get("purgeCompleted"):
+                cutoff = _cutoff("purgeCompletedAge")
+                completed_stmt = (
+                    update(TransactionModel)
+                    .where(TransactionModel.updated_at < cutoff)
+                    .where(TransactionModel.status == "completed")
+                    .where(TransactionModel.proven_tx_id.is_not(None))
+                    .where(or_(TransactionModel.input_beef.isnot(None), TransactionModel.raw_tx.isnot(None)))
+                    .values(input_beef=None, raw_tx=None)
+                    .execution_options(synchronize_session=False)
+                )
+                cleared = session.execute(completed_stmt).rowcount or 0
+                if cleared:
+                    log_lines.append(f"{cleared} completed transactions purged of transient data")
+                    total_count += cleared
+
+                completed_req_ids = session.execute(
+                    select(ProvenTxReq.proven_tx_req_id).where(
+                        ProvenTxReq.updated_at < cutoff,
+                        ProvenTxReq.status == "completed",
+                        ProvenTxReq.proven_tx_id.is_not(None),
+                        ProvenTxReq.notified.is_(True),
+                    )
+                ).scalars().all()
+                if completed_req_ids:
+                    deleted = session.execute(
+                        delete(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id.in_(completed_req_ids))
+                    ).rowcount or 0
+                    if deleted:
+                        log_lines.append(f"{deleted} completed proven_tx_reqs deleted")
+                        total_count += deleted
+
+            if params.get("purgeFailed"):
+                cutoff = _cutoff("purgeFailedAge")
+                failed_tx_ids = session.execute(
+                    select(TransactionModel.transaction_id).where(
+                        TransactionModel.updated_at < cutoff,
+                        TransactionModel.status == "failed",
+                    )
+                ).scalars().all()
+                total_count += _delete_transactions(session, failed_tx_ids, "failed", True)
+
+                for status in ("invalid", "doubleSpend"):
+                    deleted = session.execute(
+                        delete(ProvenTxReq).where(
+                            ProvenTxReq.updated_at < cutoff,
+                            ProvenTxReq.status == status,
+                        )
+                    ).rowcount or 0
+                    if deleted:
+                        log_lines.append(f"{deleted} {status} proven_tx_reqs deleted")
+                        total_count += deleted
+
+            if params.get("purgeSpent"):
+                cutoff = _cutoff("purgeSpentAge")
+                proof_txids = set(
+                    txid
+                    for txid in session.execute(
+                        select(Output.txid).where(Output.spendable.is_(True), Output.txid.is_not(None))
+                    ).scalars()
+                    if txid
+                )
+                proof_txids.update(
+                    txid
+                    for txid in session.execute(
+                        select(TransactionModel.txid)
+                        .join(Output, Output.transaction_id == TransactionModel.transaction_id)
+                        .where(Output.spendable.is_(True), TransactionModel.txid.is_not(None))
+                    ).scalars()
+                    if txid
+                )
+
+                spent_candidates = session.execute(
+                    select(TransactionModel.transaction_id, TransactionModel.txid).where(
+                        TransactionModel.updated_at < cutoff,
+                        TransactionModel.status == "completed",
+                        ~exists(
+                            select(Output.output_id).where(
+                                Output.transaction_id == TransactionModel.transaction_id,
+                                Output.spendable.is_(True),
+                            )
+                        ),
+                    )
+                ).all()
+
+                spent_ids = [
+                    row.transaction_id for row in spent_candidates if not row.txid or row.txid not in proof_txids
+                ]
+                total_count += _delete_transactions(session, spent_ids, "spent", False)
+
+                orphan_deleted = session.execute(
+                    delete(ProvenTx).where(
+                        ~exists(
+                            select(TransactionModel.transaction_id).where(
+                                (TransactionModel.txid == ProvenTx.txid)
+                                | (TransactionModel.proven_tx_id == ProvenTx.proven_tx_id)
+                            )
+                        ),
+                        ~exists(
+                            select(ProvenTxReq.proven_tx_req_id).where(
+                                (ProvenTxReq.txid == ProvenTx.txid)
+                                | (ProvenTxReq.proven_tx_id == ProvenTx.proven_tx_id)
+                            )
+                        ),
+                    )
+                ).rowcount or 0
+                if orphan_deleted:
+                    log_lines.append(f"{orphan_deleted} orphan proven_txs deleted")
+                    total_count += orphan_deleted
+
+        return {"log": "\n".join(log_lines).strip(), "count": total_count}
 
     # NOTE: allocate_change_input and count_change_inputs are defined earlier in this file
     # (around line 2216 and 2237) with proper Transaction status checking.
