@@ -131,7 +131,8 @@ def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
 
     res = services.post_beef(valid_beef_data)
     assert isinstance(res, dict)
-    assert set(res.keys()) == {"accepted", "txid", "message"}
+    # Required keys must be present (providerErrors is optional)
+    assert {"accepted", "txid", "message"} <= set(res.keys())
     assert res["accepted"] in (True, False)
 
 
@@ -154,7 +155,8 @@ def test_post_beef_array_arc_minimal_enabled(valid_beef_data) -> None:
     assert len(res_list) == 2
     for res in res_list:
         assert isinstance(res, dict)
-        assert set(res.keys()) == {"accepted", "txid", "message"}
+        # Required keys must be present (providerErrors is optional)
+        assert {"accepted", "txid", "message"} <= set(res.keys())
         assert res["accepted"] in (True, False)
 
 

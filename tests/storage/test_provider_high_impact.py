@@ -155,7 +155,7 @@ class TestListOutputsSpecOps:
             "satoshis": 6000,
         })
 
-        # Create some outputs
+        # Create some outputs with change=True and type=P2PKH for specOpWalletBalance
         for i in range(3):
             storage_provider.insert_output({
                 "userId": user_id,
@@ -164,6 +164,8 @@ class TestListOutputsSpecOps:
                 "vout": i,
                 "satoshis": 1000 * (i + 1),  # 1000, 2000, 3000
                 "spendable": True,
+                "change": True,  # Required for specOpWalletBalance
+                "type": "P2PKH",  # Required for specOpWalletBalance
                 "txid": f"{'a' * 60}{i:04d}",
                 "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
             })
