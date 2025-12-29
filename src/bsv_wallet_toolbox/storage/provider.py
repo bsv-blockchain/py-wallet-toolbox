@@ -3098,17 +3098,17 @@ class StorageProvider:
 
     # Explicit overrides for snake_case table identifiers that do not convert cleanly
     _TABLE_NAME_OVERRIDES: ClassVar[dict[str, str]] = {
-        "certificate_field": "certificateField",
-        "certificate_fields": "certificateField",
-        "monitor_event": "monitorEvent",
-        "output_basket": "outputBasket",
-        "output_tag": "outputTag",
-        "output_tag_map": "outputTagMap",
-        "proven_tx": "provenTx",
-        "proven_tx_req": "provenTxReq",
-        "sync_state": "syncState",
-        "tx_label": "txLabel",
-        "tx_label_map": "txLabelMap",
+        "certificateField": "certificateField",
+        "certificateFields": "certificateField",
+        "monitorEvent": "monitorEvent",
+        "outputBasket": "outputBasket",
+        "outputTag": "outputTag",
+        "outputTagMap": "outputTagMap",
+        "provenTx": "provenTx",
+        "provenTxReq": "provenTxReq",
+        "syncState": "syncState",
+        "txLabel": "txLabel",
+        "txLabelMap": "txLabelMap",
     }
 
     @staticmethod

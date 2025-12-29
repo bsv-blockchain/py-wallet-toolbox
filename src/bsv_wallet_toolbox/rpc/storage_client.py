@@ -497,7 +497,7 @@ class StorageClient:
         """
         result = self.find_or_insert_user(identity_key)
         user = result.get("user", {})
-        return user.get("userId", 0)
+        return user.get("userID", 0)
 
     def find_certificates_auth(
         self,
@@ -742,6 +742,33 @@ class StorageClient:
             Sync chunk result
         """
         result = self._rpc_call("getSyncChunk", [args])
+        return result
+
+    def is_available(self) -> bool:
+        """Check if storage is available.
+
+        Returns:
+            True if available
+        """
+        result = self._rpc_call("isAvailable", [])
+        return bool(result)
+
+    def get_services(self) -> dict[str, Any]:
+        """Get available services.
+
+        Returns:
+            Services configuration
+        """
+        result = self._rpc_call("getServices", [])
+        return result
+
+    def get_settings(self) -> dict[str, Any]:
+        """Get storage settings.
+
+        Returns:
+            Settings dictionary
+        """
+        result = self._rpc_call("getSettings", [])
         return result
 
 

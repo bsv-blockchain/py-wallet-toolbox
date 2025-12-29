@@ -297,31 +297,31 @@ class TestCreateActionTxAssembler:
     def test_create_assembler_has_fee_rate(self) -> None:
         """Test that assembler config has fee_rate field."""
         assembler = create_action_tx_assembler()
-        assert 'fee_rate' in assembler
+        assert 'feeRate' in assembler
         assert isinstance(assembler['feeRate'], (int, float))
 
     def test_create_assembler_has_dust_limit(self) -> None:
         """Test that assembler config has dust_limit field."""
         assembler = create_action_tx_assembler()
-        assert 'dust_limit' in assembler
+        assert 'dustLimit' in assembler
         assert isinstance(assembler['dustLimit'], (int, float))
 
     def test_create_assembler_has_randomize_outputs(self) -> None:
         """Test that assembler config has randomize_outputs field."""
         assembler = create_action_tx_assembler()
-        assert 'randomize_outputs' in assembler
+        assert 'randomizeOutputs' in assembler
         assert isinstance(assembler['randomizeOutputs'], bool)
 
     def test_create_assembler_has_use_all_inputs(self) -> None:
         """Test that assembler config has use_all_inputs field."""
         assembler = create_action_tx_assembler()
-        assert 'use_all_inputs' in assembler
+        assert 'useAllInputs' in assembler
         assert isinstance(assembler['useAllInputs'], bool)
 
     def test_create_assembler_has_change_derivation_path(self) -> None:
         """Test that assembler config has change_derivation_path field."""
         assembler = create_action_tx_assembler()
-        assert 'change_derivation_path' in assembler
+        assert 'changeDerivationPath' in assembler
         # Can be None or string
         assert assembler['changeDerivationPath'] is None or isinstance(assembler['changeDerivationPath'], str)
 

@@ -490,7 +490,6 @@ class Wallet:
         if hash_to_sign is not None:
             direct_hash = _as_bytes(hash_to_sign, "hashToDirectlySign")
             proto_args["hashToDirectlySign"] = direct_hash
-            proto_args["hash_to_directly_sign"] = direct_hash
 
         # forSelf -> for_self
         for_self = args.get("forSelf")
@@ -518,7 +517,6 @@ class Wallet:
         if hash_to_verify is not None:
             direct_verify_hash = _as_bytes(hash_to_verify, "hashToDirectlyVerify")
             proto_args["hashToDirectlyVerify"] = direct_verify_hash
-            proto_args["hash_to_directly_verify"] = direct_verify_hash
 
         # signature stays the same but normalize to bytes
         signature = args.get("signature")
@@ -630,8 +628,11 @@ class Wallet:
         counterparty_arg = args.get("counterparty", "self")
         for_self = args.get("forSelf", False)
 
-        # Build encryption_args in py-sdk format
-        encryption_args: dict[str, Any] = {}
+        # Build flattened args for py-sdk ProtoWallet
+        result: dict[str, Any] = {
+            "plaintext": plaintext,
+            "forSelf": for_self,
+        }
 
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
@@ -640,27 +641,22 @@ class Wallet:
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                    encryption_args["protocolID"] = {
+                    result["protocolID"] = {
                         "securityLevel": protocol_id[0],
                         "protocol": protocol_id[1],
                     }
                 else:
-                    encryption_args["protocolID"] = protocol_id
+                    result["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
 
         if key_id is not None:
-            encryption_args["keyID"] = key_id
+            result["keyID"] = key_id
 
         # Handle counterparty conversion - must use dict format for py-sdk
-        encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
+        result["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
 
-        encryption_args["forSelf"] = for_self
-
-        return {
-            "plaintext": plaintext,
-            "encryption_args": encryption_args,
-        }
+        return result
 
     def _convert_decrypt_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
         """Convert decrypt args from py-wallet-toolbox format to py-sdk ProtoWallet format.
@@ -685,8 +681,10 @@ class Wallet:
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
 
-        # Build encryption_args in py-sdk format
-        encryption_args: dict[str, Any] = {}
+        # Build flattened args for py-sdk ProtoWallet
+        result: dict[str, Any] = {
+            "ciphertext": ciphertext,
+        }
 
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
@@ -695,25 +693,22 @@ class Wallet:
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                    encryption_args["protocolID"] = {
+                    result["protocolID"] = {
                         "securityLevel": protocol_id[0],
                         "protocol": protocol_id[1],
                     }
                 else:
-                    encryption_args["protocolID"] = protocol_id
+                    result["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
 
         if key_id is not None:
-            encryption_args["keyID"] = key_id
+            result["keyID"] = key_id
 
         # Handle counterparty conversion - must use dict format for py-sdk
-        encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
+        result["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
 
-        return {
-            "ciphertext": ciphertext,
-            "encryption_args": encryption_args,
-        }
+        return result
 
     def _convert_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
         """Convert HMAC args from py-wallet-toolbox format to py-sdk ProtoWallet format.
@@ -738,8 +733,10 @@ class Wallet:
         key_id = args.get("keyID")
         counterparty_arg = args.get("counterparty", "self")
 
-        # Build encryption_args in py-sdk format (HMAC uses same structure)
-        encryption_args: dict[str, Any] = {}
+        # Build flattened args for py-sdk ProtoWallet (which expects camelCase)
+        result: dict[str, Any] = {
+            "data": data,
+        }
 
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
@@ -748,25 +745,22 @@ class Wallet:
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                    encryption_args["protocolID"] = {
+                    result["protocolID"] = {
                         "securityLevel": protocol_id[0],
                         "protocol": protocol_id[1],
                     }
                 else:
-                    encryption_args["protocolID"] = protocol_id
+                    result["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
                 raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
 
         if key_id is not None:
-            encryption_args["keyID"] = key_id
+            result["keyID"] = key_id
 
         # Handle counterparty conversion - must use dict format for py-sdk
-        encryption_args["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
+        result["counterparty"] = self._convert_counterparty_to_proto_format(counterparty_arg)
 
-        return {
-            "data": data,
-            "encryption_args": encryption_args,
-        }
+        return result
 
     def _convert_verify_hmac_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
         """Convert verify HMAC args from py-wallet-toolbox format to py-sdk ProtoWallet format.
@@ -840,14 +834,14 @@ class Wallet:
         # Convert protocolID format
         if protocol_id is not None:
             if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                proto_args["protocolID"] = {
+                proto_args["protocol_id"] = {
                     "securityLevel": protocol_id[0],
                     "protocol": protocol_id[1],
                 }
             elif isinstance(protocol_id, dict):
-                proto_args["protocolID"] = protocol_id
+                proto_args["protocol_id"] = protocol_id
             else:
-                proto_args["protocolID"] = protocol_id
+                proto_args["protocol_id"] = protocol_id
 
         return proto_args
 

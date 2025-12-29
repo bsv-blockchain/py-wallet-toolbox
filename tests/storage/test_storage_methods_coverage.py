@@ -1377,12 +1377,12 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=500, locking_script="script1"),
                 GenerateChangeInput(satoshis=300, locking_script="script2"),
             ],
-            "target_amount": 1000,
-            "exact_satoshis": 1000
+            "targetAmount": 1000,
+            "exactSatoshis": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1394,10 +1394,10 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=500, locking_script="script1"),
             ],
-            "target_amount": 1000
+            "targetAmount": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1409,11 +1409,11 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
                 GenerateChangeInput(satoshis=500, locking_script="script2"),
             ],
-            "target_amount": 1200
+            "targetAmount": 1200
         }
 
         # The wrapper function raises NotImplementedError
@@ -1425,12 +1425,12 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
                 GenerateChangeInput(satoshis=500, locking_script="script2"),
                 GenerateChangeInput(satoshis=200, locking_script="script3"),
             ],
-            "target_amount": 600
+            "targetAmount": 600
         }
 
         # The wrapper function raises NotImplementedError
@@ -1442,11 +1442,11 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
             ],
-            "target_amount": 800,
-            "exact_satoshis": 1000
+            "targetAmount": 800,
+            "exactSatoshis": 1000
         }
 
         # The wrapper function raises NotImplementedError

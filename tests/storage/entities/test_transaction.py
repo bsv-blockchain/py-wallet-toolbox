@@ -266,8 +266,8 @@ class TestTransactionEntity:
             "MockStorage",
             (),
             {
-                "update_transaction": staticmethod(mock_update_transaction),
-                "find_transactions": staticmethod(mock_find_transactions),
+                "updateTransaction": staticmethod(mock_update_transaction),
+                "findTransactions": staticmethod(mock_find_transactions),
             },
         )()
 
@@ -342,7 +342,7 @@ class TestTransactionEntity:
                 return mock_proven_tx
             return None
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
+        mock_storage = type("MockStorage", (), {"findProvenTx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
@@ -388,7 +388,7 @@ class TestTransactionEntity:
         def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
             return None  # No matching ProvenTx
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
+        mock_storage = type("MockStorage", (), {"findProvenTx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
