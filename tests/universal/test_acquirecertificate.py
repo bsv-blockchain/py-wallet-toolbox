@@ -22,13 +22,6 @@ class TestUniversalVectorsAcquireCertificate:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.xfail(
-        reason="Test vector incomplete: missing required 'subject' field in simple variant. "
-        "Background: The official BRC-100 universal test vector (acquireCertificate-simple-args.json) "
-        "does not include the 'subject' field which is required by acquire_certificate validation. "
-        "This is a test vector issue from upstream (github.com/bsv-blockchain/universal-test-vectors), "
-        "not a Python implementation issue. Vector needs to be updated with subject field."
-    )
     def test_acquirecertificate_simple_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
