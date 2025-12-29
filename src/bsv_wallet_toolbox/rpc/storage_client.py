@@ -497,7 +497,7 @@ class StorageClient:
         """
         result = self.find_or_insert_user(identity_key)
         user = result.get("user", {})
-        return user.get("userId", user.get("userId", 0))
+        return user.get("userId", 0)
 
     def find_certificates_auth(
         self,

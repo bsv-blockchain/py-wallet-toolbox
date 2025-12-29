@@ -139,11 +139,11 @@ def _to_byte_list(value: bytes | bytearray) -> list[int]:
 
 
 def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
-    """Validate protocol-related arguments to enforce camelCase keys.
+    """Validate protocol-related arguments to enforce standardized camelCase keys.
 
-    The wallet API only accepts camelCase keys (protocolID/keyID). Any snake_case variants
-    are treated as configuration errors so that issues are caught immediately instead of
-    being silently transformed.
+    The wallet API only accepts standardized camelCase keys (protocolID/keyID).
+    Any snake_case variants or non-standard casing (protocolId/keyId) are treated as
+    configuration errors so that issues are caught immediately.
 
     Args:
         args: Arguments dictionary that may contain protocol parameters
@@ -152,10 +152,14 @@ def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
         The original args dict (validation is performed in-place)
     """
     if "protocol_id" in args:
-        raise InvalidParameterError("protocolID", "use camelCase key (protocol_id is unsupported)")
+        raise InvalidParameterError("protocol_id", "use standardized camelCase key (protocolID)")
+    if "protocolId" in args:
+        raise InvalidParameterError("protocolId", "use standardized camelCase key (protocolID)")
 
     if "key_id" in args:
-        raise InvalidParameterError("keyID", "use camelCase key (key_id is unsupported)")
+        raise InvalidParameterError("key_id", "use standardized camelCase key (keyID)")
+    if "keyId" in args:
+        raise InvalidParameterError("keyId", "use standardized camelCase key (keyID)")
 
     return args
 
@@ -424,9 +428,8 @@ class Wallet:
     def _convert_signature_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
         """Convert signature args from py-wallet-toolbox format to py-sdk format.
 
-        py-wallet-toolbox uses camelCase (protocolID, keyID, hashToDirectlySign)
-        py-sdk ProtoWallet historically used snake_case equivalents; this helper enforces
-        camelCase input and then maps values to the underlying proto representation.
+        py-wallet-toolbox uses standardized camelCase (protocolID, keyID, hashToDirectlySign)
+        py-sdk ProtoWallet expects protocolID/keyID as well.
 
         Args:
             args: Arguments in py-wallet-toolbox format (camelCase only)
@@ -439,12 +442,12 @@ class Wallet:
         
         proto_args: dict[str, Any] = {}
 
-        # Keep protocolID as camelCase (py-sdk expects protocolID, not protocol_id)
+        # Convert standardized protocolID to py-sdk expectation
         protocol_id = args.get("protocolID")
         if protocol_id is not None:
             proto_args["protocolID"] = protocol_id
 
-        # Keep keyID as camelCase (py-sdk expects keyID, not key_id)
+        # Convert standardized keyID to py-sdk expectation
         key_id = args.get("keyID")
         if key_id is not None:
             proto_args["keyID"] = key_id
@@ -603,7 +606,7 @@ class Wallet:
     def _convert_encrypt_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
         """Convert encrypt args from py-wallet-toolbox format to py-sdk ProtoWallet format.
 
-        py-wallet-toolbox uses camelCase (protocolID, keyID, forSelf)
+        py-wallet-toolbox uses standardized camelCase (protocolID, keyID, forSelf)
         py-sdk ProtoWallet expects: plaintext + encryption_args dict with snake_case
 
         Args:
@@ -830,19 +833,19 @@ class Wallet:
         proto_args: dict[str, Any] = {
             "counterparty": counterparty,
             "verifier": verifier,
-            "keyId": key_id,
+            "keyID": key_id,
             "seekPermission": args.get("seekPermission", False),
         }
 
         # Convert protocolID format
         if protocol_id is not None:
             if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                proto_args["protocolId"] = {
+                proto_args["protocolID"] = {
                     "securityLevel": protocol_id[0],
                     "protocol": protocol_id[1],
                 }
             elif isinstance(protocol_id, dict):
-                proto_args["protocolId"] = protocol_id
+                proto_args["protocolID"] = protocol_id
             else:
                 proto_args["protocolID"] = protocol_id
 

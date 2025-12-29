@@ -463,7 +463,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
 
                 if create_input:
                     # Use key_id / locker_pub_key from create_action args
-                    key_id = create_input.get("keyId", "")
+                    key_id = create_input.get("keyID", "")
                     locker_pub = create_input.get("lockerPubKey", "")
                 else:
                     # Wallet-managed change: derive from storage metadata
@@ -1166,7 +1166,7 @@ def _make_change_lock(
         # Step 1: Derive public key for change using BRC-29
         brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
         # Key ID comes from derivationSuffix (storage layer) or key_id
-        key_id = out.get("derivationSuffix") or out.get("keyId") or out.get("keyOffset") or "default"
+        key_id = out.get("derivationSuffix") or out.get("keyID") or out.get("keyOffset") or "default"
 
         # Use self as counterparty for change outputs (change goes back to wallet)
         counterparty = Counterparty(type=CounterpartyType.SELF)

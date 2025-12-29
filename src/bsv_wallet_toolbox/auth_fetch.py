@@ -14,6 +14,7 @@ import json
 import logging
 import inspect
 import traceback
+from collections.abc import Mapping
 from contextlib import contextmanager
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
@@ -82,6 +83,25 @@ def _auth_trace(event: str, **fields: Any) -> None:
         return
     payload = {"event": event, **{k: _to_debug_str(v) for k, v in fields.items()}}
     logger.debug("AUTH_TRACE %s", json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
+
+
+def _headers_to_dict(headers: Any) -> dict[str, Any]:
+    """Best-effort conversion of headers to a plain dict for tracing/logging."""
+    if headers is None:
+        return {}
+    if isinstance(headers, dict):
+        return dict(headers)
+    if isinstance(headers, Mapping):
+        return {str(k): v for k, v in headers.items()}
+    if hasattr(headers, "items"):
+        try:
+            return {str(k): v for k, v in headers.items()}
+        except Exception:  # pragma: no cover - defensive fallback
+            pass
+    try:
+        return dict(headers)
+    except Exception:  # pragma: no cover - defensive fallback
+        return {}
 
 
 def _normalize_requested_certificates(requested: Any) -> dict[str, Any]:
@@ -326,8 +346,8 @@ class WalletAdapter:
         # Transform encryption_args to flat format
         enc_args = args.get('encryptionArgs', {})
         if enc_args:
-            # Extract protocol_id and convert to protocolID format
-            protocol_id = enc_args.get('protocolId') or enc_args.get('protocolID') or {}
+            # Extract protocolID using standardized key
+            protocol_id = enc_args.get('protocolID', {})
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 2)
                 protocol = protocol_id.get('protocol', 'auth')
@@ -354,7 +374,7 @@ class WalletAdapter:
             # Build flat args for py-wallet-toolbox
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyId') or enc_args.get('keyID') or '1',
+                'keyID': enc_args.get('keyID', '1'),
                 'counterparty': counterparty_hex,
                 'data': args.get('data'),
             }
@@ -396,8 +416,8 @@ class WalletAdapter:
         data = args.get('data')
         
         if enc_args:
-            # Extract protocol_id
-            protocol_id = enc_args.get('protocolId') or enc_args.get('protocolID') or {}
+            # Extract protocolID
+            protocol_id = enc_args.get('protocolID', {})
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 1)
                 protocol = protocol_id.get('protocol', 'server hmac')
@@ -423,7 +443,7 @@ class WalletAdapter:
             # Build flat args for py-wallet-toolbox Wallet (BRC-100)
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyId') or enc_args.get('keyID') or '',
+                'keyID': enc_args.get('keyID', ''),
                 'counterparty': counterparty,
                 # Wallet.create_hmac accepts bytes/bytearray; keep bytes as-is.
                 'data': data,
@@ -448,7 +468,7 @@ class WalletAdapter:
         hmac_value = args.get('hmac')
         
         if enc_args:
-            protocol_id = enc_args.get('protocolId') or enc_args.get('protocolID') or {}
+            protocol_id = enc_args.get('protocolID', {})
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 1)
                 protocol = protocol_id.get('protocol', 'server hmac')
@@ -472,7 +492,7 @@ class WalletAdapter:
             
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyId') or enc_args.get('keyID') or '',
+                'keyID': enc_args.get('keyID', ''),
                 'counterparty': counterparty,
                 # Wallet.verify_hmac accepts bytes/bytearray; keep bytes as-is.
                 'data': data,
@@ -502,7 +522,7 @@ class WalletAdapter:
         signature = args.get('signature')
         
         if enc_args:
-            protocol_id = enc_args.get('protocolId', {})
+            protocol_id = enc_args.get('protocolID', {})
             if isinstance(protocol_id, dict):
                 security_level = protocol_id.get('securityLevel', 2)
                 protocol = protocol_id.get('protocol', 'auth')
@@ -531,7 +551,7 @@ class WalletAdapter:
             
             args = {
                 'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyId', '1'),
+                'keyID': enc_args.get('keyID', '1'),
                 'counterparty': counterparty_hex,
                 'data': list(data) if isinstance(data, bytes) else data,
                 'signature': signature,
@@ -633,11 +653,13 @@ class AuthFetch:
                 # Support both to avoid "object Response can't be used in 'await' expression".
                 maybe = self._impl.fetch(url, config)
                 response = await maybe if inspect.isawaitable(maybe) else maybe
+            headers_val = getattr(response, "headers", None)
+            headers_dict = _headers_to_dict(headers_val)
             _auth_trace(
                 "auth_fetch.response",
                 url=url,
                 status=getattr(response, "status_code", None),
-                headers=dict(getattr(response, "headers", {}) or {}),
+                headers=headers_dict,
                 body=getattr(response, "text", None),
             )
             logger.debug("AuthFetch.fetch succeeded: status=%s", response.status_code)

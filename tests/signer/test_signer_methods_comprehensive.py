@@ -680,7 +680,7 @@ class TestHelperFunctions:
 
     def test_make_change_lock_success(self) -> None:
         """Test _make_change_lock success."""
-        out = {"keyId": "test_key"}
+        out = {"keyID": "test_key"}
         dctr = {"derivationPrefix": "m/44'/0'/0'/1", "derivationSuffix": "0"}
         args = {}
         change_keys = Mock()
@@ -723,7 +723,7 @@ class TestHelperFunctions:
 
     def test_make_change_lock_derivation_error(self) -> None:
         """Test _make_change_lock with derivation error."""
-        out = {"keyId": "test_key"}
+        out = {"keyID": "test_key"}
         dctr = {"derivationPrefix": "invalid", "derivationSuffix": "0"}
         args = {}
         change_keys = Mock()

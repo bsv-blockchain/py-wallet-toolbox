@@ -1136,12 +1136,12 @@ class WalletPermissionsManager:
         if isinstance(originator, dict):
             args = originator
             originator = args.get("originator")
-            protocol_id = args.get("protocolID", args.get("protocolId"))
+            protocol_id = args.get("protocolID")
             counterparty = args.get("counterparty")
             reason = args.get("reason")
             privileged = args.get("privileged", False)
-            seek_permission = args.get("seekPermission", args.get("seekPermission", True))
-            usage_type = args.get("usageType", args.get("usageType", "generic"))
+            seek_permission = args.get("seekPermission", True)
+            usage_type = args.get("usageType", "generic")
 
         # Set defaults
         privileged = privileged if privileged is not None else False

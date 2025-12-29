@@ -27,10 +27,10 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
-    """Validate protocol-related arguments to enforce camelCase keys.
+    """Validate protocol-related arguments to enforce standardized camelCase keys.
 
-    The privileged key manager only accepts camelCase keys (protocolID/keyID). Any snake_case
-    variants are treated as configuration errors so that callers update immediately.
+    The privileged key manager only accepts standardized camelCase keys (protocolID/keyID). Any snake_case
+    variants or non-standard casing (protocolId/keyId) are treated as configuration errors.
 
     Args:
         args: Arguments dictionary that may contain protocol parameters
@@ -39,10 +39,14 @@ def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
         The original args dict (validation is performed in-place)
     """
     if "protocol_id" in args:
-        raise InvalidParameterError("protocolID", "use camelCase key (protocol_id is unsupported)")
+        raise InvalidParameterError("protocol_id", "use standardized camelCase key (protocolID)")
+    if "protocolId" in args:
+        raise InvalidParameterError("protocolId", "use standardized camelCase key (protocolID)")
 
     if "key_id" in args:
-        raise InvalidParameterError("keyID", "use camelCase key (key_id is unsupported)")
+        raise InvalidParameterError("key_id", "use standardized camelCase key (keyID)")
+    if "keyId" in args:
+        raise InvalidParameterError("keyId", "use standardized camelCase key (keyID)")
 
     return args
 
@@ -329,7 +333,7 @@ class PrivilegedKeyManager:
         
         proto_args = {}
         
-        # Keep protocolID as camelCase (py-sdk expects protocolID, not protocol_id)
+        # Convert standardized protocolID to py-sdk expectation
         if "protocolID" in args and args["protocolID"] is not None:
             protocol_id = args["protocolID"]
             if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -339,8 +343,8 @@ class PrivilegedKeyManager:
                 }
             else:
                 proto_args["protocolID"] = protocol_id
-        
-        # Keep keyID as camelCase (py-sdk expects keyID, not key_id)
+
+        # Convert standardized keyID to py-sdk expectation
         if "keyID" in args and args["keyID"] is not None:
             proto_args["keyID"] = args["keyID"]
             
