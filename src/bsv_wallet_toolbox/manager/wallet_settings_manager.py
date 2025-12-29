@@ -11,6 +11,8 @@ from __future__ import annotations
 import json
 from typing import Any, TypedDict
 
+from bsv_wallet_toolbox.local_kv_store import LocalKVStore
+
 
 class Certifier(TypedDict, total=False):
     """Certifier information for trust settings."""
@@ -113,6 +115,7 @@ class WalletSettingsManager:
         self,
         wallet: Any,
         config: WalletSettingsManagerConfig | None = None,
+        kv_store: LocalKVStore | None = None,
     ) -> None:
         """Initialize WalletSettingsManager.
 
@@ -129,8 +132,7 @@ class WalletSettingsManager:
             config = {"defaultSettings": DEFAULT_SETTINGS}
         self._config: WalletSettingsManagerConfig = config
 
-        # Initialize local KV store for settings
-        # TODO: Integrate with py-sdk LocalKVStore when available
+        self._kv_store: LocalKVStore | None = kv_store or self._create_default_kv_store(wallet)
         self._settings_store: dict[str, str] = {}
 
     def get(self) -> WalletSettings:
@@ -143,11 +145,17 @@ class WalletSettingsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletSettingsManager.ts
         """
-        settings_json = self._settings_store.get(
-            "settings",
-            json.dumps(self._config.get("defaultSettings", DEFAULT_SETTINGS)),
-        )
-        return json.loads(settings_json)  # type: ignore
+        default_json = json.dumps(self._config.get("defaultSettings", DEFAULT_SETTINGS))
+
+        if self._kv_store is not None:
+            settings_json = self._kv_store.get_value("settings")
+            if settings_json is None:
+                self._kv_store.set_value("settings", default_json)
+                settings_json = default_json
+            return json.loads(settings_json)
+
+        settings_json = self._settings_store.get("settings", default_json)
+        return json.loads(settings_json)
 
     def set(self, settings: WalletSettings) -> None:
         """Store or update user's wallet settings.
@@ -157,7 +165,11 @@ class WalletSettingsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletSettingsManager.ts
         """
-        self._settings_store["settings"] = json.dumps(settings)
+        serialized = json.dumps(settings)
+        if self._kv_store is not None:
+            self._kv_store.set_value("settings", serialized)
+        else:
+            self._settings_store["settings"] = serialized
 
     def delete(self) -> None:
         """Delete user's stored settings.
@@ -166,5 +178,13 @@ class WalletSettingsManager:
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletSettingsManager.ts
         """
-        if "settings" in self._settings_store:
-            del self._settings_store["settings"]
+        if self._kv_store is not None:
+            self._kv_store.remove_value("settings")
+        else:
+            self._settings_store.pop("settings", None)
+
+    def _create_default_kv_store(self, wallet: Any) -> LocalKVStore | None:
+        try:
+            return LocalKVStore(wallet, SETTINGS_BASKET, True)
+        except Exception:
+            return None
