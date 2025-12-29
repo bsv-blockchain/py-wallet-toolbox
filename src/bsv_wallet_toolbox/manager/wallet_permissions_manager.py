@@ -12,6 +12,7 @@ Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 import threading
 import time
@@ -642,7 +643,12 @@ class WalletPermissionsManager:
 
     # --- Token Building Methods ---
 
-    def _build_protocol_token(self, originator: str, protocol_id: dict[str, Any] | list, counterparty: str | None = None) -> PermissionToken:
+    def _build_protocol_token(
+        self,
+        originator: str,
+        protocol_id: dict[str, Any] | list,
+        counterparty: str | None = None,
+    ) -> PermissionToken:
         """Build a protocol permission token.
 
         Args:
@@ -743,7 +749,12 @@ class WalletPermissionsManager:
             "authorizedAmount": satoshis,
         }
 
-    async def _create_protocol_token(self, originator: str, protocol_id: dict[str, Any], counterparty: str | None = None) -> PermissionToken:
+    async def _create_protocol_token(
+        self,
+        originator: str,
+        protocol_id: dict[str, Any],
+        counterparty: str | None = None,
+    ) -> PermissionToken:
         """Create and store a protocol permission token.
 
         Args:
@@ -959,19 +970,16 @@ class WalletPermissionsManager:
         return self._permissions.copy()
 
     def save_permissions(self) -> None:
-        """Save all permissions to storage.
+        """Persist all permissions to the SQLite backing store.
 
-        In this implementation, permissions are kept in memory.
-        In production, this would persist to a database or file.
+        The manager keeps an in-memory cache for fast lookups and mirrors every
+        change into `_db_conn`, so this method simply ensures the connection was
+        initialized (matching the TypeScript persistence hook).
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
-        # TODO: Phase 4 - Implement persistent storage (SQLite/PostgreSQL)
-        # TODO: Phase 4 - Serialize permission tokens to database
-        # TODO: Phase 4 - Handle concurrent access with transactions
-        # TODO: Phase 4 - Add backup/recovery mechanism
-        # Permissions are already stored in-memory in _permissions dict
-        # In production, sync to persistent storage here
+        if self._db_conn is None:
+            self._init_database()
 
     def bind_callback(self, event_name: str, handler: Callable[[PermissionRequest], Any]) -> int:
         """Bind a callback to a permission event.
@@ -2710,7 +2718,20 @@ class WalletPermissionsManager:
         if originator == self._admin_originator:
             return self._underlying_wallet.relinquish_certificate(args, originator)
 
-        # TODO: Add certificate relinquishment permission checks
+        if self._config.get("seekCertificateRelinquishmentPermissions", False):
+            protocol_name = args.get("type") or "unknown"
+            ensure_args = {
+                "originator": originator or "",
+                "protocolID": [1, f"certificate relinquishment {protocol_name}"],
+                "counterparty": args.get("certifier") or "self",
+                "reason": args.get("privilegedReason") or "relinquishCertificate",
+                "privileged": bool(args.get("privileged")),
+                "usageType": "generic",
+            }
+            granted = self._handle_sync_or_async(self.ensure_protocol_permission(ensure_args))
+            if not granted:
+                raise RuntimeError("Certificate relinquishment permission denied")
+
         return self._underlying_wallet.relinquish_certificate(args, originator)
 
     def disclose_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
@@ -2730,9 +2751,11 @@ class WalletPermissionsManager:
             return self._underlying_wallet.disclose_certificate(args, originator)
 
         # Check certificate disclosure permissions if enabled
-        if self._config.get("seekCertificateDisclosurePermissions"):
-            # TODO: Implement permission check
-            pass
+        if self._config.get("seekCertificateDisclosurePermissions", False):
+            cert_type = args.get("type", "")
+            verifier = args.get("verifier", "")
+            if cert_type and verifier:
+                self._check_certificate_permissions(originator or "", cert_type, verifier, "prove")
 
         return self._underlying_wallet.disclose_certificate(args, originator)
 

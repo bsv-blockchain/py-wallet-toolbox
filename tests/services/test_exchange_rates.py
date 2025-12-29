@@ -5,9 +5,11 @@ This module tests exchange rate update functionality.
 Reference: wallet-toolbox/src/services/providers/__tests/exchangeRates.test.ts
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest  # type: ignore[import]
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
 try:
@@ -68,108 +70,80 @@ def invalid_currencies():
 
 @pytest.fixture
 def exchange_rate_responses():
-    """Fixture providing various exchange rate response scenarios."""
-    return [
-        # Successful response
-        {
+    """Fixture providing various exchange rate response scenarios keyed by id."""
+
+    def _payload(rates: dict[str, float], base: str = "EUR") -> dict[str, Any]:
+        return {
             "status": 200,
             "json": {
                 "success": True,
                 "timestamp": 1640995200,
-                "base": "EUR",
+                "base": base,
                 "date": "2022-01-01",
-                "rates": {
-                    "EUR": 1.0,   # Base currency
-                    "USD": 1.18,  # EUR to USD rate
+                "rates": rates,
+            },
+        }
+
+    common = {
+        "EUR": 1.0,
+        "USD": 1.18,
+        "GBP": 0.86,
+        "CAD": 1.47,
+        "JPY": 135.0,
+    }
+
+    return {
+        "all_rates_present": {
+            "response": _payload(common),
+            "expect_error": None,
+        },
+        "zero_rates": {
+            "response": _payload(
+                {**common, "GBP": 0.0, "CAD": 0.0, "JPY": 0.0}
+            ),
+            "expect_error": None,
+        },
+        "negative_rates": {
+            "response": _payload(
+                {**common, "GBP": -0.5, "CAD": -1.0, "JPY": -75.0}
+            ),
+            "expect_error": None,
+        },
+        "tiny_rates": {
+            "response": _payload(
+                {
+                    **common,
+                    "GBP": 1e-6,
+                    "CAD": 5e-8,
+                    "JPY": 2e-5,
+                }
+            ),
+            "expect_error": None,
+        },
+        "huge_rates": {
+            "response": _payload(
+                {
+                    **common,
+                    "GBP": 5_000.0,
+                    "CAD": 10_000.0,
+                    "JPY": 1_000_000.0,
+                }
+            ),
+            "expect_error": None,
+        },
+        "missing_target_currency": {
+            "response": _payload(
+                {
+                    "EUR": 1.0,
+                    "USD": 1.18,
                     "GBP": 0.86,
-                    "CAD": 1.47,
-                    "JPY": 135.0
+                    # CAD missing intentionally
+                    "JPY": 135.0,
                 }
-            }
+            ),
+            "expect_error": RuntimeError,
         },
-
-        # Partial success (some currencies missing)
-        {
-            "status": 200,
-            "json": {
-                "success": True,
-                "timestamp": 1640995200,
-                "base": "EUR",
-                "date": "2022-01-01",
-                "rates": {
-                    "EUR": 1.0,
-                    "USD": 1.18,
-                    "GBP": 0.86
-                    # Missing CAD, JPY
-                }
-            }
-        },
-
-        # Zero rates
-        {
-            "status": 200,
-            "json": {
-                "success": True,
-                "timestamp": 1640995200,
-                "base": "EUR",
-                "date": "2022-01-01",
-                "rates": {
-                    "EUR": 1.0,
-                    "USD": 0.0,
-                    "GBP": 0.0
-                }
-            }
-        },
-
-        # Negative rates (edge case)
-        {
-            "status": 200,
-            "json": {
-                "success": True,
-                "timestamp": 1640995200,
-                "base": "EUR",
-                "date": "2022-01-01",
-                "rates": {
-                    "EUR": 1.0,
-                    "USD": -1.18,
-                    "GBP": -0.86
-                }
-            }
-        },
-
-        # Very small rates
-        {
-            "status": 200,
-            "json": {
-                "success": True,
-                "timestamp": 1640995200,
-                "base": "EUR",
-                "date": "2022-01-01",
-                "rates": {
-                    "EUR": 1.0,
-                    "USD": 0.000001,
-                    "GBP": 0.00001
-                }
-            }
-        },
-
-        # Very large rates
-        {
-            "status": 200,
-            "json": {
-                "success": True,
-                "timestamp": 1640995200,
-                "base": "EUR",
-                "date": "2022-01-01",
-                "rates": {
-                    "EUR": 1.0,
-                    "USD": 1.18,
-                    "JPY": 1000000.0,
-                    "KRW": 1000000000.0
-                }
-            }
-        },
-    ]
+    }
 
 
 @pytest.fixture
@@ -265,7 +239,7 @@ class TestExchangeRates:
            When: Call update_exchange_rates with invalid currencies
            Then: Raises appropriate errors
         """
-        services, mock_instance = mock_services
+        services, _ = mock_services
 
         for invalid_currency in invalid_currencies:
             # Should handle invalid currency codes gracefully
@@ -308,39 +282,59 @@ class TestExchangeRates:
             pass
 
     @pytest.mark.asyncio
-    async def test_update_exchange_rates_success_responses(self, mock_services, valid_currencies, exchange_rate_responses) -> None:
+    @pytest.mark.parametrize(
+        "scenario_id",
+        [
+            "all_rates_present",
+            "zero_rates",
+            "negative_rates",
+            "tiny_rates",
+            "huge_rates",
+            "missing_target_currency",
+        ],
+    )
+    async def test_update_exchange_rates_success_responses(
+        self,
+        mock_services,
+        valid_currencies,
+        exchange_rate_responses,
+        scenario_id,
+    ) -> None:
         """Given: Successful exchange rate API responses
            When: Call update_exchange_rates
            Then: Returns exchange rate data
         """
         services, mock_instance = mock_services
-
-        # Only test the first successful response scenario for now
-        # TODO: Handle partial/edge case scenarios separately
-        response_scenario = exchange_rate_responses[0]  # Successful response
+        scenario = exchange_rate_responses[scenario_id]
+        response_scenario = scenario["response"]
 
         # Mock the internal API call
         with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', return_value=response_scenario["json"]):
+            if scenario["expect_error"]:
+                with pytest.raises(scenario["expect_error"]):
+                    await update_exchangeratesapi(valid_currencies, services.options)
+                return
+
             result = await update_exchangeratesapi(valid_currencies, services.options)
 
             assert isinstance(result, dict)
-            assert "rates" in result
-            assert isinstance(result["rates"], dict)
+            assert result["base"] == "USD"
+            rates = result.get("rates", {})
+            assert isinstance(rates, dict)
+            assert set(valid_currencies).issubset(rates.keys())
+            assert all(isinstance(rate, (int, float)) for rate in rates.values())
 
-            # Check specific response characteristics
-            if response_scenario["json"]["rates"]:
-                rates = result["rates"]
-                for currency, rate in rates.items():
-                    assert isinstance(currency, str)
-                    assert isinstance(rate, (int, float))
-
-                    # Check edge cases
-                    if "EUR" in rates and rates["EUR"] < 0:
-                        assert rates["EUR"] < 0  # Negative rates
-                    elif "EUR" in rates and rates["EUR"] == 0:
-                        assert rates["EUR"] == 0  # Zero rates
-                    elif "JPY" in rates and rates["JPY"] > 1000:
-                        assert rates["JPY"] > 1000  # Large rates
+            if scenario_id == "zero_rates":
+                for currency in ("GBP", "CAD", "JPY"):
+                    assert rates[currency] == pytest.approx(0.0)
+            elif scenario_id == "negative_rates":
+                for currency in ("GBP", "CAD", "JPY"):
+                    assert rates[currency] < 0
+            elif scenario_id == "tiny_rates":
+                for currency in ("GBP", "CAD", "JPY"):
+                    assert abs(rates[currency]) < 1e-4
+            elif scenario_id == "huge_rates":
+                assert rates["JPY"] > 1_000.0
 
     def test_update_exchange_rates_empty_currency_list(self, mock_services) -> None:
         """Given: Empty currency list

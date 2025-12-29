@@ -24,6 +24,13 @@ Phase 4 Implementation Status:
   ✅ Provider failover and error handling
 
 ⏳ Phase 5 TODO (Future Enhancement):
+Background: These features are NOT implemented in TypeScript (ts-wallet-toolbox) Services
+layer either. In TS, transaction monitoring and health checking are delegated to the
+Monitor layer (src/Monitor.ts) and Chaintracks layer (src/Chaintracks/). Python should
+implement these in the corresponding layers (monitor/, services/chaintracker/) once TS
+implementation is complete and stable. Current TS Services only handles basic provider
+queries with simple retry logic.
+See: ts-wallet-toolbox/src/Services.ts (no monitoring), ts-wallet-toolbox/src/Monitor.ts
 # TODO: Phase 5 - Transaction monitoring/tracking with real-time updates
 # TODO: Phase 5 - Exponential backoff retry strategy
 # TODO: Phase 5 - Provider health checking with automatic recovery

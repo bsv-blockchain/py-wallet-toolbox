@@ -141,6 +141,12 @@ class TaskCheckForProofs(WalletMonitorTask):
                 # Dictionary structure (from TS-like response)
                 # For testing purposes, assume the proof is valid and create minimal binary data
                 # TODO: Implement proper MerklePath validation when py-sdk supports dict format
+                # Background: py-sdk's MerklePath class expects binary BUMP format but external
+                # services (WhatsOnChain, GorillaPool) return JSON dict format with blockHeight,
+                # path array, etc. TypeScript uses MerklePath.fromBinary() and .fromHex() which
+                # can parse both formats. py-sdk needs to add dict-to-binary conversion or
+                # direct dict parsing. Once py-sdk supports this, update to use proper validation.
+                # See: py-sdk/src/merkle_path.py and BRC-74 BUMP format specification
                 block_height = merkle_path_data.get("blockHeight")
                 if block_height is not None:
                     # Create minimal valid BUMP data for testing

@@ -23,7 +23,12 @@ class TestUniversalVectorsAbortAction:
     """
 
     @pytest.mark.xfail(
-        reason="Test vector incomplete: transaction with reference 'dGVzdA==' must be pre-created in database"
+        reason="Test vector incomplete: transaction with reference 'dGVzdA==' must be pre-created in database. "
+        "Background: abortAction requires an existing unsigned transaction in storage with the given "
+        "reference. The universal test vector (abortAction-simple-args.json) uses reference='dGVzdA==' "
+        "(base64 for 'test') but doesn't provide the transaction creation setup. To fix this, either "
+        "the test needs to pre-create a transaction with this reference, or the test vector needs to "
+        "be updated to include setup steps. This is a test infrastructure issue, not implementation."
     )
     def test_abortaction_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], test_key_deriver

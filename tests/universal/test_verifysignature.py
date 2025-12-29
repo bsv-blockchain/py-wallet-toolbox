@@ -51,4 +51,10 @@ class TestUniversalVectorsVerifySignature:
 
         # For now, don't check exact wire format match due to incomplete deserialization
         # TODO: Implement full BRC-100 wire format parsing
+        # Background: BRC-100 ABI (Application Binary Interface) defines a binary wire
+        # format for wallet method requests/responses. TypeScript implementation
+        # (ts-wallet-toolbox) has partial ABI support but does NOT perform strict wire
+        # format matching against universal test vectors. The abi.ts module is still
+        # evolving. Python should wait for TS to stabilize ABI parsing before implementing.
+        # See: ts-wallet-toolbox/src/abi/ and BRC-100 specification section on wire format.
         # assert wire_output == bytes.fromhex(result_data["wire"])

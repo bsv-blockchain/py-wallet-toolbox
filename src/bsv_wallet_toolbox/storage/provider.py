@@ -2168,23 +2168,29 @@ class StorageProvider:
             session.close()
 
     def _create_new_outputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], change_outputs: list[GenerateChangeSdkChangeOutput], derivation_prefix: str | None = None) -> dict[str, Any]:
-        outputs_payload = []
-        change_vouts = []
+        """Create output records with optional randomization (TS parity L371-409)."""
+        import random
+        
+        outputs_payload: list[dict[str, Any]] = []
+        change_vouts: list[int] = []
         created_at = self._now()
         change_basket_id = ctx["changeBasketId"]
+        change_basket = ctx["changeBasket"]
+        change_basket_name = change_basket["name"] if isinstance(change_basket, dict) else change_basket.name
+        
+        # Phase 1: Collect all pending outputs without inserting
+        pending: list[dict[str, Any]] = []
         
         for xo in ctx["xoutputs"]:
             basket_id = None
             if xo.basket:
                 b = self.find_or_insert_output_basket(user_id, xo.basket)
                 basket_id = b["basketId"] if isinstance(b, dict) else b.basket_id
-            
-            locking_script_bytes = xo.locking_script
-            output_id = self.insert_output({
+            pending.append({
                 "transactionId": ctx["transactionId"],
                 "userId": user_id,
                 "satoshis": xo.satoshis,
-                "lockingScript": locking_script_bytes,
+                "lockingScript": xo.locking_script,
                 "outputDescription": xo.output_description or "",
                 "vout": xo.vout,
                 "providedBy": xo.provided_by,
@@ -2197,33 +2203,16 @@ class StorageProvider:
                 "basketId": basket_id,
                 "createdAt": created_at,
                 "updatedAt": created_at,
+                "_tags": xo.tags,
+                "_basket_name": xo.basket,
+                "_key_offset": xo.key_offset,
+                "_is_change": False,
             })
-            
-            for tag_name in xo.tags:
-                tag_record = self.find_or_insert_output_tag(user_id, tag_name)
-                self.find_or_insert_output_tag_map(output_id, int(tag_record["outputTagId"]))
-                
-            outputs_payload.append({
-                "vout": xo.vout,
-                "satoshis": xo.satoshis,
-                "lockingScript": locking_script_bytes.hex(),
-                "providedBy": xo.provided_by,
-                "purpose": xo.purpose,
-                "tags": xo.tags,
-                "outputId": output_id,
-                "basket": xo.basket,
-                "derivationSuffix": xo.derivation_suffix,
-                "keyOffset": xo.key_offset,
-                "customInstructions": xo.custom_instructions,
-            })
-
-        next_vout = len(outputs_payload)
-        change_basket = ctx["changeBasket"]
         
+        next_vout = len(pending)
         for co in change_outputs:
             derivation_suffix = self._generate_derivation_suffix()
-            
-            output_id = self.insert_output({
+            pending.append({
                 "transactionId": ctx["transactionId"],
                 "userId": user_id,
                 "satoshis": co.satoshis,
@@ -2239,29 +2228,105 @@ class StorageProvider:
                 "derivationSuffix": derivation_suffix,
                 "createdAt": created_at,
                 "updatedAt": created_at,
-            })
-            
-            change_vouts.append(next_vout)
-                
-            change_basket_name = change_basket["name"] if isinstance(change_basket, dict) else change_basket.name
-            outputs_payload.append({
-                "vout": next_vout,
-                "satoshis": co.satoshis,
-                "lockingScript": "",
-                "providedBy": "storage",
-                "purpose": "change",
-                "tags": [],
-                "outputId": output_id,
-                "basket": change_basket_name,
-                "derivationPrefix": derivation_prefix,
-                "derivationSuffix": derivation_suffix,
+                "_tags": [],
+                "_basket_name": change_basket_name,
+                "_key_offset": None,
+                "_is_change": True,
             })
             next_vout += 1
+        
+        # Phase 2: Shuffle vouts if randomizeOutputs (TS parity L371-409)
+        if vargs.options.randomize_outputs:
+            vout_indices = list(range(len(pending)))
+            random.shuffle(vout_indices)
+            for i, out_data in enumerate(pending):
+                out_data["vout"] = vout_indices[i]
+        
+        # Phase 3: Insert outputs and build result
+        for out_data in pending:
+            tags = out_data.pop("_tags")
+            basket_name = out_data.pop("_basket_name")
+            key_offset = out_data.pop("_key_offset")
+            is_change = out_data.pop("_is_change")
             
+            locking_script = out_data["lockingScript"]
+            output_id = self.insert_output(out_data)
+            
+            for tag_name in tags:
+                tag_record = self.find_or_insert_output_tag(user_id, tag_name)
+                self.find_or_insert_output_tag_map(output_id, int(tag_record["outputTagId"]))
+            
+            if is_change:
+                change_vouts.append(out_data["vout"])
+            
+            result_entry: dict[str, Any] = {
+                "vout": out_data["vout"],
+                "satoshis": out_data["satoshis"],
+                "lockingScript": locking_script.hex() if isinstance(locking_script, bytes) else "",
+                "providedBy": out_data["providedBy"],
+                "purpose": out_data["purpose"] or None,
+                "tags": tags,
+                "outputId": output_id,
+                "basket": basket_name,
+                "derivationSuffix": out_data.get("derivationSuffix"),
+            }
+            if is_change:
+                result_entry["derivationPrefix"] = derivation_prefix
+            else:
+                result_entry["keyOffset"] = key_offset
+                result_entry["customInstructions"] = out_data.get("customInstructions")
+            outputs_payload.append(result_entry)
+        
         return {"outputs": outputs_payload, "changeVouts": change_vouts}
 
-    def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes:
-        return storage_beef_bytes
+    def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes | None:
+        """Merge BEEF data from allocated change outputs (TS parity).
+        
+        For each allocated change output, retrieves the BEEF for its source
+        transaction and merges it into the result. Mirrors TypeScript
+        mergeAllocatedChangeBeefs at storage/methods/createAction.ts L903-926.
+        """
+        from bsv.transaction.beef import Beef, BEEF_V2
+        
+        # If returnTXIDOnly, don't generate BEEF
+        if getattr(vargs.options, "return_txid_only", False):
+            return None
+        
+        # Start with existing beef or create new one
+        if storage_beef_bytes and len(storage_beef_bytes) > 0:
+            try:
+                beef = Beef.from_binary(list(storage_beef_bytes))
+            except Exception:
+                beef = Beef(version=BEEF_V2)
+        else:
+            beef = Beef(version=BEEF_V2)
+        
+        known_txids = set(getattr(vargs.options, "known_txids", []) or [])
+        
+        # Merge BEEF for each allocated change output
+        for o in allocated_change:
+            txid = o.get("txid") or o.get("sourceTxid")
+            if not txid:
+                continue
+            if txid in known_txids:
+                continue
+            try:
+                if beef.find_txid(txid):
+                    continue
+            except Exception:
+                pass
+            try:
+                options = {
+                    "mergeToBeef": beef,
+                    "knownTxids": list(known_txids),
+                    "ignoreServices": True,
+                }
+                self.get_beef_for_transaction(txid, options)
+            except Exception:
+                pass
+        
+        result = beef.to_binary()
+        return bytes(result) if result else None
 
     def _create_new_inputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], allocated_change: list[dict[str, Any]]) -> list[dict[str, Any]]:
         inputs = []
