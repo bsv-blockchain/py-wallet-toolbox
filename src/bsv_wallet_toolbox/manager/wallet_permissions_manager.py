@@ -16,8 +16,7 @@ import sqlite3
 import threading
 import time
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 
 from bsv_wallet_toolbox.manager.permission_token_parser import PermissionTokenManager
 from bsv_wallet_toolbox.manager.permission_types import PermissionRequest, PermissionToken
@@ -1591,6 +1590,7 @@ class WalletPermissionsManager:
             "hmac": "seekProtocolPermissionsForHMAC",
             "publicKey": "seekPermissionsForPublicKeyRevelation",
             "identityKey": "seekPermissionsForIdentityKeyRevelation",
+            "identityResolution": "seekPermissionsForIdentityResolution",
             "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
         }
 
@@ -1713,7 +1713,10 @@ class WalletPermissionsManager:
                 raise RuntimeError(f"Spending permission denied for {description}")
 
     def _check_identity_permissions(
-        self, originator: str, operation: str = "resolve"
+        self,
+        originator: str,
+        operation: str = "resolve",
+        context: dict[str, Any] | None = None,
     ) -> None:
         """Check if identity permissions are granted.
 
@@ -1730,17 +1733,39 @@ class WalletPermissionsManager:
         # Check config flags
         config_key_map = {
             "resolve": "seekPermissionsForIdentityResolution",
+            "key_reveal": "seekPermissionsForIdentityResolution",
             "keyReveal": "seekPermissionsForIdentityKeyRevelation",
             "linkageReveal": "seekPermissionsForKeyLinkageRevelation",
             "publicKeyReveal": "seekPermissionsForPublicKeyRevelation",
+            "linkage_reveal": "seekPermissionsForKeyLinkageRevelation",
+            "public_key_reveal": "seekPermissionsForPublicKeyRevelation",
         }
 
         config_key = config_key_map.get(operation)
         if config_key and not self._config.get(config_key, False):
             return  # Permission check disabled
 
-        # For now, identity permissions are not fully implemented
-        # TODO: Implement identity permission tokens
+        ctx = context or {}
+
+        if operation == "linkage_reveal":
+            linkage_type = ctx.get("linkage_type", "counterparty")
+            if linkage_type == "specific":
+                proto = ctx.get("protocol_id")
+                proto_name = ctx.get("protocol_name")
+                if proto_name is None and isinstance(proto, list) and len(proto) > 1:
+                    proto_name = proto[1]
+                protocol_name = proto_name or "unknown"
+                key_id = ctx.get("key_id") or "all"
+                protocol_id: list[Any] = [2, f"specific key linkage revelation {protocol_name} {key_id}"]
+            else:
+                counterparty = ctx.get("counterparty") or "unknown"
+                protocol_id = [2, f"counterparty key linkage revelation {counterparty}"]
+            operation_label = "linkageRevelation"
+        else:
+            protocol_id = [1, "identity resolution"]
+            operation_label = "identityResolution"
+
+        self._check_protocol_permissions(originator, protocol_id, operation_label)
 
     def _request_permission(self, permission_request: PermissionRequest) -> PermissionToken | None:
         """Request permission from user via callback system.
@@ -2441,7 +2466,14 @@ class WalletPermissionsManager:
             return self._underlying_wallet.reveal_counterparty_key_linkage(args, originator)
 
         # Check key linkage revelation permissions
-        self._check_identity_permissions(originator or "", "linkage_reveal")
+        self._check_identity_permissions(
+            originator or "",
+            "linkage_reveal",
+            {
+                "linkage_type": "counterparty",
+                "counterparty": args.get("counterparty"),
+            },
+        )
 
         return self._underlying_wallet.reveal_counterparty_key_linkage(args, originator)
 
@@ -2462,7 +2494,16 @@ class WalletPermissionsManager:
             return self._underlying_wallet.reveal_specific_key_linkage(args, originator)
 
         # Check key linkage revelation permissions
-        self._check_identity_permissions(originator or "", "linkage_reveal")
+        self._check_identity_permissions(
+            originator or "",
+            "linkage_reveal",
+            {
+                "linkage_type": "specific",
+                "protocol_id": args.get("protocolID"),
+                "protocol_name": None,
+                "key_id": args.get("keyID"),
+            },
+        )
 
         return self._underlying_wallet.reveal_specific_key_linkage(args, originator)
 
@@ -2712,7 +2753,11 @@ class WalletPermissionsManager:
             return self._underlying_wallet.discover_by_identity_key(args, originator)
 
         # Check identity key revelation permissions
-        self._check_identity_permissions(originator or "", "key_reveal")
+        self._check_identity_permissions(
+            originator or "",
+            "key_reveal",
+            {"reason": "discoverByIdentityKey"},
+        )
 
         return self._underlying_wallet.discover_by_identity_key(args, originator)
 
@@ -2733,7 +2778,11 @@ class WalletPermissionsManager:
             return self._underlying_wallet.discover_by_attributes(args, originator)
 
         # Check identity resolution permissions
-        self._check_identity_permissions(originator or "", "resolve")
+        self._check_identity_permissions(
+            originator or "",
+            "resolve",
+            {"reason": "discoverByAttributes"},
+        )
 
         return self._underlying_wallet.discover_by_attributes(args, originator)
 
