@@ -1590,10 +1590,7 @@ class WalletPermissionsManager:
             "verify": "seekProtocolPermissionsForSigning",
             "hmac": "seekProtocolPermissionsForHMAC",
             "publicKey": "seekPermissionsForPublicKeyRevelation",
-            "publicKey": "seekPermissionsForPublicKeyRevelation",
             "identityKey": "seekPermissionsForIdentityKeyRevelation",
-            "identityKey": "seekPermissionsForIdentityKeyRevelation",
-            "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
             "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
         }
 
