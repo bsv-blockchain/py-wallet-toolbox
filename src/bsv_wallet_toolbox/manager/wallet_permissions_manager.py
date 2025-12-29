@@ -2350,7 +2350,7 @@ class WalletPermissionsManager:
             result = self._underlying_wallet.sign_action(args, originator)
             return self._handle_sync_or_async(result)
 
-        # TODO: Add permission checks
+        # TypeScript implementation does not add additional permission checks here.
         result = self._underlying_wallet.sign_action(args, originator)
         return self._handle_sync_or_async(result)
 
@@ -2371,7 +2371,7 @@ class WalletPermissionsManager:
             result = self._underlying_wallet.abort_action(args, originator)
             return self._handle_sync_or_async(result)
 
-        # TODO: Add permission checks
+        # TypeScript implementation does not add additional permission checks here.
         result = self._underlying_wallet.abort_action(args, originator)
         return self._handle_sync_or_async(result)
 
