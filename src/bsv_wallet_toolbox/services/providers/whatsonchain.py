@@ -668,9 +668,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                     converted_leaf = {"offset": leaf["offset"]}
                     if "hash_str" in leaf:
                         # Keep original field name for py-sdk's MerklePath
-                        converted_leaf["hash_str"] = leaf["hash_str"]
+                        converted_leaf["hashStr"] = leaf["hashStr"]
                         # Add TS-style alias for any Python callers expecting "hash"
-                        converted_leaf["hash"] = leaf["hash_str"]
+                        converted_leaf["hash"] = leaf["hashStr"]
                     if leaf.get("txid"):
                         converted_leaf["txid"] = True
                     if leaf.get("duplicate"):

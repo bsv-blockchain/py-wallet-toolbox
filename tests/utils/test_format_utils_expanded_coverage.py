@@ -153,7 +153,7 @@ class TestFormatBeefBytes:
         """Test formatting BEEF bytes."""
         try:
             if hasattr(Format, "beef_bytes"):
-                mock_beef = type('MockBeef', (), {'to_bytes': lambda: b'\x00' * 100})()
+                mock_beef = type('MockBeef', (), {'toBytes': lambda: b'\x00' * 100})()
                 result = Format.beef_bytes(mock_beef)
                 assert isinstance(result, str)
         except (AttributeError, TypeError):

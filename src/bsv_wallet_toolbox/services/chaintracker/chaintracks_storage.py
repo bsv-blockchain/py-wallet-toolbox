@@ -178,7 +178,7 @@ class ChaintracksStorage:
         """
         options: ChaintracksStorageOptions = {
             "chain": chain,
-            "database_url": database_url,
+            "databaseUrl": database_url,
             "readonly": False,
         }
         return options
@@ -205,7 +205,7 @@ class ChaintracksStorage:
             self.engine = engine
         else:
             # Create default SQLite database
-            database_url = options.get("database_url")
+            database_url = options.get("databaseUrl")
             if not database_url:
                 db_file = f"chaintracks_{self.chain}.db"
                 database_url = f"sqlite:///{db_file}"
@@ -537,7 +537,7 @@ class ChaintracksStorageMemory(ChaintracksStorage):
         """
         # Force in-memory SQLite URL
         memory_options = {**options}
-        memory_options["database_url"] = "sqlite:///:memory:"
+        memory_options["databaseUrl"] = "sqlite:///:memory:"
 
         # Create in-memory engine
         memory_engine = create_engine("sqlite:///:memory:", echo=False)

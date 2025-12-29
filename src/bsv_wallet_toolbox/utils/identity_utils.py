@@ -276,7 +276,7 @@ async def parse_results(lookup_result: dict[str, Any]) -> list[VerifiableCertifi
             }
             # Store the underlying BsvVerifiableCertificate for later use if needed
             if not hasattr(result_cert, "_bsv_cert"):
-                result_cert["_bsv_cert"] = verifiable_cert  # type: ignore
+                result_cert["_bsvCert"] = verifiable_cert  # type: ignore
 
             parsed_results.append(result_cert)
         except Exception:

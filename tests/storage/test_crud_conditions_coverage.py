@@ -454,14 +454,14 @@ class TestOutputReader:
     def test_output_reader_find(self, mock_provider):
         """Test OutputReader.find method."""
         reader = OutputReader(mock_provider)
-        reader.spec = {"user_id": "test_spec"}
+        reader.spec = {"userId": "test_spec"}
         reader.paging = {"limit": 5, "offset": 0}
 
         result = reader.find()
 
         assert result == []
         mock_provider.find_outputs.assert_called_once_with({
-            "partial": {"user_id": "test_spec"},
+            "partial": {"userId": "test_spec"},
             "limit": 5,
             "offset": 0
         })
@@ -469,12 +469,12 @@ class TestOutputReader:
     def test_output_reader_count(self, mock_provider):
         """Test OutputReader.count method."""
         reader = OutputReader(mock_provider)
-        reader.spec = {"basket_id": 123}
+        reader.spec = {"basketId": 123}
 
         result = reader.count()
 
         assert result == 0
-        mock_provider.count_outputs.assert_called_once_with({"basket_id": 123})
+        mock_provider.count_outputs.assert_called_once_with({"basketId": 123})
 
 
 @pytest.mark.skipif(not IMPORTS_AVAILABLE, reason="CRUD classes not available")
@@ -493,7 +493,7 @@ class TestTxNoteAccessor:
         """Test TxNoteAccessor.create method."""
         accessor = TxNoteAccessor(mock_provider)
 
-        test_data = {"transaction_id": 123, "note": "test note"}
+        test_data = {"transactionId": 123, "note": "test note"}
         result = accessor.create(test_data)
 
         assert result == 1
@@ -533,12 +533,12 @@ class TestTxNoteReader:
     def test_tx_note_reader_find(self, mock_provider):
         """Test TxNoteReader.find method."""
         reader = TxNoteReader(mock_provider)
-        reader.spec = {"transaction_id": 123}
+        reader.spec = {"transactionId": 123}
 
         result = reader.find()
 
         assert result == []
-        mock_provider._find_generic.assert_called_once_with("tx_note", {"partial": {"transaction_id": 123}})
+        mock_provider._find_generic.assert_called_once_with("tx_note", {"partial": {"transactionId": 123}})
 
     def test_tx_note_reader_find_with_paging(self, mock_provider):
         """Test TxNoteReader.find method with paging."""

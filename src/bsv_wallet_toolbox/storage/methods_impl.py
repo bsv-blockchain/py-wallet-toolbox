@@ -314,15 +314,15 @@ def generate_change(
         )
 
     return {
-        "selected_change": [
+        "selectedChange": [
             {
                 "satoshis": c.satoshis if hasattr(c, "satoshis") else c.get("satoshis", 0),
-                "locking_script": c.locking_script if hasattr(c, "locking_script") else c.get("locking_script", ""),
+                "lockingScript": c.locking_script if hasattr(c, "locking_script") else c.get("lockingScript", ""),
             }
             for c in selected_change
         ],
-        "total_satoshis": accumulated_satoshis,
-        "locked_outputs": locked_output_ids,
+        "totalSatoshis": accumulated_satoshis,
+        "lockedOutputs": locked_output_ids,
     }
 
 
@@ -474,7 +474,7 @@ def list_actions(storage: Any, auth: dict[str, Any], args: ListActionsArgs) -> d
         elif spec_op == "specOpWalletBalance":
             # Calculate balance from actions
             total_balance = sum(a.get("satoshis", 0) for a in result["actions"])
-            result["wallet_balance"] = total_balance
+            result["walletBalance"] = total_balance
 
     # Step 7: Add labels and inputs if requested
     include_labels = getattr(args, "includeLabels", False)
@@ -633,20 +633,20 @@ def list_outputs(storage: Any, auth: dict[str, Any], args: ListOutputsArgs) -> d
         if basket == "specOpWalletBalance":
             # Calculate and aggregate balance info
             total_satoshis = sum(out.get("satoshis", 0) for out in result["outputs"])
-            result["total_satoshis"] = total_satoshis
+            result["totalSatoshis"] = total_satoshis
         elif basket == "specOpInvalidChange":
             # Aggregate failed outputs
             failed_outputs = [
                 out for out in result["outputs"] if out.get("status") in ("failed", "invalid", "rejected")
             ]
             result["outputs"] = failed_outputs
-            result["failed_count"] = len(failed_outputs)
+            result["failedCount"] = len(failed_outputs)
         elif basket == "specOpThrowReviewActions":
             # Mark review-needed outputs
             for out in result["outputs"]:
                 if out.get("status") in ("unproven", "unsigned"):
                     out["needsReview"] = True
-            result["review_needed"] = sum(1 for out in result["outputs"] if out.get("needsReview"))
+            result["reviewNeeded"] = sum(1 for out in result["outputs"] if out.get("needsReview"))
 
     return result
 
@@ -1046,9 +1046,6 @@ def get_beef_for_transaction(
         - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
         - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
-    if not storage:
-        raise WalletError("storage is required for get_beef_for_transaction")
-
     if not txid or len(txid) != 64:
         raise WalletError("txid must be a 64-character hex string")
 
@@ -1461,8 +1458,8 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
 
     # Initialize result structure
     result = {
-        "posted_txids": [],
-        "failed_txids": [],
+        "postedTxids": [],
+        "failedTxids": [],
         "results": {},
     }
 
@@ -1475,7 +1472,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
 
         if not req_record:
             # Transaction not found in requests
-            result["failed_txids"].append(txid)
+            result["failedTxids"].append(txid)
             result["results"][txid] = {
                 "status": "failed",
                 "reason": "ProvenTxReq not found",
@@ -1486,7 +1483,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
         beef = req_record.get("beef", "")
 
         if not beef:
-            result["failed_txids"].append(txid)
+            result["failedTxids"].append(txid)
             result["results"][txid] = {
                 "status": "failed",
                 "reason": "No BEEF available",
@@ -1529,7 +1526,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
         )
 
         # Track successful post
-        result["posted_txids"].append(txid)
+        result["postedTxids"].append(txid)
         result["results"][txid] = {
             "status": "success",
             "message": "Posted to network",
@@ -1568,8 +1565,8 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
 
     # Initialize result structure
     result = {
-        "updated_count": 0,
-        "aged_count": 0,
+        "updatedCount": 0,
+        "agedCount": 0,
         "log": "",
     }
 
@@ -1610,7 +1607,7 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
     # Step 3: Mark aged transactions
     if aged_limit:
         # Find confirmed transactions older than aged_limit
-        result["updated_count"] = (
+        result["updatedCount"] = (
             storage.update(
                 "Transaction",
                 {
@@ -1623,7 +1620,7 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
             or 0
         )
 
-        result["aged_count"] = result["updated_count"]
+        result["agedCount"] = result["updatedCount"]
 
     # Step 4: Handle ProvenTxReq status updates
     proven_reqs = storage.find(
@@ -1663,8 +1660,8 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
             pass
 
     log_msg = (
-        f"Review completed: {result['updated_count']} transactions updated, "
-        f"{result['aged_count']} transactions aged"
+        f"Review completed: {result['updatedCount']} transactions updated, "
+        f"{result['agedCount']} transactions aged"
     )
     result["log"] = log_msg
 
@@ -1695,11 +1692,11 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
 
     # Initialize result structure
     result = {
-        "deleted_transactions": 0,
-        "deleted_outputs": 0,
-        "deleted_certificates": 0,
-        "deleted_requests": 0,
-        "deleted_labels": 0,
+        "deletedTransactions": 0,
+        "deletedOutputs": 0,
+        "deletedCertificates": 0,
+        "deletedRequests": 0,
+        "deletedLabels": 0,
     }
 
     # Step 1: Extract purge parameters
@@ -1719,17 +1716,17 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
             )
             or 0
         )
-        result["deleted_transactions"] = deleted_tx
+        result["deletedTransactions"] = deleted_tx
 
     # Step 3: Delete orphaned outputs
     # Find outputs without associated transactions
     deleted_outputs = storage.delete("Output", {"isDeleted": False, "transactionId": None}) or 0
-    result["deleted_outputs"] = deleted_outputs
+    result["deletedOutputs"] = deleted_outputs
 
     # Step 4: Delete old certificates
     # Find certificates marked as deleted or revoked
     deleted_certs = storage.delete("Certificate", {"isDeleted": True}) or 0
-    result["deleted_certificates"] = deleted_certs
+    result["deletedCertificates"] = deleted_certs
 
     # Step 5: Delete old request records
     # Filter by retention period (recommend 7 days)
@@ -1739,11 +1736,11 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     deleted_reqs = (
         storage.delete("ProvenTxReq", {"status": {"$in": ["sent", "complete"]}, "createdAt": {"$lt": cutoff_date}}) or 0
     )
-    result["deleted_requests"] = deleted_reqs
+    result["deletedRequests"] = deleted_reqs
 
     # Step 6: Delete orphaned labels
     deleted_labels = storage.delete("TxLabel", {"isDeleted": True})
-    result["deleted_labels"] = deleted_labels
+    result["deletedLabels"] = deleted_labels
 
     return result
 
@@ -1957,8 +1954,8 @@ def _user_to_dict(u) -> dict:
         "userId": u.user_id,
         "identityKey": u.identity_key,
         "activeStorage": u.active_storage,
-        "created_at": u.created_at.isoformat() if u.created_at else None,
-        "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+        "createdAt": u.created_at.isoformat() if u.created_at else None,
+        "updatedAt": u.updated_at.isoformat() if u.updated_at else None,
     }
 
 
@@ -1973,8 +1970,8 @@ def _proven_tx_to_dict(p) -> dict:
         "rawTx": list(p.raw_tx) if p.raw_tx else None,
         "blockHash": p.block_hash,
         "merkleRoot": p.merkle_root,
-        "created_at": p.created_at.isoformat() if p.created_at else None,
-        "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+        "createdAt": p.created_at.isoformat() if p.created_at else None,
+        "updatedAt": p.updated_at.isoformat() if p.updated_at else None,
     }
 
 
@@ -1987,8 +1984,8 @@ def _output_basket_to_dict(b) -> dict:
         "numberOfDesiredUTXOs": b.number_of_desired_utxos,
         "minimumDesiredUTXOValue": b.minimum_desired_utxo_value,
         "isDeleted": b.is_deleted,
-        "created_at": b.created_at.isoformat() if b.created_at else None,
-        "updated_at": b.updated_at.isoformat() if b.updated_at else None,
+        "createdAt": b.created_at.isoformat() if b.created_at else None,
+        "updatedAt": b.updated_at.isoformat() if b.updated_at else None,
     }
 
 
@@ -1999,8 +1996,8 @@ def _output_tag_to_dict(t) -> dict:
         "userId": t.user_id,
         "tag": t.tag,
         "isDeleted": t.is_deleted,
-        "created_at": t.created_at.isoformat() if t.created_at else None,
-        "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+        "createdAt": t.created_at.isoformat() if t.created_at else None,
+        "updatedAt": t.updated_at.isoformat() if t.updated_at else None,
     }
 
 
@@ -2011,8 +2008,8 @@ def _tx_label_to_dict(l) -> dict:
         "userId": l.user_id,
         "label": l.label,
         "isDeleted": l.is_deleted,
-        "created_at": l.created_at.isoformat() if l.created_at else None,
-        "updated_at": l.updated_at.isoformat() if l.updated_at else None,
+        "createdAt": l.created_at.isoformat() if l.created_at else None,
+        "updatedAt": l.updated_at.isoformat() if l.updated_at else None,
     }
 
 
@@ -2031,8 +2028,8 @@ def _transaction_to_dict(t) -> dict:
         "lockTime": t.lock_time,
         "provenTxId": t.proven_tx_id,
         "inputBEEF": list(t.input_beef) if t.input_beef else None,
-        "created_at": t.created_at.isoformat() if t.created_at else None,
-        "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+        "createdAt": t.created_at.isoformat() if t.created_at else None,
+        "updatedAt": t.updated_at.isoformat() if t.updated_at else None,
     }
 
 
@@ -2063,8 +2060,8 @@ def _output_to_dict(o) -> dict:
         "providedBy": o.provided_by,
         "purpose": o.purpose,
         "spent": o.spent,
-        "created_at": o.created_at.isoformat() if o.created_at else None,
-        "updated_at": o.updated_at.isoformat() if o.updated_at else None,
+        "createdAt": o.created_at.isoformat() if o.created_at else None,
+        "updatedAt": o.updated_at.isoformat() if o.updated_at else None,
     }
 
 
@@ -2074,8 +2071,8 @@ def _tx_label_map_to_dict(m) -> dict:
         "transactionId": m.transaction_id,
         "txLabelId": m.tx_label_id,
         "isDeleted": m.is_deleted,
-        "created_at": m.created_at.isoformat() if m.created_at else None,
-        "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+        "createdAt": m.created_at.isoformat() if m.created_at else None,
+        "updatedAt": m.updated_at.isoformat() if m.updated_at else None,
     }
 
 
@@ -2085,8 +2082,8 @@ def _output_tag_map_to_dict(m) -> dict:
         "outputId": m.output_id,
         "outputTagId": m.output_tag_id,
         "isDeleted": m.is_deleted,
-        "created_at": m.created_at.isoformat() if m.created_at else None,
-        "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+        "createdAt": m.created_at.isoformat() if m.created_at else None,
+        "updatedAt": m.updated_at.isoformat() if m.updated_at else None,
     }
 
 
@@ -2103,8 +2100,8 @@ def _certificate_to_dict(c) -> dict:
         "revocationOutpoint": c.revocation_outpoint,
         "signature": c.signature,
         "isDeleted": c.is_deleted,
-        "created_at": c.created_at.isoformat() if c.created_at else None,
-        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+        "createdAt": c.created_at.isoformat() if c.created_at else None,
+        "updatedAt": c.updated_at.isoformat() if c.updated_at else None,
     }
 
 
@@ -2117,8 +2114,8 @@ def _certificate_field_to_dict(f) -> dict:
         "fieldName": f.field_name,
         "fieldValue": f.field_value,
         "masterKey": f.master_key,
-        "created_at": f.created_at.isoformat() if f.created_at else None,
-        "updated_at": f.updated_at.isoformat() if f.updated_at else None,
+        "createdAt": f.created_at.isoformat() if f.created_at else None,
+        "updatedAt": f.updated_at.isoformat() if f.updated_at else None,
     }
 
 
@@ -2132,8 +2129,8 @@ def _commission_to_dict(c) -> dict:
         "keyOffset": c.key_offset,
         "isRedeemed": c.is_redeemed,
         "lockingScript": list(c.locking_script) if c.locking_script else None,
-        "created_at": c.created_at.isoformat() if c.created_at else None,
-        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+        "createdAt": c.created_at.isoformat() if c.created_at else None,
+        "updatedAt": c.updated_at.isoformat() if c.updated_at else None,
     }
 
 
@@ -2151,6 +2148,6 @@ def _proven_tx_req_to_dict(r) -> dict:
         "history": r.history,
         "notify": r.notify,
         "batch": r.batch,
-        "created_at": r.created_at.isoformat() if r.created_at else None,
-        "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+        "createdAt": r.created_at.isoformat() if r.created_at else None,
+        "updatedAt": r.updated_at.isoformat() if r.updated_at else None,
     }

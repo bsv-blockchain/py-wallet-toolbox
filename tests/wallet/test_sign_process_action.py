@@ -249,8 +249,8 @@ class TestWalletSignAction:
         invalid_args = {
             "reference": "",  # Invalid reference
             "spends": {},
-            "extra_key": "ignored",
-            "another_key": 123,
+            "extraKey": "ignored",
+            "anotherKey": 123,
             "nested": {"key": "value"}
         }
 

@@ -25,8 +25,8 @@ class TestOutputBasketEntity:
 
         initial_data = {
             "basketId": 100,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "name": "Basket1",
             "numberOfDesiredUTXOs": 10,
@@ -39,7 +39,7 @@ class TestOutputBasketEntity:
         # Updated data with later timestamp
         updated_data = {
             **initial_data,
-            "updated_at": datetime(2023, 1, 3),
+            "updatedAt": datetime(2023, 1, 3),
             "numberOfDesiredUTXOs": 20,
             "minimumDesiredUTXOValue": 10000,
             "isDeleted": True,
@@ -69,8 +69,8 @@ class TestOutputBasketEntity:
 
         initial_data = {
             "basketId": 200,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "name": "Basket2",
             "numberOfDesiredUTXOs": 10,
@@ -83,7 +83,7 @@ class TestOutputBasketEntity:
         # Earlier data
         earlier_data = {
             **initial_data,
-            "updated_at": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 1),
             "numberOfDesiredUTXOs": 20,
             "minimumDesiredUTXOValue": 10000,
             "isDeleted": True,
@@ -113,8 +113,8 @@ class TestOutputBasketEntity:
 
         basket_data = {
             "basketId": 401,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "name": "Test Basket",
             "numberOfDesiredUTXOs": 10,
@@ -143,8 +143,8 @@ class TestOutputBasketEntity:
 
         basket_data1 = {
             "basketId": 402,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "name": "Test Basket 1",
             "numberOfDesiredUTXOs": 10,
@@ -154,8 +154,8 @@ class TestOutputBasketEntity:
 
         basket_data2 = {
             "basketId": 403,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "name": "Test Basket 2",
             "numberOfDesiredUTXOs": 5,
@@ -184,8 +184,8 @@ class TestOutputBasketEntity:
 
         initial_data = {
             "basketId": 123,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "name": "Test Basket",
             "numberOfDesiredUTXOs": 10,

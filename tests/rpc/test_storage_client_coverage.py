@@ -256,7 +256,7 @@ class TestStorageClient:
         mock_response.json.return_value = {
             "jsonrpc": "2.0",
             "id": 1,
-            "result": {"action_id": "123", "status": "created"},
+            "result": {"actionId": "123", "status": "created"},
         }
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
@@ -266,11 +266,11 @@ class TestStorageClient:
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
 
-            auth = {"identity_key": "test_key"}
+            auth = {"identityKey": "test_key"}
             args = {"description": "test action"}
             result = client.create_action(auth, args)
 
-            assert result == {"action_id": "123", "status": "created"}
+            assert result == {"actionId": "123", "status": "created"}
 
     def test_list_actions(self, mock_wallet, mock_response) -> None:
         """Test list_actions method."""
@@ -287,7 +287,7 @@ class TestStorageClient:
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
 
-            auth = {"identity_key": "test_key"}
+            auth = {"identityKey": "test_key"}
             args = {"limit": 10}
             result = client.list_actions(auth, args)
 
@@ -309,7 +309,7 @@ class TestStorageClient:
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
 
-            auth = {"identity_key": "test_key"}
+            auth = {"identityKey": "test_key"}
             args = {"reference": "test_ref"}
             result = client.abort_action(auth, args)
 
@@ -330,7 +330,7 @@ class TestStorageClient:
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
 
-            auth = {"identity_key": "test_key"}
+            auth = {"identityKey": "test_key"}
             args = {"tx": "raw_tx_hex"}
             result = client.internalize_action(auth, args)
 
@@ -351,7 +351,7 @@ class TestStorageClient:
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
 
-            auth = {"identity_key": "test_key"}
+            auth = {"identityKey": "test_key"}
             args = {"limit": 10}
             result = client.list_certificates(auth, args)
 
@@ -372,7 +372,7 @@ class TestStorageClient:
 
             client = StorageClient(wallet=mock_wallet, endpoint_url="https://example.com/rpc")
 
-            auth = {"identity_key": "test_key"}
+            auth = {"identityKey": "test_key"}
             args = {"basket": "test_basket"}
             result = client.list_outputs(auth, args)
 

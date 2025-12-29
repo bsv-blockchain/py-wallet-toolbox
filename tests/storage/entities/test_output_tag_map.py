@@ -24,7 +24,7 @@ class TestOutputTagMapEntity:
         # Given
 
         now = datetime.now()
-        initial_data = {"created_at": now, "updated_at": now, "outputId": 1, "outputTagId": 2, "isDeleted": False}
+        initial_data = {"createdAt": now, "updatedAt": now, "outputId": 1, "outputTagId": 2, "isDeleted": False}
 
         output_tag_map = OutputTagMap(initial_data)
 
@@ -66,8 +66,8 @@ class TestOutputTagMapEntity:
         # Given
 
         output_tag_map_data = {
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "outputId": 1,
             "outputTagId": 8,
             "isDeleted": False,
@@ -92,16 +92,16 @@ class TestOutputTagMapEntity:
         # Given
 
         output_tag_map_data1 = {
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "outputId": 1,
             "outputTagId": 9,
             "isDeleted": False,
         }
 
         output_tag_map_data2 = {
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "outputId": 1,
             "outputTagId": 21,
             "isDeleted": True,
@@ -129,8 +129,8 @@ class TestOutputTagMapEntity:
         # Given
 
         initial_data = {
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "outputId": 2,
             "outputTagId": 8,
             "isDeleted": False,
@@ -139,7 +139,7 @@ class TestOutputTagMapEntity:
         entity = OutputTagMap(initial_data)
 
         # Updated data with later timestamp
-        updated_data = {**initial_data, "updated_at": datetime(2023, 1, 3), "isDeleted": True}
+        updated_data = {**initial_data, "updatedAt": datetime(2023, 1, 3), "isDeleted": True}
 
         sync_map = {"output": {"idMap": {1: 1}}}
         mock_storage = type("MockStorage", (), {})()
@@ -162,8 +162,8 @@ class TestOutputTagMapEntity:
         # Given
 
         initial_data = {
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "outputId": 2,
             "outputTagId": 11,
             "isDeleted": False,
@@ -172,7 +172,7 @@ class TestOutputTagMapEntity:
         entity = OutputTagMap(initial_data)
 
         # Earlier data
-        earlier_data = {**initial_data, "updated_at": datetime(2023, 1, 1), "isDeleted": True}
+        earlier_data = {**initial_data, "updatedAt": datetime(2023, 1, 1), "isDeleted": True}
 
         sync_map = {"output": {"idMap": {101: 101}}}
         mock_storage = type("MockStorage", (), {})()

@@ -250,7 +250,7 @@ class CommissionReader(EntityReader):
 
     def user_id(self) -> NumericCondition[CommissionReader]:
         def setter(spec):
-            self.spec["user_id"] = spec
+            self.spec["userId"] = spec
         return NumericCondition(self, setter)
 
     def amount(self) -> NumericCondition[CommissionReader]:
@@ -296,7 +296,7 @@ class TransactionReader(EntityReader):
 
     def user_id(self) -> NumericCondition[TransactionReader]:
         def setter(spec):
-            self.spec["user_id"] = spec
+            self.spec["userId"] = spec
         return NumericCondition(self, setter)
 
     def txid(self) -> StringCondition[TransactionReader]:
@@ -347,12 +347,12 @@ class UserReader(EntityReader):
 
     def identity_key(self) -> StringCondition[UserReader]:
         def setter(spec):
-            self.spec["identity_key"] = spec
+            self.spec["identityKey"] = spec
         return StringCondition(self, setter)
 
     def active_storage(self) -> StringCondition[UserReader]:
         def setter(spec):
-            self.spec["active_storage"] = spec
+            self.spec["activeStorage"] = spec
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> UserReader:
@@ -393,7 +393,7 @@ class OutputBasketReader(EntityReader):
 
     def user_id(self) -> NumericCondition[OutputBasketReader]:
         def setter(spec):
-            self.spec["user_id"] = spec
+            self.spec["userId"] = spec
         return NumericCondition(self, setter)
 
     def name(self) -> StringCondition[OutputBasketReader]:
@@ -439,12 +439,12 @@ class OutputReader(EntityReader):
 
     def user_id(self) -> NumericCondition[OutputReader]:
         def setter(spec):
-            self.spec["user_id"] = spec
+            self.spec["userId"] = spec
         return NumericCondition(self, setter)
 
     def transaction_id(self) -> NumericCondition[OutputReader]:
         def setter(spec):
-            self.spec["transaction_id"] = spec
+            self.spec["transactionId"] = spec
         return NumericCondition(self, setter)
 
     def spendable(self) -> BoolCondition[OutputReader]:
@@ -490,7 +490,7 @@ class TxNoteReader(EntityReader):
 
     def transaction_id(self) -> NumericCondition[TxNoteReader]:
         def setter(spec):
-            self.spec["transaction_id"] = spec
+            self.spec["transactionId"] = spec
         return NumericCondition(self, setter)
 
     def note(self) -> StringCondition[TxNoteReader]:

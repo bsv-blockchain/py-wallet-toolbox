@@ -58,7 +58,8 @@ class CacheManager(Generic[T]):
             value: Value to cache
             ttl_msecs: Time-to-live in milliseconds
         """
-        self._cache[key] = CacheEntry(value, ttl_msecs)
+        validated_key = self._validate_key(key)
+        self._cache[validated_key] = CacheEntry(value, ttl_msecs)
 
     def get(self, key: str) -> T | None:
         """Get a cached value if it exists and hasn't expired.
@@ -69,12 +70,13 @@ class CacheManager(Generic[T]):
         Returns:
             The cached value if valid and not expired, None otherwise
         """
-        entry = self._cache.get(key)
+        validated_key = self._validate_key(key)
+        entry = self._cache.get(validated_key)
         if entry is None:
             return None
 
         if entry.is_expired():
-            del self._cache[key]
+            del self._cache[validated_key]
             return None
 
         return entry.value
@@ -87,8 +89,11 @@ class CacheManager(Generic[T]):
         """
         if key is None:
             self._cache.clear()
-        elif key in self._cache:
-            del self._cache[key]
+            return
+
+        validated_key = self._validate_key(key)
+        if validated_key in self._cache:
+            del self._cache[validated_key]
 
     def has(self, key: str) -> bool:
         """Check if a valid (non-expired) entry exists.
@@ -100,3 +105,11 @@ class CacheManager(Generic[T]):
             True if key exists and hasn't expired, False otherwise
         """
         return self.get(key) is not None
+
+    @staticmethod
+    def _validate_key(key: str) -> str:
+        """Enforce camelCase keys for cache entries."""
+        if "_" in key:
+            msg = f"CacheManager keys must be camelCase: {key}"
+            raise ValueError(msg)
+        return key

@@ -106,7 +106,7 @@ class TestWalletTransactionStatusMethods:
     def test_get_script_history(self, wallet_with_storage: Wallet) -> None:
         """Test get_script_history method."""
         script_hash = "abcd" * 16
-        mock_result = {"script_hash": script_hash, "history": []}
+        mock_result = {"scriptHash": script_hash, "history": []}
         mock_services = Mock()
         mock_services.get_script_history.return_value = mock_result
 
@@ -187,7 +187,7 @@ class TestWalletMerklePathMethods:
     def test_get_merkle_path_for_transaction(self, wallet_with_storage: Wallet) -> None:
         """Test get_merkle_path_for_transaction method."""
         txid = "abcd" * 16
-        mock_result = {"txid": txid, "merkle_path": []}
+        mock_result = {"txid": txid, "merklePath": []}
         mock_services = Mock()
         mock_services.get_merkle_path_for_transaction.return_value = mock_result
 

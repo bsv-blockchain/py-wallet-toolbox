@@ -60,13 +60,13 @@ class BulkIngestorWOC(BulkIngestor):
             # Filter files that overlap with requested range
             needed_files = []
             for file_info in all_files:
-                if file_info['height_range'].overlaps(range_to_fetch):
+                if file_info['heightRange'].overlaps(range_to_fetch):
                     needed_files.append(file_info)
 
             # Convert to BulkHeaderMinimumInfo
             result = []
             for file_info in needed_files:
-                hr = file_info['height_range']
+                hr = file_info['heightRange']
                 result.append(BulkHeaderMinimumInfo(
                     first_height=hr.min_height,
                     count=hr.length,
@@ -126,8 +126,8 @@ class BulkIngestorWOC(BulkIngestor):
                 result.append({
                     'filename': filename,
                     'url': url,
-                    'height_range': height_range,
-                    'file_id': file_id
+                    'heightRange': height_range,
+                    'fileId': file_id
                 })
 
         return result

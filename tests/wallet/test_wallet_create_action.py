@@ -45,8 +45,8 @@ def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
         "version": 1,
         "lockTime": 0,
         "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     })
     
     # Seed spendable UTXO (output at vout 0)
@@ -69,9 +69,9 @@ def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
         "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
         "txid": source_txid,
         "lockingScript": locking_script,
-        "spent_by": None,  # Explicitly set to None to ensure it's allocatable
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "spentBy": None,  # Explicitly set to None to ensure it's allocatable
+        "createdAt": datetime.now(timezone.utc),
+        "updatedAt": datetime.now(timezone.utc),
     })
     
     return wallet

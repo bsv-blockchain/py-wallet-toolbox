@@ -126,17 +126,17 @@ class TestStateError:
     def test_state_error_with_current_state(self) -> None:
         """Test StateError with current state."""
         error = StateError("Cannot proceed", current_state="locked")
-        assert error.context["current_state"] == "locked"
+        assert error.context["currentState"] == "locked"
 
     def test_state_error_with_expected_state_string(self) -> None:
         """Test StateError with expected state as string."""
         error = StateError("Wrong state", expected_state="unlocked")
-        assert error.context["expected_state"] == "unlocked"
+        assert error.context["expectedState"] == "unlocked"
 
     def test_state_error_with_expected_state_list(self) -> None:
         """Test StateError with expected state as list."""
         error = StateError("Wrong state", expected_state=["ready", "active"])
-        assert error.context["expected_state"] == ["ready", "active"]
+        assert error.context["expectedState"] == ["ready", "active"]
 
     def test_state_error_full(self) -> None:
         """Test StateError with all parameters."""
@@ -145,8 +145,8 @@ class TestStateError:
             current_state="locked",
             expected_state="unlocked"
         )
-        assert error.context["current_state"] == "locked"
-        assert error.context["expected_state"] == "unlocked"
+        assert error.context["currentState"] == "locked"
+        assert error.context["expectedState"] == "unlocked"
 
 
 class TestOperationError:
@@ -191,12 +191,12 @@ class TestFormatError:
     def test_format_error_with_data_type(self) -> None:
         """Test FormatError with data type."""
         error = FormatError("Invalid format", data_type="transaction")
-        assert error.context["data_type"] == "transaction"
+        assert error.context["dataType"] == "transaction"
 
     def test_format_error_with_expected_format(self) -> None:
         """Test FormatError with expected format."""
         error = FormatError("Invalid format", expected_format="atomic_beef")
-        assert error.context["expected_format"] == "atomic_beef"
+        assert error.context["expectedFormat"] == "atomic_beef"
 
     def test_format_error_full(self) -> None:
         """Test FormatError with all parameters."""
@@ -205,8 +205,8 @@ class TestFormatError:
             data_type="tx",
             expected_format="atomic_beef"
         )
-        assert error.context["data_type"] == "tx"
-        assert error.context["expected_format"] == "atomic_beef"
+        assert error.context["dataType"] == "tx"
+        assert error.context["expectedFormat"] == "atomic_beef"
 
 
 class TestInvalidParameterError:

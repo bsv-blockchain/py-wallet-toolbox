@@ -18,6 +18,15 @@ from typing import Any
 from bsv.transaction import Transaction as BsvTransaction
 
 
+def _get_callable(obj: Any, *names: str):
+    """Return first callable attribute matching given names."""
+    for name in names:
+        attr = getattr(obj, name, None)
+        if callable(attr):
+            return attr
+    return None
+
+
 class User:
     """User entity DTO - Represents a wallet user with authentication and storage configuration.
 
@@ -67,8 +76,8 @@ class User:
             self.user_id: int | None = api_object.get("userId")
             self.identity_key: str | None = api_object.get("identityKey")
             self.active_storage: str | None = api_object.get("activeStorage")
-            self.created_at: datetime | None = api_object.get("createdAt") or api_object.get("created_at")
-            self.updated_at: datetime | None = api_object.get("updatedAt") or api_object.get("updated_at")
+            self.created_at: datetime | None = api_object.get("createdAt") or api_object.get("createdAt")
+            self.updated_at: datetime | None = api_object.get("updatedAt") or api_object.get("updatedAt")
 
     @property
     def id(self) -> int:
@@ -206,8 +215,8 @@ class Commission:
             self.is_redeemed = api_object.get("isRedeemed", False)
             self.key_offset = api_object.get("keyOffset", "")
             self.locking_script = api_object.get("lockingScript")
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -256,12 +265,12 @@ class Commission:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing commission - check if updated_at changed."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.satoshis = ei.get("satoshis", self.satoshis)
             self.is_redeemed = ei.get("isRedeemed", self.is_redeemed)
             self.key_offset = ei.get("keyOffset", self.key_offset)
             self.locking_script = ei.get("lockingScript", self.locking_script)
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -353,8 +362,8 @@ class Output:
             self.custom_instructions = api_object.get("customInstructions", "")
             self.script_length = api_object.get("scriptLength", 0)
             self.script_offset = api_object.get("scriptOffset", 0)
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -415,7 +424,7 @@ class Output:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.satoshis = ei.get("satoshis", self.satoshis)
             self.vout = ei.get("vout", self.vout)
             self.locking_script = ei.get("lockingScript", self.locking_script)
@@ -434,7 +443,7 @@ class Output:
             self.custom_instructions = ei.get("customInstructions", self.custom_instructions)
             self.script_length = ei.get("scriptLength", self.script_length)
             self.script_offset = ei.get("scriptOffset", self.script_offset)
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -478,8 +487,8 @@ class OutputBasket:
             self.number_of_desired_utxos = api_object.get("numberOfDesiredUTXOs", 0)
             self.minimum_desired_utxo_value = api_object.get("minimumDesiredUTXOValue", 0)
             self.is_deleted = bool(api_object.get("isDeleted", False))
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -527,13 +536,13 @@ class OutputBasket:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output basket."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.name = ei.get("name", self.name)
             self.number_of_desired_utxos = ei.get("numberOfDesiredUTXOs", self.number_of_desired_utxos)
             self.minimum_desired_utxo_value = ei.get("minimumDesiredUTXOValue", self.minimum_desired_utxo_value)
             is_del = ei.get("isDeleted", False)
             self.is_deleted = 1 if is_del else 0
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -572,8 +581,8 @@ class OutputTag:
             self.tag = api_object.get("tag", "")
             is_del = api_object.get("isDeleted", False)
             self.is_deleted = 1 if is_del else 0
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -616,11 +625,11 @@ class OutputTag:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output tag - sync deletion state."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.tag = ei.get("tag", self.tag)
             is_del = ei.get("isDeleted", False)
             self.is_deleted = 1 if is_del else 0
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -677,8 +686,8 @@ class Transaction:
             self.input_beef = ib if isinstance(ib, list) else None
             self.version = api_object.get("version", 1)
             self.lock_time = api_object.get("lockTime", 0)
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -726,7 +735,7 @@ class Transaction:
         self, storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing transaction."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.txid = ei.get("txid", self.txid)
             self.status = ei.get("status", self.status)
             self.reference = ei.get("reference", self.reference)
@@ -739,9 +748,12 @@ class Transaction:
             ib = ei.get("inputBEEF")
             if ib is not None:
                 self.input_beef = ib if isinstance(ib, list) else None
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             if storage:
-                storage.update_transaction(self.transaction_id, self.to_api())
+                if hasattr(storage, "update_transaction"):
+                    storage.update_transaction(self.transaction_id, self.to_api())
+                elif hasattr(storage, "updateTransaction"):
+                    storage.updateTransaction(self.transaction_id, self.to_api())
             return True
         return False
 
@@ -770,9 +782,16 @@ class Transaction:
         inputs = []
 
         # Get outputs that reference this transaction as spentBy
-        if storage and hasattr(storage, "find_outputs"):
-            outputs = storage.find_outputs({"spentBy": self.transaction_id})
-            inputs.extend(outputs)
+        if storage:
+            finder = None
+            if hasattr(storage, "find_outputs"):
+                finder = getattr(storage, "find_outputs")
+            elif hasattr(storage, "findOutputs"):
+                finder = getattr(storage, "findOutputs")
+
+            if callable(finder):
+                outputs = finder({"spentBy": self.transaction_id})
+                inputs.extend(outputs)
 
         # Also include any raw transaction inputs
         raw_inputs = self.get_bsv_tx_ins()
@@ -784,9 +803,14 @@ class Transaction:
         """Get ProvenTx for this transaction by provenTxId."""
         if not self.proven_tx_id:
             return None
-        if not hasattr(storage, "find_proven_tx"):
+        finder = None
+        if hasattr(storage, "find_proven_tx"):
+            finder = getattr(storage, "find_proven_tx")
+        elif hasattr(storage, "findProvenTx"):
+            finder = getattr(storage, "findProvenTx")
+        if finder is None:
             return None
-        proven_tx_dict = storage.find_proven_tx(self.proven_tx_id)
+        proven_tx_dict = finder(self.proven_tx_id)
         return proven_tx_dict
 
 
@@ -838,8 +862,8 @@ class ProvenTx:
             self.raw_tx = list(rt) if isinstance(rt, (list, bytes)) else []
             self.block_hash = api_object.get("blockHash", "")
             self.merkle_root = api_object.get("merkleRoot", "")
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -915,7 +939,10 @@ class ProvenTx:
         try:
             # Get raw transaction if not provided
             if not result["rawTx"]:
-                raw_tx_response = services.get_raw_tx(txid)
+                get_raw_tx = _get_callable(services, "get_raw_tx", "getRawTx")
+                if not get_raw_tx:
+                    return result
+                raw_tx_response = get_raw_tx(txid)
                 if not raw_tx_response:
                     return result
 
@@ -928,7 +955,10 @@ class ProvenTx:
                 return result
 
             # Get merkle proof
-            merkle_response = services.get_merkle_path(txid)
+            get_merkle_path = _get_callable(services, "get_merkle_path", "getMerklePath")
+            if not get_merkle_path:
+                return result
+            merkle_response = get_merkle_path(txid)
             if not merkle_response:
                 return result
 
@@ -968,8 +998,8 @@ class ProvenTx:
             # Create ProvenTx API dict
             api_dict = {
                 "provenTxId": 0,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now(),
                 "txid": txid,
                 "height": header.get("height", 0),
                 "index": index,
@@ -1050,8 +1080,8 @@ class ProvenTxReq:
             self.history = api_object.get("history", [])
             self.batch = api_object.get("batch", "")
             self.notified = api_object.get("notified", False)
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @classmethod
     def from_storage_txid(cls, storage, txid: str):
@@ -1124,8 +1154,8 @@ class ProvenTxReq:
         - Must pass through 'notifying' before 'completed'
         - Updates attempts and history
         """
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
-            self.updated_at = ei.get("updated_at", datetime.now())
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -1156,17 +1186,21 @@ class ProvenTxReq:
 
     def update_storage(self, storage: Any) -> None:
         """Update this ProvenTxReq in storage."""
-        if storage and hasattr(storage, "update_proven_tx_req"):
-            storage.update_proven_tx_req(self.proven_tx_req_id, self.to_api())
+        if not storage:
+            return
+        updater = _get_callable(storage, "update_proven_tx_req", "updateProvenTxReq")
+        if updater:
+            updater(self.proven_tx_req_id, self.to_api())
 
     def insert_or_merge(self, storage: Any) -> Any:
         """Insert or merge this ProvenTxReq in storage."""
         if not storage:
             return None
-        if hasattr(storage, "insert_or_merge_proven_tx_req"):
-            return storage.insert_or_merge_proven_tx_req(self.to_api())
-        elif hasattr(storage, "insert_proven_tx_req"):
-            return storage.insert_proven_tx_req(self.to_api())
+        inserter = _get_callable(
+            storage, "insert_or_merge_proven_tx_req", "insertOrMergeProvenTxReq", "insert_proven_tx_req", "insertProvenTxReq"
+        )
+        if inserter:
+            return inserter(self.to_api())
         return None
 
     def merge_notify_transaction_ids(self, ei: dict[str, Any] | list[int]) -> bool:
@@ -1255,8 +1289,8 @@ class Certificate:
             self.revocation_outpoint = api_object.get("revocationOutpoint", "")
             self.signature = api_object.get("signature", "")
             self.is_deleted = api_object.get("isDeleted", False)
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1309,7 +1343,7 @@ class Certificate:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing certificate - sync deletion and signature status."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.type = ei.get("type", self.type)
             self.serial_number = ei.get("serialNumber", self.serial_number)
             self.subject = ei.get("subject", self.subject)
@@ -1318,7 +1352,7 @@ class Certificate:
             self.verifier = ei.get("verifier", self.verifier)
             self.is_deleted = ei.get("isDeleted", False)
             self.revocation_outpoint = ei.get("revocationOutpoint", "")
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -1363,8 +1397,8 @@ class CertificateField:
             self.field_name = api_object.get("fieldName", "")
             self.field_value = api_object.get("fieldValue", "")
             self.master_key = api_object.get("masterKey")
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1410,10 +1444,10 @@ class CertificateField:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing certificate field - update if remote is newer."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.field_value = ei.get("fieldValue", "")
             self.master_key = ei.get("masterKey")
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -1452,8 +1486,8 @@ class OutputTagMap:
             self.output_id = api_object.get("outputId", 0)
             self.output_tag_id = api_object.get("outputTagId", 0)
             self.is_deleted = bool(api_object.get("isDeleted", False))
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1497,9 +1531,9 @@ class OutputTagMap:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing output tag map - sync deletion state."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.is_deleted = bool(ei.get("isDeleted", False))
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -1550,8 +1584,8 @@ class SyncState:
             self.init = api_object.get("init", False)
             self.ref_num = api_object.get("refNum", 0)
             self.sync_map = api_object.get("syncMap", "")
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1594,11 +1628,11 @@ class SyncState:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing sync state - update if remote is newer."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.status = ei.get("status", "")
             self.ref_num = ei.get("refNum", 0)
             self.sync_map = ei.get("syncMap", "")
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -1638,8 +1672,8 @@ class TxLabel:
             self.user_id = api_object.get("userId", 0)
             self.label = api_object.get("label", "")
             self.is_deleted = api_object.get("isDeleted", False)
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1678,9 +1712,9 @@ class TxLabel:
         self, _storage: Any, _since: Any, ei: dict[str, Any], _sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing tx label - sync deletion state."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.is_deleted = ei.get("isDeleted", False)
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             return True
         return False
 
@@ -1719,8 +1753,8 @@ class TxLabelMap:
             self.transaction_id = api_object.get("transactionId", 0)
             self.tx_label_id = api_object.get("txLabelId", 0)
             self.is_deleted = api_object.get("isDeleted", False)
-            self.created_at = api_object.get("createdAt") or api_object.get("created_at", datetime.now())
-            self.updated_at = api_object.get("updatedAt") or api_object.get("updated_at", datetime.now())
+            self.created_at = api_object.get("createdAt") or api_object.get("createdAt", datetime.now())
+            self.updated_at = api_object.get("updatedAt") or api_object.get("updatedAt", datetime.now())
 
     @property
     def id(self) -> int:
@@ -1776,9 +1810,9 @@ class TxLabelMap:
         self, storage: Any, _since: Any, ei: dict[str, Any], sync_map: Any = None, _trx: Any = None
     ) -> bool:
         """Merge existing tx label map - sync deletion state."""
-        if ei.get("updated_at", datetime.now()) > self.updated_at:
+        if ei.get("updatedAt", datetime.now()) > self.updated_at:
             self.is_deleted = ei.get("isDeleted", False)
-            self.updated_at = ei.get("updated_at", datetime.now())
+            self.updated_at = ei.get("updatedAt", datetime.now())
             # Call storage update if needed
             if hasattr(storage, "updateTxLabelMap"):
                 mapped_tx_id = self.transaction_id

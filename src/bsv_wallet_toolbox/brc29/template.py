@@ -52,7 +52,7 @@ def lock_for_counterparty(
 
     try:
         p2pkh = P2PKH()
-        locking_script = p2pkh.lock(address_result["address_string"])
+        locking_script = p2pkh.lock(address_result["addressString"])
         return locking_script
     except Exception as e:
         raise ValueError(f"failed to lock the output with BRC29: {e}") from e
@@ -95,7 +95,7 @@ def lock_for_self(
 
     try:
         p2pkh = P2PKH()
-        locking_script = p2pkh.lock(address_result["address_string"])
+        locking_script = p2pkh.lock(address_result["addressString"])
         return locking_script
     except Exception as e:
         raise ValueError(f"failed to lock the output with BRC29: {e}") from e

@@ -14,7 +14,7 @@ def valid_sync_args():
     """Fixture providing valid sync arguments."""
     return {
         "writer": "mock_writer",
-        "options": {"batch_size": 100}
+        "options": {"batchSize": 100}
     }
 
 
@@ -23,7 +23,7 @@ def valid_set_active_args():
     """Fixture providing valid set active arguments."""
     return {
         "storage": "mock_storage",
-        "backup_first": False
+        "backupFirst": False
     }
 
 
@@ -49,9 +49,9 @@ def invalid_sync_cases():
         {},  # Missing both
 
         # Invalid option values
-        {"writer": "valid_writer", "options": {"batch_size": 0}},  # Zero batch size
-        {"writer": "valid_writer", "options": {"batch_size": -1}},  # Negative batch size
-        {"writer": "valid_writer", "options": {"batch_size": "not_number"}},  # Wrong batch size type
+        {"writer": "valid_writer", "options": {"batchSize": 0}},  # Zero batch size
+        {"writer": "valid_writer", "options": {"batchSize": -1}},  # Negative batch size
+        {"writer": "valid_writer", "options": {"batchSize": "not_number"}},  # Wrong batch size type
     ]
 
 
@@ -60,24 +60,24 @@ def invalid_set_active_cases():
     """Fixture providing various invalid set active arguments."""
     return [
         # Invalid storage
-        {"storage": "", "backup_first": False},  # Empty storage
-        {"storage": None, "backup_first": False},  # None storage
-        {"storage": 123, "backup_first": False},  # Wrong storage type
-        {"storage": [], "backup_first": False},  # Wrong storage type
-        {"storage": {}, "backup_first": False},  # Wrong storage type
+        {"storage": "", "backupFirst": False},  # Empty storage
+        {"storage": None, "backupFirst": False},  # None storage
+        {"storage": 123, "backupFirst": False},  # Wrong storage type
+        {"storage": [], "backupFirst": False},  # Wrong storage type
+        {"storage": {}, "backupFirst": False},  # Wrong storage type
 
         # Invalid backup_first
-        {"storage": "valid_storage", "backup_first": None},  # None backup_first
-        {"storage": "valid_storage", "backup_first": "not_bool"},  # Wrong backup_first type
-        {"storage": "valid_storage", "backup_first": 123},  # Wrong backup_first type
+        {"storage": "valid_storage", "backupFirst": None},  # None backup_first
+        {"storage": "valid_storage", "backupFirst": "not_bool"},  # Wrong backup_first type
+        {"storage": "valid_storage", "backupFirst": 123},  # Wrong backup_first type
 
         # Missing keys
-        {"backup_first": False},  # Missing storage
+        {"backupFirst": False},  # Missing storage
         {"storage": "valid_storage"},  # Missing backup_first
         {},  # Missing both
 
         # Extra keys (should be ignored)
-        {"storage": "valid_storage", "backup_first": False, "extra": "param"},
+        {"storage": "valid_storage", "backupFirst": False, "extra": "param"},
     ]
 
 
@@ -350,7 +350,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError
         """
         # Given
-        invalid_args = {"writer": "valid_writer", "options": {"batch_size": 0}}
+        invalid_args = {"writer": "valid_writer", "options": {"batchSize": 0}}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError)):
@@ -363,7 +363,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError
         """
         # Given
-        invalid_args = {"writer": "valid_writer", "options": {"batch_size": -1}}
+        invalid_args = {"writer": "valid_writer", "options": {"batchSize": -1}}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError)):
@@ -376,7 +376,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError or TypeError
         """
         # Given
-        invalid_args = {"writer": "valid_writer", "options": {"batch_size": "not_number"}}
+        invalid_args = {"writer": "valid_writer", "options": {"batchSize": "not_number"}}
 
         # When/Then
         with pytest.raises((InvalidParameterError, TypeError)):
@@ -392,9 +392,9 @@ class TestWalletSetActive:
         args = {
             "writer": "valid_writer",
             "options": {
-                "batch_size": 100,
-                "extra_option": "ignored",
-                "another_option": 123
+                "batchSize": 100,
+                "extraOption": "ignored",
+                "anotherOption": 123
             }
         }
 
@@ -414,7 +414,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError
         """
         # Given
-        invalid_args = {"storage": "", "backup_first": False}
+        invalid_args = {"storage": "", "backupFirst": False}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError)):
@@ -427,7 +427,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError or TypeError
         """
         # Given
-        invalid_args = {"storage": None, "backup_first": False}
+        invalid_args = {"storage": None, "backupFirst": False}
 
         # When/Then
         with pytest.raises((InvalidParameterError, TypeError)):
@@ -443,7 +443,7 @@ class TestWalletSetActive:
         invalid_types = [123, [], {}, True, 45.67]
 
         for invalid_storage in invalid_types:
-            invalid_args = {"storage": invalid_storage, "backup_first": False}
+            invalid_args = {"storage": invalid_storage, "backupFirst": False}
 
             # When/Then
             with pytest.raises((InvalidParameterError, TypeError)):
@@ -456,7 +456,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError or TypeError
         """
         # Given
-        invalid_args = {"storage": "valid_storage", "backup_first": None}
+        invalid_args = {"storage": "valid_storage", "backupFirst": None}
 
         # When/Then
         with pytest.raises((InvalidParameterError, TypeError)):
@@ -472,7 +472,7 @@ class TestWalletSetActive:
         invalid_types = [123, "string", [], {}, 45.67]
 
         for invalid_backup_first in invalid_types:
-            invalid_args = {"storage": "valid_storage", "backup_first": invalid_backup_first}
+            invalid_args = {"storage": "valid_storage", "backupFirst": invalid_backup_first}
 
             # When/Then
             with pytest.raises((InvalidParameterError, TypeError)):
@@ -485,7 +485,7 @@ class TestWalletSetActive:
            Then: Raises InvalidParameterError or KeyError
         """
         # Given
-        invalid_args = {"backup_first": False}
+        invalid_args = {"backupFirst": False}
 
         # When/Then
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
@@ -525,7 +525,7 @@ class TestWalletSetActive:
            Then: Should handle backup_first flag correctly
         """
         # Given
-        args = {"storage": "valid_storage", "backup_first": True}
+        args = {"storage": "valid_storage", "backupFirst": True}
 
         # When/Then - Should not raise error (method may not be implemented but params should validate)
         try:
@@ -543,7 +543,7 @@ class TestWalletSetActive:
            Then: Should handle backup_first flag correctly
         """
         # Given
-        args = {"storage": "valid_storage", "backup_first": False}
+        args = {"storage": "valid_storage", "backupFirst": False}
 
         # When/Then - Should not raise error (method may not be implemented but params should validate)
         try:
@@ -563,9 +563,9 @@ class TestWalletSetActive:
         # Given
         args = {
             "storage": "valid_storage",
-            "backup_first": False,
-            "extra_param": "ignored",
-            "another_param": 123
+            "backupFirst": False,
+            "extraParam": "ignored",
+            "anotherParam": 123
         }
 
         # When/Then - Should not raise error (method may not be implemented but params should validate)

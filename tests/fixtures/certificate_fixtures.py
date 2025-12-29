@@ -57,8 +57,8 @@ def create_test_certificate(
         "revocationOutpoint": revocation_outpoint or "pending",
         "signature": signature,
         "isDeleted": False,
-        "created_at": now,
-        "updated_at": now,
+        "createdAt": now,
+        "updatedAt": now,
     }
     
     return cert_data

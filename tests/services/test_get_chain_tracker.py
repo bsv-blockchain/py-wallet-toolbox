@@ -50,7 +50,7 @@ def test_get_chain_tracker_with_custom_options() -> None:
     # Test with various configurations
     configs = [
         Services.create_default_options("main"),
-        {"chain": "main", "custom_setting": True},
+        {"chain": "main", "customSetting": True},
         {"chain": "test", "timeout": 30},
     ]
 
@@ -226,8 +226,8 @@ def test_get_chain_tracker_initialization_edge_cases() -> None:
 
     # Test with full config
     options_full = Services.create_default_options("main")
-    options_full["enable_chain_tracking"] = True
-    options_full["chain_tracker_timeout"] = 30
+    options_full["enableChainTracking"] = True
+    options_full["chainTrackerTimeout"] = 30
     services_full = Services(options_full)
     tracker_full = services_full.get_chain_tracker()
     assert tracker_full is not None

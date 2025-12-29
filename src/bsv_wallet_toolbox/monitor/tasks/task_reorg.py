@@ -42,7 +42,7 @@ class TaskReorg(WalletMonitorTask):
         cutoff = now - self.aged_msecs
         q = self.monitor.deactivated_headers
         
-        while len(q) > 0 and cutoff > q[0]["when_msecs"]:
+        while len(q) > 0 and cutoff > q[0]["whenMsecs"]:
             # Prepare to process deactivated headers that have aged sufficiently
             header = q.pop(0)
             self.process_queue.append(header)
@@ -133,7 +133,7 @@ class TaskReorg(WalletMonitorTask):
                 self.monitor.deactivated_headers.append(
                     {
                         "header": header,
-                        "when_msecs": int(time.time() * 1000),
+                        "whenMsecs": int(time.time() * 1000),
                         "tries": tries + 1,
                     }
                 )

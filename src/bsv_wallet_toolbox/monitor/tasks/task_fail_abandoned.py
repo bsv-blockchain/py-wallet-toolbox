@@ -43,14 +43,14 @@ class TaskFailAbandoned(WalletMonitorTask):
         # TS uses: ['unprocessed', 'unsigned']
         # We need to check Python's transaction status flow.
         # Assuming similar statuses for now.
-        txs = self.monitor.storage.find_transactions({"tx_status": ["unprocessed", "unsigned"]})
+        txs = self.monitor.storage.find_transactions({"txStatus": ["unprocessed", "unsigned"]})
 
         if not txs:
             return ""
 
         count = 0
         for tx in txs:
-            updated_at = tx.get("updated_at")
+            updated_at = tx.get("updatedAt")
             if not updated_at:
                 continue
 
@@ -71,7 +71,7 @@ class TaskFailAbandoned(WalletMonitorTask):
                 updated_at_dt = updated_at_dt.replace(tzinfo=timezone.utc)
 
             if updated_at_dt < abandoned_time:
-                tx_id = tx.get("transaction_id")
+                tx_id = tx.get("transactionId")
                 if tx_id:
                     try:
                         self.monitor.storage.update_transaction_status("failed", tx_id)

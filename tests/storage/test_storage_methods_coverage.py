@@ -4,7 +4,7 @@ This module tests storage-level operations for transaction management.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -15,18 +15,19 @@ from bsv_wallet_toolbox.storage.methods import (
     ListOutputsArgs,
     StorageProcessActionArgs,
     StorageProcessActionResults,
+    attempt_to_post_reqs_to_network,
     generate_change,
+    get_beef_for_transaction,
+    get_sync_chunk,
+    internalize_action,
     list_actions,
+    list_certificates,
     list_outputs,
     process_action,
-    list_certificates,
-    internalize_action,
-    get_beef_for_transaction,
-    attempt_to_post_reqs_to_network,
-    review_status,
     purge_data,
-    get_sync_chunk,
+    review_status,
 )
+from bsv_wallet_toolbox.utils.validation import InvalidParameterError
 
 
 class TestStorageDataclasses:
@@ -107,17 +108,15 @@ class TestProcessActionExtended:
                 self.send_with = []
                 self.isDelayed = False
                 self.rawTx = "test_raw_tx"
+                self._values = {
+                    "reference": "test_ref",
+                    "txid": "a" * 64,
+                    "rawTx": "test_raw_tx",
+                    "isDelayed": False,
+                }
 
             def get(self, key, default=""):
-                if key == "reference":
-                    return "test_ref"
-                elif key == "txid":
-                    return "a" * 64
-                elif key == "rawTx":
-                    return "test_raw_tx"
-                elif key == "isDelayed":
-                    return False
-                return default
+                return self._values.get(key, default)
 
         args = MockArgs()
         result = process_action(mock_storage, auth, args)
@@ -140,17 +139,15 @@ class TestProcessActionExtended:
                 self.send_with = []
                 self.isDelayed = True
                 self.rawTx = "delayed_raw_tx"
+                self._values = {
+                    "reference": "delayed_ref",
+                    "txid": "b" * 64,
+                    "rawTx": "delayed_raw_tx",
+                    "isDelayed": True,
+                }
 
             def get(self, key, default=""):
-                if key == "reference":
-                    return "delayed_ref"
-                elif key == "txid":
-                    return "b" * 64
-                elif key == "rawTx":
-                    return "delayed_raw_tx"
-                elif key == "isDelayed":
-                    return True
-                return default
+                return self._values.get(key, default)
 
         args = MockArgs()
         result = process_action(mock_storage, auth, args)
@@ -174,11 +171,10 @@ class TestProcessActionExtended:
                 self.is_new_tx = False
                 self.send_with = ["txid1", "txid2"]
                 self.isDelayed = True  # Use delayed path to avoid implementation bug
+                self._values = {"isDelayed": True}
 
             def get(self, key, default=""):
-                if key == "isDelayed":
-                    return True  # Use delayed path
-                return default
+                return self._values.get(key, default)
 
         args = MockArgs()
         result = process_action(mock_storage, auth, args)
@@ -200,11 +196,10 @@ class TestProcessActionExtended:
                 self.is_new_tx = False
                 self.send_with = ["delayed_txid"]
                 self.isDelayed = True
+                self._values = {"isDelayed": True}
 
             def get(self, key, default=""):
-                if key == "isDelayed":
-                    return True
-                return default
+                return self._values.get(key, default)
 
         args = MockArgs()
         result = process_action(mock_storage, auth, args)
@@ -235,7 +230,6 @@ class TestProcessActionExtended:
         """Test process_action new tx with missing required fields."""
         mock_storage = Mock()
         # Mock process_action to raise InvalidParameterError when required fields are missing
-        from bsv_wallet_toolbox.utils.validation import InvalidParameterError
         mock_storage.process_action = Mock(side_effect=InvalidParameterError("args", "reference, txid, and rawTx are required"))
 
         auth = {"userId": "test_user"}
@@ -244,10 +238,11 @@ class TestProcessActionExtended:
             def __init__(self):
                 self.is_new_tx = True
                 self.send_with = []
+                self._values: dict[str, str] = {}
 
             def get(self, key, default=""):
                 # Return empty strings for required fields
-                return default
+                return self._values.get(key, default)
 
         args = MockArgs()
 
@@ -261,85 +256,47 @@ class TestGenerateChangeExtended:
     def test_generate_change_basic(self) -> None:
         """Test basic generate_change functionality."""
         mock_storage = Mock()
-        # Mock generate_change to return expected result structure
-        # The actual function is a placeholder that raises NotImplementedError
-        with patch('bsv_wallet_toolbox.storage.methods.generate_change') as mock_generate_change:
-            mock_generate_change.return_value = {
-                "selected_change": [GenerateChangeInput(satoshis=100000, locking_script="script1")],
-                "total_satoshis": 100000,
-                "locked_outputs": []
-            }
+        auth = {"userId": 1}
+        available_change = [GenerateChangeInput(satoshis=100000, locking_script="script1")]
+        params = {
+            "auth": auth,
+            "availableChange": available_change,
+            "targetAmount": 50000,
+        }
 
-            auth = {"userId": 1}
-            available_change = [GenerateChangeInput(satoshis=100000, locking_script="script1")]
-            params = {
-                "auth": auth,
-                "available_change": available_change,
-                "target_amount": 50000
-            }
-
-            # Import here to get the patched version
-            from bsv_wallet_toolbox.storage.methods import generate_change as gen_change
-            result = gen_change(mock_storage, params)
-
-            assert isinstance(result, dict)
-            assert "selected_change" in result
-            assert "total_satoshis" in result
-            assert "locked_outputs" in result
+        with pytest.raises(NotImplementedError, match="generate_change_sdk"):
+            generate_change(mock_storage, params)
 
     def test_generate_change_with_existing_outputs(self) -> None:
         """Test generate_change with multiple outputs."""
         mock_storage = Mock()
-        # Mock generate_change to return expected result structure
-        with patch('bsv_wallet_toolbox.storage.methods.generate_change') as mock_generate_change:
-            mock_generate_change.return_value = {
-                "selected_change": [
-                    GenerateChangeInput(satoshis=50000, locking_script="script1"),
-                    GenerateChangeInput(satoshis=75000, locking_script="script2"),
-                ],
-                "total_satoshis": 125000,
-                "locked_outputs": []
-            }
+        auth = {"userId": 1}
+        available_change = [
+            GenerateChangeInput(satoshis=50000, locking_script="script1"),
+            GenerateChangeInput(satoshis=75000, locking_script="script2"),
+        ]
+        params = {
+            "auth": auth,
+            "availableChange": available_change,
+            "targetAmount": 100000,
+        }
 
-            auth = {"userId": 1}
-            available_change = [
-                GenerateChangeInput(satoshis=50000, locking_script="script1"),
-                GenerateChangeInput(satoshis=75000, locking_script="script2"),
-            ]
-            params = {
-                "auth": auth,
-                "available_change": available_change,
-                "target_amount": 100000
-            }
-
-            # Import here to get the patched version
-            from bsv_wallet_toolbox.storage.methods import generate_change as gen_change
-            result = gen_change(mock_storage, params)
-
-            assert isinstance(result, dict)
-            assert "selected_change" in result
-            assert result["total_satoshis"] >= 100000
+        with pytest.raises(NotImplementedError, match="generate_change_sdk"):
+            generate_change(mock_storage, params)
 
     def test_generate_change_insufficient_outputs(self) -> None:
         """Test generate_change when insufficient outputs available."""
         mock_storage = Mock()
-        # Mock generate_change to raise WalletError for insufficient funds
-        with patch('bsv_wallet_toolbox.storage.methods.generate_change') as mock_generate_change:
-            mock_generate_change.side_effect = WalletError("Insufficient funds for change allocation")
+        auth = {"userId": 1}
+        available_change = [GenerateChangeInput(satoshis=1000, locking_script="script1")]
+        params = {
+            "auth": auth,
+            "availableChange": available_change,
+            "targetAmount": 1_000_000,
+        }
 
-            auth = {"userId": 1}
-            available_change = [GenerateChangeInput(satoshis=1000, locking_script="script1")]
-            params = {
-                "auth": auth,
-                "available_change": available_change,
-                "target_amount": 1000000
-            }
-
-            # Import here to get the patched version
-            from bsv_wallet_toolbox.storage.methods import generate_change as gen_change
-            # Should raise WalletError due to insufficient funds
-            with pytest.raises(WalletError, match="Insufficient funds"):
-                gen_change(mock_storage, params)
+        with pytest.raises(NotImplementedError, match="generate_change_sdk"):
+            generate_change(mock_storage, params)
 
 
 class TestListActionsExtended:
@@ -378,6 +335,16 @@ class TestListActionsExtended:
         assert isinstance(result, dict)
         assert result["totalActions"] == 0
         assert result["actions"] == []
+
+    def test_list_actions_zero_limit(self) -> None:
+        """Test list_actions with zero limit."""
+        mock_storage = Mock()
+        mock_storage.list_actions = Mock(return_value={"totalActions": 0, "actions": []})
+        auth = {"userId": "user123"}
+        args = ListActionsArgs(limit=0, offset=0, labels=None)
+
+        result = list_actions(mock_storage, auth, args)
+        assert isinstance(result, dict)
 
 
 class TestListOutputsExtended:
@@ -504,6 +471,16 @@ class TestInternalizeActionExtended:
         assert isinstance(result, dict)
         assert result.get("isMerge") is True
 
+    def test_internalize_action_missing_tx(self) -> None:
+        """Test internalize_action without tx data."""
+        mock_storage = Mock()
+        mock_storage.internalize_action = Mock(return_value={"accepted": False, "error": "tx is required"})
+        auth = {"userId": "user123"}
+        args = {"outputs": []}  # Missing 'tx'
+
+        result = internalize_action(mock_storage, auth, args)
+        assert isinstance(result, dict)
+
 
 class TestBeefOperationsExtended:
     """Extended tests for BEEF operations."""
@@ -511,24 +488,22 @@ class TestBeefOperationsExtended:
     def test_get_beef_for_transaction_not_found(self) -> None:
         """Test get_beef_for_transaction with non-existent transaction."""
         mock_storage = Mock()
-        # Return None when transaction not found
-        mock_storage.get_beef_for_transaction = Mock(return_value=None)
-
         txid = "0" * 64
 
-        # Function should return None when transaction not found
-        result = get_beef_for_transaction(mock_storage, txid)
+        with patch("bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction", return_value=None) as mock_impl:
+            result = get_beef_for_transaction(mock_storage, txid)
+            mock_impl.assert_called_once_with(mock_storage, {}, txid, None)
         assert result is None
 
     def test_get_beef_for_transaction_found(self) -> None:
         """Test get_beef_for_transaction with existing transaction."""
         mock_storage = Mock()
         mock_beef_data = b"test_beef_data"
-        mock_storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
-
         txid = "a" * 64
-        result = get_beef_for_transaction(mock_storage, txid)
 
+        with patch("bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction", return_value=mock_beef_data) as mock_impl:
+            result = get_beef_for_transaction(mock_storage, txid)
+            mock_impl.assert_called_once_with(mock_storage, {}, txid, None)
         assert result == mock_beef_data
 
 
@@ -606,7 +581,7 @@ class TestPurgeDataExtended:
         """Test purge_data without agedBeforeDate."""
         mock_storage = Mock()
         mock_storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
+            "deletedTransactions": 0,
             "log": ""
         })
 
@@ -615,13 +590,13 @@ class TestPurgeDataExtended:
         result = purge_data(mock_storage, params)
 
         assert isinstance(result, dict)
-        assert "deleted_transactions" in result
+        assert "deletedTransactions" in result
 
     def test_purge_data_with_aged_before(self) -> None:
         """Test purge_data with agedBeforeDate."""
         mock_storage = Mock()
         mock_storage.purge_data = Mock(return_value={
-            "deleted_transactions": 5,
+            "deletedTransactions": 5,
             "log": ""
         })
 
@@ -630,7 +605,7 @@ class TestPurgeDataExtended:
         result = purge_data(mock_storage, params)
 
         assert isinstance(result, dict)
-        assert result["deleted_transactions"] == 5
+        assert result["deletedTransactions"] == 5
 
 
 class TestGetSyncChunkExtended:
@@ -1402,12 +1377,12 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=500, locking_script="script1"),
                 GenerateChangeInput(satoshis=300, locking_script="script2"),
             ],
-            "target_amount": 1000,
-            "exact_satoshis": 1000
+            "targetAmount": 1000,
+            "exactSatoshis": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1419,10 +1394,10 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=500, locking_script="script1"),
             ],
-            "target_amount": 1000
+            "targetAmount": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1434,11 +1409,11 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
                 GenerateChangeInput(satoshis=500, locking_script="script2"),
             ],
-            "target_amount": 1200
+            "targetAmount": 1200
         }
 
         # The wrapper function raises NotImplementedError
@@ -1450,12 +1425,12 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
                 GenerateChangeInput(satoshis=500, locking_script="script2"),
                 GenerateChangeInput(satoshis=200, locking_script="script3"),
             ],
-            "target_amount": 600
+            "targetAmount": 600
         }
 
         # The wrapper function raises NotImplementedError
@@ -1467,11 +1442,11 @@ class TestEdgeCases:
         storage = Mock()
         params = {
             "auth": {"userId": "user123"},
-            "available_change": [
+            "availableChange": [
                 GenerateChangeInput(satoshis=1000, locking_script="script1"),
             ],
-            "target_amount": 800,
-            "exact_satoshis": 1000
+            "targetAmount": 800,
+            "exactSatoshis": 1000
         }
 
         # The wrapper function raises NotImplementedError
@@ -1480,93 +1455,118 @@ class TestEdgeCases:
 
 
 class TestGetBeefForTransaction:
-    """Test get_beef_for_transaction function."""
+    """Test get_beef_for_transaction wrapper behavior."""
+
+    VALID_TXID = "a" * 64
 
     def test_get_beef_for_transaction_missing_storage(self) -> None:
-        """Test get_beef_for_transaction with missing storage."""
-        # The function doesn't validate storage, it just tries to call it
-        # which raises AttributeError when storage is None
-        with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_beef_for_transaction'"):
-            get_beef_for_transaction(None, "test_txid")
+        """Wrapper should propagate errors when storage is missing."""
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            side_effect=AttributeError("storage missing"),
+        ) as mock_impl:
+            with pytest.raises(AttributeError, match="storage missing"):
+                get_beef_for_transaction(None, self.VALID_TXID)
+        mock_impl.assert_called_once_with(None, {}, self.VALID_TXID, None)
 
     def test_get_beef_for_transaction_missing_txid(self) -> None:
-        """Test get_beef_for_transaction with missing txid."""
+        """Invalid txid should raise WalletError."""
         storage = Mock()
-        storage.get_beef_for_transaction = Mock(return_value=None)
-        # Empty txid should still work, just return None
-        result = get_beef_for_transaction(storage, "")
-        assert result is None
+        with pytest.raises(WalletError, match="txid must be a 64-character"):
+            get_beef_for_transaction(storage, "")
 
     def test_get_beef_for_transaction_not_found(self) -> None:
-        """Test get_beef_for_transaction with transaction not found."""
+        """Return None when implementation yields no data."""
         storage = Mock()
-        storage.get_beef_for_transaction = Mock(return_value=None)
-        # Function returns None when transaction not found
-        result = get_beef_for_transaction(storage, "nonexistent_txid")
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=None,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result is None
 
     def test_get_beef_for_transaction_from_proven_tx(self) -> None:
-        """Test get_beef_for_transaction from ProvenTx with beef data."""
+        """Return bytes when implementation supplies BEEF."""
         storage = Mock()
         mock_beef_data = b"deadbeef1234567890"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
-
-        result = get_beef_for_transaction(storage, "test_txid")
-
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_from_req_with_beef(self) -> None:
-        """Test get_beef_for_transaction from ProvenTxReq with beef data."""
+        """Ensure return value is propagated."""
         storage = Mock()
         mock_beef_data = b"cafebeef9876543210"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
-
-        result = get_beef_for_transaction(storage, "test_txid")
-
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_from_req_no_beef(self) -> None:
-        """Test get_beef_for_transaction from ProvenTxReq without beef data."""
+        """None return bubbles up."""
         storage = Mock()
-        storage.get_beef_for_transaction = Mock(return_value=None)
-        # Function returns None when no beef available
-        result = get_beef_for_transaction(storage, "test_txid")
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=None,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result is None
 
     def test_get_beef_for_transaction_construct_beef(self) -> None:
-        """Test get_beef_for_transaction constructing BEEF from components."""
+        """Options dictionary should be forwarded."""
         storage = Mock()
         mock_beef_data = b"constructed_beef_hex"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
-
-        result = get_beef_for_transaction(storage, "test_txid")
-
+        options = {"knownTxids": ["b" * 64]}
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID, options=options)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, options)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_beef_unavailable(self) -> None:
-        """Test get_beef_for_transaction when beef unavailable."""
+        """WalletError from implementation should propagate."""
         storage = Mock()
-        storage.get_beef_for_transaction = Mock(return_value=None)
-        # Function returns None when beef unavailable
-        result = get_beef_for_transaction(storage, "test_txid")
-        assert result is None
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            side_effect=WalletError("BEEF unavailable"),
+        ) as mock_impl:
+            with pytest.raises(WalletError, match="BEEF unavailable"):
+                get_beef_for_transaction(storage, self.VALID_TXID)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
 
     def test_get_beef_for_transaction_merge_beef(self) -> None:
-        """Test get_beef_for_transaction with mergeToBeef option."""
+        """mergeToBeef option should be passed through."""
         storage = Mock()
         mock_beef_data = b"merged_beef_result"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
-
-        result = get_beef_for_transaction(storage, "test_txid")
-
+        options = {"mergeToBeef": b"existing"}
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID, options=options)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, options)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_missing_raw_tx(self) -> None:
-        """Test get_beef_for_transaction with missing raw transaction data."""
+        """None result from implementation propagates when no raw tx available."""
         storage = Mock()
-        storage.get_beef_for_transaction = Mock(return_value=None)
-        # Function returns None when no raw transaction data available
-        result = get_beef_for_transaction(storage, "test_txid")
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=None,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result is None
 
 
@@ -1644,8 +1644,8 @@ class TestReviewStatus:
         """Test review_status with successful execution."""
         storage = Mock()
         storage.review_status = Mock(return_value={
-            "updated_count": 1,
-            "aged_count": 0
+            "updatedCount": 1,
+            "agedCount": 0
         })
 
         aged_limit = datetime(2023, 1, 1, 11, 30, 0)  # 1.5 hours ago
@@ -1653,22 +1653,22 @@ class TestReviewStatus:
         result = review_status(storage, args)
 
         assert isinstance(result, dict)
-        assert "updated_count" in result
-        assert "aged_count" in result
+        assert "updatedCount" in result
+        assert "agedCount" in result
 
     def test_review_status_no_aged_transactions(self) -> None:
         """Test review_status with no aged transactions."""
         storage = Mock()
         storage.review_status = Mock(return_value={
-            "updated_count": 0,
-            "aged_count": 0
+            "updatedCount": 0,
+            "agedCount": 0
         })
 
         args = {"agedLimit": datetime(2023, 1, 1, 12, 0, 0)}
         result = review_status(storage, args)
 
-        assert result["updated_count"] == 0
-        assert result["aged_count"] == 0
+        assert result["updatedCount"] == 0
+        assert result["agedCount"] == 0
 
 
 class TestPurgeData:
@@ -1682,24 +1682,24 @@ class TestPurgeData:
     def test_purge_data_success(self) -> None:
         """Test purge_data with successful execution."""
         storage = Mock()
-        storage.purge_data = Mock(return_value={"deleted_transactions": 5, "log": ""})
+        storage.purge_data = Mock(return_value={"deletedTransactions": 5, "log": ""})
 
         params = {"agedBeforeDate": "2023-01-01"}
         result = purge_data(storage, params)
 
         assert isinstance(result, dict)
-        assert "deleted_transactions" in result
-        assert result["deleted_transactions"] == 5
+        assert "deletedTransactions" in result
+        assert result["deletedTransactions"] == 5
 
     def test_purge_data_no_matches(self) -> None:
         """Test purge_data with no matching records."""
         storage = Mock()
-        storage.purge_data = Mock(return_value={"deleted_transactions": 0, "log": ""})
+        storage.purge_data = Mock(return_value={"deletedTransactions": 0, "log": ""})
 
         params = {"agedBeforeDate": "2023-01-01"}
         result = purge_data(storage, params)
 
-        assert result["deleted_transactions"] == 0
+        assert result["deletedTransactions"] == 0
 
 
 class TestGetSyncChunk:

@@ -69,8 +69,8 @@ class TestTxSize:
         """
         tests = {
             "two inputs, two outputs": {
-                "input_sizes": [100, 200],
-                "output_sizes": [300, 400],
+                "inputSizes": [100, 200],
+                "outputSizes": [300, 400],
                 "expected": (
                     8  # tx envelope size
                     + 1  # varint size of inputs count
@@ -82,8 +82,8 @@ class TestTxSize:
                 ),
             },
             "zero inputs, two outputs": {
-                "input_sizes": [],
-                "output_sizes": [300, 400],
+                "inputSizes": [],
+                "outputSizes": [300, 400],
                 "expected": (
                     8  # tx envelope size
                     + 1  # varint size of inputs count
@@ -93,8 +93,8 @@ class TestTxSize:
                 ),
             },
             "two inputs, zero outputs": {
-                "input_sizes": [100, 200],
-                "output_sizes": [],
+                "inputSizes": [100, 200],
+                "outputSizes": [],
                 "expected": (
                     8  # tx envelope size
                     + 1  # varint size of inputs count
@@ -104,8 +104,8 @@ class TestTxSize:
                 ),
             },
             "300 inputs, 400 outputs": {
-                "input_sizes": [100] * 300,
-                "output_sizes": [200] * 400,
+                "inputSizes": [100] * 300,
+                "outputSizes": [200] * 400,
                 "expected": (
                     8  # tx envelope size
                     + 3  # varint size of inputs count
@@ -118,7 +118,7 @@ class TestTxSize:
 
         for name, test in tests.items():
             # When
-            size = transaction_size(test["input_sizes"], test["output_sizes"])
+            size = transaction_size(test["inputSizes"], test["outputSizes"])
 
             # Then
             assert size == test["expected"], f"Test '{name}' failed"

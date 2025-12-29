@@ -128,11 +128,11 @@ def create_action_tx_assembler() -> dict[str, Any]:
         "inputs": [],
         "outputs": [],
         "lockTime": 0,
-        "change_derivation_path": None,
-        "fee_rate": 1,  # satoshis per byte
-        "dust_limit": 0,  # minimum output value
-        "randomize_outputs": True,
-        "use_all_inputs": False,
+        "changeDerivationPath": None,
+        "feeRate": 1,  # satoshis per byte
+        "dustLimit": 0,  # minimum output value
+        "randomizeOutputs": True,
+        "useAllInputs": False,
     }
 
     return assembler_config

@@ -42,7 +42,7 @@ class ChaintracksServiceConfig:
             self.live_ingestors = ["woc_poll"]
         if self.bulk_ingestors is None:
             self.bulk_ingestors = [
-                {"type": "chaintracks_cdn", "cdn_config": {"source_url": "https://cdn.projectbabbage.com/blockheaders"}},
+                {"type": "chaintracks_cdn", "cdnConfig": {"sourceUrl": "https://cdn.projectbabbage.com/blockheaders"}},
                 {"type": "whats_on_chain_cdn"}
             ]
 

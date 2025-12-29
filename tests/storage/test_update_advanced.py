@@ -6,8 +6,24 @@ Reference: wallet-toolbox/test/storage/update2.test.ts
 """
 
 from datetime import datetime
+import re
 
 import pytest
+
+
+def _camel_to_snake(name: str) -> str:
+    s1 = re.sub("([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def _build_mock_storage(methods: dict[str, object]) -> object:
+    attrs: dict[str, object] = {}
+    for key, value in methods.items():
+        attrs[key] = value
+        snake_key = _camel_to_snake(key)
+        if snake_key != key and snake_key not in attrs:
+            attrs[snake_key] = value
+    return type("MockStorage", (), attrs)()
 
 
 class Testupdate2:
@@ -23,21 +39,19 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_proven_txs": lambda self, query: [{"provenTxId": 1, "blockHash": "old"}],
-                "update_proven_tx": lambda self, id, updates: 1,
-            },
-        )()
+                "findProvenTxs": lambda self, query: [{"provenTxId": 1, "blockHash": "old"}],
+                "updateProvenTx": lambda self, id, updates: 1,
+            }
+        )
 
         time = datetime(2001, 1, 2, 12, 0, 0)
 
         # When
         records = mock_storage.find_proven_txs({"partial": {}})
         for record in records:
-            mock_storage.update_proven_tx(record["provenTxId"], {"blockHash": "fred", "updated_at": time})
+            mock_storage.update_proven_tx(record["provenTxId"], {"blockHash": "fred", "updatedAt": time})
             updated = mock_storage.find_proven_txs({"partial": {"provenTxId": record["provenTxId"]}})
 
             # Then
@@ -54,19 +68,17 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_proven_txs": lambda self, query: [{"provenTxId": 1}],
-                "update_proven_tx": lambda self, id, updates: 1,
-            },
-        )()
+                "findProvenTxs": lambda self, query: [{"provenTxId": 1}],
+                "updateProvenTx": lambda self, id, updates: 1,
+            }
+        )
 
         test_values = {
             "txid": "mockTxid",
-            "created_at": datetime(2024, 12, 30, 23, 0, 0),
-            "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+            "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+            "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
             "blockHash": "mockBlockHash",
             "height": 12345,
             "index": 1,
@@ -93,28 +105,26 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_proven_txs": lambda self, query: [{"provenTxId": 1}],
-                "update_proven_tx": lambda self, id, updates: 1,
-            },
-        )()
+                "findProvenTxs": lambda self, query: [{"provenTxId": 1}],
+                "updateProvenTx": lambda self, id, updates: 1,
+            }
+        )
 
         scenarios = [
             {
                 "description": "Invalid created_at time",
                 "updates": {
-                    "created_at": datetime(3000, 1, 1, 0, 0, 0),
-                    "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+                    "createdAt": datetime(3000, 1, 1, 0, 0, 0),
+                    "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
                 },
             },
             {
                 "description": "Invalid updated_at time",
                 "updates": {
-                    "created_at": datetime(2024, 12, 30, 23, 0, 0),
-                    "updated_at": datetime(3000, 1, 1, 0, 0, 0),
+                    "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+                    "updatedAt": datetime(3000, 1, 1, 0, 0, 0),
                 },
             },
         ]
@@ -136,21 +146,19 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "insert_proven_tx": lambda self, record: 3,
-                "find_proven_txs": lambda self, query: [{"provenTxId": 3}],
-                "update_proven_tx": lambda self, id, updates: 1,
-            },
-        )()
+                "insertProvenTx": lambda self, record: 3,
+                "findProvenTxs": lambda self, query: [{"provenTxId": 3}],
+                "updateProvenTx": lambda self, id, updates: 1,
+            }
+        )
 
         initial_record = {
             "provenTxId": 3,
             "txid": "mockTxid",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
             "blockHash": "",
             "height": 1,
             "index": 1,
@@ -177,22 +185,20 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_proven_tx_reqs": lambda self, query: [{"provenTxReqId": 1}],
-                "update_proven_tx_req": lambda self, id, updates: 1,
-            },
-        )()
+                "findProvenTxReqs": lambda self, query: [{"provenTxReqId": 1}],
+                "updateProvenTxReq": lambda self, id, updates: 1,
+            }
+        )
 
         test_values = {
             "provenTxId": 1,
             "batch": "batch-001",
             "status": "completed",
             "txid": "mockTxid-0",
-            "created_at": datetime(2024, 12, 30, 23, 0, 0),
-            "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+            "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+            "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
             "attempts": 3,
             "history": '{"validated": true}',
             "inputBEEF": [5, 6, 7, 8],
@@ -217,28 +223,26 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_proven_tx_reqs": lambda self, query: [{"provenTxReqId": 1}],
-                "update_proven_tx_req": lambda self, id, updates: 1,
-            },
-        )()
+                "findProvenTxReqs": lambda self, query: [{"provenTxReqId": 1}],
+                "updateProvenTxReq": lambda self, id, updates: 1,
+            }
+        )
 
         scenarios = [
             {
                 "description": "Invalid created_at time",
                 "updates": {
-                    "created_at": datetime(3000, 1, 1, 0, 0, 0),
-                    "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+                    "createdAt": datetime(3000, 1, 1, 0, 0, 0),
+                    "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
                 },
             },
             {
                 "description": "Invalid updated_at time",
                 "updates": {
-                    "created_at": datetime(2024, 12, 30, 23, 0, 0),
-                    "updated_at": datetime(3000, 1, 1, 0, 0, 0),
+                    "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+                    "updatedAt": datetime(3000, 1, 1, 0, 0, 0),
                 },
             },
         ]
@@ -259,11 +263,9 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
-            {"insert_proven_tx_req": lambda self, record: 3, "update_proven_tx_req": lambda self, id, updates: 1},
-        )()
+        mock_storage = _build_mock_storage(
+            {"insertProvenTxReq": lambda self, record: 3, "updateProvenTxReq": lambda self, id, updates: 1}
+        )
 
         reference_time = datetime.now()
         initial_record = {
@@ -272,8 +274,8 @@ class Testupdate2:
             "batch": "batch",
             "status": "nosend",
             "txid": "mockTxid1",
-            "created_at": reference_time,
-            "updated_at": reference_time,
+            "createdAt": reference_time,
+            "updatedAt": reference_time,
             "attempts": 0,
             "history": "{}",
             "inputBEEF": [],
@@ -299,20 +301,18 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_users": lambda self, query: [{"userId": 1}],
-                "update_user": lambda self, id, updates: 1,
-                "get_settings": lambda self: {"storageIdentityKey": "test_key"},
-            },
-        )()
+                "findUsers": lambda self, query: [{"userId": 1}],
+                "updateUser": lambda self, id, updates: 1,
+                "getSettings": lambda self: {"storageIdentityKey": "test_key"},
+            }
+        )
 
         test_values = {
             "identityKey": "mockUpdatedIdentityKey-1",
-            "created_at": datetime(2024, 12, 30, 23, 0, 0),
-            "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+            "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+            "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
             "activeStorage": "test_key",
         }
 
@@ -334,25 +334,23 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
-            {"find_users": lambda self, query: [{"userId": 1}], "update_user": lambda self, id, updates: 1},
-        )()
+        mock_storage = _build_mock_storage(
+            {"findUsers": lambda self, query: [{"userId": 1}], "updateUser": lambda self, id, updates: 1}
+        )
 
         scenarios = [
             {
                 "description": "Invalid created_at time",
                 "updates": {
-                    "created_at": datetime(3000, 1, 1, 0, 0, 0),
-                    "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+                    "createdAt": datetime(3000, 1, 1, 0, 0, 0),
+                    "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
                 },
             },
             {
                 "description": "Invalid updated_at time",
                 "updates": {
-                    "created_at": datetime(2024, 12, 30, 23, 0, 0),
-                    "updated_at": datetime(3000, 1, 1, 0, 0, 0),
+                    "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+                    "updatedAt": datetime(3000, 1, 1, 0, 0, 0),
                 },
             },
         ]
@@ -376,7 +374,7 @@ class Testupdate2:
         def _raise_unique_error(self, id, updates):
             raise Exception("UNIQUE constraint failed")
 
-        mock_storage = type("MockStorage", (), {"update_user": _raise_unique_error})()
+        mock_storage = _build_mock_storage({"updateUser": _raise_unique_error})
 
         # When/Then - should trigger unique constraint error
         with pytest.raises(Exception):
@@ -395,7 +393,7 @@ class Testupdate2:
         def _raise_fk_error(self, id, updates):
             raise Exception("FOREIGN KEY constraint failed")
 
-        mock_storage = type("MockStorage", (), {"update_user": _raise_fk_error})()
+        mock_storage = _build_mock_storage({"updateUser": _raise_fk_error})
 
         # When/Then - should trigger foreign key constraint error
         with pytest.raises(Exception):
@@ -411,21 +409,19 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "insert_user": lambda self, record: 3,
-                "update_user": lambda self, id, updates: 1,
-                "get_settings": lambda self: {"storageIdentityKey": "test_key"},
-            },
-        )()
+                "insertUser": lambda self, record: 3,
+                "updateUser": lambda self, id, updates: 1,
+                "getSettings": lambda self: {"storageIdentityKey": "test_key"},
+            }
+        )
 
         initial_record = {
             "userId": 3,
             "identityKey": "",
-            "created_at": datetime.now(),
-            "updated_at": datetime.now(),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime.now(),
             "activeStorage": "test_key",
         }
 
@@ -446,14 +442,12 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_certificates": lambda self, query: [{"certificateId": 1}],
-                "update_certificate": lambda self, id, updates: 1,
-            },
-        )()
+                "findCertificates": lambda self, query: [{"certificateId": 1}],
+                "updateCertificate": lambda self, id, updates: 1,
+            }
+        )
 
         test_values = {
             "type": "mockType",
@@ -463,8 +457,8 @@ class Testupdate2:
             "revocationOutpoint": "mockRevocationOutpoint",
             "signature": "mockSignature",
             "fields": {},
-            "created_at": datetime(2024, 12, 30, 23, 0, 0),
-            "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+            "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+            "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
             "isDeleted": False,
         }
 
@@ -486,28 +480,26 @@ class Testupdate2:
         """
         # Given
 
-        mock_storage = type(
-            "MockStorage",
-            (),
+        mock_storage = _build_mock_storage(
             {
-                "find_certificates": lambda self, query: [{"certificateId": 1}],
-                "update_certificate": lambda self, id, updates: 1,
-            },
-        )()
+                "findCertificates": lambda self, query: [{"certificateId": 1}],
+                "updateCertificate": lambda self, id, updates: 1,
+            }
+        )
 
         scenarios = [
             {
                 "description": "Invalid created_at time",
                 "updates": {
-                    "created_at": datetime(3000, 1, 1, 0, 0, 0),
-                    "updated_at": datetime(2024, 12, 30, 23, 5, 0),
+                    "createdAt": datetime(3000, 1, 1, 0, 0, 0),
+                    "updatedAt": datetime(2024, 12, 30, 23, 5, 0),
                 },
             },
             {
                 "description": "Invalid updated_at time",
                 "updates": {
-                    "created_at": datetime(2024, 12, 30, 23, 0, 0),
-                    "updated_at": datetime(3000, 1, 1, 0, 0, 0),
+                    "createdAt": datetime(2024, 12, 30, 23, 0, 0),
+                    "updatedAt": datetime(3000, 1, 1, 0, 0, 0),
                 },
             },
         ]
@@ -531,7 +523,7 @@ class Testupdate2:
         def _raise_unique_error(self, id, updates):
             raise Exception("UNIQUE constraint failed")
 
-        mock_storage = type("MockStorage", (), {"update_certificate": _raise_unique_error})()
+        mock_storage = _build_mock_storage({"updateCertificate": _raise_unique_error})
 
         # When/Then - should trigger unique constraint error
         with pytest.raises(Exception):
@@ -550,7 +542,7 @@ class Testupdate2:
         def _raise_fk_error(self, id, updates):
             raise Exception("FOREIGN KEY constraint failed")
 
-        mock_storage = type("MockStorage", (), {"update_certificate": _raise_fk_error})()
+        mock_storage = _build_mock_storage({"updateCertificate": _raise_fk_error})
 
         # When/Then - should trigger foreign key constraint error
         with pytest.raises(Exception):

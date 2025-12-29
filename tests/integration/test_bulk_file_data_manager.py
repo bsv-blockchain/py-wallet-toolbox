@@ -198,7 +198,7 @@ class TestBulkFileDataManager:
                 pass
 
         # SQLite configuration (Python equivalent of Knex config)
-        local_sqlite_config = {"client": "sqlite3", "connection": {"filename": path}, "use_null_as_default": True}
+        local_sqlite_config = {"client": "sqlite3", "connection": {"filename": path}, "useNullAsDefault": True}
 
         knex_options = ChaintracksStorageKnex.create_storage_knex_options(self.chain, local_sqlite_config)
         knex_options.bulk_file_data_manager = manager

@@ -151,7 +151,7 @@ class EntitySyncState:
         # Get or create user
         user_result = storage.find_or_insert_user(user_identity_key)
         user = user_result.get("user", {})
-        user_id = user.get("userId") or user.get("user_id", 0)
+        user_id = user.get("userId") or user.get("userId", 0)
         
         # Get or create sync state
         storage_identity_key = remote_settings.get("storageIdentityKey", "")
@@ -350,9 +350,9 @@ class WalletStorageManager:
                 user_result = store.storage.find_or_insert_user(self._auth_id.identity_key)
                 user_data = user_result.get("user", {})
                 store.user = TableUser(
-                    user_id=user_data.get("userId") or user_data.get("user_id", 0),
-                    identity_key=user_data.get("identityKey") or user_data.get("identity_key", ""),
-                    active_storage=user_data.get("activeStorage") or user_data.get("active_storage"),
+                    user_id=user_data.get("userId") or user_data.get("userId", 0),
+                    identity_key=user_data.get("identityKey") or user_data.get("identityKey", ""),
+                    active_storage=user_data.get("activeStorage") or user_data.get("activeStorage"),
                 )
                 store.is_available = True
             
@@ -517,7 +517,7 @@ class WalletStorageManager:
             
             inserts += result.get("inserts", 0)
             updates += result.get("updates", 0)
-            max_updated = result.get("maxUpdated_at", "")
+            max_updated = result.get("maxUpdatedAt", "")
             
             log += prog_log(
                 f"chunk {chunk_num} inserted {result.get('inserts', 0)} "
@@ -642,7 +642,7 @@ class WalletStorageManager:
             
             inserts += result.get("inserts", 0)
             updates += result.get("updates", 0)
-            max_updated = result.get("maxUpdated_at", "")
+            max_updated = result.get("maxUpdatedAt", "")
             
             log += prog_log(
                 f"chunk {chunk_num} inserted {result.get('inserts', 0)} "

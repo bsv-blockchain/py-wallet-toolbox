@@ -112,7 +112,7 @@ def send_wallet_payment_ex(
         key_id=key_id,
         recipient_public_key=recipient_identity_key,
         testnet=testnet,
-    )["address_string"]
+    )["addressString"]
 
     locking_script = lock_for_counterparty(
         sender_private_key=sender_wallet.key_deriver,

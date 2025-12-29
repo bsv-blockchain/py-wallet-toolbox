@@ -23,17 +23,17 @@ def get_universal_certificates() -> List[Dict[str, Any]]:
     return [
         {
             "type": "test-type",
-            "serial_number": "test-serial-number",
+            "serialNumber": "test-serial-number",
             "certifier": "0294c479f762f6baa97fbcd4393564c1d7bd8336ebd15928135bbcf575cd1a71a1",
             "subject": "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097",
-            "revocation_outpoint": "aec245f27b7640c8b1865045107731bfb848115c573f7da38166074b1c9e475d.0",
+            "revocationOutpoint": "aec245f27b7640c8b1865045107731bfb848115c573f7da38166074b1c9e475d.0",
             "signature": "3045022100a6f09ee70382ab364f3f6b040aebb8fe7a51dbc3b4c99cfeb2f7756432162833022067349b91a6319345996faddf36d1b2f3a502e4ae002205f9d2db85474f9aed5a",
             "fields": {
                 "name": "Alice",
                 "email": "alice@example.com"
             },
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
         }
     ]
 
@@ -47,36 +47,36 @@ def get_universal_outputs() -> List[Dict[str, Any]]:
 
     return [
         {
-            "transaction_id": 1,  # Will be set by caller
-            "user_id": 1,
-            "basket_id": 1,
+            "transactionId": 1,  # Will be set by caller
+            "userId": 1,
+            "basketId": 1,
             "vout": 0,
             "satoshis": 1000,
             "spendable": True,
             "change": False,
-            "provided_by": "test",
+            "providedBy": "test",
             "purpose": "payment",
             "type": "standard",
             "txid": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-            "locking_script": bytes([0x76, 0xa9, 0x14] + [0xaa] * 20 + [0x88, 0xac]),  # P2PKH
-            "created_at": now,
-            "updated_at": now,
+            "lockingScript": bytes([0x76, 0xa9, 0x14] + [0xaa] * 20 + [0x88, 0xac]),  # P2PKH
+            "createdAt": now,
+            "updatedAt": now,
         },
         {
-            "transaction_id": 2,  # Will be set by caller
-            "user_id": 1,
-            "basket_id": 1,
+            "transactionId": 2,  # Will be set by caller
+            "userId": 1,
+            "basketId": 1,
             "vout": 0,
             "satoshis": 5000,
             "spendable": True,
             "change": False,
-            "provided_by": "test",
+            "providedBy": "test",
             "purpose": "payment",
             "type": "standard",
             "txid": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-            "locking_script": bytes([0x76, 0xa9, 0x14] + [0xbb] * 20 + [0x88, 0xac]),  # P2PKH
-            "created_at": now,
-            "updated_at": now,
+            "lockingScript": bytes([0x76, 0xa9, 0x14] + [0xbb] * 20 + [0x88, 0xac]),  # P2PKH
+            "createdAt": now,
+            "updatedAt": now,
         }
     ]
 
@@ -87,32 +87,32 @@ def get_universal_transactions() -> List[Dict[str, Any]]:
 
     return [
         {
-            "user_id": 1,
+            "userId": 1,
             "txid": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
             "status": "confirmed",
             "reference": "universal-test-tx-1",
-            "is_outgoing": False,
+            "isOutgoing": False,
             "satoshis": 1000,
             "description": "Universal test transaction 1",
             "version": 1,
-            "lock_time": 0,
-            "raw_tx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50),  # Minimal valid tx
-            "created_at": now,
-            "updated_at": now,
+            "lockTime": 0,
+            "rawTx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50),  # Minimal valid tx
+            "createdAt": now,
+            "updatedAt": now,
         },
         {
-            "user_id": 1,
+            "userId": 1,
             "txid": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
             "status": "confirmed",
             "reference": "universal-test-tx-2",
-            "is_outgoing": False,
+            "isOutgoing": False,
             "satoshis": 5000,
             "description": "Universal test transaction 2",
             "version": 1,
-            "lock_time": 0,
-            "raw_tx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50),  # Minimal valid tx
-            "created_at": now,
-            "updated_at": now,
+            "lockTime": 0,
+            "rawTx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50),  # Minimal valid tx
+            "createdAt": now,
+            "updatedAt": now,
         }
     ]
 
@@ -135,13 +135,13 @@ def seed_universal_certificates(storage, user_id: int = 1) -> List[int]:
         storage_cert = {
             "userId": user_id,
             "type": cert_data["type"],
-            "serialNumber": cert_data["serial_number"],
+            "serialNumber": cert_data["serialNumber"],
             "certifier": cert_data["certifier"],
             "subject": cert_data["subject"],
-            "revocationOutpoint": cert_data["revocation_outpoint"],
+            "revocationOutpoint": cert_data["revocationOutpoint"],
             "signature": cert_data["signature"],
-            "created_at": cert_data["created_at"],
-            "updated_at": cert_data["updated_at"],
+            "createdAt": cert_data["createdAt"],
+            "updatedAt": cert_data["updatedAt"],
         }
 
         cert_id = storage.insert_certificate(storage_cert)
@@ -165,18 +165,18 @@ def seed_universal_outputs(storage) -> List[int]:
 
     for tx_data in transactions:
         storage_tx = {
-            "userId": tx_data["user_id"],
+            "userId": tx_data["userId"],
             "txid": tx_data["txid"],
             "status": tx_data["status"],
             "reference": tx_data["reference"],
-            "isOutgoing": tx_data["is_outgoing"],
+            "isOutgoing": tx_data["isOutgoing"],
             "satoshis": tx_data["satoshis"],
             "description": tx_data["description"],
             "version": tx_data["version"],
-            "lockTime": tx_data["lock_time"],
-            "rawTx": tx_data["raw_tx"],
-            "created_at": tx_data["created_at"],
-            "updated_at": tx_data["updated_at"],
+            "lockTime": tx_data["lockTime"],
+            "rawTx": tx_data["rawTx"],
+            "createdAt": tx_data["createdAt"],
+            "updatedAt": tx_data["updatedAt"],
         }
 
         tx_id = storage.insert_transaction(storage_tx)

@@ -109,6 +109,23 @@ def _decode_remittance_component(value: str) -> str:
     return text
 
 
+def _normalize_raw_tx(value: Any) -> Any:
+    """Convert serialized transaction data into bytes when possible."""
+    if isinstance(value, (bytes, bytearray)):
+        return bytes(value)
+    if isinstance(value, list):
+        try:
+            return bytes(value)
+        except Exception:  # pragma: no cover - fallback to original value
+            return value
+    if isinstance(value, str):
+        try:
+            return bytes.fromhex(value)
+        except ValueError:
+            return value.encode()
+    return value
+
+
 def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateActionResultX:
     """Create action with optional signing (TS parity).
 
@@ -259,17 +276,17 @@ def build_signable_transaction(
     for storage_input in storage_inputs:
         vin = storage_input.get("vin")
         args_input = args.get("inputs", [])[vin] if vin is not None and vin < len(args.get("inputs", [])) else None
-        inputs.append({"args_input": args_input, "storage_input": storage_input})
+        inputs.append({"argsInput": args_input, "storageInput": storage_input})
 
-    inputs.sort(key=lambda x: x["storage_input"].get("vin", 0))
+    inputs.sort(key=lambda x: x["storageInput"].get("vin", 0))
 
     pending_storage_inputs: list[PendingStorageInput] = []
     total_change_inputs = 0
 
     # Add inputs
     for input_data in inputs:
-        storage_input = input_data["storage_input"]
-        args_input = input_data["args_input"]
+        storage_input = input_data["storageInput"]
+        args_input = input_data["argsInput"]
 
         # Skip inputs that are handled via BEEF (they don't need explicit input processing)
         if storage_input.get("beef"):
@@ -395,28 +412,28 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
             create_input = None
         input_data = prior.tx.inputs[vin] if vin < len(prior.tx.inputs) else None
 
+        expected_length = create_input.get("unlockingScriptLength") if create_input else None
         if (
             not create_input
             or input_data is None
-            or create_input.get("unlocking_script") is not None
-            or "unlocking_script_length" not in create_input
-            or not isinstance(create_input["unlocking_script_length"], int)
+            or create_input.get("unlockingScript") is not None
+            or not isinstance(expected_length, int)
         ):
             raise WalletError("spend does not correspond to prior input with valid unlockingScriptLength.")
 
-        unlock_script_hex = spend.get("unlocking_script", "")
+        unlock_script_hex = spend.get("unlockingScript", "")
         unlock_script_len_bytes = len(unlock_script_hex) // 2
 
-        if unlock_script_len_bytes > create_input["unlocking_script_length"]:
+        if unlock_script_len_bytes > expected_length:
             raise WalletError(
                 f"spend unlockingScript length {unlock_script_len_bytes} "
-                f"exceeds expected length {create_input['unlocking_script_length']}"
+                f"exceeds expected length {expected_length}"
             )
 
         # Apply unlocking script and optional sequence number to the underlying TransactionInput
         input_data.unlocking_script = Script.from_bytes(bytes.fromhex(unlock_script_hex))
-        if "sequence_number" in spend:
-            input_data.sequence = spend["sequence_number"]
+        if "sequenceNumber" in spend:
+            input_data.sequence = spend["sequenceNumber"]
 
     # Insert SABPPP unlock templates for wallet-signed inputs
     # These are wallet-signed inputs that use BRC-29 protocol for authentication
@@ -446,8 +463,8 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
 
                 if create_input:
                     # Use key_id / locker_pub_key from create_action args
-                    key_id = create_input.get("key_id", "")
-                    locker_pub = create_input.get("locker_pub_key", "")
+                    key_id = create_input.get("keyID", "")
+                    locker_pub = create_input.get("lockerPubKey", "")
                 else:
                     # Wallet-managed change: derive from storage metadata
                     key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}".strip()
@@ -565,6 +582,8 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
         trace(logger, "signer.process_action.complete_signed_transaction.ok", txid=prior.tx.txid(), rawTx=prior.tx.serialize())
 
+    raw_tx_value = _normalize_raw_tx(prior.tx.serialize())
+
     storage_args = {
         "isNewTx": vargs.get("isNewTx"),
         "isSendWith": vargs.get("isSendWith"),
@@ -572,8 +591,7 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         "isDelayed": vargs.get("isDelayed"),
         "reference": prior.reference,
         "txid": prior.tx.txid(),
-        # Normalize to bytes to ensure RPC layer serializes as byte-array, not string.
-        "rawTx": bytes(prior.tx.serialize()),
+        "rawTx": raw_tx_value,
         "sendWith": vargs.get("options", {}).get("sendWith", []) if vargs.get("isSendWith") else [],
     }
 
@@ -729,19 +747,29 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         except Exception:  # noqa: BLE001
             build_result = None
     if build_result is None:
-        raise WalletError("unable to build AtomicBEEF for internalizeAction (services unavailable)")
+        normalized_atomic = bytes(tx_bytes) if tx_bytes else ab.to_binary()
+        trace(
+            logger,
+            "signer.internalize_action.atomic_beef.fallback",
+            txid=txid,
+            reason="services unavailable",
+            raw_len=len(tx_bytes or b""),
+            atomic_len=len(normalized_atomic),
+        )
+    else:
+        normalized_atomic = build_result.atomic_bytes
+        trace(
+            logger,
+            "signer.internalize_action.atomic_beef.normalized",
+            txid=txid,
+            raw_len=len(tx.serialize()),
+            atomic_len=len(build_result.atomic_bytes),
+            has_merkle_path=build_result.has_merkle_path,
+            parents_total=build_result.parents_total,
+            parents_with_proof=build_result.parents_with_proof,
+        )
 
-    vargs["tx"] = build_result.atomic_bytes
-    trace(
-        logger,
-        "signer.internalize_action.atomic_beef.normalized",
-        txid=txid,
-        raw_len=len(tx.serialize()),
-        atomic_len=len(build_result.atomic_bytes),
-        has_merkle_path=build_result.has_merkle_path,
-        parents_total=build_result.parents_total,
-        parents_with_proof=build_result.parents_with_proof,
-    )
+    vargs["tx"] = normalized_atomic
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]
@@ -749,7 +777,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
     # Process each output
     for output_spec in vargs.get("outputs", []):
         trace(logger, "signer.internalize_action.output_spec", outputSpec=output_spec)
-        output_index = output_spec.get("output_index")
+        output_index = output_spec.get("outputIndex")
 
         if output_index < 0 or output_index >= len(tx.outputs):
             raise WalletError(f"outputIndex must be valid output index in range 0 to {len(tx.outputs) - 1}")
@@ -900,19 +928,19 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
 
     # Step 3: Create certificate record for storage
     new_cert = {
-        "created_at": now,
-        "updated_at": now,
-        "user_id": user_id,
+        "createdAt": now,
+        "updatedAt": now,
+        "userId": user_id,
         "type": cert_type,
         "subject": subject,
         "verifier": (
             certifier if vargs.get("keyringRevealer") == "certifier" else vargs.get("keyringRevealer")
         ),
-        "serial_number": serial_number,
+        "serialNumber": serial_number,
         "certifier": certifier,
-        "revocation_outpoint": revocation_outpoint,
+        "revocationOutpoint": revocation_outpoint,
         "signature": signature,
-        "is_deleted": False,
+        "isDeleted": False,
     }
 
     # Step 4: Insert certificate into storage
@@ -920,16 +948,16 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
 
     # Step 5: Add certificate fields separately (Python API requires separate insert)
     if cert_result:
-        cert_id = cert_result if isinstance(cert_result, int) else cert_result.get("certificate_id", 0)
+        cert_id = cert_result if isinstance(cert_result, int) else cert_result.get("certificateId", 0)
         for field_name, field_value in fields.items():
             field_data = {
-                "certificate_id": cert_id,
-                "created_at": now,
-                "updated_at": now,
-                "user_id": user_id,
-                "field_name": field_name,
-                "field_value": field_value,
-                "master_key": keyring_for_subject.get(field_name, ""),
+                "certificateId": cert_id,
+                "createdAt": now,
+                "updatedAt": now,
+                "userId": user_id,
+                "fieldName": field_name,
+                "fieldValue": field_value,
+                "masterKey": keyring_for_subject.get(field_name, ""),
             }
             wallet.storage.insert_certificate_field(field_data)
 
@@ -1005,9 +1033,9 @@ def prove_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) -> dict[str
 
     # Use py-sdk MasterCertificate.create_keyring_for_verifier() to generate proof keyring
     # TypeScript parity: fieldsToReveal (camelCase) vs fields_to_reveal (snake_case)
-    fields_to_reveal = vargs.get("fieldsToReveal") or vargs.get("fields_to_reveal", [])
+    fields_to_reveal = vargs.get("fieldsToReveal") or vargs.get("fieldsToReveal", [])
     privileged = vargs.get("privileged", False)
-    privileged_reason = vargs.get("privilegedReason") or vargs.get("privileged_reason", "")
+    privileged_reason = vargs.get("privilegedReason") or vargs.get("privilegedReason", "")
 
     try:
         keyring_for_verifier = MasterCertificate.create_keyring_for_verifier(
@@ -1017,7 +1045,7 @@ def prove_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) -> dict[str
             fields=storage_cert.get("fields", {}),
             fields_to_reveal=fields_to_reveal,
             master_keyring=storage_cert.get("keyring", {}),
-            serial_number=storage_cert.get("serial_number"),
+            serial_number=storage_cert.get("serialNumber"),
             privileged=privileged,
             privileged_reason=privileged_reason,
         )
@@ -1025,7 +1053,7 @@ def prove_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) -> dict[str
         raise WalletError(f"Failed to create keyring for verifier: {e}")
 
     result = {
-        "keyring_for_verifier": keyring_for_verifier,
+        "keyringForVerifier": keyring_for_verifier,
     }
 
     return result
@@ -1104,20 +1132,20 @@ def _remove_unlock_scripts(args: dict[str, Any]) -> dict[str, Any]:
     Reference:
         - toolbox/ts-wallet-toolbox/src/signer/methods/createAction.ts
     """
-    if all(inp.get("unlocking_script") is None for inp in args.get("inputs", [])):
+    if all(inp.get("unlockingScript") is None for inp in args.get("inputs", [])):
         return args
 
     # Create new args without unlocking scripts
     new_inputs = []
     for inp in args.get("inputs", []):
         new_inp = dict(inp)
-        if "unlocking_script" in new_inp:
-            new_inp["unlocking_script_length"] = (
-                len(new_inp["unlocking_script"])
-                if new_inp.get("unlocking_script")
-                else new_inp.get("unlocking_script_length", 0)
+        if "unlockingScript" in new_inp:
+            new_inp["unlockingScriptLength"] = (
+                len(new_inp["unlockingScript"])
+                if new_inp.get("unlockingScript")
+                else new_inp.get("unlockingScriptLength", 0)
             )
-            del new_inp["unlocking_script"]
+            del new_inp["unlockingScript"]
         new_inputs.append(new_inp)
 
     return {**args, "inputs": new_inputs}
@@ -1138,7 +1166,7 @@ def _make_change_lock(
         # Step 1: Derive public key for change using BRC-29
         brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
         # Key ID comes from derivationSuffix (storage layer) or key_id
-        key_id = out.get("derivationSuffix") or out.get("key_id") or out.get("keyOffset") or "default"
+        key_id = out.get("derivationSuffix") or out.get("keyID") or out.get("keyOffset") or "default"
 
         # Use self as counterparty for change outputs (change goes back to wallet)
         counterparty = Counterparty(type=CounterpartyType.SELF)
@@ -1159,7 +1187,7 @@ def _make_change_lock(
             p2pkh = P2PKH()
 
             if "public_key" in out:
-                locking_script = p2pkh.lock(out["public_key"])
+                locking_script = p2pkh.lock(out["publicKey"])
                 return locking_script
 
             raise WalletError(f"Unable to create change lock script: {e!s}")
@@ -1277,13 +1305,13 @@ def _merge_prior_options(ca_vargs: dict[str, Any], sa_args: dict[str, Any]) -> d
 
     # Set defaults from create action options
     if "accept_delayed_broadcast" not in sa_options:
-        sa_options["accept_delayed_broadcast"] = ca_options.get("accept_delayed_broadcast")
+        sa_options["acceptDelayedBroadcast"] = ca_options.get("acceptDelayedBroadcast")
     if "return_txid_only" not in sa_options:
-        sa_options["return_txid_only"] = ca_options.get("return_txid_only")
+        sa_options["returnTxidOnly"] = ca_options.get("returnTxidOnly")
     if "no_send" not in sa_options:
-        sa_options["no_send"] = ca_options.get("no_send")
+        sa_options["noSend"] = ca_options.get("noSend")
     if "send_with" not in sa_options:
-        sa_options["send_with"] = ca_options.get("send_with")
+        sa_options["sendWith"] = ca_options.get("sendWith")
 
     result["options"] = sa_options
     return result
@@ -1300,14 +1328,14 @@ def _setup_wallet_payment_for_output(
     Reference:
         - toolbox/ts-wallet-toolbox/src/signer/methods/internalizeAction.ts
     """
-    payment_remittance = output_spec.get("paymentRemittance") or output_spec.get("payment_remittance")
+    payment_remittance = output_spec.get("paymentRemittance") or output_spec.get("paymentRemittance")
 
     if not payment_remittance:
         raise WalletError("paymentRemittance is required for wallet payment protocol")
 
     try:
         # Step 1: Get output index and transaction output
-        output_index = output_spec.get("outputIndex") or output_spec.get("output_index") or output_spec.get("index", 0)
+        output_index = output_spec.get("outputIndex") or output_spec.get("outputIndex") or output_spec.get("index", 0)
         if output_index >= len(tx.outputs):
             raise WalletError(f"Output index {output_index} out of range")
 
@@ -1325,8 +1353,8 @@ def _setup_wallet_payment_for_output(
         # Step 2: Extract payment derivation parameters (support both camelCase and snake_case)
         # These are Base64 encoded - decode them for keyID construction
         import base64
-        derivation_prefix_b64 = payment_remittance.get("derivationPrefix") or payment_remittance.get("derivation_prefix", "")
-        derivation_suffix_b64 = payment_remittance.get("derivationSuffix") or payment_remittance.get("derivation_suffix", "")
+        derivation_prefix_b64 = payment_remittance.get("derivationPrefix") or payment_remittance.get("derivationPrefix", "")
+        derivation_suffix_b64 = payment_remittance.get("derivationSuffix") or payment_remittance.get("derivationSuffix", "")
         
         # Decode Base64 to get raw values for keyID (matches Go SDK behavior)
         try:
@@ -1340,7 +1368,7 @@ def _setup_wallet_payment_for_output(
         key_id = f"{derivation_prefix} {derivation_suffix}".strip()
 
         # Step 3: Get sender identity key for key derivation
-        sender_identity_key = payment_remittance.get("senderIdentityKey") or payment_remittance.get("sender_identity_key", "")
+        sender_identity_key = payment_remittance.get("senderIdentityKey") or payment_remittance.get("senderIdentityKey", "")
 
         # Step 4: Derive private key using BRC-29 protocol
         brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
@@ -1364,7 +1392,7 @@ def _setup_wallet_payment_for_output(
         if hasattr(output, 'locking_script'):
             current_script = output.locking_script
         else:
-            current_script = output.get("locking_script", "")
+            current_script = output.get("lockingScript", "")
         
         if isinstance(current_script, Script):
             current_script_hex = current_script.hex()

@@ -240,7 +240,7 @@ def normalize_create_action_args(args: dict[str, Any]) -> NormalizedCreateAction
     is_new_tx = is_remix_change or len(inputs) > 0 or len(outputs) > 0
 
     any_missing_unlock = any(
-        isinstance(inp, dict) and (inp.get("unlockingScript") is None and inp.get("unlocking_script") is None)
+        isinstance(inp, dict) and (inp.get("unlockingScript") is None and inp.get("unlockingScript") is None)
         for inp in inputs
     )
     is_sign_action = is_new_tx and (not options.sign_and_process or any_missing_unlock)

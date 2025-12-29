@@ -67,8 +67,8 @@ class TestStorageProviderTransactionOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
 
         tx_id = storage_provider.insert_transaction(tx_data)
@@ -91,8 +91,8 @@ class TestStorageProviderTransactionOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([2, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         storage_provider.insert_transaction(tx_data)
 
@@ -117,8 +117,8 @@ class TestStorageProviderTransactionOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([3, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         tx_id = storage_provider.insert_transaction(tx_data)
 
@@ -146,8 +146,8 @@ class TestStorageProviderOutputOperations:
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 1000,
             "isDeleted": False,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         basket_id = storage_provider.insert_output_basket(basket_data)
 
@@ -163,8 +163,8 @@ class TestStorageProviderOutputOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([4, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
         tx_id = storage_provider.insert_transaction(tx_data)
 
@@ -182,8 +182,8 @@ class TestStorageProviderOutputOperations:
             "type": "change",
             "txid": "d" * 64,
             "lockingScript": bytes([0x76, 0xa9, 0x14] + [0] * 20 + [0x88, 0xac]),  # P2PKH
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
 
         output_id = storage_provider.insert_output(output_data)
@@ -223,8 +223,8 @@ class TestStorageProviderCertificateOperations:
             "revocationOutpoint": "e" * 64 + ".0",
             "signature": "f" * 128,
             "isDeleted": False,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
 
         cert_id = storage_provider.insert_certificate(cert_data)
@@ -254,8 +254,8 @@ class TestStorageProviderProvenTxOperations:
             "rawTx": bytes([5, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
             "blockHash": "g" * 64,
             "merkleRoot": "h" * 64,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
 
         proven_tx_id = storage_provider.insert_proven_tx(proven_tx_data)
@@ -274,8 +274,8 @@ class TestStorageProviderProvenTxOperations:
             "status": "unmined",
             "rawTx": bytes([6, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
             "attempts": 0,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         }
 
         req_id = storage_provider.insert_proven_tx_req(req_data)

@@ -294,7 +294,7 @@ class StorageClient:
             trace(logger, "rpc.request", method=method, id=request_id, endpoint=self.endpoint_url, params=request_body.get("params"))
             logger.debug(
                 f"RPC call: {method} (id={request_id})",
-                extra={"endpoint": self.endpoint_url, "params_count": len(params)},
+                extra={"endpoint": self.endpoint_url, "paramsCount": len(params)},
             )
 
             # Use AuthFetch for BRC-104 authenticated request (TS pattern)
@@ -306,7 +306,7 @@ class StorageClient:
 
             logger.debug(
                 f"AuthFetch request: method={method}, url={self.endpoint_url}, body_size={len(config.body) if config.body else 0}",
-                extra={"method": method, "endpoint": self.endpoint_url, "request_body": request_body},
+                extra={"method": method, "endpoint": self.endpoint_url, "requestBody": request_body},
             )
 
             response = asyncio.run(self.auth_client.fetch(self.endpoint_url, config))
@@ -322,11 +322,31 @@ class StorageClient:
             )
             logger.debug(
                 f"AuthFetch response: status={response.status_code}, headers={dict(response.headers)}",
-                extra={"method": method, "status_code": response.status_code, "response_headers": dict(response.headers)},
+                extra={"method": method, "statusCode": response.status_code, "responseHeaders": dict(response.headers)},
             )
 
-            # Parse JSON response (even on HTTP errors).
+            # Parse JSON response (even on HTTP errors) when the server advertises JSON.
             # Some servers return JSON-RPC errors with HTTP 500; the JSON-RPC error is the real signal.
+            content_type = (response.headers or {}).get("Content-Type", "")
+            expects_json = "json" in content_type.lower()
+            if not response.ok and not expects_json:
+                msg = f"JSON-RPC call failed: HTTP {response.status_code} {response.reason}"
+                trace(
+                    logger,
+                    "rpc.http_error",
+                    method=method,
+                    id=request_id,
+                    endpoint=self.endpoint_url,
+                    http_status=response.status_code,
+                    reason=response.reason,
+                    response_body=None,
+                )
+                logger.error(
+                    msg,
+                    extra={"method": method, "id": request_id, "responseHeaders": dict(response.headers)},
+                )
+                raise requests.RequestException(msg)
+
             try:
                 response_data = response.json()
             except json.JSONDecodeError as e:
@@ -341,7 +361,7 @@ class StorageClient:
                 )
                 logger.error(
                     f"RPC JSON parse error: {e}",
-                    extra={"method": method, "id": request_id, "status_code": response.status_code},
+                    extra={"method": method, "id": request_id, "statusCode": response.status_code},
                 )
                 # If HTTP status is error and body isn't JSON, raise as network/protocol error.
                 if not response.ok:
@@ -370,7 +390,7 @@ class StorageClient:
                 )
                 logger.warning(
                     f"RPC error response: {message} (code={code})",
-                    extra={"method": method, "id": request_id, "http_status": response.status_code},
+                    extra={"method": method, "id": request_id, "httpStatus": response.status_code},
                 )
 
                 raise JsonRpcError(code, message, data)
@@ -390,7 +410,7 @@ class StorageClient:
                 )
                 logger.error(
                     msg,
-                    extra={"method": method, "id": request_id, "response_body": response_data},
+                    extra={"method": method, "id": request_id, "responseBody": response_data},
                 )
                 raise requests.RequestException(msg)
 
@@ -399,7 +419,7 @@ class StorageClient:
             trace(logger, "rpc.result", method=method, id=request_id, endpoint=self.endpoint_url, result=result)
             logger.debug(
                 f"RPC call succeeded: {method} (id={request_id})",
-                extra={"result_type": type(result).__name__},
+                extra={"resultType": type(result).__name__},
             )
 
             return result
@@ -477,7 +497,7 @@ class StorageClient:
         """
         result = self.find_or_insert_user(identity_key)
         user = result.get("user", {})
-        return user.get("userId", user.get("user_id", 0))
+        return user.get("userID", 0)
 
     def find_certificates_auth(
         self,
@@ -722,6 +742,33 @@ class StorageClient:
             Sync chunk result
         """
         result = self._rpc_call("getSyncChunk", [args])
+        return result
+
+    def is_available(self) -> bool:
+        """Check if storage is available.
+
+        Returns:
+            True if available
+        """
+        result = self._rpc_call("isAvailable", [])
+        return bool(result)
+
+    def get_services(self) -> dict[str, Any]:
+        """Get available services.
+
+        Returns:
+            Services configuration
+        """
+        result = self._rpc_call("getServices", [])
+        return result
+
+    def get_settings(self) -> dict[str, Any]:
+        """Get storage settings.
+
+        Returns:
+            Settings dictionary
+        """
+        result = self._rpc_call("getSettings", [])
         return result
 
 

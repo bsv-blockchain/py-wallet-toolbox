@@ -316,11 +316,11 @@ class TestPurgeData:
         storage = Mock()
 
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -328,11 +328,11 @@ class TestPurgeData:
         result = purge_data(storage, params)
 
         # Verify result structure (matches actual function return)
-        assert "deleted_transactions" in result
-        assert "deleted_outputs" in result
-        assert "deleted_certificates" in result
-        assert "deleted_requests" in result
-        assert "deleted_labels" in result
+        assert "deletedTransactions" in result
+        assert "deletedOutputs" in result
+        assert "deletedCertificates" in result
+        assert "deletedRequests" in result
+        assert "deletedLabels" in result
 
         # Verify storage.purge_data was called
         storage.purge_data.assert_called_once_with(params)
@@ -342,11 +342,11 @@ class TestPurgeData:
         storage = Mock()
 
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -359,22 +359,22 @@ class TestPurgeData:
         result = purge_data(storage, params)
 
         # Verify result structure
-        assert result["deleted_transactions"] == 0
-        assert result["deleted_outputs"] == 0
-        assert result["deleted_certificates"] == 0
-        assert result["deleted_requests"] == 0
-        assert result["deleted_labels"] == 0
+        assert result["deletedTransactions"] == 0
+        assert result["deletedOutputs"] == 0
+        assert result["deletedCertificates"] == 0
+        assert result["deletedRequests"] == 0
+        assert result["deletedLabels"] == 0
 
     def test_purge_data_empty_params(self) -> None:
         """Test purge_data with empty parameters."""
         storage = Mock()
 
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -398,8 +398,8 @@ class TestReviewStatus:
         storage = Mock()
 
         storage.review_status = Mock(return_value={
-            "updated_count": 1,
-            "aged_count": 0,
+            "updatedCount": 1,
+            "agedCount": 0,
             "log": ""
         })
 
@@ -407,8 +407,8 @@ class TestReviewStatus:
         result = review_status(storage, args)
 
         # Verify result structure (matches actual function)
-        assert "updated_count" in result
-        assert "aged_count" in result
+        assert "updatedCount" in result
+        assert "agedCount" in result
         assert "log" in result
 
     def test_review_status_no_aged_limit(self) -> None:
@@ -416,8 +416,8 @@ class TestReviewStatus:
         storage = Mock()
 
         storage.review_status = Mock(return_value={
-            "updated_count": 0,
-            "aged_count": 0,
+            "updatedCount": 0,
+            "agedCount": 0,
             "log": ""
         })
 
@@ -425,15 +425,15 @@ class TestReviewStatus:
         result = review_status(storage, args)
 
         # Should handle None aged_limit gracefully
-        assert result["aged_count"] == 0
+        assert result["agedCount"] == 0
 
     def test_review_status_with_aged_requests(self) -> None:
         """Test review_status identifies aged requests correctly."""
         storage = Mock()
 
         storage.review_status = Mock(return_value={
-            "updated_count": 1,
-            "aged_count": 1,
+            "updatedCount": 1,
+            "agedCount": 1,
             "log": ""
         })
 
@@ -441,7 +441,7 @@ class TestReviewStatus:
         result = review_status(storage, args)
 
         # Should process transactions (exact count depends on implementation)
-        assert "updated_count" in result
+        assert "updatedCount" in result
 
 
 class TestAttemptToPostReqsToNetwork:
@@ -494,60 +494,83 @@ class TestAttemptToPostReqsToNetwork:
 class TestGetBeefForTransaction:
     """Comprehensive tests for get_beef_for_transaction function."""
 
+    VALID_TXID = "a" * 64
+
     def test_get_beef_for_transaction_requires_storage(self) -> None:
         """Test that get_beef_for_transaction requires storage parameter."""
-        with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_beef_for_transaction'"):
-            get_beef_for_transaction(None, "txid")
+        with pytest.raises(AttributeError, match="NoneType"):
+            get_beef_for_transaction(None, self.VALID_TXID)
 
     def test_get_beef_for_transaction_basic_flow(self) -> None:
         """Test basic get_beef_for_transaction flow."""
         storage = Mock()
-
         mock_beef_data = b"mock_beef_data"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
 
-        result = get_beef_for_transaction(storage, "test_txid")
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
 
-        # Verify storage method was called correctly
-        storage.get_beef_for_transaction.assert_called_once_with("test_txid")
-        assert result == mock_beef_data
-
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_with_protocol(self) -> None:
-        """Test get_beef_for_transaction with protocol parameter."""
+        """Test get_beef_for_transaction supports protocol-specific options."""
         storage = Mock()
+        options = {"protocol": {"name": "arc", "version": 1}}
+        mock_beef_data = b"proto_beef_data"
 
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID, options=options)
+
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, options)
+        assert result == mock_beef_data
+
+    def test_get_beef_for_transaction_with_auth(self) -> None:
+        """Test get_beef_for_transaction forwards auth context."""
+        storage = Mock()
+        auth = {"userId": 1}
         mock_beef_data = b"beef_data"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
 
-        result = get_beef_for_transaction(storage, "test_txid")
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID, auth)
 
-        storage.get_beef_for_transaction.assert_called_once_with("test_txid")
+        mock_impl.assert_called_once_with(storage, auth, self.VALID_TXID, None)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_with_options(self) -> None:
-        """Test get_beef_for_transaction with options."""
+        """Test get_beef_for_transaction forwards options."""
         storage = Mock()
-
+        options = {"ignoreStorage": True, "ignoreServices": False}
         mock_beef_data = b"beef_data"
-        storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
 
-        result = get_beef_for_transaction(storage, "test_txid")
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=mock_beef_data,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID, options=options)
 
-        storage.get_beef_for_transaction.assert_called_once_with("test_txid")
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, options)
         assert result == mock_beef_data
 
     def test_get_beef_for_transaction_returns_none_when_no_beef(self) -> None:
         """Test get_beef_for_transaction returns None when no BEEF data found."""
         storage = Mock()
 
-        # No BEEF data found
-        storage.get_beef_for_transaction = Mock(return_value=None)
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+            return_value=None,
+        ) as mock_impl:
+            result = get_beef_for_transaction(storage, self.VALID_TXID)
 
-        result = get_beef_for_transaction(storage, "nonexistent_txid")
-
-        storage.get_beef_for_transaction.assert_called_once_with("nonexistent_txid")
+        mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
         assert result is None
 
 
@@ -580,11 +603,11 @@ class TestStorageMethodIntegration:
 
         # Now test purge (should work with the created sync state)
         storage.purge_data = Mock(return_value={
-            "deleted_transactions": 0,
-            "deleted_outputs": 0,
-            "deleted_certificates": 0,
-            "deleted_requests": 0,
-            "deleted_labels": 0,
+            "deletedTransactions": 0,
+            "deletedOutputs": 0,
+            "deletedCertificates": 0,
+            "deletedRequests": 0,
+            "deletedLabels": 0,
             "log": ""
         })
 
@@ -600,8 +623,8 @@ class TestStorageMethodIntegration:
 
         # Setup review status
         storage.review_status = Mock(return_value={
-            "updated_count": 0,
-            "aged_count": 0,
+            "updatedCount": 0,
+            "agedCount": 0,
             "log": ""
         })
 

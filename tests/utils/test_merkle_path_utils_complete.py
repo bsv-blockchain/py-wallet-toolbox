@@ -58,7 +58,7 @@ class TestConvertProofBasic:
         result = convert_proof_to_merkle_path(txid, proof)
         
         # Even index: txid is inserted at position 0, sibling at position 1
-        assert result["path"][0][0]["hash_str"] == txid
+        assert result["path"][0][0]["hashStr"] == txid
         assert result["path"][0][0]["txid"] is True
         assert result["path"][0][0]["offset"] == 2
         # Sibling at position 1 with offset index+1
@@ -77,7 +77,7 @@ class TestConvertProofBasic:
         
         assert result["path"][0][0]["offset"] == 2  # Sibling at index-1
         # Txid should be second (odd index)
-        assert result["path"][0][1]["hash_str"] == txid
+        assert result["path"][0][1]["hashStr"] == txid
         assert result["path"][0][1]["txid"] is True
 
 
@@ -132,7 +132,7 @@ class TestConvertProofDuplicates:
         # Sibling should not be marked as duplicate
         sibling = result["path"][0][1]
         assert sibling.get("duplicate") is not True
-        assert sibling["hash_str"] == "diff" * 16
+        assert sibling["hashStr"] == "diff" * 16
 
 
 
@@ -201,7 +201,7 @@ class TestConvertProofTxidLeaf:
         
         # With even index, txid should be first
         path_level_0 = result["path"][0]
-        assert path_level_0[0]["hash_str"] == txid
+        assert path_level_0[0]["hashStr"] == txid
         assert path_level_0[0]["txid"] is True
         assert path_level_0[0]["offset"] == 4
 
@@ -218,7 +218,7 @@ class TestConvertProofTxidLeaf:
         
         # With odd index, txid should be second
         path_level_0 = result["path"][0]
-        assert path_level_0[1]["hash_str"] == txid
+        assert path_level_0[1]["hashStr"] == txid
         assert path_level_0[1]["txid"] is True
         assert path_level_0[1]["offset"] == 5
 
@@ -235,7 +235,7 @@ class TestConvertProofTxidLeaf:
         
         # Index 0 is even, txid should be first
         path_level_0 = result["path"][0]
-        assert path_level_0[0]["hash_str"] == txid
+        assert path_level_0[0]["hashStr"] == txid
         assert path_level_0[0]["offset"] == 0
 
 
@@ -287,7 +287,7 @@ class TestConvertProofPathStructure:
         level_0 = result["path"][0]
         txid_leaves = [leaf for leaf in level_0 if leaf.get("txid")]
         assert len(txid_leaves) == 1
-        assert txid_leaves[0]["hash_str"] == txid
+        assert txid_leaves[0]["hashStr"] == txid
 
 
 
@@ -417,7 +417,7 @@ class TestConvertProofRealWorld:
         # Index 0 is always even
         level_0 = result["path"][0]
         # Txid should be first
-        assert level_0[0]["hash_str"] == txid
+        assert level_0[0]["hashStr"] == txid
         assert level_0[0]["offset"] == 0
 
     def test_convert_last_transaction_odd(self) -> None:
@@ -436,7 +436,7 @@ class TestConvertProofRealWorld:
         # Index 15 is odd
         level_0 = result["path"][0]
         # Txid should be second
-        assert level_0[1]["hash_str"] == txid
+        assert level_0[1]["hashStr"] == txid
 
 
 
@@ -471,7 +471,7 @@ class TestConvertProofLeafAttributes:
         result = convert_proof_to_merkle_path(txid, proof)
         
         txid_leaf = result["path"][0][0]  # First leaf (even index)
-        assert txid_leaf["hash_str"] == txid
+        assert txid_leaf["hashStr"] == txid
         assert txid_leaf["txid"] is True
         assert txid_leaf["offset"] == 0
 
@@ -488,7 +488,7 @@ class TestConvertProofLeafAttributes:
         result = convert_proof_to_merkle_path(txid, proof)
         
         sibling_leaf = result["path"][0][1]  # Second leaf
-        assert sibling_leaf["hash_str"] == node_hash
+        assert sibling_leaf["hashStr"] == node_hash
         assert sibling_leaf.get("txid") is not True
         assert sibling_leaf["offset"] == 1
 

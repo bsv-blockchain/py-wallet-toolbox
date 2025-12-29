@@ -70,7 +70,7 @@ class TestChaintracksClientApi:
         # Find first tip for reference
         first_tip = await chaintracks.find_chain_tip_header()
 
-        yield {"clients": clients, "first_tip": first_tip, "chaintracks": chaintracks}
+        yield {"clients": clients, "firstTip": first_tip, "chaintracks": chaintracks}
 
         # No cleanup needed for in-memory instance
 
@@ -102,7 +102,7 @@ class TestChaintracksClientApi:
         """
         # Given
         clients = setup_clients["clients"]
-        first_tip = setup_clients["first_tip"]
+        first_tip = setup_clients["firstTip"]
 
         # When/Then
         for client_info in clients:
@@ -123,7 +123,7 @@ class TestChaintracksClientApi:
         """
         # Given
         clients = setup_clients["clients"]
-        first_tip = setup_clients["first_tip"]
+        first_tip = setup_clients["firstTip"]
 
         # When/Then
         for client_info in clients:
@@ -186,7 +186,7 @@ class TestChaintracksClientApi:
         """
         # Given
         clients = setup_clients["clients"]
-        first_tip = setup_clients["first_tip"]
+        first_tip = setup_clients["firstTip"]
 
         # When/Then
         for client_info in clients:
@@ -221,7 +221,7 @@ class TestChaintracksClientApi:
         """
         # Given
         clients = setup_clients["clients"]
-        first_tip = setup_clients["first_tip"]
+        first_tip = setup_clients["firstTip"]
 
         # When/Then
         for client_info in clients:
@@ -311,7 +311,7 @@ class TestChaintracksClientApi:
             reorgs = []
 
             def reorg_listener(depth, old_tip, new_tip) -> None:
-                reorgs.append({"depth": depth, "old_tip": old_tip, "new_tip": new_tip})
+                reorgs.append({"depth": depth, "oldTip": old_tip, "newTip": new_tip})
 
             subscription_id = await client.subscribe_reorgs(reorg_listener)
             assert isinstance(subscription_id, str)

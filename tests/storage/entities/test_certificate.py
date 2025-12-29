@@ -25,8 +25,8 @@ class TestCertificateEntity:
         certificate_id = 500
         certificate_data = {
             "certificateId": certificate_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "type": "exampleType",
             "serialNumber": "serial123",
@@ -56,8 +56,8 @@ class TestCertificateEntity:
         now = datetime.now()
         certificate_data1 = {
             "certificateId": 501,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "type": "exampleType1",
             "serialNumber": "serial123-1",
@@ -102,8 +102,8 @@ class TestCertificateEntity:
         certificate_id = 600
         certificate_data = {
             "certificateId": certificate_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "type": "exampleTypeMerge",
             "serialNumber": "serialMerge123",
@@ -119,7 +119,7 @@ class TestCertificateEntity:
         # Updated data with later timestamp
         updated_data = {
             **certificate_data,
-            "updated_at": datetime.fromtimestamp(now.timestamp() + 1),
+            "updatedAt": datetime.fromtimestamp(now.timestamp() + 1),
             "type": "updatedType",
             "subject": "updatedSubject",
             "serialNumber": "updatedSerialNumber",
@@ -161,8 +161,8 @@ class TestCertificateEntity:
         certificate_id = 601
         certificate_data = {
             "certificateId": certificate_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "type": "exampleType",
             "serialNumber": "exampleSerialNumber",
@@ -178,7 +178,7 @@ class TestCertificateEntity:
         # Same updated_at
         same_updated_data = {
             **certificate_data,
-            "updated_at": now,
+            "updatedAt": now,
             "type": "unchangedType",
             "subject": "unchangedSubject",
         }
@@ -207,8 +207,8 @@ class TestCertificateEntity:
         now = datetime.now()
         initial_data = {
             "certificateId": 701,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "type": "initialType",
             "subject": "initialSubject",

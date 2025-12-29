@@ -51,8 +51,8 @@ class TestProvenTxEntity:
             "MockServices",
             (),
             {
-                "get_raw_tx": staticmethod(mock_get_raw_tx),
-                "get_merkle_path": staticmethod(mock_get_merkle_path),
+                "getRawTx": staticmethod(mock_get_raw_tx),
+                "getMerklePath": staticmethod(mock_get_merkle_path),
             },
         )()
 
@@ -83,7 +83,7 @@ class TestProvenTxEntity:
         def mock_get_raw_tx(requested_txid: str) -> None:
             return None
 
-        mock_services = type("MockServices", (), {"get_raw_tx": mock_get_raw_tx})()
+        mock_services = type("MockServices", (), {"getRawTx": mock_get_raw_tx})()
 
         # When
         result = ProvenTx.from_txid(txid, mock_services)
@@ -116,8 +116,8 @@ class TestProvenTxEntity:
             "MockServices",
             (),
             {
-                "get_raw_tx": staticmethod(mock_get_raw_tx),
-                "get_merkle_path": staticmethod(mock_get_merkle_path),
+                "getRawTx": staticmethod(mock_get_raw_tx),
+                "getMerklePath": staticmethod(mock_get_merkle_path),
             },
         )()
 
@@ -140,8 +140,8 @@ class TestProvenTxEntity:
 
         mock_data = {
             "provenTxId": 1,
-            "created_at": datetime(2025, 1, 1),
-            "updated_at": datetime(2025, 1, 2),
+            "createdAt": datetime(2025, 1, 1),
+            "updatedAt": datetime(2025, 1, 2),
             "txid": "2795b293c698b2244147aaba745db887a632d21990c474df46d842ec3e52f122",
             "height": 123,
             "index": 0,
@@ -203,8 +203,8 @@ class TestProvenTxEntity:
             {
                 "provenTxId": 401,
                 "txid": "valid-txid",
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
                 "height": 1588740,
                 "index": 0,
                 "merklePath": [1, 2, 3],
@@ -217,8 +217,8 @@ class TestProvenTxEntity:
         proven_tx2_api = {
             "provenTxId": 401,
             "txid": "valid-txid",
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "height": 1588740,
             "index": 0,
             "merklePath": [1, 2, 3],
@@ -363,8 +363,8 @@ class TestProvenTxEntity:
             {
                 "provenTxId": 101,
                 "txid": "txid1",
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
                 "height": 100,
                 "index": 1,
                 "merklePath": [1, 2, 3],
