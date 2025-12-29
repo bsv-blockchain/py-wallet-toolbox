@@ -24,6 +24,7 @@ from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
     validate_internalize_action_args,
     validate_process_action_args,
+    validate_request_sync_chunk_args,
 )
 
 from .create_action import (
@@ -44,6 +45,7 @@ from .methods.generate_change import (
     InternalError,
     InsufficientFundsError,
 )
+from .methods_impl import get_sync_chunk as _impl_get_sync_chunk
 from .db import create_session_factory, session_scope
 from .models import (
     Base,
@@ -4023,9 +4025,11 @@ class StorageProvider:
             - toolbox/ts-wallet-toolbox/src/storage/methods/getSyncChunk.ts
             - toolbox/go-wallet-toolbox/pkg/storage/internal/sync/sync_chunk_action.go
         """
-        # TODO: Implement get_sync_chunk logic
-        # This should retrieve sync chunk data for wallet synchronization
-        raise NotImplementedError("get_sync_chunk implementation pending")
+        params = dict(args or {})
+        params.setdefault("maxItems", 1000)
+        params.setdefault("maxRoughSize", 10_000_000)
+        validate_request_sync_chunk_args(params)
+        return _impl_get_sync_chunk(self, params)
 
     def update_transaction(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("transaction", pk_value, patch)

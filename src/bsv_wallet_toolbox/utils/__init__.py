@@ -134,16 +134,114 @@ class Setup:
 
     @staticmethod
     def create_wallet_client(args: dict[str, Any]) -> Any:
-        """Create wallet client (stub - not fully implemented).
+        """Create wallet client (TS Setup parity).
 
         Args:
-            args: Configuration arguments
+            args: Configuration arguments. Expected keys:
+                env: Setup.get_env() result (required)
+                rootKeyHex: Hex-encoded root private key (optional if env.dev_keys provided)
+                endpointUrl: Storage server endpoint (optional)
+                privilegedKeyGetter: Callable returning privileged PrivateKey (optional)
+                active/backups: Optional local storage providers
 
         Returns:
-            Wallet client object (stub implementation)
+            SimpleNamespace mirroring TypeScript SetupWalletClient
         """
-        # Stub implementation - full implementation would require wallet setup
-        raise NotImplementedError("Setup.create_wallet_client is not fully implemented")
+        if not isinstance(args, dict):
+            raise ValueError("args must be a dict")
+
+        env = args.get("env")
+        if env is None:
+            raise ValueError("env is required (use Setup.get_env(chain))")
+
+        chain = args.get("chain") or getattr(env, "chain", None)
+        if chain not in ("main", "test"):
+            raise ValueError("chain must be 'main' or 'test'")
+
+        endpoint_url = args.get("endpointUrl")
+        if not endpoint_url:
+            prefix = "staging-" if chain != "main" else ""
+            endpoint_url = f"https://{prefix}storage.babbage.systems"
+
+        root_key_hex = args.get("rootKeyHex")
+        if not root_key_hex:
+            dev_keys = getattr(env, "dev_keys", None) or getattr(env, "devKeys", None) or {}
+            active_identity_key = (
+                args.get("identityKey")
+                or getattr(env, "identity_key", None)
+                or getattr(env, "identityKey", None)
+            )
+            if active_identity_key and isinstance(dev_keys, dict):
+                root_key_hex = dev_keys.get(active_identity_key)
+        if not isinstance(root_key_hex, str) or len(root_key_hex) == 0:
+            raise ValueError("rootKeyHex is required (supply args['rootKeyHex'] or env.dev_keys)")
+
+        # Lazy imports to avoid circular dependencies during module import.
+        from bsv.keys import PrivateKey
+        from bsv.wallet import KeyDeriver
+
+        from ..monitor.monitor import Monitor, MonitorOptions
+        from ..rpc.storage_client import StorageClient
+        from ..sdk.privileged_key_manager import PrivilegedKeyManager
+        from ..services import Services, create_default_options
+        from ..storage.wallet_storage_manager import WalletStorageManager
+        from ..wallet import Wallet
+
+        root_key = PrivateKey.from_hex(root_key_hex)
+        key_deriver = KeyDeriver(root_key)
+        identity_key_hex = key_deriver.identity_key().hex()
+
+        storage_manager = WalletStorageManager(
+            identity_key=identity_key_hex,
+            active=args.get("active"),
+            backups=args.get("backups"),
+        )
+
+        service_options = create_default_options(chain)
+        taal_api_key = args.get("taalApiKey") or getattr(env, "taal_api_key", None)
+        if taal_api_key:
+            service_options["taalApiKey"] = taal_api_key
+
+        services = Services(service_options)
+        storage_manager.set_services(services)
+
+        privileged_key_getter = args.get("privilegedKeyGetter")
+        privileged_key_manager = (
+            PrivilegedKeyManager(privileged_key_getter) if privileged_key_getter else None
+        )
+
+        monitor_options = MonitorOptions(
+            chain=chain,
+            storage=storage_manager,
+            services=services,
+        )
+        monitor = Monitor(monitor_options)
+        monitor.add_default_tasks()
+
+        wallet = Wallet(
+            chain=chain,
+            services=services,
+            key_deriver=key_deriver,
+            storage_provider=storage_manager,
+            privileged_key_manager=privileged_key_manager,
+            monitor=monitor,
+        )
+
+        storage_client = StorageClient(wallet, endpoint_url)
+        storage_manager.add_wallet_storage_provider(storage_client)
+
+        return SimpleNamespace(
+            root_key=root_key,
+            identity_key=identity_key_hex,
+            key_deriver=key_deriver,
+            chain=chain,
+            storage=storage_manager,
+            services=services,
+            monitor=monitor,
+            wallet=wallet,
+            storage_client=storage_client,
+            endpoint_url=endpoint_url,
+        )
 
 
 class TestUtils:
