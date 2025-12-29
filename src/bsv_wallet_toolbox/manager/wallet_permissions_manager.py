@@ -12,12 +12,12 @@ Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
 from __future__ import annotations
 
 import asyncio
+import json
 import sqlite3
 import threading
 import time
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 
 from bsv_wallet_toolbox.manager.permission_token_parser import PermissionTokenManager
 from bsv_wallet_toolbox.manager.permission_types import PermissionRequest, PermissionToken
@@ -643,7 +643,12 @@ class WalletPermissionsManager:
 
     # --- Token Building Methods ---
 
-    def _build_protocol_token(self, originator: str, protocol_id: dict[str, Any] | list, counterparty: str | None = None) -> PermissionToken:
+    def _build_protocol_token(
+        self,
+        originator: str,
+        protocol_id: dict[str, Any] | list,
+        counterparty: str | None = None,
+    ) -> PermissionToken:
         """Build a protocol permission token.
 
         Args:
@@ -744,7 +749,12 @@ class WalletPermissionsManager:
             "authorizedAmount": satoshis,
         }
 
-    async def _create_protocol_token(self, originator: str, protocol_id: dict[str, Any], counterparty: str | None = None) -> PermissionToken:
+    async def _create_protocol_token(
+        self,
+        originator: str,
+        protocol_id: dict[str, Any],
+        counterparty: str | None = None,
+    ) -> PermissionToken:
         """Create and store a protocol permission token.
 
         Args:
@@ -960,19 +970,16 @@ class WalletPermissionsManager:
         return self._permissions.copy()
 
     def save_permissions(self) -> None:
-        """Save all permissions to storage.
+        """Persist all permissions to the SQLite backing store.
 
-        In this implementation, permissions are kept in memory.
-        In production, this would persist to a database or file.
+        The manager keeps an in-memory cache for fast lookups and mirrors every
+        change into `_db_conn`, so this method simply ensures the connection was
+        initialized (matching the TypeScript persistence hook).
 
         Reference: toolbox/ts-wallet-toolbox/src/WalletPermissionsManager.ts
         """
-        # TODO: Phase 4 - Implement persistent storage (SQLite/PostgreSQL)
-        # TODO: Phase 4 - Serialize permission tokens to database
-        # TODO: Phase 4 - Handle concurrent access with transactions
-        # TODO: Phase 4 - Add backup/recovery mechanism
-        # Permissions are already stored in-memory in _permissions dict
-        # In production, sync to persistent storage here
+        if self._db_conn is None:
+            self._init_database()
 
     def bind_callback(self, event_name: str, handler: Callable[[PermissionRequest], Any]) -> int:
         """Bind a callback to a permission event.
@@ -1591,6 +1598,7 @@ class WalletPermissionsManager:
             "hmac": "seekProtocolPermissionsForHMAC",
             "publicKey": "seekPermissionsForPublicKeyRevelation",
             "identityKey": "seekPermissionsForIdentityKeyRevelation",
+            "identityResolution": "seekPermissionsForIdentityResolution",
             "linkageRevelation": "seekPermissionsForKeyLinkageRevelation",
         }
 
@@ -1713,7 +1721,10 @@ class WalletPermissionsManager:
                 raise RuntimeError(f"Spending permission denied for {description}")
 
     def _check_identity_permissions(
-        self, originator: str, operation: str = "resolve"
+        self,
+        originator: str,
+        operation: str = "resolve",
+        context: dict[str, Any] | None = None,
     ) -> None:
         """Check if identity permissions are granted.
 
@@ -1730,17 +1741,39 @@ class WalletPermissionsManager:
         # Check config flags
         config_key_map = {
             "resolve": "seekPermissionsForIdentityResolution",
+            "key_reveal": "seekPermissionsForIdentityResolution",
             "keyReveal": "seekPermissionsForIdentityKeyRevelation",
             "linkageReveal": "seekPermissionsForKeyLinkageRevelation",
             "publicKeyReveal": "seekPermissionsForPublicKeyRevelation",
+            "linkage_reveal": "seekPermissionsForKeyLinkageRevelation",
+            "public_key_reveal": "seekPermissionsForPublicKeyRevelation",
         }
 
         config_key = config_key_map.get(operation)
         if config_key and not self._config.get(config_key, False):
             return  # Permission check disabled
 
-        # For now, identity permissions are not fully implemented
-        # TODO: Implement identity permission tokens
+        ctx = context or {}
+
+        if operation == "linkage_reveal":
+            linkage_type = ctx.get("linkage_type", "counterparty")
+            if linkage_type == "specific":
+                proto = ctx.get("protocol_id")
+                proto_name = ctx.get("protocol_name")
+                if proto_name is None and isinstance(proto, list) and len(proto) > 1:
+                    proto_name = proto[1]
+                protocol_name = proto_name or "unknown"
+                key_id = ctx.get("key_id") or "all"
+                protocol_id: list[Any] = [2, f"specific key linkage revelation {protocol_name} {key_id}"]
+            else:
+                counterparty = ctx.get("counterparty") or "unknown"
+                protocol_id = [2, f"counterparty key linkage revelation {counterparty}"]
+            operation_label = "linkageRevelation"
+        else:
+            protocol_id = [1, "identity resolution"]
+            operation_label = "identityResolution"
+
+        self._check_protocol_permissions(originator, protocol_id, operation_label)
 
     def _request_permission(self, permission_request: PermissionRequest) -> PermissionToken | None:
         """Request permission from user via callback system.
@@ -2325,7 +2358,7 @@ class WalletPermissionsManager:
             result = self._underlying_wallet.sign_action(args, originator)
             return self._handle_sync_or_async(result)
 
-        # TODO: Add permission checks
+        # TypeScript implementation does not add additional permission checks here.
         result = self._underlying_wallet.sign_action(args, originator)
         return self._handle_sync_or_async(result)
 
@@ -2346,7 +2379,7 @@ class WalletPermissionsManager:
             result = self._underlying_wallet.abort_action(args, originator)
             return self._handle_sync_or_async(result)
 
-        # TODO: Add permission checks
+        # TypeScript implementation does not add additional permission checks here.
         result = self._underlying_wallet.abort_action(args, originator)
         return self._handle_sync_or_async(result)
 
@@ -2441,7 +2474,14 @@ class WalletPermissionsManager:
             return self._underlying_wallet.reveal_counterparty_key_linkage(args, originator)
 
         # Check key linkage revelation permissions
-        self._check_identity_permissions(originator or "", "linkage_reveal")
+        self._check_identity_permissions(
+            originator or "",
+            "linkage_reveal",
+            {
+                "linkage_type": "counterparty",
+                "counterparty": args.get("counterparty"),
+            },
+        )
 
         return self._underlying_wallet.reveal_counterparty_key_linkage(args, originator)
 
@@ -2462,7 +2502,16 @@ class WalletPermissionsManager:
             return self._underlying_wallet.reveal_specific_key_linkage(args, originator)
 
         # Check key linkage revelation permissions
-        self._check_identity_permissions(originator or "", "linkage_reveal")
+        self._check_identity_permissions(
+            originator or "",
+            "linkage_reveal",
+            {
+                "linkage_type": "specific",
+                "protocol_id": args.get("protocolID"),
+                "protocol_name": None,
+                "key_id": args.get("keyID"),
+            },
+        )
 
         return self._underlying_wallet.reveal_specific_key_linkage(args, originator)
 
@@ -2669,7 +2718,20 @@ class WalletPermissionsManager:
         if originator == self._admin_originator:
             return self._underlying_wallet.relinquish_certificate(args, originator)
 
-        # TODO: Add certificate relinquishment permission checks
+        if self._config.get("seekCertificateRelinquishmentPermissions", False):
+            protocol_name = args.get("type") or "unknown"
+            ensure_args = {
+                "originator": originator or "",
+                "protocolID": [1, f"certificate relinquishment {protocol_name}"],
+                "counterparty": args.get("certifier") or "self",
+                "reason": args.get("privilegedReason") or "relinquishCertificate",
+                "privileged": bool(args.get("privileged")),
+                "usageType": "generic",
+            }
+            granted = self._handle_sync_or_async(self.ensure_protocol_permission(ensure_args))
+            if not granted:
+                raise RuntimeError("Certificate relinquishment permission denied")
+
         return self._underlying_wallet.relinquish_certificate(args, originator)
 
     def disclose_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
@@ -2689,9 +2751,11 @@ class WalletPermissionsManager:
             return self._underlying_wallet.disclose_certificate(args, originator)
 
         # Check certificate disclosure permissions if enabled
-        if self._config.get("seekCertificateDisclosurePermissions"):
-            # TODO: Implement permission check
-            pass
+        if self._config.get("seekCertificateDisclosurePermissions", False):
+            cert_type = args.get("type", "")
+            verifier = args.get("verifier", "")
+            if cert_type and verifier:
+                self._check_certificate_permissions(originator or "", cert_type, verifier, "prove")
 
         return self._underlying_wallet.disclose_certificate(args, originator)
 
@@ -2712,7 +2776,11 @@ class WalletPermissionsManager:
             return self._underlying_wallet.discover_by_identity_key(args, originator)
 
         # Check identity key revelation permissions
-        self._check_identity_permissions(originator or "", "key_reveal")
+        self._check_identity_permissions(
+            originator or "",
+            "key_reveal",
+            {"reason": "discoverByIdentityKey"},
+        )
 
         return self._underlying_wallet.discover_by_identity_key(args, originator)
 
@@ -2733,7 +2801,11 @@ class WalletPermissionsManager:
             return self._underlying_wallet.discover_by_attributes(args, originator)
 
         # Check identity resolution permissions
-        self._check_identity_permissions(originator or "", "resolve")
+        self._check_identity_permissions(
+            originator or "",
+            "resolve",
+            {"reason": "discoverByAttributes"},
+        )
 
         return self._underlying_wallet.discover_by_attributes(args, originator)
 

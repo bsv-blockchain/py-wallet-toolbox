@@ -12,6 +12,7 @@ import time
 from typing import TYPE_CHECKING, Any, Literal
 
 from bsv.keys import PrivateKey, PublicKey
+from bsv.overlay_tools import LookupResolver, LookupResolverConfig
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol, ProtoWallet
@@ -25,6 +26,7 @@ from bsv.wallet.wallet_interface import (
     GetVersionResult,
 )
 
+from .brc29 import KeyID, lock_for_counterparty
 from .errors import InvalidParameterError, ReviewActionsError, WalletError
 from .manager.wallet_settings_manager import WalletSettingsManager
 from .sdk.privileged_key_manager import PrivilegedKeyManager
@@ -44,7 +46,9 @@ from .signer.methods import (
     prove_certificate,
     sign_action as signer_sign_action,
 )
+from .storage.methods.generate_change import MAX_POSSIBLE_SATOSHIS
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
+from .utils.random_utils import random_bytes_base64
 from .utils.ttl_cache import TTLCache
 from .utils.trace import trace
 from .utils.validation import (
@@ -195,6 +199,7 @@ class Wallet:
         storage_provider: Any | None = None,
         privileged_key_manager: PrivilegedKeyManager | None = None,
         settings_manager: WalletSettingsManager | None = None,
+        lookup_resolver: LookupResolver | None = None,
         monitor: "Monitor | None" = None,
     ) -> None:
         """Initialize wallet.
@@ -214,6 +219,8 @@ class Wallet:
                                    this manager's methods instead of key_deriver.
             settings_manager: Optional WalletSettingsManager for wallet configuration.
                            If None, a default WalletSettingsManager will be created.
+            lookup_resolver: Optional LookupResolver instance. When omitted, the wallet
+                           creates one using the chain -> network preset mapping.
             monitor: Optional Monitor instance for background task management.
 
         Note:
@@ -245,8 +252,7 @@ class Wallet:
         self.privileged_key_manager: PrivilegedKeyManager | None = privileged_key_manager
 
         # Initialize lookup resolver (TS parity)
-        # TODO: Implement proper LookupResolver class
-        self.lookup_resolver = self._create_lookup_resolver()
+        self.lookup_resolver: LookupResolver | None = lookup_resolver or self._create_lookup_resolver()
 
         # Initialize settings manager (TS parity)
         self.settings_manager: WalletSettingsManager = settings_manager or WalletSettingsManager(self)
@@ -386,27 +392,24 @@ class Wallet:
             "publicKey": str(pub_key),
         }
 
-    def _create_lookup_resolver(self) -> Any:
-        """Create a lookup resolver for identity operations.
-
-        TS parity: Creates LookupResolver equivalent for overlay service queries.
-        For now, returns a simple mock resolver.
+    def _create_lookup_resolver(self) -> LookupResolver:
+        """Create a LookupResolver configured for the wallet network.
 
         Returns:
-            Resolver object with query method
+            LookupResolver: Resolver capable of performing overlay queries
+                against ls_identity, matching the TypeScript behavior.
         """
-        # TODO: Implement proper LookupResolver class
-        # For now, create a mock resolver that returns empty results for testing
-        class MockResolver:
-            async def query(self, params: dict[str, Any]) -> dict[str, Any]:
-                # Return empty result structure for tests that need resolver to exist
-                # This allows wire format tests to pass while resolver is being implemented
-                return {
-                    "type": "output-list",
-                    "outputs": []
-                }
-
-        return MockResolver()
+        network = self._to_wallet_network(self.chain)
+        config = LookupResolverConfig(network_preset=network)
+        try:
+            return LookupResolver(config)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.error(
+                "wallet.lookup_resolver.init_failed",
+                extra={"chain": self.chain, "network": network},
+                exc_info=exc,
+            )
+            raise RuntimeError("Failed to initialize LookupResolver") from exc
 
     def _validate_originator(self, originator: str | None) -> None:
         """Validate originator parameter.
@@ -4100,33 +4103,102 @@ class Wallet:
         self.list_outputs(args, originator)
 
     def sweep_to(self, to_wallet: "Wallet", originator: str | None = None) -> dict[str, Any]:
-        """Sweep all wallet funds to another wallet.
+        """Sweep all wallet funds to another wallet using BRC-29 remittance.
 
-        Creates an action that spends all available UTXOs to the target wallet
-        using BRC-29 derivation scheme for privacy.
-
-        NOTE: This is a placeholder implementation. Full BRC-29 support with
-        ScriptTemplateBRC29 is required for complete functionality.
+        Mirrors TypeScript Wallet.sweepTo by building a `createAction` that spends
+        the wallet's entire balance into a single BRC-29 output and then having
+        the destination wallet internalize the payment.
 
         Args:
-            to_wallet: Target wallet to sweep funds to
-            originator: Originator identifier for the operation
+            to_wallet: Destination wallet that will internalize the sweep output.
+            originator: Optional originator identifier for audit/logging.
 
         Returns:
-            dict containing the created action result
+            Dict containing both createAction and internalizeAction results.
 
         Raises:
-            NotImplementedError: Full BRC-29 implementation pending
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/Wallet.ts (sweepTo)
+            InvalidParameterError: If destination wallet is invalid.
+            WalletError: If key derivation context is missing or sweep fails.
         """
-        # TODO: Implement full BRC-29 sweep functionality
-        # This requires ScriptTemplateBRC29, key derivation, and proper BRC-29 protocol
-        raise NotImplementedError(
-            "sweep_to method requires full BRC-29 ScriptTemplateBRC29 implementation. "
-            "Currently a placeholder for interface compatibility."
+        self._validate_originator(originator)
+
+        if not isinstance(to_wallet, Wallet):
+            raise InvalidParameterError("to_wallet", "must be a Wallet instance")
+
+        if self.key_deriver is None or to_wallet.key_deriver is None:
+            raise WalletError("Both wallets must have key_deriver configured for sweep_to")
+
+        derivation_prefix = random_bytes_base64(8)
+        derivation_suffix = random_bytes_base64(8)
+        key_id = KeyID(derivation_prefix=derivation_prefix, derivation_suffix=derivation_suffix)
+        testnet = self.chain != "main"
+
+        locking_script = lock_for_counterparty(
+            sender_private_key=self.key_deriver,
+            key_id=key_id,
+            recipient_public_key=to_wallet.key_deriver.identity_key(),
+            testnet=testnet,
         )
+
+        sender_identity_key = self.key_deriver.identity_key().hex()
+
+        custom_instructions = json.dumps(
+            {
+                "derivationPrefix": derivation_prefix,
+                "derivationSuffix": derivation_suffix,
+                "type": "BRC29",
+            }
+        )
+
+        create_args = {
+            "description": "sweep",
+            "outputs": [
+                {
+                    "lockingScript": locking_script.hex(),
+                    "satoshis": MAX_POSSIBLE_SATOSHIS,
+                    "outputDescription": "sweep",
+                    "tags": ["relinquish"],
+                    "customInstructions": custom_instructions,
+                }
+            ],
+            "options": {
+                "randomizeOutputs": False,
+                "acceptDelayedBroadcast": False,
+                "signAndProcess": False,
+            },
+            "labels": ["sweep"],
+        }
+
+        create_result = self.create_action(create_args, originator)
+        tx_payload = create_result.get("tx")
+        if tx_payload is None:
+            raise WalletError("create_action did not return tx payload for sweep_to")
+
+        payment_remittance = {
+            "derivationPrefix": derivation_prefix,
+            "derivationSuffix": derivation_suffix,
+            "senderIdentityKey": sender_identity_key,
+        }
+
+        internalize_args = {
+            "tx": tx_payload,
+            "outputs": [
+                {
+                    "outputIndex": 0,
+                    "protocol": "wallet payment",
+                    "paymentRemittance": payment_remittance,
+                }
+            ],
+            "description": "sweep",
+            "labels": ["sweep"],
+        }
+
+        internalize_result = to_wallet.internalize_action(internalize_args, originator)
+
+        return {
+            "createActionResult": create_result,
+            "internalizeActionResult": internalize_result,
+        }
 
 
 # ============================================================================

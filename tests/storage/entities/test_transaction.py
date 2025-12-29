@@ -266,8 +266,8 @@ class TestTransactionEntity:
             "MockStorage",
             (),
             {
-                "updateTransaction": staticmethod(mock_update_transaction),
-                "findTransactions": staticmethod(mock_find_transactions),
+                "update_transaction": staticmethod(mock_update_transaction),
+                "find_transactions": staticmethod(mock_find_transactions),
             },
         )()
 

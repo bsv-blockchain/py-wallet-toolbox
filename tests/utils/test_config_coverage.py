@@ -74,7 +74,8 @@ class TestGetConfigValue:
     def test_get_existing_value(self) -> None:
         """Test getting existing config value."""
         try:
-            config = {"testKey": "test_value"}
+            # Use matching key format (no automatic case conversion)
+            config = {"test_key": "test_value"}
             value = get_config_value(config, "test_key")
             assert value == "test_value"
         except (NameError, TypeError, KeyError):
@@ -143,7 +144,8 @@ class TestSetConfigValue:
         try:
             config = {}
             set_config_value(config, "new_key", "new_value")
-            assert config.get("newKey") == "new_value"
+            # No automatic case conversion - key stays as provided
+            assert config.get("new_key") == "new_value"
         except (NameError, TypeError):
             pass
 

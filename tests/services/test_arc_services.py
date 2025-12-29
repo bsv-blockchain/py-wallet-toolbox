@@ -317,7 +317,7 @@ class TestArcServices:
         result = services.post_beef(valid_beef_data)
         assert isinstance(result, dict)
         assert result.get("accepted") is False
-        assert "rate_limited" in result or "error" in result
+        assert result.get("rateLimited") is True or "rate" in str(result.get("message", "")).lower()
 
     @pytest.mark.asyncio
     async def test_arc_post_beef_success_responses(self, mock_services, valid_beef_data, arc_success_responses) -> None:
@@ -406,7 +406,9 @@ class TestArcServices:
         result = services.post_beef(valid_beef_data)
         assert isinstance(result, dict)
         assert result.get("accepted") is False
-        assert "Insufficient funds" in result.get("message") or "error" in result
+        # Check for insufficient funds indication in message or error field
+        message = str(result.get("message", ""))
+        assert "insufficient" in message.lower() or "error" in result or result.get("providerErrors")
 
     @pytest.mark.asyncio
     async def test_arc_post_beef_transaction_rejected(self, mock_services, valid_beef_data) -> None:

@@ -468,12 +468,21 @@ class TestWalletAcquireCertificate:
         assert lc["fields"]["name"] != "Alice"
 
         # TODO: Implement proveCertificate and field decryption
+        # Background: Full proveCertificate implementation requires MasterCertificate
+        # keyring decryption which depends on properly encrypted certificate fields.
+        # The test currently uses mock keyring values that bypass real decryption.
+        # TypeScript uses MasterCertificate.createKeyringForVerifier() which requires
+        # BRC-52/53 compliant encryption. See: ts-wallet-toolbox/src/MasterCertificate.ts
         # For now, just verify that the encrypted field can be "decrypted" back
         verifiable_cert = _create_verifiable_certificate(lc, {"name": "mock_key"})
         decrypted = _decrypt_fields(verifiable_cert, wallet_with_services)
         assert decrypted["name"] == "Alice"
 
         # TODO: Cleanup - relinquish all certificates (requires base64 serial numbers)
+        # Background: Certificate serial numbers in BRC-52 are base64-encoded 32-byte
+        # values. The test setup creates certificates with mock serial numbers that
+        # don't match the expected format for relinquish_certificate validation.
+        # Need to update test fixtures to use proper base64 serial number format.
         # certs = wallet_with_services.list_certificates({"types": [], "certifiers": []})
         # for cert in certs["certificates"]:
         #     relinquish_result = wallet_with_services.relinquish_certificate(
@@ -553,12 +562,17 @@ class TestWalletAcquireCertificate:
         assert lc["fields"]["name"] != "Alice"
 
         # TODO: Implement proveCertificate and privileged field decryption
+        # Background: Same as non-privileged case above. Privileged certificates use
+        # PrivilegedKeyManager for keyring operations, but the test still uses mock
+        # keyring values. Need MasterCertificate with proper BRC-52/53 encryption.
+        # See: ts-wallet-toolbox/src/PrivilegedKeyManager.ts for privileged key handling
         # For now, just verify that the encrypted field can be "decrypted" back
         verifiable_cert = _create_verifiable_certificate(lc, {"name": "mock_key"})
         decrypted = _decrypt_fields(verifiable_cert, wallet)
         assert decrypted["name"] == "Alice"
 
         # TODO: Cleanup - relinquish all certificates (requires base64 serial numbers)
+        # Background: Same as non-privileged case - need proper base64 serial numbers
 
 
 # Helper functions for certificate testing (to be implemented with API)

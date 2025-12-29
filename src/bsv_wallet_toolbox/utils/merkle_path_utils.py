@@ -61,7 +61,7 @@ def convert_proof_to_merkle_path(txid: str, proof: TscMerkleProofApi) -> dict[st
         if node == "*" or (level == 0 and node == txid):
             leaf["duplicate"] = True
         else:
-            leaf["hashStr"] = node
+            leaf["hash_str"] = node
 
         path[level].append(leaf)
 
@@ -69,7 +69,7 @@ def convert_proof_to_merkle_path(txid: str, proof: TscMerkleProofApi) -> dict[st
         if level == 0:
             txid_leaf: MerkleLeaf = {
                 "offset": proof["index"],
-                "hashStr": txid,
+                "hash_str": txid,
                 "txid": True,
             }
             if is_odd:

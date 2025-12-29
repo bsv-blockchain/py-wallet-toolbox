@@ -10,6 +10,7 @@ import json
 from typing import Any, TypedDict
 
 from bsv.auth.verifiable_certificate import VerifiableCertificate as BsvVerifiableCertificate
+from bsv.overlay_tools.lookup_resolver import LookupError, LookupQuestion
 from bsv.transaction.pushdrop import PushDrop
 from bsv.transaction import Transaction
 from bsv.utils import to_utf8
@@ -205,12 +206,11 @@ async def query_overlay(query: Any, resolver: Any) -> list[VerifiableCertificate
     Reference: toolbox/ts-wallet-toolbox/src/utility/identityUtils.ts:109-116
     """
     # Call overlay service query
-    results = await resolver.query(
-        {
-            "service": "ls_identity",
-            "query": query,
-        }
-    )
+    question = LookupQuestion(service="ls_identity", query=query)
+    try:
+        results = await resolver.query(question)
+    except LookupError:
+        return []
 
     # Parse and return results
     return await parse_results(results)

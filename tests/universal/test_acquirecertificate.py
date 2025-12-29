@@ -22,7 +22,6 @@ class TestUniversalVectorsAcquireCertificate:
     Following the principle: "If TypeScript skips it, we skip it too."
     """
 
-    @pytest.mark.xfail(reason="Test vector incomplete: missing required 'subject' field in simple variant")
     def test_acquirecertificate_simple_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:
@@ -62,7 +61,13 @@ class TestUniversalVectorsAcquireCertificate:
         wire_response = serialize_response(result)
         assert isinstance(wire_response, bytes)
 
-    @pytest.mark.xfail(reason="Test vector incomplete: missing required 'serialNumber' field in issuance variant")
+    @pytest.mark.xfail(
+        reason="Test vector incomplete: missing required 'serialNumber' field in issuance variant. "
+        "Background: The official BRC-100 universal test vector (acquireCertificate-issuance-args.json) "
+        "uses acquisitionProtocol='issuance' which means the certificate is obtained from a certifier "
+        "service. In this flow, serialNumber is assigned by the certifier, but the test vector doesn't "
+        "include it. This is an upstream test vector issue (github.com/bsv-blockchain/universal-test-vectors)."
+    )
     def test_acquirecertificate_issuance_json_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services
     ) -> None:

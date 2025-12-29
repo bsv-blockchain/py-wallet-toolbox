@@ -487,7 +487,7 @@ class TestTaskFailAbandoned:
         """Test run_task with naive datetime (no timezone)."""
         mock_monitor = MagicMock()
         # Naive datetime from 10 minutes ago (representing UTC time)
-        old_time_naive = datetime.utcnow() - timedelta(minutes=10)
+        old_time_naive = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
         mock_monitor.storage.find_transactions.return_value = [
             {"transactionId": 111, "updatedAt": old_time_naive}
         ]

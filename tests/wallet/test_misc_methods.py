@@ -8,6 +8,7 @@ Reference: wallet-toolbox/src/Wallet.ts
 import pytest
 
 from bsv.keys import PrivateKey
+from bsv.overlay_tools import LookupResolver
 from bsv.wallet import KeyDeriver
 
 from bsv_wallet_toolbox import Wallet
@@ -472,6 +473,48 @@ class TestWalletConstructor:
         # Then
         assert wallet is not None
         assert wallet.chain == "main"
+
+
+class TestWalletLookupResolver:
+    """Tests for LookupResolver wiring on the Wallet constructor."""
+
+    @staticmethod
+    def _make_key_deriver() -> KeyDeriver:
+        root_key = PrivateKey(bytes.fromhex("1" * 64))
+        return KeyDeriver(root_key)
+
+    @pytest.mark.parametrize(
+        ("chain", "expected_network"),
+        [
+            ("main", "mainnet"),
+            ("test", "testnet"),
+        ],
+    )
+    def test_wallet_initializes_sdk_lookup_resolver(self, chain: str, expected_network: str) -> None:
+        """Wallet automatically provisions a LookupResolver that matches the chain preset."""
+        wallet = Wallet(chain=chain, key_deriver=self._make_key_deriver())
+
+        assert isinstance(wallet.lookup_resolver, LookupResolver)
+        assert wallet.lookup_resolver.network_preset == expected_network
+
+    def test_wallet_accepts_custom_lookup_resolver(self) -> None:
+        """Custom resolvers can be injected for tests/mocks."""
+
+        class CustomResolver:
+            def __init__(self) -> None:
+                self.network_preset = "mock"
+
+            async def query(self, params: dict[str, object]) -> dict[str, object]:
+                return {"type": "output-list", "outputs": []}
+
+        resolver = CustomResolver()
+        wallet = Wallet(
+            chain="main",
+            key_deriver=self._make_key_deriver(),
+            lookup_resolver=resolver,
+        )
+
+        assert wallet.lookup_resolver is resolver
 
     def test_wallet_constructor_with_invalid_root_key(self) -> None:
         """Given: Invalid root key (not hex)
