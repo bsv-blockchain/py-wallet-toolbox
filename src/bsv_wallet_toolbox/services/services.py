@@ -104,11 +104,13 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
     # Chaintracks URL for fiat exchange rates (empty as per TS implementation)
     chaintracks_fiat_exchange_rates_url = ""
 
-    # ARC TAAL default URL
+    # ARC TAAL default URL (fallback/alternative)
     arc_url = "https://arc.taal.com" if chain == "main" else "https://arc-test.taal.com"
 
-    # ARC GorillaPool default URL
-    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else None
+    # ARC GorillaPool default URL (primary ARC provider)
+    # For testnet: https://testnet.arc.gorillapool.io
+    # For mainnet: https://arc.gorillapool.io
+    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else "https://testnet.arc.gorillapool.io"
 
     return WalletServicesOptions(
         chain=chain,
@@ -1467,6 +1469,7 @@ class Services(WalletServices):
 
         # 2. Try ARC TAAL (if configured)
         if self.arc_taal:
+            self.logger.debug("Services.post_beef: Attempting TAAL broadcast (GorillaPool failed)")
             try:
                 # Handle async broadcast - ARC expects Transaction object
                 if tx is None:
@@ -1524,6 +1527,7 @@ class Services(WalletServices):
 
         # Otherwise return failure
         # Prefer ARC error details (when available) because they tend to be most actionable.
+        # However, for transaction validation errors (like 462), we should show all attempts
         if "arcTaal" in provider_errors:
             message = provider_errors["arcTaal"]
         elif "arcGorillaPool" in provider_errors:
@@ -1533,11 +1537,27 @@ class Services(WalletServices):
         else:
             message = "No broadcast providers available"
 
-        if len(provider_errors) > 1:
-            # Include other provider failures for completeness.
-            extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
-            if extras:
-                message = f"{message}; other_failures: {extras}"
+        # Log all provider errors for debugging
+        if provider_errors:
+            self.logger.warning(
+                "Services.post_beef: All providers failed. Errors: %s",
+                provider_errors
+            )
+            # Include all provider failures in the message for better debugging
+            if len(provider_errors) > 1:
+                extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
+                if extras:
+                    message = f"{message}; other_failures: {extras}"
+            # Also include which providers were tried
+            tried_providers = []
+            if self.arc_gorillapool:
+                tried_providers.append("GorillaPool")
+            if self.arc_taal:
+                tried_providers.append("TAAL")
+            if self.bitails:
+                tried_providers.append("Bitails")
+            if tried_providers:
+                message = f"{message} (tried: {', '.join(tried_providers)})"
 
         self.logger.debug(
             "Services.post_beef: all providers failed, last_error=%r, txids=%s",

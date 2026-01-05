@@ -194,7 +194,9 @@ class ARC:
         }
 
         if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            # Ensure API key is stripped of whitespace
+            api_key_clean = self.api_key.strip() if isinstance(self.api_key, str) else self.api_key
+            headers["Authorization"] = f"Bearer {api_key_clean}"
 
         if self.callback_url:
             headers["X-CallbackUrl"] = self.callback_url
@@ -258,6 +260,21 @@ class ARC:
         headers = self.request_headers()
         url = f"{self.url}/v1/tx"
         now = datetime.now(timezone.utc).isoformat()
+        
+        # Debug: Log authorization header (masked) and endpoint
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"ARC {self.name} endpoint: {url}")
+        logger.info(f"ARC {self.name} base URL: {self.url}")
+        if "Authorization" in headers:
+            auth_header = headers["Authorization"]
+            if auth_header.startswith("Bearer "):
+                api_key_part = auth_header[7:]  # Remove "Bearer " prefix
+                masked_key = f"{api_key_part[:8]}...{api_key_part[-4:]}" if len(api_key_part) > 12 else "***"
+                logger.info(f"ARC {self.name} Authorization header: Bearer {masked_key} (length: {len(api_key_part)})")
+        else:
+            logger.warning(f"ARC {self.name} Authorization header: NOT SET")
+        logger.info(f"ARC {self.name} API key present: {bool(self.api_key)}")
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
@@ -282,6 +299,11 @@ class ARC:
                 timeout=30,
             )
 
+            # Log response status for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"ARC {self.name} HTTP response status: {response.status_code}")
+            
             if response.status_code in (200, 201):
                 arc_response_data = response.json()
                 response_txid = arc_response_data.get("txid")
@@ -344,10 +366,17 @@ class ARC:
                         error_data.detail = response_data.get("detail")
                         if error_data.detail:
                             note["detail"] = error_data.detail
+                        # Log the full error response for debugging
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"ARC {self.name} error response (status {response.status_code}): {response_data}")
                 except Exception:
                     response_text = response.text
                     if response_text:
                         note["data"] = response_text[:128]
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"ARC {self.name} error response (non-JSON, status {response.status_code}): {response_text[:200]}")
 
                 result.notes.append(note)
 

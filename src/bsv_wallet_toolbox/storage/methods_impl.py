@@ -172,7 +172,8 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
         proven_req_record = {
             "userId": user_id,
             "txid": txid,
-            "beef": raw_tx,  # Store raw tx as BEEF
+            "rawTx": raw_tx,  # Store raw tx (will be used for broadcasting)
+            "beef": raw_tx,  # Also store as beef for backward compatibility
             "status": "unsent" if args.get("isDelayed") else "sent",
             "isDeleted": False,
         }
@@ -196,26 +197,102 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
             req_record = storage.findOne("ProvenTxReq", {"txid": txid, "userId": user_id, "isDeleted": False})
 
             if req_record:
-                beef = req_record.get("beef", "")
+                # Get raw transaction - could be stored as 'beef', 'rawTx', or 'raw_tx'
+                beef = req_record.get("beef") or req_record.get("rawTx") or req_record.get("raw_tx") or ""
+                
+                # If beef is empty, log a warning
+                if not beef:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"No raw transaction data found for {txid} in ProvenTxReq. Available keys: {list(req_record.keys())}")
 
                 if args.get("isDelayed"):
                     # Mark as unsent and don't post
                     storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "unsent"})
                 # Attempt to post to network
                 elif beef:
-                    # Store result
+                    # Actually broadcast the transaction
                     post_result = {
                         "txid": txid,
-                        "status": "posted",
+                        "status": "sending",
                         "timestamp": datetime.utcnow().isoformat(),
                     }
+
+                    # Try to broadcast via services
+                    try:
+                        services = storage.get_services() if hasattr(storage, "get_services") else None
+                        if services:
+                            # Convert beef to hex string if needed
+                            # beef can be: hex string, bytes, or list of ints
+                            if isinstance(beef, bytes):
+                                beef_hex = beef.hex()
+                            elif isinstance(beef, str):
+                                # Already a string - could be hex or base64
+                                # Try to detect if it's base64
+                                try:
+                                    import base64
+                                    # If it decodes as base64, convert to hex
+                                    decoded = base64.b64decode(beef, validate=True)
+                                    beef_hex = decoded.hex()
+                                except Exception:
+                                    # Assume it's already hex
+                                    beef_hex = beef
+                            elif isinstance(beef, (list, tuple)):
+                                # List of integers - convert to bytes then hex
+                                beef_bytes = bytes(int(x) & 0xFF for x in beef)
+                                beef_hex = beef_bytes.hex()
+                            else:
+                                # Try to convert to string and assume hex
+                                beef_hex = str(beef)
+                            
+                            # Broadcast the transaction
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.info(f"Broadcasting transaction {txid} (beef length: {len(beef_hex)} chars)")
+                            broadcast_result = services.post_beef(beef_hex)
+                            logger.info(f"Broadcast result for {txid}: {broadcast_result}")
+                            
+                            if broadcast_result.get("accepted") or broadcast_result.get("success"):
+                                post_result["status"] = "unproven"
+                                storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "unproven"})
+                                logger.info(f"Transaction {txid} broadcast successfully")
+                            elif broadcast_result.get("rateLimited"):
+                                post_result["status"] = "sending"
+                                storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "sending"})
+                                logger.warning(f"Transaction {txid} rate limited, will retry")
+                            elif broadcast_result.get("doubleSpend"):
+                                post_result["status"] = "failed"
+                                storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "failed"})
+                                logger.error(f"Transaction {txid} double spend detected")
+                            else:
+                                # Broadcast failed - log the error
+                                error_msg = broadcast_result.get("message", "Unknown broadcast error")
+                                logger.error(f"Transaction {txid} broadcast failed: {error_msg}")
+                                if "providerErrors" in broadcast_result:
+                                    logger.error(f"Provider errors: {broadcast_result['providerErrors']}")
+                                post_result["status"] = "sending"
+                                post_result["error"] = error_msg
+                                storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "sending"})
+                            
+                            # Add message if available
+                            if "message" in broadcast_result:
+                                post_result["message"] = broadcast_result["message"]
+                        else:
+                            # No services available - mark as posted (will be handled by monitor task)
+                            post_result["status"] = "posted"
+                            storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "posted"})
+                    except Exception as e:
+                        # Broadcast failed - mark as sending for retry
+                        import logging
+                        logger = logging.getLogger(__name__)
+                        logger.error(f"Failed to broadcast transaction {txid}: {e}", exc_info=True)
+                        post_result["status"] = "sending"
+                        post_result["error"] = str(e)
+                        storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "sending"})
 
                     if not hasattr(result, "send_with_results"):
                         result.send_with_results = []
                     result.send_with_results.append(post_result)
-
-                    # Update status
-                    storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "posted"})
 
     return result
 

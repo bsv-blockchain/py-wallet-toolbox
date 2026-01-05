@@ -12,18 +12,57 @@ Reference: go-wallet-toolbox/pkg/storage/server.go
 
 import logging
 import os
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy import create_engine
+
+# Initialize logger first
+logger = logging.getLogger(__name__)
+
+# Try to load .env file if python-dotenv is available
+try:
+    from dotenv import load_dotenv
+    # Load .env file from the project root (storage_server_example directory)
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        load_dotenv(env_path)
+        logger.info(f"Loaded .env file from: {env_path}")
+    else:
+        logger.debug(f".env file not found at: {env_path}")
+except ImportError:
+    # python-dotenv not installed - try manual .env loading
+    env_path = Path(__file__).parent.parent / '.env'
+    if env_path.exists():
+        logger.info(f"Loading .env file manually from: {env_path}")
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    key = key.strip()
+                    # Strip quotes and whitespace from value
+                    value = value.strip()
+                    # Remove surrounding quotes if present
+                    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                        value = value[1:-1]
+                    value = value.strip()
+                    # Only set if not already in environment
+                    if key not in os.environ:
+                        os.environ[key] = value
+                        logger.debug(f"Loaded from .env: {key} (length: {len(value)})")
+    else:
+        logger.debug(f".env file not found at: {env_path}")
+except Exception as e:
+    logger.warning(f"Failed to load .env file: {e}")
+
 from bsv_wallet_toolbox.rpc import StorageServer
 from bsv_wallet_toolbox.storage import StorageProvider
-from bsv_wallet_toolbox.services import WalletServices
+from bsv_wallet_toolbox.services import Services
 from bsv_wallet_toolbox.wallet import Wallet as ToolboxWallet
 from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
 from bsv.keys import PrivateKey
 from bsv.wallet import KeyDeriver
-
-logger = logging.getLogger(__name__)
 
 # Global StorageServer instance
 _storage_server: Optional[StorageServer] = None
@@ -40,6 +79,9 @@ SERVER_PRIVATE_KEY = os.environ.get(
     'SERVER_PRIVATE_KEY',
     'b4a609a63dc91bebf3823a8ff2470c23e2da9af18f5138990ef390373f8969d7'  # Different from client's key
 )
+
+# Chain configuration (default to testnet for development)
+CHAIN = os.environ.get('CHAIN', 'test')  # 'main' or 'test'
 
 
 def get_server_wallet() -> ToolboxWallet:
@@ -72,7 +114,7 @@ def get_server_wallet() -> ToolboxWallet:
             
             # Create server wallet (without storage - only for auth)
             _server_wallet = ToolboxWallet(
-                chain='test',
+                chain=CHAIN,
                 key_deriver=key_deriver,
                 storage_provider=None,  # Server wallet doesn't need storage
                 privileged_key_manager=privileged_manager,
@@ -120,7 +162,7 @@ def get_storage_server() -> StorageServer:
         # Initialize StorageProvider with SQLite configuration
         storage_provider = StorageProvider(
             engine=engine,
-            chain='test',  # Use testnet for development
+            chain=CHAIN,
             storage_identity_key='django-wallet-server'
         )
 
@@ -132,13 +174,107 @@ def get_storage_server() -> StorageServer:
         except Exception as e:
             logger.warning(f"StorageProvider make_available failed (may already be initialized): {e}")
 
-        # Initialize WalletServices for broadcast functionality
+        # Initialize Services for broadcast functionality
         try:
-            wallet_services = WalletServices(chain='test')
+            from bsv_wallet_toolbox.services import create_default_options
+            
+            # Create services options with optional API keys from environment
+            services_options = create_default_options(CHAIN)
+            
+            # Optional: Configure ARC API keys from environment variables
+            # Check multiple possible environment variable names
+            # Debug: log which env vars are available
+            env_vars_checked = ['TAAL_ARC_API_KEY', 'ARC_API_KEY']
+            if CHAIN == 'test':
+                env_vars_checked.append('TEST_TAAL_API_KEY')
+            else:
+                env_vars_checked.append('MAIN_TAAL_API_KEY')
+            
+            logger.info(f"Checking for ARC API key in environment variables: {env_vars_checked}")
+            # Debug: show all environment variables that might be relevant
+            all_env_vars = {k: v for k, v in os.environ.items() if 'TAAL' in k.upper() or 'ARC' in k.upper()}
+            if all_env_vars:
+                logger.info(f"  Found relevant environment variables: {list(all_env_vars.keys())}")
+            else:
+                logger.warning("  No environment variables found containing 'TAAL' or 'ARC'")
+            
+            for var_name in env_vars_checked:
+                value = os.environ.get(var_name)
+                if value:
+                    logger.info(f"  Found {var_name}: {'*' * min(len(value), 8)}... (length: {len(value)})")
+                else:
+                    logger.info(f"  {var_name}: not set")
+            
+            arc_api_key = (
+                os.environ.get('TAAL_ARC_API_KEY') or
+                os.environ.get('ARC_API_KEY') or
+                (os.environ.get('TEST_TAAL_API_KEY') if CHAIN == 'test' else None) or
+                (os.environ.get('MAIN_TAAL_API_KEY') if CHAIN == 'main' else None)
+            )
+            if arc_api_key:
+                # Strip whitespace from API key (common issue with .env files)
+                arc_api_key = arc_api_key.strip()
+                services_options['arcApiKey'] = arc_api_key
+                logger.info(f"ARC TAAL API key configured from environment (length: {len(arc_api_key)})")
+                logger.info(f"  API key in services_options: {'set' if services_options.get('arcApiKey') else 'NOT SET'}")
+                logger.debug(f"  API key value (first 8 chars): {arc_api_key[:8]}... (last 4 chars: ...{arc_api_key[-4:]})")
+                # Note: If you get "authorization key not found" errors, verify:
+                # 1. The API key is valid and active in TAAL dashboard
+                # 2. The API key is enabled for the testnet endpoint (https://arc-test.taal.com)
+                # 3. The API key format matches TAAL's requirements
+            else:
+                logger.warning("ARC TAAL API key not configured - broadcasting may fail with authentication errors")
+                logger.warning(f"  Set TAAL_ARC_API_KEY, ARC_API_KEY, or {'TEST_TAAL_API_KEY' if CHAIN == 'test' else 'MAIN_TAAL_API_KEY'} environment variable to enable ARC broadcasting")
+                logger.warning(f"  Current CHAIN setting: {CHAIN}")
+            
+            arc_gorillapool_key = os.environ.get('ARC_GORILLAPOOL_API_KEY')
+            if arc_gorillapool_key:
+                services_options['arcGorillaPoolApiKey'] = arc_gorillapool_key
+                logger.info("ARC GorillaPool API key configured from environment")
+            else:
+                logger.info("ARC GorillaPool: No API key required (public endpoint)")
+            
+            bitails_key = os.environ.get('BITAILS_API_KEY')
+            if bitails_key:
+                services_options['bitailsApiKey'] = bitails_key
+                logger.info("Bitails API key configured from environment")
+            
+            # Debug: log what's in services_options for ARC
+            logger.info(f"Services options ARC config: arcUrl={services_options.get('arcUrl')}, arcApiKey={'set' if services_options.get('arcApiKey') else 'NOT SET'}")
+            
+            wallet_services = Services(services_options)  # Use configured options
             storage_provider.set_services(wallet_services)
-            logger.info("WalletServices initialized for testnet (broadcast enabled)")
+            chain_name = 'mainnet' if CHAIN == 'main' else 'testnet'
+            logger.info(f"Services initialized for {chain_name} (broadcast enabled)")
+            
+            # Verify services are actually set and check API key configuration
+            try:
+                verify_services = storage_provider.get_services()
+                logger.info(f"Services verification: {type(verify_services).__name__} is configured")
+                if hasattr(verify_services, 'arc_taal') and verify_services.arc_taal:
+                    logger.info("ARC TAAL: configured")
+                    # Check if API key is actually set in the ARC provider
+                    if hasattr(verify_services.arc_taal, 'api_key'):
+                        arc_key = verify_services.arc_taal.api_key
+                        if arc_key:
+                            logger.info(f"  ARC TAAL API key: {'*' * min(len(arc_key), 8)}... (length: {len(arc_key)})")
+                        else:
+                            logger.warning("  ARC TAAL API key: NOT SET - will fail with 401")
+                    else:
+                        logger.warning("  ARC TAAL: api_key attribute not found")
+                else:
+                    logger.info("ARC TAAL: not configured")
+                if hasattr(verify_services, 'arc_gorillapool'):
+                    gp_status = 'configured' if verify_services.arc_gorillapool else 'not configured'
+                    logger.info(f"ARC GorillaPool: {gp_status}")
+                if hasattr(verify_services, 'bitails'):
+                    bitails_status = 'configured' if verify_services.bitails else 'not configured'
+                    logger.info(f"Bitails: {bitails_status}")
+            except Exception as verify_err:
+                logger.error(f"Services verification failed: {verify_err}", exc_info=True)
         except Exception as e:
-            logger.warning(f"WalletServices initialization failed: {e}")
+            logger.error(f"Services initialization failed: {e}", exc_info=True)
+            logger.warning("Broadcasting will not be available - transactions will be marked as 'sending' for retry")
 
         # Create StorageServer with StorageProvider auto-registration
         _storage_server = StorageServer(storage_provider=storage_provider)
