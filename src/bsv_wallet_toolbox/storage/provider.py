@@ -3020,31 +3020,40 @@ class StorageProvider:
 
                 if services is not None:
                     try:
-                        if req.input_beef:
-                            beef_payload_hex = req.input_beef.hex()
-                        else:
-                            try:
-                                beef_builder = Beef(version=BEEF_V2)
-                                beef_builder.merge_raw_tx(raw_bytes)
-                                beef_payload_hex = beef_builder.to_binary_atomic(txid).hex()
-                            except Exception:
-                                beef_payload_hex = raw_bytes.hex()
-
-                        # Debug: Log rawTx being broadcast
+                        # Always use raw transaction hex for broadcasting (ARC expects raw tx, not AtomicBEEF)
+                        raw_tx_hex = raw_bytes.hex()
+                        
+                        # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
                         self.logger.debug(
-                            "_share_reqs_with_world: broadcasting rawTx for txid=%s, beef_payload_len=%d bytes, beef_payload_hex (first 100 chars): %s...",
+                            "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
                             txid,
-                            len(beef_payload_hex) // 2,
-                            beef_payload_hex[:100]
+                            len(raw_tx_hex) // 2,
+                            raw_tx_hex[:100]
                         )
-                        # Also log raw bytes if it's a simple transaction (not BEEF)
-                        if len(beef_payload_hex) < 2000:  # Likely a simple raw tx, not BEEF
+                        # Log full hex for small transactions
+                        if len(raw_tx_hex) < 2000:
                             self.logger.debug(
                                 "_share_reqs_with_world: rawTx hex (full): %s",
-                                beef_payload_hex
+                                raw_tx_hex
                             )
+                        # Verify it's not AtomicBEEF format (should not start with 01010101)
+                        if raw_tx_hex.startswith("01010101"):
+                            self.logger.error(
+                                "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
+                                "This should be raw transaction hex. Transaction will fail to broadcast."
+                            )
+                        else:
+                            # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
+                            if not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
+                                self.logger.warning(
+                                    "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
+                                    "First 8 chars: %s",
+                                    raw_tx_hex[:8]
+                                )
 
-                        broadcast_result = services.post_beef(beef_payload_hex)
+                        # Send raw transaction hex to services.post_beef
+                        # services.post_beef will parse it and extract the Transaction object for ARC
+                        broadcast_result = services.post_beef(raw_tx_hex)
                         if broadcast_result.get("accepted"):
                             status = "unproven"
                             broadcast_ok = True

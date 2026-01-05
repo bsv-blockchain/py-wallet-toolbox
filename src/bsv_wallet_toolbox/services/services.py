@@ -1396,15 +1396,37 @@ class Services(WalletServices):
                 raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
         # Debug: Log rawTx being processed
-        self.logger.debug(
-            "Services.post_beef: processing rawTx, txid=%s, beef_len=%d bytes, beef_hex (first 200 chars): %s...",
-            txid,
-            len(beef) // 2,
-            beef[:200]
-        )
-        # Log full hex for small transactions (likely raw tx, not BEEF)
-        if len(beef) < 1000:
-            self.logger.debug("Services.post_beef: rawTx hex (full): %s", beef)
+        # Check if it's AtomicBEEF format (starts with 01010101) or raw transaction
+        is_atomic_beef = beef.startswith("01010101")
+        if is_atomic_beef:
+            self.logger.debug(
+                "Services.post_beef: processing AtomicBEEF, txid=%s, beef_len=%d bytes, beef_hex (first 100 chars): %s...",
+                txid,
+                len(beef) // 2,
+                beef[:100]
+            )
+            # After parsing, log the extracted raw transaction
+            if tx:
+                raw_tx_from_beef = tx.hex()
+                self.logger.debug(
+                    "Services.post_beef: extracted rawTx from AtomicBEEF, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                    txid,
+                    len(raw_tx_from_beef) // 2,
+                    raw_tx_from_beef[:100]
+                )
+                if len(raw_tx_from_beef) < 1000:
+                    self.logger.debug("Services.post_beef: extracted rawTx hex (full): %s", raw_tx_from_beef)
+        else:
+            # It's already raw transaction hex
+            self.logger.debug(
+                "Services.post_beef: processing rawTx, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 200 chars): %s...",
+                txid,
+                len(beef) // 2,
+                beef[:200]
+            )
+            # Log full hex for small transactions
+            if len(beef) < 1000:
+                self.logger.debug("Services.post_beef: rawTx hex (full): %s", beef)
 
         def _fmt_arc_error(res: Any) -> str:
             # ARC.broadcast returns PostTxResultForTxid.
@@ -1448,6 +1470,22 @@ class Services(WalletServices):
                 # Handle async broadcast - ARC expects Transaction object
                 if tx is None:
                     raise ValueError("ARC broadcast requires transaction object")
+                # Debug: Verify transaction hex is raw transaction, not AtomicBEEF
+                tx_hex = tx.hex() if hasattr(tx, "hex") else None
+                if tx_hex:
+                    self.logger.debug(
+                        "Services.post_beef: Transaction.hex() result, txid=%s, hex_len=%d bytes, hex (first 100 chars): %s...",
+                        txid,
+                        len(tx_hex) // 2,
+                        tx_hex[:100]
+                    )
+                    if tx_hex.startswith("01010101"):
+                        self.logger.error(
+                            "Services.post_beef: ERROR - Transaction.hex() returns AtomicBEEF format! "
+                            "This should be raw transaction hex. Transaction object may be corrupted."
+                        )
+                    elif len(tx_hex) < 1000:
+                        self.logger.debug("Services.post_beef: Transaction.hex() (full): %s", tx_hex)
                 res = self._run_async(self.arc_gorillapool.broadcast(tx))
 
                 if getattr(res, "status", "") == "success":

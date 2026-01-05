@@ -219,7 +219,29 @@ class ARC:
             PostTxResultForTxid with broadcast result.
         """
         if hasattr(tx, "hex") and hasattr(tx, "txid"):
-            return self.post_raw_tx(tx.hex(), [tx.txid()])
+            raw_tx_hex = tx.hex()
+            txid = tx.txid()
+            # Debug: Log the raw transaction being broadcast
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(
+                "ARC %s.broadcast: broadcasting Transaction, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                self.name,
+                txid,
+                len(raw_tx_hex) // 2,
+                raw_tx_hex[:100]
+            )
+            # Log full hex for small transactions
+            if len(raw_tx_hex) < 1000:
+                logger.debug("ARC %s.broadcast: raw_tx hex (full): %s", self.name, raw_tx_hex)
+            # Verify it's not AtomicBEEF format (should not start with 01010101)
+            if raw_tx_hex.startswith("01010101"):
+                logger.warning(
+                    "ARC %s.broadcast: WARNING - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
+                    "This should be a raw transaction hex, not AtomicBEEF. Transaction may fail to broadcast.",
+                    self.name
+                )
+            return self.post_raw_tx(raw_tx_hex, [txid])
         # Non-Transaction payloads (e.g., raw hex or BEEF) are not supported for ARC broadcast
         raise ValueError("ARC broadcast expects a Transaction object")
 
@@ -416,7 +438,7 @@ class ARC:
         endpoint.
 
         Args:
-            beef: BEEF object with to_hex() method.
+            beef: BEEF object with find_transaction() method, or hex string (will be parsed).
             txids: List of transaction IDs to track results for.
 
         Returns:
@@ -433,13 +455,45 @@ class ARC:
 
         nn = make_note(self.name, now)
 
-        # Note: BEEF_V2 to V1 conversion requires py-sdk Beef.to_hex() and BeefTx.is_txid_only
-        # (See doc/PY_SDK_ADDITIONAL_BEEF_FEATURES.md)
-        # Current implementation uses py-sdk to_hex() when available.
-        beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else str(beef)
+        # Parse BEEF if it's a hex string
+        from bsv.transaction.beef import parse_beef_ex
+        if isinstance(beef, str):
+            try:
+                beef_bytes = bytes.fromhex(beef)
+                beef_obj, _, _ = parse_beef_ex(beef_bytes)
+                beef = beef_obj
+            except Exception:
+                # If parsing fails, treat as raw tx hex
+                if txids:
+                    prtr = self.post_raw_tx(beef, txids)
+                    result.status = prtr.status
+                    result.txid_results = [prtr]
+                    return result
+                raise
 
-        # Broadcast BEEF (treated as raw tx)
-        prtr = self.post_raw_tx(beef_hex, txids)
+        # Extract raw transaction from BEEF (ARC expects raw tx, not BEEF)
+        # Use the first/last txid (ARC typically processes one transaction)
+        if not txids:
+            raise ValueError("txids required for ARC post_beef")
+        
+        txid = txids[-1]  # Use last txid
+        beef_tx = beef.find_transaction(txid) if hasattr(beef, "find_transaction") else None
+        
+        if beef_tx:
+            # Extract raw transaction bytes
+            if hasattr(beef_tx, "tx_obj") and beef_tx.tx_obj:
+                raw_tx_hex = beef_tx.tx_obj.serialize().hex()
+            elif hasattr(beef_tx, "tx_bytes"):
+                raw_tx_hex = beef_tx.tx_bytes.hex() if isinstance(beef_tx.tx_bytes, bytes) else beef_tx.tx_bytes
+            else:
+                raise ValueError(f"Could not extract raw transaction from BEEF for txid {txid}")
+        else:
+            # Fallback: try to parse as raw transaction
+            beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else str(beef)
+            raw_tx_hex = beef_hex
+
+        # Broadcast raw transaction (ARC expects raw tx, not BEEF)
+        prtr = self.post_raw_tx(raw_tx_hex, txids)
 
         result.status = prtr.status
         result.txid_results = [prtr]

@@ -338,22 +338,25 @@ def build_signable_transaction(
             )
 
         # Record pending storage input metadata for later BRC-29 signing (TS parity)
+        # IMPORTANT: Store base64 strings directly (not decoded) to match keyID format used during internalization
+        # Go/TS use base64 strings directly in keyID: keyID = "base64_prefix base64_suffix"
         derivation_prefix_b64 = storage_input.get("derivationPrefix") or ""
         derivation_suffix_b64 = storage_input.get("derivationSuffix") or ""
-        decoded_prefix = _decode_remittance_component(derivation_prefix_b64)
-        decoded_suffix = _decode_remittance_component(derivation_suffix_b64)
+        decoded_prefix = _decode_remittance_component(derivation_prefix_b64)  # For display/debug only
+        decoded_suffix = _decode_remittance_component(derivation_suffix_b64)  # For display/debug only
         unlocker_pub = storage_input.get("senderIdentityKey") or ""
         print(f"DEBUG: build_signable_transaction: Creating PendingStorageInput for vin={len(tx.inputs)}")
         print(f"  derivationPrefix (b64): {derivation_prefix_b64}")
         print(f"  derivationSuffix (b64): {derivation_suffix_b64}")
-        print(f"  derivationPrefix (decoded): {decoded_prefix!r}")
-        print(f"  derivationSuffix (decoded): {decoded_suffix!r}")
+        print(f"  derivationPrefix (decoded for display): {decoded_prefix!r}")
+        print(f"  derivationSuffix (decoded for display): {decoded_suffix!r}")
         print(f"  senderIdentityKey: {unlocker_pub[:30] if unlocker_pub else None}...")
+        # Store base64 strings directly (not decoded) to match keyID format
         pending_storage_inputs.append(
             PendingStorageInput(
                 vin=len(tx.inputs),
-                derivation_prefix=decoded_prefix,
-                derivation_suffix=decoded_suffix,
+                derivation_prefix=derivation_prefix_b64,  # Store base64, not decoded
+                derivation_suffix=derivation_suffix_b64,  # Store base64, not decoded
                 unlocker_pub_key=unlocker_pub,
                 source_satoshis=storage_input.get("sourceSatoshis") or 0,
                 locking_script=storage_input.get("sourceLockingScript") or "",
@@ -523,6 +526,8 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
 
                 # Derive private key for this input
                 print(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
+                if locker_pub:
+                    print(f"  Counterparty identity key: {locker_pub_key.to_hex()[:30]}...")
                 logger.info(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
                 derived_private_key = wallet.key_deriver.derive_private_key(brc29_protocol, key_id, counterparty)
                 
