@@ -19,6 +19,7 @@ classifiers = [
 
 dependencies = [
     "bsv-sdk",
+    "bsv-middleware",
     "requests>=2.31",
     "SQLAlchemy>=2.0",
     "python-dotenv>=1.0",
