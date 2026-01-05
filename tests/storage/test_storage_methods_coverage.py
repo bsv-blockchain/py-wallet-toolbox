@@ -509,27 +509,58 @@ class TestBeefOperationsExtended:
     """Extended tests for BEEF operations."""
 
     def test_get_beef_for_transaction_not_found(self) -> None:
-        """Test get_beef_for_transaction with non-existent transaction."""
+        """Test get_beef_for_transaction with non-existent transaction.
+        
+        The implementation calls storage.get_proven_or_raw_tx() and raises
+        WalletError when the transaction is not found.
+        """
         mock_storage = Mock()
-        # Return None when transaction not found
-        mock_storage.get_beef_for_transaction = Mock(return_value=None)
+        # Return empty result when transaction not found
+        mock_storage.get_proven_or_raw_tx = Mock(return_value={})
+        # Disable services fallback to get clean WalletError
+        mock_storage.get_services = Mock(return_value=None)
 
         txid = "0" * 64
 
-        # Function should return None when transaction not found
-        result = get_beef_for_transaction(mock_storage, txid)
-        assert result is None
+        # Function should raise WalletError when transaction not found
+        with pytest.raises(WalletError):
+            get_beef_for_transaction(mock_storage, txid)
 
     def test_get_beef_for_transaction_found(self) -> None:
-        """Test get_beef_for_transaction with existing transaction."""
+        """Test get_beef_for_transaction with existing transaction.
+        
+        The implementation uses storage.get_proven_or_raw_tx() to get transaction data,
+        then builds BEEF from it.
+        """
+        from bsv import Transaction
+        
         mock_storage = Mock()
-        mock_beef_data = b"test_beef_data"
-        mock_storage.get_beef_for_transaction = Mock(return_value=mock_beef_data)
+        
+        # Create a minimal valid transaction for testing
+        # Use a known valid transaction hex (coinbase-style minimal tx)
+        # Version 1, 0 inputs, 0 outputs, locktime 0
+        raw_tx_hex = "01000000000000000000"
+        tx = Transaction.from_hex(raw_tx_hex)
+        txid = tx.txid()
+        
+        # Create a mock merkle path with the required interface
+        mock_merkle_path = Mock()
+        mock_merkle_path.block_height = 100
+        # The implementation checks if merkle_path has 'path' attribute or 'to_binary'
+        mock_merkle_path.path = [[{"offset": 0, "hash_str": txid, "txid": True}]]
+        mock_merkle_path.to_binary = Mock(return_value=b"\x00" * 10)
+        
+        mock_storage.get_proven_or_raw_tx = Mock(return_value={
+            "proven": True,
+            "rawTx": raw_tx_hex,
+            "merklePath": mock_merkle_path,
+        })
 
-        txid = "a" * 64
         result = get_beef_for_transaction(mock_storage, txid)
 
-        assert result == mock_beef_data
+        # Result should be bytes (BEEF binary)
+        assert isinstance(result, bytes)
+        assert len(result) > 0
 
 
 class TestNetworkOperationsExtended:
@@ -1484,18 +1515,16 @@ class TestGetBeefForTransaction:
 
     def test_get_beef_for_transaction_missing_storage(self) -> None:
         """Test get_beef_for_transaction with missing storage."""
-        # The function doesn't validate storage, it just tries to call it
-        # which raises AttributeError when storage is None
-        with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_beef_for_transaction'"):
+        # The function validates storage and raises WalletError when None
+        with pytest.raises(WalletError, match="storage is required for get_beef_for_transaction"):
             get_beef_for_transaction(None, "test_txid")
 
     def test_get_beef_for_transaction_missing_txid(self) -> None:
         """Test get_beef_for_transaction with missing txid."""
         storage = Mock()
-        storage.get_beef_for_transaction = Mock(return_value=None)
-        # Empty txid should still work, just return None
-        result = get_beef_for_transaction(storage, "")
-        assert result is None
+        # Empty txid raises WalletError due to validation
+        with pytest.raises(WalletError, match="txid must be a 64-character hex string"):
+            get_beef_for_transaction(storage, "")
 
     def test_get_beef_for_transaction_not_found(self) -> None:
         """Test get_beef_for_transaction with transaction not found."""

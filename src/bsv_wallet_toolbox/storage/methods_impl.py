@@ -1512,11 +1512,6 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
                         beef_bytes = beef
                     beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
                     if subject_tx:
-                        # Temporarily comment out the detailed output inspection to avoid attribute errors
-                        # for i, inp in enumerate(subject_tx.inputs):
-                        # for i, out in enumerate(subject_tx.outputs):
-
-                    if subject_tx:
                         # Broadcast using services
                         # services.post_beef expects hex string, not bytes
                         beef_hex = beef_bytes.hex()

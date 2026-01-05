@@ -725,6 +725,5 @@ class UserUTXO(Base):
     output = relationship("Output", foreign_keys=[output_id])
 
     __table_args__ = (
-        Index("ix_user_utxos_status", "status"),
         Index("ix_user_utxos_basket_name", "basketName"),
     )

@@ -5218,16 +5218,6 @@ class InternalizeActionContext:
                 sender_identity_key = payment_remittance.get("senderIdentityKey")
                 derivation_prefix = payment_remittance.get("derivationPrefix", "")
                 derivation_suffix = payment_remittance.get("derivationSuffix")
-                _agent_log(
-                    "H2",
-                    "wallet_payment_params",
-                    {
-                        "output_index": output_index,
-                        "sender_identity_key": sender_identity_key,
-                        "derivation_prefix": derivation_prefix,
-                        "derivation_suffix": derivation_suffix,
-                    },
-                )
 
                 self.wallet_payments.append(
                     {
@@ -5240,15 +5230,6 @@ class InternalizeActionContext:
                         "eo": None,
                         "ignore": False,
                     }
-                )
-                try:
-                    wallet_payment_script = txo.locking_script.hex() if txo.locking_script else None
-                except Exception:
-                    wallet_payment_script = None
-                _agent_log(
-                    "H3",
-                    "wallet_payment_recorded",
-                    {"output_index": output_index, "script_hex": wallet_payment_script},
                 )
             else:
                 raise InvalidParameterError("protocol", f"'wallet payment' or 'basket insertion', got '{protocol}'")

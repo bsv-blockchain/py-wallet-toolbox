@@ -162,11 +162,14 @@ class TestStorageClient:
 
     def test_rpc_call_http_error(self, mock_wallet) -> None:
         """Test RPC call with HTTP error response."""
+        import json
         mock_response = Mock(spec=requests.Response)
         mock_response.ok = False
         mock_response.status_code = 500
         mock_response.reason = "Internal Server Error"
         mock_response.headers = {}
+        mock_response.text = "Internal Server Error"
+        mock_response.json.side_effect = json.JSONDecodeError("Expecting value", "", 0)
 
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
             mock_auth_client = Mock()
