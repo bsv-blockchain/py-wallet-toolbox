@@ -291,6 +291,20 @@ class ARC:
         nn = make_note(self.name, now)
         nne = make_note_extended(self.name, now)
 
+        # Debug: Log rawTx being broadcast
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            "ARC %s.post_raw_tx: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 200 chars): %s...",
+            self.name,
+            txid,
+            len(raw_tx) // 2,
+            raw_tx[:200]
+        )
+        # Log full hex for small transactions
+        if len(raw_tx) < 1000:
+            logger.debug("ARC %s.post_raw_tx: rawTx hex (full): %s", self.name, raw_tx)
+
         try:
             response = requests.post(
                 url,

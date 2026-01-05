@@ -1395,6 +1395,17 @@ class Services(WalletServices):
                 detail = f"{parse_error!s}; {exc!s}" if parse_error else str(exc)
                 raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
+        # Debug: Log rawTx being processed
+        self.logger.debug(
+            "Services.post_beef: processing rawTx, txid=%s, beef_len=%d bytes, beef_hex (first 200 chars): %s...",
+            txid,
+            len(beef) // 2,
+            beef[:200]
+        )
+        # Log full hex for small transactions (likely raw tx, not BEEF)
+        if len(beef) < 1000:
+            self.logger.debug("Services.post_beef: rawTx hex (full): %s", beef)
+
         def _fmt_arc_error(res: Any) -> str:
             # ARC.broadcast returns PostTxResultForTxid.
             # When it fails, res.data is typically PostTxResultForTxidError with:

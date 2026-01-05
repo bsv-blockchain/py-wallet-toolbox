@@ -3030,6 +3030,20 @@ class StorageProvider:
                             except Exception:
                                 beef_payload_hex = raw_bytes.hex()
 
+                        # Debug: Log rawTx being broadcast
+                        self.logger.debug(
+                            "_share_reqs_with_world: broadcasting rawTx for txid=%s, beef_payload_len=%d bytes, beef_payload_hex (first 100 chars): %s...",
+                            txid,
+                            len(beef_payload_hex) // 2,
+                            beef_payload_hex[:100]
+                        )
+                        # Also log raw bytes if it's a simple transaction (not BEEF)
+                        if len(beef_payload_hex) < 2000:  # Likely a simple raw tx, not BEEF
+                            self.logger.debug(
+                                "_share_reqs_with_world: rawTx hex (full): %s",
+                                beef_payload_hex
+                            )
+
                         broadcast_result = services.post_beef(beef_payload_hex)
                         if broadcast_result.get("accepted"):
                             status = "unproven"

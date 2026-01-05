@@ -249,6 +249,16 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                             import logging
                             logger = logging.getLogger(__name__)
                             logger.info(f"Broadcasting transaction {txid} (beef length: {len(beef_hex)} chars)")
+                            # Debug: Log rawTx being broadcast
+                            logger.debug(
+                                "process_action: broadcasting rawTx for txid=%s, beef_hex_len=%d bytes, beef_hex (first 200 chars): %s...",
+                                txid,
+                                len(beef_hex) // 2,
+                                beef_hex[:200]
+                            )
+                            # Log full hex for small transactions
+                            if len(beef_hex) < 1000:
+                                logger.debug("process_action: rawTx hex (full): %s", beef_hex)
                             broadcast_result = services.post_beef(beef_hex)
                             logger.info(f"Broadcast result for {txid}: {broadcast_result}")
                             
