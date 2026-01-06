@@ -2243,10 +2243,6 @@ class StorageProvider:
         next_vout = len(pending)
         for co in change_outputs:
             derivation_suffix = self._generate_derivation_suffix()
-            print(f"DEBUG: _create_new_outputs: Creating change output vout={next_vout}, satoshis={co.satoshis}")
-            print(f"  derivationPrefix: {derivation_prefix}")
-            print(f"  derivationSuffix: {derivation_suffix}")
-            print(f"  senderIdentityKey: None (SELF-locked)")
             pending.append({
                 "transactionId": ctx["transactionId"],
                 "userId": user_id,
@@ -2522,8 +2518,6 @@ class StorageProvider:
         exclude_sending: bool,
         transaction_id: int,
     ) -> Output | None:
-        print(f"DEBUG: allocate_funding_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
-        self.logger.info(f"DEBUG: allocate_funding_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
         # Allow "unsigned" and "nosend" status for wallet-managed outputs (change outputs from noSend transactions)
         # These are safe to spend because we control the keys
         # Matches Go implementation: wdk.TxStatusUnsigned, wdk.TxStatusNoSend
@@ -2549,44 +2543,8 @@ class StorageProvider:
             & ((Output.type == "P2PKH") | (Output.type == "custom"))
             & (TransactionModel.status.in_(allowed_status))
         )
-        
-        self.logger.info(f"DEBUG: allocate_funding_input query conditions - user_id={user_id}, basket_id={basket_id}, spendable=True, (type=P2PKH OR type=custom), status in {allowed_status}")
 
         session = self.SessionLocal()
-        
-        # DEBUG: List all outputs for this user to see what's available
-        try:
-            all_outputs = session.execute(
-                select(Output).where(Output.user_id == user_id)
-            ).scalars().all()
-            print(f"DEBUG: Total outputs for user {user_id}: {len(all_outputs)}")
-            for i, o in enumerate(all_outputs):
-                print(f"DEBUG: Output {i}: id={o.output_id}, basket_id={o.basket_id}, type={o.type}, change={o.change}, spendable={o.spendable}, satoshis={o.satoshis}, transaction_id={o.transaction_id}, spent_by={o.spent_by}")
-
-                # Also check the transaction status
-                tx = session.get(TransactionModel, o.transaction_id)
-                if tx:
-                    print(f"DEBUG: Output {i} transaction: txid={tx.txid}, status={tx.status}")
-                else:
-                    print(f"DEBUG: Output {i} transaction not found")
-        except Exception as e:
-            print(f"DEBUG: Error querying outputs: {e}")
-        
-        # Debug: Check what outputs match the base conditions
-        try:
-            matching_outputs = session.execute(
-                select(Output)
-                .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
-                .where(base_cond)
-            ).scalars().all()
-            print(f"DEBUG: Outputs matching base_cond: {len(matching_outputs)}")
-            for i, o in enumerate(matching_outputs):
-                print(f"DEBUG: Matching output {i}: id={o.output_id}, satoshis={o.satoshis}, spendable={o.spendable}, type={o.type}, basket_id={o.basket_id}, spent_by={o.spent_by}")
-                tx = session.get(TransactionModel, o.transaction_id)
-                if tx:
-                    print(f"DEBUG:   Transaction status: {tx.status}")
-        except Exception as e:
-            print(f"DEBUG: Error checking matching outputs: {e}")
         
         try:
             output = None
@@ -2601,11 +2559,9 @@ class StorageProvider:
                     .with_for_update()
                 )
                 output = session.execute(q).scalar_one_or_none()
-                print(f"DEBUG: Exact match query found: {output is not None}")
 
             # 2. Best fit (Smallest output >= target)
             if output is None:
-                print(f"DEBUG: Looking for outputs >= {target_satoshis} satoshis")
                 q = (
                     select(Output)
                     .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
@@ -2615,13 +2571,10 @@ class StorageProvider:
                     .with_for_update()
                 )
                 results = session.execute(q).scalars().all()
-                print(f"DEBUG: Best fit query found {len(results)} results")
                 output = results[0] if results else None
-                print(f"DEBUG: Best fit query selected output: {output is not None}")
 
             # 3. Closest under (Largest output < target)
             if output is None:
-                print(f"DEBUG: Looking for outputs < {target_satoshis} satoshis (closest under)")
                 q = (
                     select(Output)
                     .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
@@ -2631,12 +2584,8 @@ class StorageProvider:
                     .with_for_update()
                 )
                 output = session.execute(q).scalar_one_or_none()
-                print(f"DEBUG: Closest under query found: {output is not None}")
-                if output:
-                    print(f"DEBUG: Closest under output: id={output.output_id}, satoshis={output.satoshis}")
 
             if output:
-                print(f"DEBUG: Allocating output: id={output.output_id}, satoshis={output.satoshis}, derivation_prefix={output.derivation_prefix}, derivation_suffix={output.derivation_suffix}, sender_identity_key={output.sender_identity_key}")
                 output.spendable = False
                 output.spent_by = transaction_id
                 session.add(output)
@@ -2644,7 +2593,6 @@ class StorageProvider:
                 session.refresh(output)
                 return output
 
-            print(f"DEBUG: No output found for allocation (target={target_satoshis})")
             return None
         except Exception:
             session.rollback()
@@ -2680,7 +2628,6 @@ class StorageProvider:
         desired_utxos = (change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5)
         available_count = ctx["availableFundingCount"]
         target_net_count = max(0, min(desired_utxos - available_count, 5))  # Cap at 5 change outputs max
-        print(f"DEBUG: target_net_count calculation: desired_utxos={desired_utxos}, available_count={available_count}, target_net_count={target_net_count}")
         
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
@@ -2726,17 +2673,12 @@ class StorageProvider:
         result = generate_change_sdk(params, allocate_cb, release_cb)
 
         allocated_change_outputs = []
-        print(f"DEBUG: fund_new_transaction_sdk: Processing {len(result.allocated_funding_inputs)} allocated funding inputs")
         for aci in result.allocated_funding_inputs:
             session = self.SessionLocal()
             try:
                 o = session.get(Output, aci.output_id)
                 if o:
                     output_dict = self._model_to_dict(o)
-                    print(f"DEBUG: fund_new_transaction_sdk: allocated output id={o.output_id}")
-                    print(f"  Raw DB fields: derivation_prefix={o.derivation_prefix}, derivation_suffix={o.derivation_suffix}, sender_identity_key={o.sender_identity_key}")
-                    print(f"  Converted dict: derivationPrefix={output_dict.get('derivationPrefix')}, derivationSuffix={output_dict.get('derivationSuffix')}, senderIdentityKey={output_dict.get('senderIdentityKey')}")
-                    print(f"  lockingScript (from DB): {output_dict.get('lockingScript', 'MISSING')}")
                     
                     # Ensure lockingScript is a hex string (not bytes)
                     if isinstance(output_dict.get('lockingScript'), bytes):
@@ -2745,7 +2687,6 @@ class StorageProvider:
                         # If locking script is missing, set to empty string
                         # The signer will regenerate it from derivation data
                         output_dict['lockingScript'] = ""
-                        print(f"  ⚠️  lockingScript is missing - signer will regenerate from derivation data")
                     
                     allocated_change_outputs.append(output_dict)
             finally:
@@ -3568,8 +3509,6 @@ class StorageProvider:
 
             value = getattr(obj, attr_name)
             api_key = self._to_api_key(attr_name)
-            if attr_name == "sender_identity_key":
-                print(f"DEBUG: _model_to_dict: converting {attr_name} -> {api_key} = {value}")
             result[api_key] = value
         return result
 
@@ -5507,10 +5446,6 @@ class InternalizeActionContext:
         self.basket_insertions = []
         self.wallet_payments = []
 
-        # DEBUG: Log initialization
-        print(f"DEBUG: InternalizeActionContext initialized with outputs: {[o.get('protocol') for o in vargs.get('outputs', [])]}")
-        storage_provider.logger.error(f"DEBUG: InternalizeActionContext initialized with outputs: {[o.get('protocol') for o in vargs.get('outputs', [])]}")
-
     @property
     def is_merge(self) -> bool:
         """Get current merge status."""
@@ -5602,25 +5537,6 @@ class InternalizeActionContext:
                 derivation_prefix = insertion_remittance.get("derivationPrefix") or insertion_remittance.get("derivation_prefix")
                 derivation_suffix = insertion_remittance.get("derivationSuffix") or insertion_remittance.get("derivation_suffix")
                 sender_identity_key = insertion_remittance.get("senderIdentityKey") or insertion_remittance.get("sender_identity_key")
-                
-                print(f"DEBUG: Basket insertion remittance: basket={basket_name}")
-                print(f"DEBUG:   insertionRemittance keys: {list(insertion_remittance.keys())}")
-                print(f"DEBUG:   derivationPrefix={derivation_prefix}, derivationSuffix={derivation_suffix}")
-                print(f"DEBUG:   senderIdentityKey={sender_identity_key}")
-                if derivation_prefix:
-                    try:
-                        import base64
-                        decoded_prefix = base64.b64decode(derivation_prefix).decode('utf-8')
-                        print(f"DEBUG:   derivationPrefix (decoded): {decoded_prefix!r}")
-                    except Exception:
-                        print(f"DEBUG:   derivationPrefix (not base64 or decode failed)")
-                if derivation_suffix:
-                    try:
-                        import base64
-                        decoded_suffix = base64.b64decode(derivation_suffix).decode('utf-8')
-                        print(f"DEBUG:   derivationSuffix (decoded): {decoded_suffix!r}")
-                    except Exception:
-                        print(f"DEBUG:   derivationSuffix (not base64 or decode failed)")
                 
                 self.basket_insertions.append(
                     {
@@ -5777,9 +5693,7 @@ class InternalizeActionContext:
                 elif not payment["ignore"]:
                     self._store_new_wallet_payment_for_output(transaction_id, payment, s)
 
-            print(f"DEBUG: Processing {len(self.basket_insertions)} basket insertions")
             for basket in self.basket_insertions:
-                print(f"DEBUG: Processing basket insertion: vout={basket['vout']}, eo={basket['eo'] is not None}")
                 if basket["eo"]:
                     self._merge_basket_insertion_for_output(transaction_id, basket, s)
                 else:
@@ -5946,10 +5860,8 @@ class InternalizeActionContext:
             non_canonical = s.startswith("76a9") and s.endswith("88ac") and len(s) == 48 and len(s[4:-4]) == 40
 
             result = canonical or non_canonical
-            print(f"DEBUG: _is_p2pkh_locking_script check: script={s}, len={len(s)}, canonical={canonical}, non_canonical={non_canonical}, result={result}")
             return result
-        except Exception as e:
-            print(f"DEBUG: _is_p2pkh_locking_script exception: {e}")
+        except Exception:
             return False
 
     def _store_new_basket_insertion_for_output(self, transaction_id: int, basket: dict[str, Any], session: Any) -> None:
@@ -5977,17 +5889,11 @@ class InternalizeActionContext:
         locking_script_bytes = txo.locking_script.serialize()
         locking_script_hex = locking_script_bytes.hex()
 
-        print(f"DEBUG: Storing basket insertion output: basket={basket_name}, script_hex={locking_script_hex}")
-
         # Smart type detection: if the locking script is actually P2PKH,
         # mark it as such so the wallet can sign it for funding
         is_p2pkh = self._is_p2pkh_locking_script(locking_script_hex)
         output_type = "P2PKH" if is_p2pkh else "custom"
         is_change = is_p2pkh  # P2PKH outputs can be used as change
-
-        print(
-            f"DEBUG: Basket insertion P2PKH detection: is_p2pkh={is_p2pkh}, type={output_type}, change={is_change}",
-        )
 
         # TEMPORARY FIX: For basket insertions in default basket, assume P2PKH
         # since they come from WhatOnChain faucet which uses standard P2PKH
@@ -6011,7 +5917,6 @@ class InternalizeActionContext:
                 provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
                 provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
                 provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
-                print(f"DEBUG: Extracted derivation fields from customInstructions JSON")
             except (json.JSONDecodeError, AttributeError, TypeError):
                 pass
         
@@ -6023,25 +5928,15 @@ class InternalizeActionContext:
                 derivation_prefix = provided_derivation_prefix  # Store as base64 (will be decoded later)
                 derivation_suffix = provided_derivation_suffix  # Store as base64 (will be decoded later)
                 sender_identity_key = provided_sender_identity_key
-                print(f"DEBUG: Using provided derivation fields for P2PKH output")
-                print(f"DEBUG:   Storing derivation_prefix (base64): {derivation_prefix}")
-                print(f"DEBUG:   Storing derivation_suffix (base64): {derivation_suffix}")
-                print(f"DEBUG:   Storing sender_identity_key: {sender_identity_key[:20] if sender_identity_key else None}...")
             else:
                 # Generate random base64-encoded strings (like TypeScript does)
                 # NOTE: These won't match the actual public key - this is a problem!
                 derivation_prefix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
                 derivation_suffix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
                 sender_identity_key = None
-                print(f"DEBUG: WARNING: Generating random derivation fields - these won't match the actual public key!")
-                print(f"DEBUG:   This will cause script evaluation errors when trying to spend this output")
             provided_by = "storage"
             purpose = "change"
             is_spendable = True  # P2PKH outputs in default basket are always spendable
-            print(f"DEBUG: Setting spendable=True for P2PKH output in default basket")
-            print(f"DEBUG:   basket_name={basket_name}, is_p2pkh={is_p2pkh}")
-            print(f"DEBUG:   derivation_prefix={derivation_prefix}, derivation_suffix={derivation_suffix}")
-            print(f"DEBUG:   sender_identity_key={sender_identity_key}")
         else:
             derivation_prefix = None
             derivation_suffix = None
@@ -6050,19 +5945,11 @@ class InternalizeActionContext:
             # Other basket insertions follow the standard merkle proof rules
             has_merkle_path = self.tx and hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
             is_spendable = has_merkle_path
-            print(f"DEBUG: Setting spendable={is_spendable} for non-default basket or non-P2PKH output")
-            print(f"DEBUG:   basket_name={basket_name}, is_p2pkh={is_p2pkh}, has_merkle_path={has_merkle_path}")
-
-        print(f"DEBUG: Final values before creating Output record:")
-        print(f"DEBUG:   spendable={is_spendable}, change={is_change}, type={output_type}")
-        print(f"DEBUG:   derivation_prefix={derivation_prefix}, derivation_suffix={derivation_suffix}")
-        print(f"DEBUG:   basket_name={basket_name}, is_p2pkh={is_p2pkh}")
 
         # Safety check: Ensure spendable is True for P2PKH outputs in default basket
         # This handles edge cases where the condition might not have been met correctly
         if basket_name == "default" and is_p2pkh:
             if not is_spendable:
-                print(f"DEBUG: WARNING: is_spendable was False but should be True for P2PKH in default basket - fixing it")
                 is_spendable = True
 
         output_record = Output(
@@ -6090,10 +5977,6 @@ class InternalizeActionContext:
         )
         session.add(output_record)
         session.flush()
-        
-        print(f"DEBUG: Output record created with output_id={output_record.output_id}, spendable={output_record.spendable}")
-        print(f"DEBUG:   Final stored values: derivation_prefix={output_record.derivation_prefix}, derivation_suffix={output_record.derivation_suffix}")
-        print(f"DEBUG:   sender_identity_key={output_record.sender_identity_key[:20] if output_record.sender_identity_key else None}...")
 
         # Add tags
         self._add_basket_tags(basket, output_record.output_id, session)
@@ -6152,7 +6035,6 @@ class InternalizeActionContext:
             output_record.derivation_prefix = provided_derivation_prefix
             output_record.derivation_suffix = provided_derivation_suffix
             output_record.spendable = True  # P2PKH outputs in default basket with derivation are spendable
-            print(f"DEBUG: Merge basket insertion: Setting spendable=True for P2PKH output in default basket with derivation fields")
         else:
             output_record.type = "custom"
             output_record.custom_instructions = basket["customInstructions"]

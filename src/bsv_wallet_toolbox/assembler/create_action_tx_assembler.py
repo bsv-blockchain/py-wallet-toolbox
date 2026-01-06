@@ -423,10 +423,6 @@ class CreateActionTransactionAssembler:
         # Both are base64 strings used directly (not decoded) - matches Go/TS behavior
         derivation_prefix = self.create_action_result.derivation_prefix or ""
         derivation_suffix = storage_output.derivation_suffix or ""
-        print(f"DEBUG: _change_locking_script: Creating locking script for change output vout={storage_output.vout}")
-        print(f"  derivationPrefix (from create_action_result, base64): {derivation_prefix}")
-        print(f"  derivationSuffix (from storage_output, base64): {derivation_suffix}")
-        print(f"  keyID string (base64 strings used directly): {derivation_prefix} {derivation_suffix}")
 
         # Create KeyID with base64 strings (not decoded) - KeyID.__str__() will use them directly
         key_id = KeyID(

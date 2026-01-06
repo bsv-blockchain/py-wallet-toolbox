@@ -160,9 +160,7 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
             trace(logger, "signer.create_action.signable_transaction", result=signable)
             return signable
 
-        print(f"DEBUG: create_action: calling complete_signed_transaction with {len(prior.pdi)} pending storage inputs")
         prior.tx = complete_signed_transaction(prior, {}, wallet)
-        print(f"DEBUG: create_action: complete_signed_transaction returned, tx has {len(prior.tx.inputs)} inputs")
 
         result.txid = prior.tx.txid()
         trace(logger, "signer.create_action.completed", txid=result.txid)
@@ -345,12 +343,6 @@ def build_signable_transaction(
         decoded_prefix = _decode_remittance_component(derivation_prefix_b64)  # For display/debug only
         decoded_suffix = _decode_remittance_component(derivation_suffix_b64)  # For display/debug only
         unlocker_pub = storage_input.get("senderIdentityKey") or ""
-        print(f"DEBUG: build_signable_transaction: Creating PendingStorageInput for vin={len(tx.inputs)}")
-        print(f"  derivationPrefix (b64): {derivation_prefix_b64}")
-        print(f"  derivationSuffix (b64): {derivation_suffix_b64}")
-        print(f"  derivationPrefix (decoded for display): {decoded_prefix!r}")
-        print(f"  derivationSuffix (decoded for display): {decoded_suffix!r}")
-        print(f"  senderIdentityKey: {unlocker_pub[:30] if unlocker_pub else None}...")
         # Store base64 strings directly (not decoded) to match keyID format
         pending_storage_inputs.append(
             PendingStorageInput(
@@ -451,9 +443,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
 
     # Insert SABPPP unlock templates for wallet-signed inputs
     # These are wallet-signed inputs that use BRC-29 protocol for authentication
-    print(f"DEBUG: complete_signed_transaction: processing {len(prior.pdi)} pending storage inputs")
     for pdi in prior.pdi:
-        print(f"DEBUG: Processing PDI: vin={pdi.vin}, derivation_prefix={pdi.derivation_prefix!r}, derivation_suffix={pdi.derivation_suffix!r}, unlocker_pub_key={pdi.unlocker_pub_key[:30] if pdi.unlocker_pub_key else None}...")
         # Verify key deriver is available (TS parity: ScriptTemplateBRC29)
         if not hasattr(wallet, "key_deriver"):
             raise WalletError("wallet.key_deriver is required for wallet-signed inputs")
@@ -1157,9 +1147,7 @@ def _create_new_tx(wallet: Any, auth: Any, args: dict[str, Any]) -> PendingSignA
     dcr = wallet.storage.create_action(auth, storage_args)
 
     reference = dcr.get("reference", "")
-    print(f"DEBUG: _create_new_tx: calling build_signable_transaction with {len(dcr.get('inputs', []))} storage inputs")
     tx, amount, pdi, _ = build_signable_transaction(dcr, args, wallet)
-    print(f"DEBUG: _create_new_tx: build_signable_transaction returned {len(pdi)} pending storage inputs")
 
     return PendingSignAction(reference=reference, dcr=dcr, args=args, amount=amount, tx=tx, pdi=pdi)
 
@@ -1484,17 +1472,6 @@ def _setup_wallet_payment_for_output(
             current_script_hex = ""
 
         expected_script_hex = expected_lock_script.hex()
-
-        # Print validation details for debugging
-        print(f"DEBUG: BRC-29 validation for output {output_index}:")
-        print(f"  senderIdentityKey: {sender_identity_key[:30] if sender_identity_key else None}...")
-        print(f"  derivationPrefix (b64): {derivation_prefix_b64}")
-        print(f"  derivationSuffix (b64): {derivation_suffix_b64}")
-        print(f"  keyID (using base64 strings directly): {key_id!r}")
-        print(f"  derived pub_key_hash: {pub_key_hash.hex()}")
-        print(f"  expected locking script: {expected_script_hex}")
-        print(f"  actual locking script:   {current_script_hex}")
-        print(f"  match: {current_script_hex == expected_script_hex}")
 
         if current_script_hex != expected_script_hex:
             # Rich debug context for E2E analysis (enabled under DEBUG loglevel).
