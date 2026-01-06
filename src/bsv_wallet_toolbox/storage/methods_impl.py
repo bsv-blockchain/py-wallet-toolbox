@@ -80,7 +80,7 @@ class StorageProcessActionResults:
 
 
 @dataclass
-class GenerateChangeInput:
+class GenerateFundingInput:
     """Input specification for generateChange (TS parity).
 
     Reference:
@@ -310,7 +310,7 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
 def generate_change(
     storage: Any,
     auth: dict[str, Any],
-    available_change: list[GenerateChangeInput],
+    available_change: list[GenerateFundingInput],
     target_satoshis: int,
     exact_satoshis: int | None = None,
 ) -> dict[str, Any]:

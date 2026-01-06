@@ -447,7 +447,7 @@ class TestBEEFOperations:
 class TestChangeAllocation:
     """Test change allocation operations."""
 
-    def test_allocate_change_input_no_change_needed(self, storage_provider, test_user):
+    def test_allocate_funding_input_no_change_needed(self, storage_provider, test_user):
         """Test allocating change input when no change is needed."""
         # Create a transaction that doesn't need change
         tx_data = {
@@ -469,7 +469,7 @@ class TestChangeAllocation:
 
         # This method may have complex requirements, test basic structure
         try:
-            result = storage_provider.allocate_change_input(auth, args)
+            result = storage_provider.allocate_funding_input(auth, args)
             assert isinstance(result, dict)
         except Exception:
             # Expected due to complex validation requirements

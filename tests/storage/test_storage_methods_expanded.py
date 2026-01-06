@@ -17,7 +17,7 @@ from bsv_wallet_toolbox.storage.methods import (
     get_beef_for_transaction,
     StorageProcessActionArgs,
     StorageProcessActionResults,
-    GenerateChangeInput,
+    GenerateFundingInput,
     ListActionsArgs,
     ListOutputsArgs,
 )

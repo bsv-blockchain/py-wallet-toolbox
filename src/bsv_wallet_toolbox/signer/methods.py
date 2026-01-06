@@ -283,7 +283,7 @@ def build_signable_transaction(
     inputs.sort(key=lambda x: x["storageInput"].get("vin", 0))
 
     pending_storage_inputs: list[PendingStorageInput] = []
-    total_change_inputs = 0
+    total_funding_inputs = 0
 
     # Add inputs
     for input_data in inputs:
@@ -388,13 +388,13 @@ def build_signable_transaction(
                 pass
 
         tx.add_input(tx_input)
-        total_change_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
+        total_funding_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
 
     # Calculate amount (total non-foreign inputs minus change outputs)
     total_change_outputs = sum(
         output.get("satoshis", 0) for output in storage_outputs if output.get("purpose") == "change"
     )
-    amount = total_change_inputs - total_change_outputs
+    amount = total_funding_inputs - total_change_outputs
 
     return tx, amount, pending_storage_inputs, ""
 

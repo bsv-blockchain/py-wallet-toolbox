@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import exists
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.utils.change_distribution import ChangeDistribution
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log as util_stamp_log
 from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
@@ -38,7 +39,7 @@ from .methods.generate_change import (
     GenerateChangeSdkParams,
     GenerateChangeSdkInput,
     GenerateChangeSdkOutput,
-    GenerateChangeSdkChangeInput,
+    GenerateChangeSdkFundingInput,
     GenerateChangeSdkChangeOutput,
     StorageFeeModel,
     generate_change_sdk,
@@ -2022,16 +2023,22 @@ class StorageProvider:
         change_basket = self.find_or_insert_output_basket(user_id, "default")
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
         no_send_change_in = self._validate_no_send_change(user_id, vargs, change_basket)
-        available_change_count = self.count_change_inputs(user_id, change_basket_id, not vargs.is_delayed)
+        available_funding_count = self.count_funding_inputs(user_id, change_basket_id, not vargs.is_delayed)
 
         # self.fee_model may be a dict (our default) or an object with `.value`.
         fee_model_source = getattr(self, "fee_model", None)
         if isinstance(fee_model_source, dict):
-            fee_model_val = fee_model_source.get("value", 1)
+            fee_model_val = fee_model_source.get("value", None)
         else:
-            fee_model_val = getattr(fee_model_source, "value", 1)
-        # TEMPORARY: Set fee rate to 0 for testing
-        fee_model_val = 0
+            fee_model_val = getattr(fee_model_source, "value", None)
+        
+        # Set fee based on chain: 1 sat/kb for testnet, 100 sat/kb for mainnet
+        if fee_model_val is None:
+            if self.chain == "main":
+                fee_model_val = 100
+            else:  # test or testnet
+                fee_model_val = 1
+        
         fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
 
         new_tx = self._create_new_tx_record(user_id, vargs, storage_beef_bytes)
@@ -2042,7 +2049,7 @@ class StorageProvider:
             "changeBasket": change_basket,
             "changeBasketId": change_basket_id,
             "noSendChangeIn": no_send_change_in,
-            "availableChangeCount": available_change_count,
+            "availableFundingCount": available_funding_count,
             "feeModel": fee_model,
             "transactionId": new_tx.transaction_id,
         }
@@ -2050,7 +2057,8 @@ class StorageProvider:
         funding_result = self.fund_new_transaction_sdk(user_id, vargs, ctx)
         allocated_change = funding_result["allocatedChange"]
         change_outputs = funding_result["changeOutputs"]
-        derivation_prefix = funding_result["derivationPrefix"]
+        # Generate the derivation prefix for this transaction (same one used for all change outputs)
+        derivation_prefix = self._generate_derivation_suffix()
         max_possible_satoshis_adjustment = funding_result["maxPossibleSatoshisAdjustment"]
 
         if max_possible_satoshis_adjustment:
@@ -2060,9 +2068,32 @@ class StorageProvider:
                 raise InternalError("Max possible output index mismatch")
             ctx["xoutputs"][idx].satoshis = sats
 
+        # Calculate actual change amount (funding - spending - fee)
+        total_funding = sum(xi.get("sourceSatoshis", 0) for xi in ctx["xinputs"]) + sum(o["satoshis"] for o in allocated_change)
+        total_spending = sum(xo.satoshis for xo in ctx["xoutputs"])
+        fee = funding_result.get("fee", 0)
+        actual_change_amount = total_funding - total_spending - fee
+
+        # Redistribute change outputs using ChangeDistribution (Go parity)
+        change_basket = ctx["changeBasket"]
+        min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
+
+        import random
+        def randomizer(max_val: int) -> int:
+            return random.randint(0, max_val) if max_val >= 0 else 0
+
+        if len(change_outputs) > 0:
+            change_distribution = ChangeDistribution(min_utxo_value, randomizer)
+            redistributed_amounts = list(change_distribution.distribute(len(change_outputs), actual_change_amount))
+
+            # Update change outputs with redistributed amounts
+            for i, output in enumerate(change_outputs):
+                if i < len(redistributed_amounts):
+                    output.satoshis = redistributed_amounts[i]
+
         total_change = sum(o.satoshis for o in change_outputs)
         total_allocated = sum(o["satoshis"] for o in allocated_change)
-        satoshis = total_change - total_allocated
+        satoshis = actual_change_amount  # Use actual change amount instead of total_change - total_allocated
         self.update_transaction(new_tx.transaction_id, {"satoshis": satoshis})
 
         outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs, derivation_prefix)
@@ -2212,6 +2243,10 @@ class StorageProvider:
         next_vout = len(pending)
         for co in change_outputs:
             derivation_suffix = self._generate_derivation_suffix()
+            print(f"DEBUG: _create_new_outputs: Creating change output vout={next_vout}, satoshis={co.satoshis}")
+            print(f"  derivationPrefix: {derivation_prefix}")
+            print(f"  derivationSuffix: {derivation_suffix}")
+            print(f"  senderIdentityKey: None (SELF-locked)")
             pending.append({
                 "transactionId": ctx["transactionId"],
                 "userId": user_id,
@@ -2365,13 +2400,22 @@ class StorageProvider:
             vin += 1
             
         for ac in allocated_change:
+            # Handle lockingScript - it could be bytes, hex string, or empty
+            locking_script = ac.get("lockingScript") or b""
+            if isinstance(locking_script, bytes):
+                locking_script_hex = locking_script.hex()
+            elif isinstance(locking_script, str):
+                locking_script_hex = locking_script
+            else:
+                locking_script_hex = ""
+            
             inputs.append(
                 {
                     "vin": vin,
                     "sourceTxid": ac["txid"],
                     "sourceVout": ac["vout"],
                     "sourceSatoshis": ac["satoshis"],
-                    "sourceLockingScript": (ac["lockingScript"] or b"").hex(),
+                    "sourceLockingScript": locking_script_hex,
                     "unlockingScriptLength": 107,
                     "providedBy": ac["providedBy"] or "storage",
                     "type": ac["type"],
@@ -2448,7 +2492,7 @@ class StorageProvider:
     # CreateAction Helper Methods (TS Parity)
     # ------------------------------------------------------------------
 
-    def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
+    def count_funding_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
         allowed_status = ["completed", "unproven"]
         if not exclude_sending:
             allowed_status.append("sending")
@@ -2469,7 +2513,7 @@ class StorageProvider:
         finally:
             session.close()
 
-    def allocate_change_input(
+    def allocate_funding_input(
         self,
         user_id: int,
         basket_id: int,
@@ -2478,9 +2522,12 @@ class StorageProvider:
         exclude_sending: bool,
         transaction_id: int,
     ) -> Output | None:
-        print(f"DEBUG: allocate_change_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
-        self.logger.info(f"DEBUG: allocate_change_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
-        allowed_status = ["completed", "unproven"]
+        print(f"DEBUG: allocate_funding_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
+        self.logger.info(f"DEBUG: allocate_funding_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
+        # Allow "unsigned" and "nosend" status for wallet-managed outputs (change outputs from noSend transactions)
+        # These are safe to spend because we control the keys
+        # Matches Go implementation: wdk.TxStatusUnsigned, wdk.TxStatusNoSend
+        allowed_status = ["completed", "unproven", "unsigned", "nosend"]
         if not exclude_sending:
             allowed_status.append("sending")
 
@@ -2503,7 +2550,7 @@ class StorageProvider:
             & (TransactionModel.status.in_(allowed_status))
         )
         
-        self.logger.info(f"DEBUG: allocate_change_input query conditions - user_id={user_id}, basket_id={basket_id}, spendable=True, (type=P2PKH OR type=custom), status in {allowed_status}")
+        self.logger.info(f"DEBUG: allocate_funding_input query conditions - user_id={user_id}, basket_id={basket_id}, spendable=True, (type=P2PKH OR type=custom), status in {allowed_status}")
 
         session = self.SessionLocal()
         
@@ -2631,7 +2678,7 @@ class StorageProvider:
         # For small transactions (OP_RETURN), we don't need many change outputs
         # Cap it at a reasonable maximum to avoid excessive funding requirements
         desired_utxos = (change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5)
-        available_count = ctx["availableChangeCount"]
+        available_count = ctx["availableFundingCount"]
         target_net_count = max(0, min(desired_utxos - available_count, 5))  # Cap at 5 change outputs max
         print(f"DEBUG: target_net_count calculation: desired_utxos={desired_utxos}, available_count={available_count}, target_net_count={target_net_count}")
         
@@ -2648,7 +2695,7 @@ class StorageProvider:
         )
 
         def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None):
-            o = self.allocate_change_input(
+            o = self.allocate_funding_input(
                 user_id,
                 change_basket_id,
                 target_satoshis,
@@ -2660,7 +2707,7 @@ class StorageProvider:
                 # Handle both dict and object forms
                 output_id = o["outputId"] if isinstance(o, dict) else o.output_id
                 satoshis = o["satoshis"] if isinstance(o, dict) else o.satoshis
-                return GenerateChangeSdkChangeInput(output_id=output_id, satoshis=satoshis)
+                return GenerateChangeSdkFundingInput(output_id=output_id, satoshis=satoshis)
             return None
 
         def release_cb(output_id: int):
@@ -2679,13 +2726,27 @@ class StorageProvider:
         result = generate_change_sdk(params, allocate_cb, release_cb)
 
         allocated_change_outputs = []
-        for aci in result.allocated_change_inputs:
+        print(f"DEBUG: fund_new_transaction_sdk: Processing {len(result.allocated_funding_inputs)} allocated funding inputs")
+        for aci in result.allocated_funding_inputs:
             session = self.SessionLocal()
             try:
                 o = session.get(Output, aci.output_id)
                 if o:
                     output_dict = self._model_to_dict(o)
-                    print(f"DEBUG: _create_new_inputs: allocated output id={o.output_id}, derivationPrefix={output_dict.get('derivationPrefix')}, derivationSuffix={output_dict.get('derivationSuffix')}, senderIdentityKey={output_dict.get('senderIdentityKey')}")
+                    print(f"DEBUG: fund_new_transaction_sdk: allocated output id={o.output_id}")
+                    print(f"  Raw DB fields: derivation_prefix={o.derivation_prefix}, derivation_suffix={o.derivation_suffix}, sender_identity_key={o.sender_identity_key}")
+                    print(f"  Converted dict: derivationPrefix={output_dict.get('derivationPrefix')}, derivationSuffix={output_dict.get('derivationSuffix')}, senderIdentityKey={output_dict.get('senderIdentityKey')}")
+                    print(f"  lockingScript (from DB): {output_dict.get('lockingScript', 'MISSING')}")
+                    
+                    # Ensure lockingScript is a hex string (not bytes)
+                    if isinstance(output_dict.get('lockingScript'), bytes):
+                        output_dict['lockingScript'] = output_dict['lockingScript'].hex()
+                    elif not output_dict.get('lockingScript'):
+                        # If locking script is missing, set to empty string
+                        # The signer will regenerate it from derivation data
+                        output_dict['lockingScript'] = ""
+                        print(f"  ⚠️  lockingScript is missing - signer will regenerate from derivation data")
+                    
                     allocated_change_outputs.append(output_dict)
             finally:
                 session.close()
@@ -2693,8 +2754,10 @@ class StorageProvider:
         return {
             "allocatedChange": allocated_change_outputs,
             "changeOutputs": result.change_outputs,
-            "derivationPrefix": self._generate_derivation_suffix(),  # Go uses same length for prefix
+            # derivationPrefix is now generated at createAction level for consistency
             "maxPossibleSatoshisAdjustment": result.max_possible_satoshis_adjustment,
+            "fee": result.fee,
+            "size": result.size,
         }
 
     # ------------------------------------------------------------------
@@ -2864,6 +2927,7 @@ class StorageProvider:
 
             # Update output records with txid (TS lines 348-370)
             # This is critical for noSendChange validation to find outputs by txid
+            # Also extract locking scripts from raw transaction for change outputs (Go parity)
             q_outputs = select(Output).where(
                 (Output.user_id == user_id) &
                 (Output.transaction_id == transaction.transaction_id)
@@ -2872,6 +2936,31 @@ class StorageProvider:
             for output in outputs:
                 output.txid = txid
                 output.spendable = True
+                # Extract locking script from raw transaction for change outputs (Go SpendTransaction parity)
+                # Go does this in SpendTransaction lines 285-299
+                # This ensures change outputs have locking scripts stored even for unproven transactions
+                if output.change and output.vout is not None:
+                    try:
+                        vout_int = int(output.vout)
+                        if 0 <= vout_int < len(tx_obj.outputs):
+                            tx_output = tx_obj.outputs[vout_int]
+                            # TransactionOutput has .locking_script attribute (snake_case)
+                            locking_script = getattr(tx_output, 'locking_script', None) or getattr(tx_output, 'lockingScript', None)
+                            if locking_script:
+                                # Convert Script to bytes
+                                if hasattr(locking_script, 'to_bytes'):
+                                    locking_script_bytes = locking_script.to_bytes()
+                                elif hasattr(locking_script, 'serialize'):
+                                    locking_script_bytes = locking_script.serialize()
+                                elif isinstance(locking_script, bytes):
+                                    locking_script_bytes = locking_script
+                                else:
+                                    locking_script_bytes = bytes(locking_script) if locking_script else b""
+                                if locking_script_bytes:
+                                    output.locking_script = locking_script_bytes
+                    except Exception as e:
+                        # Log but don't fail - locking script might be set elsewhere
+                        self.logger.warning(f"Failed to extract locking script for output {output.output_id} vout {output.vout}: {e}")
                 s.add(output)
             s.flush()
 
@@ -3478,7 +3567,10 @@ class StorageProvider:
                     break
 
             value = getattr(obj, attr_name)
-            result[self._to_api_key(attr_name)] = value
+            api_key = self._to_api_key(attr_name)
+            if attr_name == "sender_identity_key":
+                print(f"DEBUG: _model_to_dict: converting {attr_name} -> {api_key} = {value}")
+            result[api_key] = value
         return result
 
     @staticmethod
@@ -4486,7 +4578,7 @@ class StorageProvider:
 
         return {"log": "\n".join(log_lines).strip(), "count": total_count}
 
-    # NOTE: allocate_change_input and count_change_inputs are defined earlier in this file
+    # NOTE: allocate_funding_input and count_funding_inputs are defined earlier in this file
     # (around line 2216 and 2237) with proper Transaction status checking.
     # Do not duplicate them here.
 

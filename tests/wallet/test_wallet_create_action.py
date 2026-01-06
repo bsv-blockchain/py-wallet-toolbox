@@ -28,7 +28,7 @@ def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
     auth = wallet._make_auth()
     user_id = auth["userId"]
     
-    # Get or create default basket (required for allocate_change_input)
+    # Get or create default basket (required for allocate_funding_input)
     change_basket = storage.find_or_insert_output_basket(user_id, "default")
     basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
     
@@ -59,7 +59,7 @@ def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
     storage.insert_output({
         "transactionId": tx_id,
         "userId": user_id,
-        "basketId": basket_id,  # "default" basket - required for allocate_change_input
+        "basketId": basket_id,  # "default" basket - required for allocate_funding_input
         "spendable": True,
         "change": True,  # Change outputs are spendable
         "vout": 0,
