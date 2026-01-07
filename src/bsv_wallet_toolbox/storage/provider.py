@@ -20,7 +20,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import exists
 
 from bsv_wallet_toolbox.errors import WalletError
-from bsv_wallet_toolbox.utils.change_distribution import ChangeDistribution
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log as util_stamp_log
 from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
@@ -2011,6 +2010,8 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
         """
+        self.logger.info("[CREATE_ACTION_DEBUG] create_action: START - Called with args keys: %s", list(args.keys()))
+
         user_id = int(auth["userId"])
         vargs = normalize_create_action_args(args)
 
@@ -2068,32 +2069,10 @@ class StorageProvider:
                 raise InternalError("Max possible output index mismatch")
             ctx["xoutputs"][idx].satoshis = sats
 
-        # Calculate actual change amount (funding - spending - fee)
-        total_funding = sum(xi.get("sourceSatoshis", 0) for xi in ctx["xinputs"]) + sum(o["satoshis"] for o in allocated_change)
-        total_spending = sum(xo.satoshis for xo in ctx["xoutputs"])
-        fee = funding_result.get("fee", 0)
-        actual_change_amount = total_funding - total_spending - fee
-
-        # Redistribute change outputs using ChangeDistribution (Go parity)
-        change_basket = ctx["changeBasket"]
-        min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
-
-        import random
-        def randomizer(max_val: int) -> int:
-            return random.randint(0, max_val) if max_val >= 0 else 0
-
-        if len(change_outputs) > 0:
-            change_distribution = ChangeDistribution(min_utxo_value, randomizer)
-            redistributed_amounts = list(change_distribution.distribute(len(change_outputs), actual_change_amount))
-
-            # Update change outputs with redistributed amounts
-            for i, output in enumerate(change_outputs):
-                if i < len(redistributed_amounts):
-                    output.satoshis = redistributed_amounts[i]
-
+        # The satoshis of the transaction is the satoshis we get back in change minus the satoshis we spend.
         total_change = sum(o.satoshis for o in change_outputs)
         total_allocated = sum(o["satoshis"] for o in allocated_change)
-        satoshis = actual_change_amount  # Use actual change amount instead of total_change - total_allocated
+        satoshis = total_change - total_allocated
         self.update_transaction(new_tx.transaction_id, {"satoshis": satoshis})
 
         outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs, derivation_prefix)
@@ -2119,12 +2098,26 @@ class StorageProvider:
             txid = deterministic_txid(new_tx.reference, vargs.outputs)
             self.update_transaction(new_tx.transaction_id, {"txid": txid})
             result["txid"] = txid
+            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: sign_and_process=True, returning txid: {txid}")
         elif not (getattr(vargs.options, "return_txid_only", False) if vargs.options else False):
             signable_tx = {
                 "reference": new_tx.reference,
                 "tx": list(input_beef_bytes) if input_beef_bytes else [],
             }
             result["signableTransaction"] = signable_tx
+
+            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Creating signableTransaction with reference: {new_tx.reference}")
+            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: input_beef_bytes length: {len(input_beef_bytes) if input_beef_bytes else 0}")
+            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: signableTransaction.tx length: {len(signable_tx['tx'])}")
+            if signable_tx['tx']:
+                self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: signableTransaction.tx (first 100 bytes): {bytes(signable_tx['tx'][:100]).hex()}")
+            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload has {len(inputs_payload)} inputs")
+            for i, inp in enumerate(inputs_payload[:3]):  # Log first 3 inputs
+                self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload[{i}]: sourceTxid={inp.get('sourceTxid')}, sourceTransaction={inp.get('sourceTransaction', 'MISSING')}")
+            self.logger.warning("[CREATE_ACTION_DEBUG] create_action: WARNING - signableTransaction does NOT include inputs array, only BEEF data")
+
+        self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Final result keys: {list(result.keys())}")
+        self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Returning result with signableTransaction: {'signableTransaction' in result}")
 
         return result
 
@@ -2312,61 +2305,161 @@ class StorageProvider:
 
     def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes | None:
         """Merge BEEF data from allocated change outputs (TS parity).
-        
+
         For each allocated change output, retrieves the BEEF for its source
         transaction and merges it into the result. Mirrors TypeScript
         mergeAllocatedChangeBeefs at storage/methods/createAction.ts L903-926.
         """
         from bsv.transaction.beef import Beef, BEEF_V2
-        
+
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Starting with {len(allocated_change)} allocated change outputs")
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: storage_beef_bytes length: {len(storage_beef_bytes) if storage_beef_bytes else 0}")
+
         # If returnTXIDOnly, don't generate BEEF
         if getattr(vargs.options, "return_txid_only", False):
+            self.logger.info("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: returnTXIDOnly is True, returning None")
             return None
-        
+
         # Start with existing beef or create new one
         if storage_beef_bytes and len(storage_beef_bytes) > 0:
             try:
                 beef = Beef.from_binary(list(storage_beef_bytes))
-            except Exception:
+                self.logger.info("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Loaded existing BEEF from storage_beef_bytes")
+            except Exception as e:
                 beef = Beef(version=BEEF_V2)
+                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Failed to load existing BEEF, creating new one: {e}")
         else:
             beef = Beef(version=BEEF_V2)
-        
+            self.logger.info("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Created new BEEF v2")
+
         known_txids = set(getattr(vargs.options, "known_txids", []) or [])
-        
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: known_txids: {list(known_txids)}")
+
         # Merge BEEF for each allocated change output
+        merged_count = 0
         for o in allocated_change:
             txid = o.get("txid") or o.get("sourceTxid")
             if not txid:
+                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Allocated change output missing txid: {o}")
                 continue
             if txid in known_txids:
+                self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Skipping known txid: {txid}")
                 continue
             try:
                 if beef.find_txid(txid):
+                    self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: txid already in BEEF: {txid}")
                     continue
-            except Exception:
+            except Exception as e:
+                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Error checking if txid in BEEF: {txid}, {e}")
                 pass
+
+
             try:
                 options = {
                     "mergeToBeef": beef,
                     "knownTxids": list(known_txids),
                     "ignoreServices": True,
                 }
+                self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Merging BEEF for txid: {txid}")
                 self.get_beef_for_transaction(txid, options)
-            except Exception:
-                pass
-        
+                merged_count += 1
+            except Exception as e:
+                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Failed to merge BEEF for txid {txid}: {e}")
+
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Successfully merged {merged_count} transactions into BEEF")
+
         result = beef.to_binary()
-        return bytes(result) if result else None
+        result_bytes = bytes(result) if result else None
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Final BEEF size: {len(result_bytes) if result_bytes else 0} bytes")
+        if result_bytes:
+            self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF content (hex): {result_bytes.hex()[:200]}...")
+
+        # Check if BEEF contains source transactions
+        try:
+            if hasattr(beef, 'transactions') and beef.transactions:
+                self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF contains {len(beef.transactions)} transactions")
+                for i, tx in enumerate(beef.transactions[:5]):  # Log first 5
+                    if hasattr(tx, 'id'):
+                        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF transaction {i}: {tx.id()}")
+                    else:
+                        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF transaction {i}: {type(tx)}")
+            else:
+                self.logger.warning("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF has no transactions or transactions attribute")
+        except Exception as e:
+            self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Error inspecting BEEF transactions: {e}")
+
+        return result_bytes
 
     def _create_new_inputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], allocated_change: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # ===== GO IMPLEMENTATION ANALYSIS =====
+        # Go implementation in resultInputForKnownUTXO (create.go:665-700):
+        # - Always sets SourceTxID from utxo.TxID
+        # - Conditionally sets SourceTransaction based on includeRawTxs parameter
+        # - includeRawTxs comes from params.IncludeInputSourceRawTxs in Create method
+        # - In assembler (create_action_tx_assembler.go:105+):
+        #   - If SourceTransaction is present, parses and sets it on TransactionInput
+        #   - If SourceTransaction is nil, falls back to locking script + satoshis
+        # ===== END GO ANALYSIS =====
+
+        # ===== TYPESCRIPT IMPLEMENTATION ANALYSIS =====
+        # TypeScript implementation in createAction.ts:createNewInputs (lines 275-285):
+        # - Always sets sourceTxid from o.txid!
+        # - Conditionally sets sourceTransaction based on:
+        #   vargs.includeAllSourceTransactions && vargs.isSignAction
+        # - If condition is true, calls storage.getRawTxOfKnownValidTransaction(o.txid!)
+        # - If condition is false, sets sourceTransaction: undefined
+        # - In buildSignableTransaction.ts (lines 135-144):
+        #   - Uses storageInput.sourceTransaction if present
+        #   - Falls back to sourceTXID if sourceTransaction is undefined
+        # - Wire protocol (WalletWireTransceiver.ts:387-398) only sends tx + reference
+        # ===== END TYPESCRIPT ANALYSIS =====
+
+        # ===== COMPARISON: GO vs TYPESCRIPT vs PYTHON =====
+        # GO IMPLEMENTATION:
+        # - resultInputForKnownUTXO: Always sets SourceTxID, conditionally sets SourceTransaction
+        # - Condition: params.IncludeInputSourceRawTxs parameter
+        # - Assembler: If SourceTransaction present, uses it; else falls back to lockingScript+satoshis
+        # - BEEF: Includes source transactions when available
+        #
+        # TYPESCRIPT IMPLEMENTATION:
+        # - createNewInputs: Always sets sourceTxid, conditionally sets sourceTransaction
+        # - Condition: vargs.includeAllSourceTransactions && vargs.isSignAction
+        # - buildSignableTransaction: Uses sourceTransaction if present, falls back to sourceTXID
+        # - Wire protocol: Only sends BEEF tx + reference (no separate inputs array)
+        #
+        # PYTHON IMPLEMENTATION (CURRENT):
+        # - _create_new_inputs: Always sets sourceTxid, NEVER sets sourceTransaction (always None)
+        # - _merge_allocated_change_beefs: Creates BEEF with source transactions via get_beef_for_transaction
+        # - build_signable_transaction: Looks for sourceTransaction in storage inputs, falls back to sourceTXID
+        # - create_action: Returns inputs array + signableTransaction with BEEF
+        #
+        # KEY DIFFERENCES IDENTIFIED:
+        # 1. PYTHON: sourceTransaction is ALWAYS None in inputs array - this is the bug!
+        # 2. GO/TS: Conditionally include sourceTransaction based on parameters
+        # 3. TS: Uses includeAllSourceTransactions flag, GO uses IncludeInputSourceRawTxs
+        # 4. PYTHON: Includes both inputs array AND signableTransaction.tx BEEF
+        # 5. TS: Only sends signableTransaction.tx BEEF (no separate inputs array)
+        #
+        # THE BUG: Python never populates sourceTransaction in the inputs returned to signer,
+        # so build_signable_transaction cannot find source transactions for signing validation.
+        # ===== END COMPARISON =====
+
         inputs = []
         vin = 0
-        
+
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Starting with {len(ctx['xinputs'])} user inputs and {len(allocated_change)} allocated change inputs")
+
         for xi in ctx["xinputs"]:
             source_txid = xi["sourceTxid"]
             source_vout = xi["sourceVout"]
-            
+
+            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Processing user input vin={vin}, sourceTxid={source_txid}, sourceVout={source_vout}")
+
+            # Get source transaction from storage if not provided
+            source_transaction = xi.get("sourceTransaction")
+            if source_transaction is None:
+                source_transaction = self._get_source_transaction_bytes(source_txid)
+
             session = self.SessionLocal()
             try:
                 q = select(Output).where(
@@ -2384,17 +2477,23 @@ class StorageProvider:
             finally:
                 session.close()
 
-            inputs.append({
+            input_dict = {
                 "vin": vin,
                 "sourceTxid": source_txid,
                 "sourceVout": source_vout,
                 "sourceSatoshis": xi["sourceSatoshis"],
                 "sourceLockingScript": xi["sourceLockingScript"],
+                "sourceTransaction": xi.get("sourceTransaction"),  # This is always None currently
                 "unlockingScriptLength": xi.get("unlockingScriptLength"),
                 "providedBy": xi.get("providedBy", "you"),
-            })
+            }
+            inputs.append(input_dict)
+
+            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Created user input {vin}: {input_dict}")
+            self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: sourceTransaction is None for user input {vin} - this may cause signing issues")
+
             vin += 1
-            
+
         for ac in allocated_change:
             # Handle lockingScript - it could be bytes, hex string, or empty
             locking_script = ac.get("lockingScript") or b""
@@ -2404,27 +2503,35 @@ class StorageProvider:
                 locking_script_hex = locking_script
             else:
                 locking_script_hex = ""
-            
-            inputs.append(
-                {
-                    "vin": vin,
-                    "sourceTxid": ac["txid"],
-                    "sourceVout": ac["vout"],
-                    "sourceSatoshis": ac["satoshis"],
-                    "sourceLockingScript": locking_script_hex,
-                    "unlockingScriptLength": 107,
-                    "providedBy": ac["providedBy"] or "storage",
-                    "type": ac["type"],
-                    "derivationPrefix": ac["derivationPrefix"],
-                    "derivationSuffix": ac["derivationSuffix"],
-                    # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
-                    # This allows signer.build_signable_transaction to derive the correct
-                    # BRC-29 private key using sender_identity_key as counterparty when present.
-                    "senderIdentityKey": ac.get("senderIdentityKey") or "",
-                }
-            )
+
+            input_dict = {
+                "vin": vin,
+                "sourceTxid": ac["txid"],
+                "sourceVout": ac["vout"],
+                "sourceSatoshis": ac["satoshis"],
+                "sourceLockingScript": locking_script_hex,
+                "sourceTransaction": ac.get("sourceTransaction"),  # Not present in allocated_change
+                "unlockingScriptLength": 107,
+                "providedBy": ac["providedBy"] or "storage",
+                "type": ac["type"],
+                "derivationPrefix": ac["derivationPrefix"],
+                "derivationSuffix": ac["derivationSuffix"],
+                # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
+                # This allows signer.build_signable_transaction to derive the correct
+                # BRC-29 private key using sender_identity_key as counterparty when present.
+                "senderIdentityKey": ac.get("senderIdentityKey") or "",
+            }
+            inputs.append(input_dict)
+
+            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Created allocated change input {vin}: {input_dict}")
+            self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: sourceTransaction is missing for allocated change input {vin} - this may cause signing issues")
+
             vin += 1
-            
+
+        self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Returning {len(inputs)} total inputs")
+        for i, inp in enumerate(inputs):
+            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Final input {i}: sourceTxid={inp['sourceTxid']}, sourceTransaction={inp.get('sourceTransaction', 'MISSING')}")
+
         return inputs
 
     def _validate_required_inputs(self, user_id: int, vargs: Any) -> tuple[bytes, list[dict[str, Any]]]:
@@ -2489,7 +2596,8 @@ class StorageProvider:
     # ------------------------------------------------------------------
 
     def count_funding_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
-        allowed_status = ["completed", "unproven"]
+        # Match allocate_funding_input allowed statuses for consistency
+        allowed_status = ["completed", "unsigned", "nosend", "unproven"]
         if not exclude_sending:
             allowed_status.append("sending")
 
@@ -2521,7 +2629,9 @@ class StorageProvider:
         # Allow "unsigned" and "nosend" status for wallet-managed outputs (change outputs from noSend transactions)
         # These are safe to spend because we control the keys
         # Matches Go implementation: wdk.TxStatusUnsigned, wdk.TxStatusNoSend
-        allowed_status = ["completed", "unproven", "unsigned", "nosend"]
+        # NOTE: "unproven" outputs are allowed for funding (matches TypeScript: StorageIdb.ts, StorageKnex.ts)
+        # The restriction on "unproven" applies to inputs (which are considered spent by ARC), not outputs
+        allowed_status = ["completed", "unsigned", "nosend", "unproven"]
         if not exclude_sending:
             allowed_status.append("sending")
 
@@ -2939,15 +3049,15 @@ class StorageProvider:
 
         if txids_to_send:
             # Debug: show processAction broadcast intent
-            self.logger.debug(
-                "process_action: will share_reqs_with_world for txids=%s, "
-                "isNewTx=%s, isNoSend=%s, isDelayed=%s, isSendWith=%s",
-                txids_to_send,
-                is_new_tx,
-                is_no_send,
-                is_delayed,
-                is_send_with,
-            )
+            # self.logger.debug(
+            #     "process_action: will share_reqs_with_world for txids=%s, "
+            #     "isNewTx=%s, isNoSend=%s, isDelayed=%s, isSendWith=%s",
+            #     txids_to_send,
+            #     is_new_tx,
+            #     is_no_send,
+            #     is_delayed,
+            #     is_send_with,
+            # )
             swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
             result["sendWithResults"] = swr
             result["notDelayedResults"] = ndr
@@ -2969,7 +3079,7 @@ class StorageProvider:
             return swr, ndr
 
         # Debug: show high-level broadcast intent
-        self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
+        # self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
 
         session = self.SessionLocal()
         try:
@@ -2988,7 +3098,7 @@ class StorageProvider:
             tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
 
             if is_delayed:
-                self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
+                # self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
@@ -3005,7 +3115,7 @@ class StorageProvider:
             try:
                 services = self.get_services()
             except RuntimeError:
-                self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
+                # self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
                 services = None
 
             for txid in txids:
@@ -3035,13 +3145,13 @@ class StorageProvider:
                     continue
 
                 # Debug: we have raw bytes and will attempt broadcast
-                self.logger.debug(
-                    "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
-                    "services_available=%s",
-                    txid,
-                    len(raw_bytes),
-                    services is not None,
-                )
+                # self.logger.debug(
+                #     "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
+                #     "services_available=%s",
+                #     txid,
+                #     len(raw_bytes),
+                #     services is not None,
+                # )
 
                 status = "failed"
                 note: dict[str, Any] = {"txid": txid, "status": "error"}
@@ -3054,18 +3164,18 @@ class StorageProvider:
                         raw_tx_hex = raw_bytes.hex()
                         
                         # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
-                        self.logger.debug(
-                            "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
-                            txid,
-                            len(raw_tx_hex) // 2,
-                            raw_tx_hex[:100]
-                        )
+                        # self.logger.debug(
+                        #     "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                        #     txid,
+                        #     len(raw_tx_hex) // 2,
+                        #     raw_tx_hex[:100]
+                        # )
                         # Log full hex for small transactions
-                        if len(raw_tx_hex) < 2000:
-                            self.logger.debug(
-                                "_share_reqs_with_world: rawTx hex (full): %s",
-                                raw_tx_hex
-                            )
+                        # if len(raw_tx_hex) < 2000:
+                        #     self.logger.debug(
+                        #         "_share_reqs_with_world: rawTx hex (full): %s",
+                        #         raw_tx_hex
+                        #     )
                         # Verify it's not AtomicBEEF format (should not start with 01010101)
                         if raw_tx_hex.startswith("01010101"):
                             self.logger.error(
@@ -3096,13 +3206,13 @@ class StorageProvider:
                     message = "Services not configured"
 
                 # Debug: log provider result
-                self.logger.debug(
-                    "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
-                    txid,
-                    broadcast_ok,
-                    status,
-                    message,
-                )
+                # self.logger.debug(
+                #     "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
+                #     txid,
+                #     broadcast_ok,
+                #     status,
+                #     message,
+                # )
 
                 if broadcast_ok:
                     req.status = "unmined"
@@ -4196,14 +4306,14 @@ class StorageProvider:
     def update_tx_note(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("tx_note", pk_value, patch)
 
-    def abort_action(self, reference: str) -> bool:
+    def abort_action(self, *args) -> bool:
         """Abort an in-progress outgoing action by marking it as failed.
+
+        Supports both old signature (reference: str) and new signature (auth, args)
+        for backward compatibility.
 
         Finds a transaction by reference or 64-char txid and verifies it can be aborted
         (must be outgoing and not in finalized state). Sets status to 'failed'.
-
-        Args:
-            reference: Transaction reference (from create_action) or 64-char txid string
 
         Returns:
             bool: True if action was successfully aborted
@@ -4215,6 +4325,17 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (abortAction)
         """
+        # Handle both old and new signatures for backward compatibility
+        if len(args) == 1:
+            # Old signature: abort_action(reference)
+            reference = args[0]
+        elif len(args) == 2:
+            # New signature: abort_action(auth, args)
+            auth, args_dict = args
+            reference = args_dict.get("reference", "")
+        else:
+            raise InvalidParameterError("args", "invalid number of arguments")
+
         session = self.SessionLocal()
         try:
             query = select(TransactionModel).where(TransactionModel.reference == reference)
@@ -4235,8 +4356,22 @@ class StorageProvider:
                     "reference", "an inprocess, outgoing action that has not been signed and shared to the network."
                 )
 
-            # Update status (tx is already attached to this session)
+            # Update transaction status to failed
             tx.status = "failed"
+
+            # Unreserve outputs spent by this transaction (equivalent to RecreateSpentOutputs)
+            # Set spentBy to NULL and spendable to true for outputs spent by this transaction
+            release_stmt = (
+                update(Output)
+                .where(
+                    (Output.spent_by == tx.transaction_id) &
+                    (Output.user_id == tx.user_id)
+                )
+                .values(spent_by=None, spendable=True, spending_description=None)
+                .execution_options(synchronize_session=False)
+            )
+            session.execute(release_stmt)
+
             session.flush()
             session.commit()
 
@@ -4937,7 +5072,7 @@ class StorageProvider:
             # Re-serialize the enhanced BEEF
             enhanced_beef = self._serialize_enhanced_beef(beef_dict)
 
-            self.logger.debug(f"Merged proof request for txid {txid} into BEEF")
+            # self.logger.debug(f"Merged proof request for txid {txid} into BEEF")
             return enhanced_beef
 
         except Exception as e:
@@ -5739,9 +5874,57 @@ class InternalizeActionContext:
             for basket in self.basket_insertions:
                 self._store_new_basket_insertion_for_output(transaction_id, basket, s)
 
-            # Store rawTx in proven_tx_reqs for future child transactions (TS parity)
-            # This allows get_raw_tx_of_known_valid_transaction to find the source tx
-            if self.tx:
+            # Store ALL transactions from BEEF in proven_tx_reqs for future child transactions (TS parity)
+            # This allows get_raw_tx_of_known_valid_transaction to find all source transactions
+            if self.beef_obj and hasattr(self.beef_obj, 'txs'):
+                # Store all transactions in the BEEF
+                for tx in self.beef_obj.txs:
+                    # Skip if not a transaction object with required methods
+                    if not hasattr(tx, 'txid') or not hasattr(tx, 'serialize'):
+                        continue
+
+                    txid = tx.txid()
+                    raw_tx_bytes = tx.serialize()
+
+                    # Determine status based on whether tx has merkle proof
+                    tx_has_proof = hasattr(tx, 'merkle_path') and tx.merkle_path is not None
+                    tx_status_for_req = "completed" if tx_has_proof else "unproven"
+
+                    # Check if already exists
+                    existing_req = s.execute(
+                        select(ProvenTxReq).where(ProvenTxReq.txid == txid)
+                    ).scalar_one_or_none()
+                    if existing_req:
+                        existing_req.raw_tx = raw_tx_bytes
+                        existing_req.status = tx_status_for_req
+                        s.add(existing_req)
+                    else:
+                        new_req = ProvenTxReq(
+                            txid=txid,
+                            status=tx_status_for_req,
+                            raw_tx=raw_tx_bytes,
+                        )
+                        s.add(new_req)
+            elif self.tx:
+                # Fallback: store just the subject transaction if BEEF parsing failed
+                raw_tx_bytes = self.tx.serialize()
+                # Check if already exists
+                existing_req = s.execute(
+                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
+                ).scalar_one_or_none()
+                if existing_req:
+                    existing_req.raw_tx = raw_tx_bytes
+                    existing_req.status = tx_status
+                    s.add(existing_req)
+                else:
+                    new_req = ProvenTxReq(
+                        txid=self.txid,
+                        status=tx_status,
+                        raw_tx=raw_tx_bytes,
+                    )
+                    s.add(new_req)
+            elif self.tx:
+                # Fallback: store just the subject transaction if BEEF parsing failed
                 raw_tx_bytes = self.tx.serialize()
                 # Check if already exists
                 existing_req = s.execute(

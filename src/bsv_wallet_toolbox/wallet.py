@@ -1394,12 +1394,23 @@ class Wallet:
         # Apply wallet-level configuration for complete transaction handling
         # TS: vargs.includeAllSourceTransactions = this.includeAllSourceTransactions
         if "includeAllSourceTransactions" not in vargs:
-            vargs["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", False)
+            vargs["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", True)
 
         # Apply random values if configured (TS: if (this.randomVals && this.randomVals.length > 1))
         random_vals = getattr(self, "random_vals", None)
         if random_vals and len(random_vals) > 1 and "randomVals" not in vargs:
             vargs["randomVals"] = random_vals[:]
+
+        # Compute isSignAction like TypeScript validation (TS: vargs.isSignAction = vargs.isNewTx && (!vargs.options.signAndProcess || vargs.inputs.some(i => i.unlockingScript === undefined)))
+        # Note: This is set after storage call since storage doesn't accept this field
+        is_sign_action = False
+        if "isNewTx" in vargs:
+            is_new_tx = vargs["isNewTx"]
+            options = vargs.get("options", {})
+            sign_and_process = options.get("signAndProcess", False)
+            inputs = vargs.get("inputs", [])
+            has_undefined_unlocking_script = any(inp.get("unlockingScript") is None for inp in inputs)
+            is_sign_action = is_new_tx and (not sign_and_process or has_undefined_unlocking_script)
 
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
         try:
@@ -1409,20 +1420,36 @@ class Wallet:
             trace(logger, "wallet.create_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
             raise
         
-        # Convert CreateActionResultX to BRC-100 CreateActionResult
-        # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
-        result: dict[str, Any] = {}
-        if signer_result.txid is not None:
-            result["txid"] = signer_result.txid
-        if signer_result.tx is not None:
-            # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
-            result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
-        if signer_result.no_send_change is not None or vargs.get("options", {}).get("noSend"):
-            result["noSendChange"] = signer_result.no_send_change or []
-        if signer_result.no_send_change_output_vouts is not None:
-            result["noSendChangeOutputVouts"] = signer_result.no_send_change_output_vouts
-        if signer_result.signable_transaction is not None:
-            result["signableTransaction"] = signer_result.signable_transaction
+        # If we got a signable transaction and noSend is false, sign it immediately (TS parity)
+        if signer_result.signable_transaction is not None and not vargs.get("options", {}).get("noSend", False):
+            trace(logger, "wallet.create_action.auto_signing", reference=signer_result.signable_transaction.get("reference"))
+            sign_options = vargs.get("options", {}).copy()
+            sign_options["isSignAction"] = False  # Force signing, not returning signable
+            sign_result = signer_sign_action(self, auth, {
+                "reference": signer_result.signable_transaction["reference"],
+                "spends": {},
+                "options": sign_options
+            })
+            # Merge sign result into result
+            if sign_result.txid is not None:
+                result["txid"] = sign_result.txid
+            if sign_result.tx is not None:
+                result["tx"] = _to_byte_list(sign_result.tx) if isinstance(sign_result.tx, bytes) else sign_result.tx
+            # Don't include signableTransaction in final result
+        else:
+            # Convert CreateActionResultX to BRC-100 CreateActionResult
+            # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
+            if signer_result.txid is not None:
+                result["txid"] = signer_result.txid
+            if signer_result.tx is not None:
+                # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
+                result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
+            if signer_result.no_send_change is not None or vargs.get("options", {}).get("noSend"):
+                result["noSendChange"] = signer_result.no_send_change or []
+            if signer_result.no_send_change_output_vouts is not None:
+                result["noSendChangeOutputVouts"] = signer_result.no_send_change_output_vouts
+            if signer_result.signable_transaction is not None:
+                result["signableTransaction"] = signer_result.signable_transaction
         # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
 
         # Wave 4 Enhancement - BEEF integration (TS parity)
@@ -1460,6 +1487,20 @@ class Wallet:
                 "noSendChange": signer_result.no_send_change,
             }
             throw_if_any_unsuccessful_create_actions(internal_result)
+
+        # Debug: Log the final result being returned to client
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"[WALLET_DEBUG] create_action: Returning final result to client")
+        logger.info(f"[WALLET_DEBUG] create_action: Result keys: {list(result.keys())}")
+        if "signableTransaction" in result:
+            st = result["signableTransaction"]
+            logger.info(f"[WALLET_DEBUG] create_action: signableTransaction present with keys: {list(st.keys()) if isinstance(st, dict) else type(st)}")
+            if isinstance(st, dict):
+                logger.info(f"[WALLET_DEBUG] create_action: signableTransaction.tx length: {len(st.get('tx', []))}")
+                logger.info(f"[WALLET_DEBUG] create_action: signableTransaction.reference: {st.get('reference')}")
+        else:
+            logger.warning(f"[WALLET_DEBUG] create_action: NO signableTransaction in result!")
 
         return result
 

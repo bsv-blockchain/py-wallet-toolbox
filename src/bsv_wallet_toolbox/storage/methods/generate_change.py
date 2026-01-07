@@ -256,8 +256,8 @@ def generate_change_sdk(
                     return True
                 
                 exact_satoshis: int | None = None
-                if len(r.change_outputs) == 0: 
-                    pass 
+                if target_net_count == 0 and len(r.change_outputs) == 0:
+                    exact_satoshis = -fee_excess(1)
 
                 ao = 1 if add_output_to_balance_new_input() else 0
                 fee_excess_val = fee_excess(1, ao)
@@ -330,6 +330,7 @@ def generate_change_sdk(
             release_allocated_funding_inputs()
             raise InsufficientFundsError(spending() + fee_target(), -fee_excess_now)
 
+        # If needed, seek funding to avoid overspending on fees without a change output to recapture it.
         if len(r.change_outputs) == 0 and fee_excess_now > 0:
             release_allocated_funding_inputs()
             raise InsufficientFundsError(spending() + fee_target(), params.change_first_satoshis)
