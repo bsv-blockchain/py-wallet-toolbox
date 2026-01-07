@@ -147,13 +147,13 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
     if vargs.get("isNewTx"):
         trace(logger, "signer.create_action.new_tx.call", auth=auth, args=vargs)
         prior = _create_new_tx(wallet, auth, vargs)
-        trace(
-            logger,
-            "signer.create_action.new_tx.result",
-            reference=getattr(prior, "reference", None),
-            amount=getattr(prior, "amount", None),
-            dcr=getattr(prior, "dcr", None),
-        )
+        # trace(
+        #     logger,
+        #     "signer.create_action.new_tx.result",
+        #     reference=getattr(prior, "reference", None),
+        #     amount=getattr(prior, "amount", None),
+        #     dcr=getattr(prior, "dcr", None),
+        # )
 
         if vargs.get("isSignAction"):
             signable = _make_signable_transaction_result(prior, wallet, vargs)
@@ -221,13 +221,6 @@ def build_signable_transaction(
     Returns:
         Tuple of (transaction, amount, pending_inputs, log)
     """
-    import logging
-    logger = logging.getLogger(__name__)
-
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Starting with {len(dctr.get('inputs', []))} storage inputs")
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: dctr keys: {list(dctr.keys())}")
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: args keys: {list(args.keys())}")
-
     change_keys = wallet.get_client_change_key_pair()
 
     input_beef_raw = args.get("inputBeef")
@@ -237,11 +230,6 @@ def build_signable_transaction(
 
     storage_inputs = dctr.get("inputs", [])
     storage_outputs = dctr.get("outputs", [])
-
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: input_beef_raw length: {len(input_beef_raw) if input_beef_raw else 0}")
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: input_beef parsed: {input_beef is not None}")
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: storage_inputs count: {len(storage_inputs)}")
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: storage_outputs count: {len(storage_outputs)}")
 
     tx = Transaction(version=args.get("version", 2), tx_inputs=[], tx_outputs=[], locktime=args.get("lockTime", 0))
 
@@ -292,8 +280,6 @@ def build_signable_transaction(
 
     inputs.sort(key=lambda x: x["storageInput"].get("vin", 0))
 
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Processing {len(inputs)} sorted inputs")
-
     pending_storage_inputs: list[PendingStorageInput] = []
     total_funding_inputs = 0
 
@@ -303,20 +289,13 @@ def build_signable_transaction(
         args_input = input_data["argsInput"]
 
         vin = storage_input.get("vin", 0)
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Processing input vin={vin}")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: storage_input keys: {list(storage_input.keys())}")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: storage_input sourceTxid: {storage_input.get('sourceTxid')}")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: storage_input sourceTransaction: {storage_input.get('sourceTransaction', 'MISSING')}")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: args_input present: {args_input is not None}")
 
         # Skip inputs that are handled via BEEF (they don't need explicit input processing)
         if storage_input.get("beef"):
-            logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Skipping input vin={vin} - handled via BEEF")
             continue
 
         if args_input:
             # Type 1: User supplied input
-            logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Processing user-supplied input vin={vin}")
             has_unlock = args_input.get("unlockingScript") is not None
             unlocking_hex = args_input.get("unlockingScript", "")
             unlock = Script(unlocking_hex) if has_unlock and isinstance(unlocking_hex, str) else Script()
@@ -324,18 +303,10 @@ def build_signable_transaction(
             source_transaction = None
             if args.get("isSignAction") and input_beef:
                 txid = args_input.get("outpoint", {}).get("txid")
-                logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Looking for source transaction in BEEF for txid: {txid}")
                 if txid:
                     tx_data = input_beef.find_txid(txid)
                     if tx_data:
                         source_transaction = tx_data.get("tx")
-                        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Found source transaction in BEEF for txid: {txid}")
-                    else:
-                        logger.warning(f"[SIGNER_DEBUG] build_signable_transaction: Source transaction NOT found in BEEF for txid: {txid}")
-                else:
-                    logger.warning(f"[SIGNER_DEBUG] build_signable_transaction: No txid in args_input.outpoint for vin={vin}")
-            else:
-                logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Not searching BEEF (isSignAction={args.get('isSignAction')}, input_beef={input_beef is not None})")
 
             tx.add_input(
                 TransactionInput(
@@ -351,7 +322,6 @@ def build_signable_transaction(
             continue
         else:
             # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
-            logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Processing storage-managed input vin={vin}")
             if storage_input.get("type") != "P2PKH":
                 raise WalletError(
                     f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported'
@@ -361,7 +331,6 @@ def build_signable_transaction(
         # StorageCreateTransactionSdkInput uses camelCase keys (TS parity / @wallet-infra).
         # We intentionally do NOT accept snake_case here: the storage boundary must be consistent.
         source_txid = storage_input.get("sourceTxid") or ""
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Storage input source_txid: {source_txid}")
 
         if not isinstance(source_txid, str) or len(source_txid) != 64:
             raise WalletError(
@@ -391,14 +360,11 @@ def build_signable_transaction(
 
         # Attach source transaction / metadata for SABPPP inputs (optional)
         source_tx_raw = storage_input.get("sourceTransaction")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Storage input source_tx_raw present: {source_tx_raw is not None}")
         if isinstance(source_tx_raw, list):
             source_tx_raw = bytes(source_tx_raw)
         source_tx = Transaction.from_hex(source_tx_raw) if isinstance(source_tx_raw, (bytes, bytearray, str)) and source_tx_raw else None
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Storage input source_tx parsed: {source_tx is not None}")
 
         # Create a TransactionInput placeholder; unlocking_script will be filled later via BRC-29 template
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Creating TransactionInput for storage input vin={vin}")
         tx_input = TransactionInput(
             source_txid=source_txid,
             source_output_index=storage_input.get("sourceVout") or 0,
@@ -416,27 +382,14 @@ def build_signable_transaction(
                 # Debug-only: locking script parse failure should surface as WalletError later if critical
                 pass
 
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Adding storage input to transaction vin={vin}")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Final tx_input source_txid: {tx_input.source_txid}")
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Final tx_input source_transaction: {tx_input.source_transaction is not None}")
-
         tx.add_input(tx_input)
         total_funding_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
-
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Input vin={vin} processing complete")
 
     # Calculate amount (total non-foreign inputs minus change outputs)
     total_change_outputs = sum(
         output.get("satoshis", 0) for output in storage_outputs if output.get("purpose") == "change"
     )
     amount = total_funding_inputs - total_change_outputs
-
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Transaction built with {len(tx.inputs)} inputs and {len(tx.outputs)} outputs")
-    logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Amount: {amount}, pending_storage_inputs: {len(pending_storage_inputs)}")
-
-    # Check each input for source_txid and source_transaction
-    for i, inp in enumerate(tx.inputs):
-        logger.info(f"[SIGNER_DEBUG] build_signable_transaction: Final input {i}: source_txid={inp.source_txid}, source_transaction={inp.source_transaction is not None}")
 
     return tx, amount, pending_storage_inputs, ""
 
@@ -689,7 +642,7 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         # Create new transaction for processing
         trace(logger, "signer.process_action.no_prior.recover", auth=auth)
         prior = _create_new_tx(wallet, auth, vargs)
-        trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, dcr=prior.dcr, amount=prior.amount)
+        trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, amount=prior.amount)
 
         # Build signable transaction
         tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
@@ -753,7 +706,7 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
         if not prior:
             trace(logger, "signer.sign_action.recover_from_storage.miss", reference=reference)
             raise WalletError(f"Unable to recover signAction reference '{reference}' from storage or memory.")
-        trace(logger, "signer.sign_action.recover_from_storage.hit", reference=reference, dcr=prior.dcr)
+        trace(logger, "signer.sign_action.recover_from_storage.hit", reference=reference)
 
     # inputBeef might be empty for transactions with only wallet-managed inputs
     # TypeScript requires it, but we'll be more lenient for testing

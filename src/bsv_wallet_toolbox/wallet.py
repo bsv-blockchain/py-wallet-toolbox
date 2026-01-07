@@ -1405,6 +1405,7 @@ class Wallet:
         # No need to recompute here - validation handles it correctly
 
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
+        result: dict[str, Any] = {}
         try:
             signer_result = signer_create_action(self, auth, vargs)
             trace(logger, "wallet.create_action.signer_result", originator=originator, signer_result=getattr(signer_result, "__dict__", signer_result))
@@ -1479,20 +1480,6 @@ class Wallet:
                 "noSendChange": signer_result.no_send_change,
             }
             throw_if_any_unsuccessful_create_actions(internal_result)
-
-        # Debug: Log the final result being returned to client
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"[WALLET_DEBUG] create_action: Returning final result to client")
-        logger.info(f"[WALLET_DEBUG] create_action: Result keys: {list(result.keys())}")
-        if "signableTransaction" in result:
-            st = result["signableTransaction"]
-            logger.info(f"[WALLET_DEBUG] create_action: signableTransaction present with keys: {list(st.keys()) if isinstance(st, dict) else type(st)}")
-            if isinstance(st, dict):
-                logger.info(f"[WALLET_DEBUG] create_action: signableTransaction.tx length: {len(st.get('tx', []))}")
-                logger.info(f"[WALLET_DEBUG] create_action: signableTransaction.reference: {st.get('reference')}")
-        else:
-            logger.warning(f"[WALLET_DEBUG] create_action: NO signableTransaction in result!")
 
         return result
 

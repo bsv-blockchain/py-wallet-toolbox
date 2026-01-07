@@ -1455,13 +1455,11 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        self.logger.debug(f"[LOOKUP_DEBUG] get_proven_or_raw_tx called for txid: {txid}")
         with session_scope(self.SessionLocal) as s:
             # Check ProvenTx first
             _result = s.execute(select(ProvenTx).where(ProvenTx.txid == txid))
             p = _result.scalar_one_or_none()
             if p is not None:
-                self.logger.info(f"[LOOKUP_DEBUG] Found in ProvenTx: txid={txid}, raw_tx_len={len(p.raw_tx) if p.raw_tx else 0}")
                 return {
                     "proven": {"provenTxId": p.proven_tx_id},
                     "rawTx": p.raw_tx,
@@ -1472,15 +1470,8 @@ class StorageProvider:
             _result = s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid))
             r = _result.scalar_one_or_none()
             if r is None:
-                self.logger.warning(f"[LOOKUP_DEBUG] NOT FOUND in ProvenTx or ProvenTxReq: txid={txid}")
-                # Debug: Check what's actually in ProvenTxReq table
-                all_reqs = s.execute(select(ProvenTxReq.txid, ProvenTxReq.status)).fetchall()
-                self.logger.warning(f"[LOOKUP_DEBUG] ProvenTxReq table has {len(all_reqs)} records")
-                if len(all_reqs) <= 10:
-                    self.logger.warning(f"[LOOKUP_DEBUG] ProvenTxReq contents: {[(req.txid, req.status) for req in all_reqs]}")
                 return {"proven": None, "rawTx": None}
             
-            self.logger.info(f"[LOOKUP_DEBUG] Found in ProvenTxReq: txid={txid}, status={r.status}, raw_tx_len={len(r.raw_tx) if r.raw_tx else 0}")
             return {"proven": None, "rawTx": r.raw_tx, "inputBEEF": r.input_beef}
 
     def get_raw_tx_of_known_valid_transaction(
@@ -2031,8 +2022,6 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/methods/createAction.ts
         """
-        self.logger.info("[CREATE_ACTION_DEBUG] create_action: START - Called with args keys: %s", list(args.keys()))
-
         user_id = int(auth["userId"])
         vargs = normalize_create_action_args(args)
 
@@ -2119,21 +2108,6 @@ class StorageProvider:
             txid = deterministic_txid(new_tx.reference, vargs.outputs)
             self.update_transaction(new_tx.transaction_id, {"txid": txid})
             result["txid"] = txid
-            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: sign_and_process=True, returning txid: {txid}")
-        elif not (getattr(vargs.options, "return_txid_only", False) if vargs.options else False):
-            # Don't create signableTransaction - let the TypeScript client build it
-            # The Python storage server provides inputs and inputBeef, client creates signableTransaction
-            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Not creating signableTransaction - letting client build it")
-            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: input_beef_bytes length: {len(input_beef_bytes) if input_beef_bytes else 0}")
-            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload has {len(inputs_payload)} inputs")
-            for i, inp in enumerate(inputs_payload[:3]):  # Log first 3 inputs
-                source_tx = inp.get('sourceTransaction')
-                source_tx_desc = f"{type(source_tx).__name__} len={len(source_tx) if source_tx else 0}" if source_tx is not None else "None"
-                self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload[{i}]: sourceTxid={inp.get('sourceTxid')}, sourceTransaction={source_tx_desc}")
-            self.logger.warning("[CREATE_ACTION_DEBUG] create_action: WARNING - signableTransaction does NOT include inputs array, only BEEF data")
-
-        self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Final result keys: {list(result.keys())}")
-        self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Returning result with signableTransaction: {'signableTransaction' in result}")
 
         return result
 
@@ -2328,47 +2302,33 @@ class StorageProvider:
         """
         from bsv.transaction.beef import Beef, BEEF_V2
 
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Starting with {len(allocated_change)} allocated change outputs")
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: storage_beef_bytes length: {len(storage_beef_bytes) if storage_beef_bytes else 0}")
-
         # If returnTXIDOnly, don't generate BEEF
         if getattr(vargs.options, "return_txid_only", False):
-            self.logger.info("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: returnTXIDOnly is True, returning None")
             return None
 
         # Start with existing beef or create new one
         if storage_beef_bytes and len(storage_beef_bytes) > 0:
             try:
                 beef = Beef.from_binary(list(storage_beef_bytes))
-                self.logger.info("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Loaded existing BEEF from storage_beef_bytes")
-            except Exception as e:
+            except Exception:
                 beef = Beef(version=BEEF_V2)
-                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Failed to load existing BEEF, creating new one: {e}")
         else:
             beef = Beef(version=BEEF_V2)
-            self.logger.info("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Created new BEEF v2")
 
         known_txids = set(getattr(vargs.options, "known_txids", []) or [])
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: known_txids: {list(known_txids)}")
 
         # Merge BEEF for each allocated change output
-        merged_count = 0
         for o in allocated_change:
             txid = o.get("txid") or o.get("sourceTxid")
             if not txid:
-                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Allocated change output missing txid: {o}")
                 continue
             if txid in known_txids:
-                self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Skipping known txid: {txid}")
                 continue
             try:
                 if beef.find_txid(txid):
-                    self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: txid already in BEEF: {txid}")
                     continue
-            except Exception as e:
-                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Error checking if txid in BEEF: {txid}, {e}")
+            except Exception:
                 pass
-
 
             try:
                 options = {
@@ -2376,33 +2336,12 @@ class StorageProvider:
                     "knownTxids": list(known_txids),
                     "ignoreServices": True,
                 }
-                self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Merging BEEF for txid: {txid}")
                 self.get_beef_for_transaction(txid, options)
-                merged_count += 1
-            except Exception as e:
-                self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Failed to merge BEEF for txid {txid}: {e}")
-
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Successfully merged {merged_count} transactions into BEEF")
+            except Exception:
+                pass
 
         result = beef.to_binary()
         result_bytes = bytes(result) if result else None
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Final BEEF size: {len(result_bytes) if result_bytes else 0} bytes")
-        if result_bytes:
-            self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF content (hex): {result_bytes.hex()[:200]}...")
-
-        # Check if BEEF contains source transactions
-        try:
-            if hasattr(beef, 'transactions') and beef.transactions:
-                self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF contains {len(beef.transactions)} transactions")
-                for i, tx in enumerate(beef.transactions[:5]):  # Log first 5
-                    if hasattr(tx, 'id'):
-                        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF transaction {i}: {tx.id()}")
-                    else:
-                        self.logger.info(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF transaction {i}: {type(tx)}")
-            else:
-                self.logger.warning("[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: BEEF has no transactions or transactions attribute")
-        except Exception as e:
-            self.logger.warning(f"[CREATE_ACTION_DEBUG] _merge_allocated_change_beefs: Error inspecting BEEF transactions: {e}")
 
         return result_bytes
 
@@ -2463,13 +2402,9 @@ class StorageProvider:
         inputs = []
         vin = 0
 
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Starting with {len(ctx['xinputs'])} user inputs and {len(allocated_change)} allocated change inputs")
-
         for xi in ctx["xinputs"]:
             source_txid = xi["sourceTxid"]
             source_vout = xi["sourceVout"]
-
-            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Processing user input vin={vin}, sourceTxid={source_txid}, sourceVout={source_vout}")
 
             # Get source transaction from storage if not provided
             source_transaction = xi.get("sourceTransaction")
@@ -2504,16 +2439,11 @@ class StorageProvider:
                 "providedBy": xi.get("providedBy", "you"),
             }
             inputs.append(input_dict)
-
-            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Created user input {vin}: {input_dict}")
-            self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: sourceTransaction is None for user input {vin} - this may cause signing issues")
-
             vin += 1
 
         for ac in allocated_change:
             txid = ac["txid"]
             if txid is None:
-                self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Skipping allocated change input with null txid")
                 vin += 1  # Still increment vin to maintain order
                 continue
 
@@ -2550,17 +2480,7 @@ class StorageProvider:
                 "senderIdentityKey": ac.get("senderIdentityKey") or "",
             }
             inputs.append(input_dict)
-
-            if source_transaction:
-                self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Created allocated change input {vin} with sourceTransaction ({len(source_transaction)} bytes)")
-            else:
-                self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: sourceTransaction is missing for allocated change input {vin} - this may cause signing issues")
-
             vin += 1
-
-        self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Returning {len(inputs)} total inputs")
-        for i, inp in enumerate(inputs):
-            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Final input {i}: sourceTxid={inp['sourceTxid']}, sourceTransaction={inp.get('sourceTransaction', 'MISSING')}")
 
         return inputs
 
@@ -2732,33 +2652,22 @@ class StorageProvider:
                 if output:
                     output_id = output.output_id
 
-            # DEBUG: Log what we found
-            if output:
-                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Found output {output_id} (txid={output.txid}, vout={output.vout}, satoshis={output.satoshis}) for transaction {transaction_id}")
-                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Output before marking: spendable={output.spendable}, spent_by={output.spent_by}")
-
             if output and output_id:
                 # Use update_output method for consistency with TypeScript (TS uses updateOutput in allocateChangeInput)
                 # This ensures proper transaction handling and avoids potential session issues
-                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Marking output {output_id} as spent by transaction {transaction_id}")
                 updated = self.update_output(output_id, {
                     "spendable": False,
                     "spent_by": transaction_id,
                     "spending_description": f"Allocated for transaction {transaction_id}"
                 })
-                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] update_output returned: {updated}")
 
                 # Refresh the output object to reflect the changes
                 session.refresh(output)
-                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Output after marking: spendable={output.spendable}, spent_by={output.spent_by}")
-
                 return output
 
-            self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] No suitable output found for transaction {transaction_id} (target_satoshis={target_satoshis}, exact_satoshis={exact_satoshis})")
             return None
         except Exception as e:
             session.rollback()
-            self.logger.error(f"[ALLOCATE_FUNDING_DEBUG] Exception in allocate_funding_input: {e}")
             raise
         finally:
             session.close()
@@ -3189,9 +3098,8 @@ class StorageProvider:
                     # Use the full BEEF for broadcasting - includes parent chain
                     try:
                         beef_hex_for_broadcast = req.input_beef.hex()
-                        self.logger.debug(f"[BEEF_BROADCAST] Using input_beef for broadcast: {len(req.input_beef)} bytes")
-                    except Exception as e:
-                        self.logger.warning(f"[BEEF_BROADCAST] Failed to convert input_beef to hex: {e}")
+                    except Exception:
+                        pass
 
                 if beef_hex_for_broadcast is None and req.raw_tx:
                     # Fallback: use raw transaction
@@ -3221,7 +3129,6 @@ class StorageProvider:
                     try:
                         if beef_hex_for_broadcast:
                             # Broadcast the full BEEF (includes parent chain)
-                            self.logger.info(f"[BEEF_BROADCAST] Broadcasting BEEF v2 for txid={txid}, beef_size={len(beef_hex_for_broadcast)//2} bytes")
                             broadcast_result = services.post_beef(beef_hex_for_broadcast)
                         else:
                             # Fallback: broadcast raw transaction
@@ -3380,7 +3287,6 @@ class StorageProvider:
             - Lines 328-369: newInternalize (new tx outputs & network broadcast)
             - Lines 371-483: Output/label storage helpers
         """
-        self.logger.info("[INTERNALIZE_DEBUG] internalize_action ENTRY")
         # Step 1: Parse args and validate
         user_id = int(auth["userId"])  # May raise KeyError
 
@@ -3391,18 +3297,14 @@ class StorageProvider:
 
         # Step 3: async setup simulation (synchronous implementation)
         ctx.setup()
-        self.logger.info(f"[INTERNALIZE_DEBUG] After setup: txid={ctx.txid}, has_tx={ctx.tx is not None}, is_merge={ctx.is_merge}")
 
         # Step 4: Process based on merge status
         if ctx.is_merge:
-            self.logger.info("[INTERNALIZE_DEBUG] Calling merged_internalize")
             ctx.merged_internalize()
         else:
-            self.logger.info("[INTERNALIZE_DEBUG] Calling new_internalize")
             ctx.new_internalize()
 
         # Step 5: Return result
-        self.logger.info(f"[INTERNALIZE_DEBUG] internalize_action EXIT: txid={ctx.result.get('txid')}, satoshis={ctx.result.get('satoshis')}")
         return ctx.result
 
     # =====================================================================
@@ -5897,7 +5799,6 @@ class InternalizeActionContext:
 
     def merged_internalize(self) -> None:
         """Process merge case. (TS lines 312-326)"""
-        self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize START for txid={self.txid}")
         with session_scope(self.storage.SessionLocal) as s:
             transaction_id = self.existing_tx.transaction_id
 
@@ -5922,19 +5823,15 @@ class InternalizeActionContext:
                 tx_status = "completed" if tx_has_proof else "unproven"
                 subject_raw_tx = self.tx.serialize()
                 
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(subject_raw_tx)}")
-                
                 existing_subject_req = s.execute(
                     select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
                 ).scalar_one_or_none()
                 
                 if existing_subject_req:
-                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Updating existing ProvenTxReq for SUBJECT txid {self.txid}")
                     existing_subject_req.raw_tx = subject_raw_tx
                     existing_subject_req.status = tx_status
                     s.add(existing_subject_req)
                 else:
-                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Creating new ProvenTxReq for SUBJECT txid {self.txid}")
                     subject_req = ProvenTxReq(
                         txid=self.txid,
                         status=tx_status,
@@ -5943,11 +5840,9 @@ class InternalizeActionContext:
                     s.add(subject_req)
 
             s.commit()
-            self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Successfully committed for txid={self.txid}")
 
     def new_internalize(self) -> None:
         """Process new case. (TS lines 328-369)"""
-        self.storage.logger.info(f"[INTERNALIZE_DEBUG] new_internalize START for txid={self.txid}")
         with session_scope(self.storage.SessionLocal) as s:
             # Create transaction record
             now = datetime.now(UTC)
@@ -5991,21 +5886,17 @@ class InternalizeActionContext:
                 subject_raw_tx = self.tx.serialize()
                 beef_bytes = self.vargs.get("tx") if self.vargs else None  # Store the full BEEF bytes
 
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(subject_raw_tx)}, beef_bytes={len(beef_bytes) if beef_bytes else 'None'}")
-
                 existing_subject_req = s.execute(
                     select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
                 ).scalar_one_or_none()
 
                 if existing_subject_req:
-                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for SUBJECT txid {self.txid}")
                     existing_subject_req.raw_tx = subject_raw_tx
                     existing_subject_req.status = tx_status
                     if beef_bytes:
                         existing_subject_req.input_beef = beef_bytes
                     s.add(existing_subject_req)
                 else:
-                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for SUBJECT txid {self.txid}")
                     subject_req = ProvenTxReq(
                         txid=self.txid,
                         status=tx_status,
@@ -6014,14 +5905,7 @@ class InternalizeActionContext:
                     )
                     s.add(subject_req)
 
-            self.storage.logger.info(f"[INTERNALIZE_DEBUG] About to commit ProvenTxReq records for txid={self.txid}")
             s.commit()
-            self.storage.logger.info(f"[INTERNALIZE_DEBUG] Successfully committed ProvenTxReq records for txid={self.txid}")
-            
-            # Verify what was actually committed
-            verification_result = s.execute(select(ProvenTxReq.txid)).scalars().all()
-            self.storage.logger.info(f"[INTERNALIZE_DEBUG] ProvenTxReq table after commit contains {len(verification_result)} records")
-            self.storage.logger.info(f"[INTERNALIZE_DEBUG] ProvenTxReq txids: {verification_result}")
 
     def _add_labels(self, transaction_id: int, session: Any) -> None:
         """Add labels to transaction. (TS lines 371-376)"""
