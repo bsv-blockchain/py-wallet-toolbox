@@ -3330,6 +3330,7 @@ class StorageProvider:
             - Lines 328-369: newInternalize (new tx outputs & network broadcast)
             - Lines 371-483: Output/label storage helpers
         """
+        self.logger.info("[INTERNALIZE_DEBUG] internalize_action ENTRY")
         # Step 1: Parse args and validate
         user_id = int(auth["userId"])  # May raise KeyError
 
@@ -3340,14 +3341,18 @@ class StorageProvider:
 
         # Step 3: async setup simulation (synchronous implementation)
         ctx.setup()
+        self.logger.info(f"[INTERNALIZE_DEBUG] After setup: txid={ctx.txid}, has_tx={ctx.tx is not None}, is_merge={ctx.is_merge}")
 
         # Step 4: Process based on merge status
         if ctx.is_merge:
+            self.logger.info("[INTERNALIZE_DEBUG] Calling merged_internalize")
             ctx.merged_internalize()
         else:
+            self.logger.info("[INTERNALIZE_DEBUG] Calling new_internalize")
             ctx.new_internalize()
 
         # Step 5: Return result
+        self.logger.info(f"[INTERNALIZE_DEBUG] internalize_action EXIT: txid={ctx.result.get('txid')}, satoshis={ctx.result.get('satoshis')}")
         return ctx.result
 
     # =====================================================================
@@ -5831,6 +5836,7 @@ class InternalizeActionContext:
 
     def merged_internalize(self) -> None:
         """Process merge case. (TS lines 312-326)"""
+        self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize START for txid={self.txid}")
         with session_scope(self.storage.SessionLocal) as s:
             transaction_id = self.existing_tx.transaction_id
 
@@ -5848,10 +5854,39 @@ class InternalizeActionContext:
                 else:
                     self._store_new_basket_insertion_for_output(transaction_id, basket, s)
 
+            # CRITICAL FIX: Store transaction in ProvenTxReq even for merge case
+            # This ensures the transaction is available for BEEF building by child transactions
+            if self.tx:
+                tx_has_proof = hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+                tx_status = "completed" if tx_has_proof else "unproven"
+                subject_raw_tx = self.tx.serialize()
+                
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(subject_raw_tx)}")
+                
+                existing_subject_req = s.execute(
+                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
+                ).scalar_one_or_none()
+                
+                if existing_subject_req:
+                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Updating existing ProvenTxReq for SUBJECT txid {self.txid}")
+                    existing_subject_req.raw_tx = subject_raw_tx
+                    existing_subject_req.status = tx_status
+                    s.add(existing_subject_req)
+                else:
+                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Creating new ProvenTxReq for SUBJECT txid {self.txid}")
+                    subject_req = ProvenTxReq(
+                        txid=self.txid,
+                        status=tx_status,
+                        raw_tx=subject_raw_tx,
+                    )
+                    s.add(subject_req)
+
             s.commit()
+            self.storage.logger.info(f"[INTERNALIZE_DEBUG] merged_internalize: Successfully committed for txid={self.txid}")
 
     def new_internalize(self) -> None:
         """Process new case. (TS lines 328-369)"""
+        self.storage.logger.info(f"[INTERNALIZE_DEBUG] new_internalize START for txid={self.txid}")
         with session_scope(self.storage.SessionLocal) as s:
             # Create transaction record
             now = datetime.now(UTC)
@@ -5916,74 +5951,78 @@ class InternalizeActionContext:
             # This allows get_raw_tx_of_known_valid_transaction to find all source transactions
             if self.beef_obj and hasattr(self.beef_obj, 'txs'):
                 self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing {len(self.beef_obj.txs)} transactions from BEEF to ProvenTxReq")
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] BEEF object type: {type(self.beef_obj)}")
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] BEEF.txs type: {type(self.beef_obj.txs)}")
+                
                 # Store all transactions in the BEEF
-                for tx in self.beef_obj.txs:
-                    # Skip if not a transaction object with required methods
-                    if not hasattr(tx, 'txid') or not hasattr(tx, 'serialize'):
-                        continue
+                stored_count = 0
+                for idx, tx in enumerate(self.beef_obj.txs):
+                    try:
+                        # Skip if not a transaction object with required methods
+                        if not hasattr(tx, 'txid') or not hasattr(tx, 'serialize'):
+                            self.storage.logger.warning(f"[INTERNALIZE_DEBUG] Skipping BEEF tx {idx}: missing txid() or serialize() methods")
+                            continue
 
-                    txid = tx.txid()
-                    raw_tx_bytes = tx.serialize()
+                        txid = tx.txid()
+                        self.storage.logger.info(f"[INTERNALIZE_DEBUG] Processing BEEF tx {idx}: txid={txid}")
+                        raw_tx_bytes = tx.serialize()
 
-                    # Determine status based on whether tx has merkle proof
-                    tx_has_proof = hasattr(tx, 'merkle_path') and tx.merkle_path is not None
-                    tx_status_for_req = "completed" if tx_has_proof else "unproven"
+                        # Determine status based on whether tx has merkle proof
+                        tx_has_proof = hasattr(tx, 'merkle_path') and tx.merkle_path is not None
+                        tx_status_for_req = "completed" if tx_has_proof else "unproven"
 
-                    # Check if already exists
-                    existing_req = s.execute(
-                        select(ProvenTxReq).where(ProvenTxReq.txid == txid)
-                    ).scalar_one_or_none()
-                    if existing_req:
-                        self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
-                        existing_req.raw_tx = raw_tx_bytes
-                        existing_req.status = tx_status_for_req
-                        s.add(existing_req)
-                    else:
-                        self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
-                        new_req = ProvenTxReq(
-                            txid=txid,
-                            status=tx_status_for_req,
-                            raw_tx=raw_tx_bytes,
-                        )
-                        s.add(new_req)
+                        # Check if already exists
+                        existing_req = s.execute(
+                            select(ProvenTxReq).where(ProvenTxReq.txid == txid)
+                        ).scalar_one_or_none()
+                        if existing_req:
+                            self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
+                            existing_req.raw_tx = raw_tx_bytes
+                            existing_req.status = tx_status_for_req
+                            s.add(existing_req)
+                        else:
+                            self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
+                            new_req = ProvenTxReq(
+                                txid=txid,
+                                status=tx_status_for_req,
+                                raw_tx=raw_tx_bytes,
+                            )
+                            s.add(new_req)
+                        stored_count += 1
+                    except Exception as e:
+                        self.storage.logger.error(f"[INTERNALIZE_DEBUG] Error storing BEEF tx {idx}: {e}", exc_info=True)
+                
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Successfully processed {stored_count} transactions from BEEF")
             elif self.tx:
                 # Fallback: store just the subject transaction if BEEF parsing failed
                 raw_tx_bytes = self.tx.serialize()
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Fallback: storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(raw_tx_bytes)}")
                 # Check if already exists
                 existing_req = s.execute(
                     select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
                 ).scalar_one_or_none()
                 if existing_req:
+                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Fallback: updating existing ProvenTxReq for SUBJECT txid {self.txid}")
                     existing_req.raw_tx = raw_tx_bytes
                     existing_req.status = tx_status
                     s.add(existing_req)
                 else:
+                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Fallback: creating new ProvenTxReq for SUBJECT txid {self.txid}")
                     new_req = ProvenTxReq(
                         txid=self.txid,
                         status=tx_status,
                         raw_tx=raw_tx_bytes,
                     )
                     s.add(new_req)
-            elif self.tx:
-                # Fallback: store just the subject transaction if BEEF parsing failed
-                raw_tx_bytes = self.tx.serialize()
-                # Check if already exists
-                existing_req = s.execute(
-                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
-                ).scalar_one_or_none()
-                if existing_req:
-                    existing_req.raw_tx = raw_tx_bytes
-                    existing_req.status = tx_status
-                    s.add(existing_req)
-                else:
-                    new_req = ProvenTxReq(
-                        txid=self.txid,
-                        status=tx_status,
-                        raw_tx=raw_tx_bytes,
-                    )
-                    s.add(new_req)
 
+            self.storage.logger.info(f"[INTERNALIZE_DEBUG] About to commit ProvenTxReq records for txid={self.txid}")
             s.commit()
+            self.storage.logger.info(f"[INTERNALIZE_DEBUG] Successfully committed ProvenTxReq records for txid={self.txid}")
+            
+            # Verify what was actually committed
+            verification_result = s.execute(select(ProvenTxReq.txid)).scalars().all()
+            self.storage.logger.info(f"[INTERNALIZE_DEBUG] ProvenTxReq table after commit contains {len(verification_result)} records")
+            self.storage.logger.info(f"[INTERNALIZE_DEBUG] ProvenTxReq txids: {verification_result}")
 
     def _add_labels(self, transaction_id: int, session: Any) -> None:
         """Add labels to transaction. (TS lines 371-376)"""
