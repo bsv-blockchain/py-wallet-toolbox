@@ -806,8 +806,15 @@ class StorageProvider:
             if specop_include_spent is not None:
                 include_spent = specop_include_spent
             if not include_spent:
-                base = base & (Output.spendable.is_(True))
+                # Exclude outputs that are spent (spent_by IS NOT NULL) even if spendable is somehow True
+                # TS parity: TypeScript relies on spendable=false for spent outputs, but we add spent_by check for safety
+                base = base & (Output.spendable.is_(True)) & (Output.spent_by.is_(None))
             q = select(Output).where(base)
+
+            # TS parity: Join with transactions to filter by status (TypeScript listOutputsKnex.ts lines 136-137)
+            # This ensures balance only counts outputs from valid transaction states
+            q = q.join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+            q = q.where(TransactionModel.status.in_(["completed", "unproven", "nosend", "sending"]))
 
             if filter_change_only:
                 q = q.where(Output.change.is_(True))
@@ -2678,9 +2685,10 @@ class StorageProvider:
         )
 
         session = self.SessionLocal()
-        
+
         try:
             output = None
+            output_id = None
 
             # 1. Exact match
             if exact_satoshis is not None:
@@ -2692,6 +2700,8 @@ class StorageProvider:
                     .with_for_update()
                 )
                 output = session.execute(q).scalar_one_or_none()
+                if output:
+                    output_id = output.output_id
 
             # 2. Best fit (Smallest output >= target)
             if output is None:
@@ -2705,6 +2715,8 @@ class StorageProvider:
                 )
                 results = session.execute(q).scalars().all()
                 output = results[0] if results else None
+                if output:
+                    output_id = output.output_id
 
             # 3. Closest under (Largest output < target)
             if output is None:
@@ -2717,18 +2729,36 @@ class StorageProvider:
                     .with_for_update()
                 )
                 output = session.execute(q).scalar_one_or_none()
+                if output:
+                    output_id = output.output_id
 
+            # DEBUG: Log what we found
             if output:
-                output.spendable = False
-                output.spent_by = transaction_id
-                session.add(output)
-                session.commit()
+                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Found output {output_id} (txid={output.txid}, vout={output.vout}, satoshis={output.satoshis}) for transaction {transaction_id}")
+                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Output before marking: spendable={output.spendable}, spent_by={output.spent_by}")
+
+            if output and output_id:
+                # Use update_output method for consistency with TypeScript (TS uses updateOutput in allocateChangeInput)
+                # This ensures proper transaction handling and avoids potential session issues
+                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Marking output {output_id} as spent by transaction {transaction_id}")
+                updated = self.update_output(output_id, {
+                    "spendable": False,
+                    "spent_by": transaction_id,
+                    "spending_description": f"Allocated for transaction {transaction_id}"
+                })
+                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] update_output returned: {updated}")
+
+                # Refresh the output object to reflect the changes
                 session.refresh(output)
+                self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] Output after marking: spendable={output.spendable}, spent_by={output.spent_by}")
+
                 return output
 
+            self.logger.info(f"[ALLOCATE_FUNDING_DEBUG] No suitable output found for transaction {transaction_id} (target_satoshis={target_satoshis}, exact_satoshis={exact_satoshis})")
             return None
-        except Exception:
+        except Exception as e:
             session.rollback()
+            self.logger.error(f"[ALLOCATE_FUNDING_DEBUG] Exception in allocate_funding_input: {e}")
             raise
         finally:
             session.close()
