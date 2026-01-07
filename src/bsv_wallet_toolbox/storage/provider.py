@@ -5956,7 +5956,7 @@ class InternalizeActionContext:
                 
                 # Store all transactions in the BEEF
                 stored_count = 0
-                for idx, tx in enumerate(self.beef_obj.txs):
+                for idx, tx in enumerate(self.beef_obj.txs.values()):
                     try:
                         # Skip if not a transaction object with required methods
                         if not hasattr(tx, 'txid') or not hasattr(tx, 'serialize'):
