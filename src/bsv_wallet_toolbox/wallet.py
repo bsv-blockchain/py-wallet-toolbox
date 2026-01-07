@@ -1401,16 +1401,8 @@ class Wallet:
         if random_vals and len(random_vals) > 1 and "randomVals" not in vargs:
             vargs["randomVals"] = random_vals[:]
 
-        # Compute isSignAction like TypeScript validation (TS: vargs.isSignAction = vargs.isNewTx && (!vargs.options.signAndProcess || vargs.inputs.some(i => i.unlockingScript === undefined)))
-        # Note: This is set after storage call since storage doesn't accept this field
-        is_sign_action = False
-        if "isNewTx" in vargs:
-            is_new_tx = vargs["isNewTx"]
-            options = vargs.get("options", {})
-            sign_and_process = options.get("signAndProcess", False)
-            inputs = vargs.get("inputs", [])
-            has_undefined_unlocking_script = any(inp.get("unlockingScript") is None for inp in inputs)
-            is_sign_action = is_new_tx and (not sign_and_process or has_undefined_unlocking_script)
+        # Note: isSignAction is already computed in validate_create_action_args
+        # No need to recompute here - validation handles it correctly
 
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
         try:

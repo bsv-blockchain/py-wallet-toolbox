@@ -20,10 +20,16 @@ class InternalError(WalletError):
 
 class InsufficientFundsError(WalletError):
     """Insufficient funds for transaction."""
-    def __init__(self, required: int, short: int):
-        super().__init__(f"Insufficient funds. Required: {required}, Short: {short}")
-        self.required = required
-        self.short = short
+    def __init__(self, total_satoshis_needed: int, more_satoshis_needed: int):
+        message = (
+            f"Insufficient funds in the available inputs to cover the cost of the required outputs "
+            f"and the transaction fee ({more_satoshis_needed} more satoshis are needed, "
+            f"for a total of {total_satoshis_needed}), plus whatever would be required in order to "
+            f"pay the fee to unlock and spend the outputs used to provide the additional satoshis."
+        )
+        super().__init__(message)
+        self.required = total_satoshis_needed
+        self.short = more_satoshis_needed
 
 
 @dataclass

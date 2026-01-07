@@ -2114,20 +2114,15 @@ class StorageProvider:
             result["txid"] = txid
             self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: sign_and_process=True, returning txid: {txid}")
         elif not (getattr(vargs.options, "return_txid_only", False) if vargs.options else False):
-            signable_tx = {
-                "reference": new_tx.reference,
-                "tx": list(input_beef_bytes) if input_beef_bytes else [],
-            }
-            result["signableTransaction"] = signable_tx
-
-            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Creating signableTransaction with reference: {new_tx.reference}")
+            # Don't create signableTransaction - let the TypeScript client build it
+            # The Python storage server provides inputs and inputBeef, client creates signableTransaction
+            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Not creating signableTransaction - letting client build it")
             self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: input_beef_bytes length: {len(input_beef_bytes) if input_beef_bytes else 0}")
-            self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: signableTransaction.tx length: {len(signable_tx['tx'])}")
-            if signable_tx['tx']:
-                self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: signableTransaction.tx (first 100 bytes): {bytes(signable_tx['tx'][:100]).hex()}")
             self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload has {len(inputs_payload)} inputs")
             for i, inp in enumerate(inputs_payload[:3]):  # Log first 3 inputs
-                self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload[{i}]: sourceTxid={inp.get('sourceTxid')}, sourceTransaction={inp.get('sourceTransaction', 'MISSING')}")
+                source_tx = inp.get('sourceTransaction')
+                source_tx_desc = f"{type(source_tx).__name__} len={len(source_tx) if source_tx else 0}" if source_tx is not None else "None"
+                self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: inputs_payload[{i}]: sourceTxid={inp.get('sourceTxid')}, sourceTransaction={source_tx_desc}")
             self.logger.warning("[CREATE_ACTION_DEBUG] create_action: WARNING - signableTransaction does NOT include inputs array, only BEEF data")
 
         self.logger.info(f"[CREATE_ACTION_DEBUG] create_action: Final result keys: {list(result.keys())}")
@@ -2472,7 +2467,7 @@ class StorageProvider:
             # Get source transaction from storage if not provided
             source_transaction = xi.get("sourceTransaction")
             if source_transaction is None:
-                source_transaction = self._get_source_transaction_bytes(source_txid)
+                source_transaction = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
 
             session = self.SessionLocal()
             try:
@@ -2497,7 +2492,7 @@ class StorageProvider:
                 "sourceVout": source_vout,
                 "sourceSatoshis": xi["sourceSatoshis"],
                 "sourceLockingScript": xi["sourceLockingScript"],
-                "sourceTransaction": xi.get("sourceTransaction"),  # This is always None currently
+                "sourceTransaction": list(source_transaction) if source_transaction else None,
                 "unlockingScriptLength": xi.get("unlockingScriptLength"),
                 "providedBy": xi.get("providedBy", "you"),
             }
@@ -2509,6 +2504,12 @@ class StorageProvider:
             vin += 1
 
         for ac in allocated_change:
+            txid = ac["txid"]
+            if txid is None:
+                self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Skipping allocated change input with null txid")
+                vin += 1  # Still increment vin to maintain order
+                continue
+
             # Handle lockingScript - it could be bytes, hex string, or empty
             locking_script = ac.get("lockingScript") or b""
             if isinstance(locking_script, bytes):
@@ -2518,13 +2519,19 @@ class StorageProvider:
             else:
                 locking_script_hex = ""
 
+            # FIX: Get source transaction bytes from storage
+            source_txid = ac["txid"]
+            source_tx_bytes = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
+            # Convert to list of ints for JSON serialization (matches TypeScript expectation)
+            source_transaction = list(source_tx_bytes) if source_tx_bytes else None
+
             input_dict = {
                 "vin": vin,
                 "sourceTxid": ac["txid"],
                 "sourceVout": ac["vout"],
                 "sourceSatoshis": ac["satoshis"],
                 "sourceLockingScript": locking_script_hex,
-                "sourceTransaction": ac.get("sourceTransaction"),  # Not present in allocated_change
+                "sourceTransaction": source_transaction,
                 "unlockingScriptLength": 107,
                 "providedBy": ac["providedBy"] or "storage",
                 "type": ac["type"],
@@ -2537,8 +2544,10 @@ class StorageProvider:
             }
             inputs.append(input_dict)
 
-            self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Created allocated change input {vin}: {input_dict}")
-            self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: sourceTransaction is missing for allocated change input {vin} - this may cause signing issues")
+            if source_transaction:
+                self.logger.info(f"[CREATE_ACTION_DEBUG] _create_new_inputs: Created allocated change input {vin} with sourceTransaction ({len(source_transaction)} bytes)")
+            else:
+                self.logger.warning(f"[CREATE_ACTION_DEBUG] _create_new_inputs: sourceTransaction is missing for allocated change input {vin} - this may cause signing issues")
 
             vin += 1
 
@@ -2758,7 +2767,7 @@ class StorageProvider:
             fixed_outputs=fixed_outputs,
             fee_model=ctx["feeModel"],
             change_initial_satoshis=min_utxo_value,
-            change_first_satoshis=max(1, round(min_utxo_value / 4)),
+            change_first_satoshis=1,
             change_locking_script_length=25,
             change_unlocking_script_length=107,
             target_net_count=target_net_count,
@@ -4401,6 +4410,17 @@ class StorageProvider:
                 .execution_options(synchronize_session=False)
             )
             session.execute(release_stmt)
+
+            # Update ProvenTxReq status to 'invalid' (TS parity)
+            # This prevents the aborted transaction from being used in future BEEF chains
+            if tx.txid:
+                req_stmt = (
+                    update(ProvenTxReq)
+                    .where(ProvenTxReq.txid == tx.txid)
+                    .values(status="invalid")
+                    .execution_options(synchronize_session=False)
+                )
+                session.execute(req_stmt)
 
             session.flush()
             session.commit()
