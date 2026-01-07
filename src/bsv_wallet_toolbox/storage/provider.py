@@ -96,6 +96,7 @@ SNAKE_TO_CAMEL_OVERRIDES: dict[str, str] = {v: k for k, v in CAMEL_TO_SNAKE_OVER
 class StorageProvider:
     _FATAL_BROADCAST_ERROR_HINTS = (
         "missing inputs",
+        "missing input",  # Catches "missing input scripts" from ARC 460
         "missing prevout",
         "mandatory-script-verify-flag failed",
         "non-mandatory-script-verify-flag failed",
@@ -1447,19 +1448,32 @@ class StorageProvider:
         Reference:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
+        self.logger.debug(f"[LOOKUP_DEBUG] get_proven_or_raw_tx called for txid: {txid}")
         with session_scope(self.SessionLocal) as s:
+            # Check ProvenTx first
             _result = s.execute(select(ProvenTx).where(ProvenTx.txid == txid))
             p = _result.scalar_one_or_none()
             if p is not None:
+                self.logger.info(f"[LOOKUP_DEBUG] Found in ProvenTx: txid={txid}, raw_tx_len={len(p.raw_tx) if p.raw_tx else 0}")
                 return {
                     "proven": {"provenTxId": p.proven_tx_id},
                     "rawTx": p.raw_tx,
                     "merklePath": p.merkle_path,
                 }
+            
+            # Check ProvenTxReq second
             _result = s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid))
             r = _result.scalar_one_or_none()
             if r is None:
+                self.logger.warning(f"[LOOKUP_DEBUG] NOT FOUND in ProvenTx or ProvenTxReq: txid={txid}")
+                # Debug: Check what's actually in ProvenTxReq table
+                all_reqs = s.execute(select(ProvenTxReq.txid, ProvenTxReq.status)).fetchall()
+                self.logger.warning(f"[LOOKUP_DEBUG] ProvenTxReq table has {len(all_reqs)} records")
+                if len(all_reqs) <= 10:
+                    self.logger.warning(f"[LOOKUP_DEBUG] ProvenTxReq contents: {[(req.txid, req.status) for req in all_reqs]}")
                 return {"proven": None, "rawTx": None}
+            
+            self.logger.info(f"[LOOKUP_DEBUG] Found in ProvenTxReq: txid={txid}, status={r.status}, raw_tx_len={len(r.raw_tx) if r.raw_tx else 0}")
             return {"proven": None, "rawTx": r.raw_tx, "inputBEEF": r.input_beef}
 
     def get_raw_tx_of_known_valid_transaction(
@@ -5874,9 +5888,34 @@ class InternalizeActionContext:
             for basket in self.basket_insertions:
                 self._store_new_basket_insertion_for_output(transaction_id, basket, s)
 
+            # Store the SUBJECT transaction itself in ProvenTxReq (TS parity: internalizeAction.ts:408-413)
+            # This is critical - the subject transaction must be available for child transactions to build BEEF
+            if self.tx:
+                subject_raw_tx = self.tx.serialize()
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(subject_raw_tx)}")
+                
+                existing_subject_req = s.execute(
+                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
+                ).scalar_one_or_none()
+                
+                if existing_subject_req:
+                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for SUBJECT txid {self.txid}")
+                    existing_subject_req.raw_tx = subject_raw_tx
+                    existing_subject_req.status = tx_status
+                    s.add(existing_subject_req)
+                else:
+                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for SUBJECT txid {self.txid}")
+                    subject_req = ProvenTxReq(
+                        txid=self.txid,
+                        status=tx_status,
+                        raw_tx=subject_raw_tx,
+                    )
+                    s.add(subject_req)
+
             # Store ALL transactions from BEEF in proven_tx_reqs for future child transactions (TS parity)
             # This allows get_raw_tx_of_known_valid_transaction to find all source transactions
             if self.beef_obj and hasattr(self.beef_obj, 'txs'):
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing {len(self.beef_obj.txs)} transactions from BEEF to ProvenTxReq")
                 # Store all transactions in the BEEF
                 for tx in self.beef_obj.txs:
                     # Skip if not a transaction object with required methods
@@ -5895,10 +5934,12 @@ class InternalizeActionContext:
                         select(ProvenTxReq).where(ProvenTxReq.txid == txid)
                     ).scalar_one_or_none()
                     if existing_req:
+                        self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
                         existing_req.raw_tx = raw_tx_bytes
                         existing_req.status = tx_status_for_req
                         s.add(existing_req)
                     else:
+                        self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
                         new_req = ProvenTxReq(
                             txid=txid,
                             status=tx_status_for_req,
