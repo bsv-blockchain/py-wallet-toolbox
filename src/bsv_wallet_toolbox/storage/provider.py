@@ -5956,16 +5956,25 @@ class InternalizeActionContext:
                 
                 # Store all transactions in the BEEF
                 stored_count = 0
-                for idx, tx in enumerate(self.beef_obj.txs.values()):
+                for idx, btx in enumerate(self.beef_obj.txs.values()):
                     try:
-                        # Skip if not a transaction object with required methods
-                        if not hasattr(tx, 'txid') or not hasattr(tx, 'serialize'):
-                            self.storage.logger.warning(f"[INTERNALIZE_DEBUG] Skipping BEEF tx {idx}: missing txid() or serialize() methods")
+                        # BeefTx has txid as string attribute
+                        beef_txid = btx.txid
+                        if not beef_txid:
+                            self.storage.logger.warning(f"[INTERNALIZE_DEBUG] Skipping BEEF tx {idx}: missing txid")
                             continue
 
-                        txid = tx.txid()
+                        # Get raw bytes from tx_bytes (preferred) or tx_obj.serialize() (fallback)
+                        if btx.tx_bytes:
+                            raw_tx_bytes = btx.tx_bytes
+                        elif btx.tx_obj:
+                            raw_tx_bytes = btx.tx_obj.serialize()
+                        else:
+                            self.storage.logger.warning(f"[INTERNALIZE_DEBUG] Skipping BEEF tx {idx}: no tx_bytes or tx_obj")
+                            continue
+
+                        txid = beef_txid
                         self.storage.logger.info(f"[INTERNALIZE_DEBUG] Processing BEEF tx {idx}: txid={txid}")
-                        raw_tx_bytes = tx.serialize()
 
                         # Determine status based on whether tx has merkle proof
                         tx_has_proof = hasattr(tx, 'merkle_path') and tx.merkle_path is not None
