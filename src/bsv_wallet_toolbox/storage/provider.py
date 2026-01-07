@@ -3141,16 +3141,22 @@ class StorageProvider:
                         ndr.append({"txid": txid, "status": "error", "message": "missing ProvenTxReq"})
                     continue
 
+                # Prefer using full BEEF (with parent chain) if available
+                # This ensures unbroadcast parent transactions are included
+                beef_hex_for_broadcast = None
                 raw_bytes = None
-                if req.raw_tx:
-                    raw_bytes = req.raw_tx
-                elif req.input_beef:
+
+                if req.input_beef and len(req.input_beef) > 0:
+                    # Use the full BEEF for broadcasting - includes parent chain
                     try:
-                        beef = parse_beef(req.input_beef)
-                        tx_entry = beef.find_transaction(txid) if hasattr(beef, "find_transaction") else None
-                        raw_bytes = getattr(tx_entry, "tx_bytes", None)
-                    except Exception:
-                        raw_bytes = None
+                        beef_hex_for_broadcast = req.input_beef.hex()
+                        self.logger.debug(f"[BEEF_BROADCAST] Using input_beef for broadcast: {len(req.input_beef)} bytes")
+                    except Exception as e:
+                        self.logger.warning(f"[BEEF_BROADCAST] Failed to convert input_beef to hex: {e}")
+
+                if beef_hex_for_broadcast is None and req.raw_tx:
+                    # Fallback: use raw transaction
+                    raw_bytes = req.raw_tx
 
                 if not raw_bytes:
                     swr.append({"txid": txid, "status": "failed"})
@@ -3174,40 +3180,45 @@ class StorageProvider:
 
                 if services is not None:
                     try:
-                        # Always use raw transaction hex for broadcasting (ARC expects raw tx, not AtomicBEEF)
-                        raw_tx_hex = raw_bytes.hex()
-                        
-                        # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
-                        # self.logger.debug(
-                        #     "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
-                        #     txid,
-                        #     len(raw_tx_hex) // 2,
-                        #     raw_tx_hex[:100]
-                        # )
-                        # Log full hex for small transactions
-                        # if len(raw_tx_hex) < 2000:
-                        #     self.logger.debug(
-                        #         "_share_reqs_with_world: rawTx hex (full): %s",
-                        #         raw_tx_hex
-                        #     )
-                        # Verify it's not AtomicBEEF format (should not start with 01010101)
-                        if raw_tx_hex.startswith("01010101"):
-                            self.logger.error(
-                                "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
-                                "This should be raw transaction hex. Transaction will fail to broadcast."
-                            )
+                        if beef_hex_for_broadcast:
+                            # Broadcast the full BEEF (includes parent chain)
+                            self.logger.info(f"[BEEF_BROADCAST] Broadcasting BEEF v2 for txid={txid}, beef_size={len(beef_hex_for_broadcast)//2} bytes")
+                            broadcast_result = services.post_beef(beef_hex_for_broadcast)
                         else:
-                            # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
-                            if not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
-                                self.logger.warning(
-                                    "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
-                                    "First 8 chars: %s",
-                                    raw_tx_hex[:8]
-                                )
+                            # Fallback: broadcast raw transaction
+                            raw_tx_hex = raw_bytes.hex()
 
-                        # Send raw transaction hex to services.post_beef
-                        # services.post_beef will parse it and extract the Transaction object for ARC
-                        broadcast_result = services.post_beef(raw_tx_hex)
+                            # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
+                            # self.logger.debug(
+                            #     "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                            #     txid,
+                            #     len(raw_tx_hex) // 2,
+                            #     raw_tx_hex[:100]
+                            # )
+                            # Log full hex for small transactions
+                            # if len(raw_tx_hex) < 2000:
+                            #     self.logger.debug(
+                            #         "_share_reqs_with_world: rawTx hex (full): %s",
+                            #         raw_tx_hex
+                            #     )
+                            # Verify it's not AtomicBEEF format (should not start with 01010101)
+                            if raw_tx_hex.startswith("01010101"):
+                                self.logger.error(
+                                    "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
+                                    "This should be raw transaction hex. Transaction will fail to broadcast."
+                                )
+                            else:
+                                # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
+                                if not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
+                                    self.logger.warning(
+                                        "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
+                                        "First 8 chars: %s",
+                                        raw_tx_hex[:8]
+                                    )
+
+                            # Send raw transaction hex to services.post_beef
+                            # services.post_beef will parse it and extract the Transaction object for ARC
+                            broadcast_result = services.post_beef(raw_tx_hex)
                         if broadcast_result.get("accepted"):
                             status = "unproven"
                             broadcast_ok = True
@@ -5925,18 +5936,23 @@ class InternalizeActionContext:
 
             # Store the SUBJECT transaction itself in ProvenTxReq (TS parity: internalizeAction.ts:408-413)
             # This is critical - the subject transaction must be available for child transactions to build BEEF
+            # Store the full BEEF as input_beef so all parent transactions remain accessible
             if self.tx:
                 subject_raw_tx = self.tx.serialize()
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(subject_raw_tx)}")
-                
+                beef_bytes = self.vargs.get("tx") if self.vargs else None  # Store the full BEEF bytes
+
+                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(subject_raw_tx)}, beef_bytes={len(beef_bytes) if beef_bytes else 'None'}")
+
                 existing_subject_req = s.execute(
                     select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
                 ).scalar_one_or_none()
-                
+
                 if existing_subject_req:
                     self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for SUBJECT txid {self.txid}")
                     existing_subject_req.raw_tx = subject_raw_tx
                     existing_subject_req.status = tx_status
+                    if beef_bytes:
+                        existing_subject_req.input_beef = beef_bytes
                     s.add(existing_subject_req)
                 else:
                     self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for SUBJECT txid {self.txid}")
@@ -5944,85 +5960,9 @@ class InternalizeActionContext:
                         txid=self.txid,
                         status=tx_status,
                         raw_tx=subject_raw_tx,
+                        input_beef=beef_bytes,
                     )
                     s.add(subject_req)
-
-            # Store ALL transactions from BEEF in proven_tx_reqs for future child transactions (TS parity)
-            # This allows get_raw_tx_of_known_valid_transaction to find all source transactions
-            if self.beef_obj and hasattr(self.beef_obj, 'txs'):
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Storing {len(self.beef_obj.txs)} transactions from BEEF to ProvenTxReq")
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] BEEF object type: {type(self.beef_obj)}")
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] BEEF.txs type: {type(self.beef_obj.txs)}")
-                
-                # Store all transactions in the BEEF
-                stored_count = 0
-                for idx, btx in enumerate(self.beef_obj.txs.values()):
-                    try:
-                        # BeefTx has txid as string attribute
-                        beef_txid = btx.txid
-                        if not beef_txid:
-                            self.storage.logger.warning(f"[INTERNALIZE_DEBUG] Skipping BEEF tx {idx}: missing txid")
-                            continue
-
-                        # Get raw bytes from tx_bytes (preferred) or tx_obj.serialize() (fallback)
-                        if btx.tx_bytes:
-                            raw_tx_bytes = btx.tx_bytes
-                        elif btx.tx_obj:
-                            raw_tx_bytes = btx.tx_obj.serialize()
-                        else:
-                            self.storage.logger.warning(f"[INTERNALIZE_DEBUG] Skipping BEEF tx {idx}: no tx_bytes or tx_obj")
-                            continue
-
-                        txid = beef_txid
-                        self.storage.logger.info(f"[INTERNALIZE_DEBUG] Processing BEEF tx {idx}: txid={txid}")
-
-                        # Determine status based on whether tx has merkle proof
-                        tx_has_proof = hasattr(tx, 'merkle_path') and tx.merkle_path is not None
-                        tx_status_for_req = "completed" if tx_has_proof else "unproven"
-
-                        # Check if already exists
-                        existing_req = s.execute(
-                            select(ProvenTxReq).where(ProvenTxReq.txid == txid)
-                        ).scalar_one_or_none()
-                        if existing_req:
-                            self.storage.logger.info(f"[INTERNALIZE_DEBUG] Updating existing ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
-                            existing_req.raw_tx = raw_tx_bytes
-                            existing_req.status = tx_status_for_req
-                            s.add(existing_req)
-                        else:
-                            self.storage.logger.info(f"[INTERNALIZE_DEBUG] Creating new ProvenTxReq for txid {txid}, status={tx_status_for_req}, raw_tx_len={len(raw_tx_bytes)}")
-                            new_req = ProvenTxReq(
-                                txid=txid,
-                                status=tx_status_for_req,
-                                raw_tx=raw_tx_bytes,
-                            )
-                            s.add(new_req)
-                        stored_count += 1
-                    except Exception as e:
-                        self.storage.logger.error(f"[INTERNALIZE_DEBUG] Error storing BEEF tx {idx}: {e}", exc_info=True)
-                
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Successfully processed {stored_count} transactions from BEEF")
-            elif self.tx:
-                # Fallback: store just the subject transaction if BEEF parsing failed
-                raw_tx_bytes = self.tx.serialize()
-                self.storage.logger.info(f"[INTERNALIZE_DEBUG] Fallback: storing SUBJECT transaction {self.txid} in ProvenTxReq, status={tx_status}, raw_tx_len={len(raw_tx_bytes)}")
-                # Check if already exists
-                existing_req = s.execute(
-                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
-                ).scalar_one_or_none()
-                if existing_req:
-                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Fallback: updating existing ProvenTxReq for SUBJECT txid {self.txid}")
-                    existing_req.raw_tx = raw_tx_bytes
-                    existing_req.status = tx_status
-                    s.add(existing_req)
-                else:
-                    self.storage.logger.info(f"[INTERNALIZE_DEBUG] Fallback: creating new ProvenTxReq for SUBJECT txid {self.txid}")
-                    new_req = ProvenTxReq(
-                        txid=self.txid,
-                        status=tx_status,
-                        raw_tx=raw_tx_bytes,
-                    )
-                    s.add(new_req)
 
             self.storage.logger.info(f"[INTERNALIZE_DEBUG] About to commit ProvenTxReq records for txid={self.txid}")
             s.commit()

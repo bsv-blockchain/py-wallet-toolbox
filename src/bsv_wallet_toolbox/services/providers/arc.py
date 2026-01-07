@@ -316,6 +316,21 @@ class ARC:
         # Debug: Log rawTx being broadcast
         import logging
         logger = logging.getLogger(__name__)
+
+        # Parse transaction to extract input dependencies
+        input_txids = []
+        try:
+            from bsv.transaction import Transaction
+            tx = Transaction.from_hex(raw_tx)
+            input_txids = [inp.source_txid for inp in tx.inputs if hasattr(inp, 'source_txid')]
+        except Exception as e:
+            logger.warning(f"ARC {self.name}: Could not parse transaction to extract input txids: {e}")
+
+        logger.info(f"ARC {self.name} broadcasting txid: {txid}")
+        logger.info(f"ARC {self.name} input dependencies: {input_txids}")
+        logger.info(f"ARC {self.name} full raw TX hex ({len(raw_tx) // 2} bytes): {raw_tx}")
+
+        # Log additional debug info for truncated display if needed
         logger.debug(
             "ARC %s.post_raw_tx: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 200 chars): %s...",
             self.name,
@@ -323,9 +338,6 @@ class ARC:
             len(raw_tx) // 2,
             raw_tx[:200]
         )
-        # Log full hex for small transactions
-        if len(raw_tx) < 1000:
-            logger.debug("ARC %s.post_raw_tx: rawTx hex (full): %s", self.name, raw_tx)
 
         try:
             response = requests.post(
@@ -339,7 +351,14 @@ class ARC:
             import logging
             logger = logging.getLogger(__name__)
             logger.info(f"ARC {self.name} HTTP response status: {response.status_code}")
-            
+
+            # Log full response body for debugging
+            try:
+                response_json = response.json()
+                logger.info(f"ARC {self.name} full response body: {response_json}")
+            except Exception:
+                logger.info(f"ARC {self.name} raw response body: {response.text}")
+
             if response.status_code in (200, 201):
                 arc_response_data = response.json()
                 response_txid = arc_response_data.get("txid")
@@ -402,10 +421,14 @@ class ARC:
                         error_data.detail = response_data.get("detail")
                         if error_data.detail:
                             note["detail"] = error_data.detail
-                        # Log the full error response for debugging
+                        # Enhanced logging for debugging
                         import logging
                         logger = logging.getLogger(__name__)
-                        logger.warning(f"ARC {self.name} error response (status {response.status_code}): {response_data}")
+                        logger.error(f"ARC {self.name} full error response (status {response.status_code}): {response_data}")
+
+                        if response.status_code == 460 and "Missing input scripts" in str(response_data.get("detail", "")):
+                            logger.error(f"ARC {self.name} MISSING INPUT SCRIPTS - txid: {response_data.get('txid')}, extraInfo: {response_data.get('extraInfo')}")
+                            logger.error(f"ARC {self.name} This typically means parent transaction {response_data.get('txid')} is not in storage or not broadcast")
                 except Exception:
                     response_text = response.text
                     if response_text:
@@ -471,11 +494,27 @@ class ARC:
                     return result
                 raise
 
+        # Debug: Log BEEF structure before broadcast
+        import logging
+        logger = logging.getLogger(__name__)
+        if hasattr(beef, 'txs') and isinstance(beef.txs, dict):
+            txid_only_entries = []
+            full_raw_entries = []
+            for tid, btx in beef.txs.items():
+                if getattr(btx, 'data_format', None) == 2 or (getattr(btx, 'tx_bytes', None) is None and getattr(btx, 'tx_obj', None) is None):
+                    txid_only_entries.append(tid)
+                else:
+                    full_raw_entries.append(tid)
+
+            logger.info(f"ARC {self.name} BEEF contains {len(beef.txs)} transactions: {list(beef.txs.keys())}")
+            logger.info(f"ARC {self.name} TxID-only entries: {txid_only_entries}")
+            logger.info(f"ARC {self.name} Full raw tx entries: {full_raw_entries}")
+
         # Extract raw transaction from BEEF (ARC expects raw tx, not BEEF)
         # Use the first/last txid (ARC typically processes one transaction)
         if not txids:
             raise ValueError("txids required for ARC post_beef")
-        
+
         txid = txids[-1]  # Use last txid
         beef_tx = beef.find_transaction(txid) if hasattr(beef, "find_transaction") else None
         
