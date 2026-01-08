@@ -330,7 +330,7 @@ def _handle_brc104_general_message(request: HttpRequest) -> HttpResponse:
             "jsonrpc": "2.0",
             "error": {
                 "code": -32603,
-                "message": f"Internal error: {str(e)}"
+                "message": "Internal error"
             },
             "id": request_id_json
         }
@@ -502,7 +502,7 @@ def _handle_plain_json_rpc(request: HttpRequest) -> JsonResponse:
             "jsonrpc": "2.0",
             "error": {
                 "code": -32603,
-                "message": f"Internal error: {str(e)}"
+                "message": "Internal error"
             },
             "id": request_id
         }, status=500)

@@ -212,15 +212,15 @@ def wallet_error_to_json(error: Exception) -> dict[str, Any]:
     # For regular Exception instances
     if isinstance(error, Exception):
         return {
-            "name": error.__class__.__name__,
-            "message": str(error),
+            "name": "WERR_INTERNAL",
+            "message": "An internal error occurred.",
             "isError": True,
         }
-    
+
     # For unknown error types
     return {
         "name": "WERR_UNKNOWN",
-        "message": str(error),
+        "message": "An unknown error occurred.",
         "isError": True,
     }
 

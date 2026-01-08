@@ -288,9 +288,8 @@ class ARC:
         if "Authorization" in headers:
             auth_header = headers["Authorization"]
             if auth_header.startswith("Bearer "):
-                api_key_part = auth_header[7:]  # Remove "Bearer " prefix
-                masked_key = f"{api_key_part[:8]}...{api_key_part[-4:]}" if len(api_key_part) > 12 else "***"
-                logger.info(f"ARC {self.name} Authorization header: Bearer {masked_key} (length: {len(api_key_part)})")
+                # Authorization header is present (API key configured)
+                pass
         else:
             logger.warning(f"ARC {self.name} Authorization header: NOT SET")
         logger.debug(f"ARC {self.name} API key present: {bool(self.api_key)}")
