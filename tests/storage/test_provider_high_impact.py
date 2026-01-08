@@ -829,7 +829,9 @@ class TestCreateActionOperations:
 
         assert isinstance(result, dict)
         # Should return action result structure
-        assert "txid" in result or "signableTransaction" in result or "noSendChange" in result
+        assert "reference" in result
+        # Reference should be 16 characters (matching Go test expectations)
+        assert len(result["reference"]) == 16
 
 
 class TestTransactionOperations:

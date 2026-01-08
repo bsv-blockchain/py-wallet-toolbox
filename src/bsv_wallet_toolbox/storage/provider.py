@@ -2695,11 +2695,10 @@ class StorageProvider:
         min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
 
         # Calculate target_net_count: desired UTXOs minus what we already have
-        # For small transactions (OP_RETURN), we don't need many change outputs
-        # Cap it at a reasonable maximum to avoid excessive funding requirements
+        # This matches TypeScript: targetNetCount = ctx.changeBasket.numberOfDesiredUTXOs - ctx.availableChangeCount
         desired_utxos = (change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5)
         available_count = ctx["availableFundingCount"]
-        target_net_count = max(0, min(desired_utxos - available_count, 5))  # Cap at 5 change outputs max
+        target_net_count = max(0, desired_utxos - available_count)
         
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
