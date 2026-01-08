@@ -7,7 +7,7 @@ import re
 import secrets
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, ClassVar, Callable
+from typing import TYPE_CHECKING, Any, ClassVar, Callable, overload
 
 from bsv.merkle_path import MerklePath
 from bsv.transaction import Transaction
@@ -4238,6 +4238,12 @@ class StorageProvider:
     def update_tx_note(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("tx_note", pk_value, patch)
 
+    @overload
+    def abort_action(self, reference: str) -> bool: ...
+
+    @overload
+    def abort_action(self, auth: Any, args: dict[str, Any]) -> bool: ...
+
     def abort_action(self, *args) -> bool:
         """Abort an in-progress outgoing action by marking it as failed.
 
@@ -6023,6 +6029,7 @@ class InternalizeActionContext:
                 provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
                 provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
             except (json.JSONDecodeError, AttributeError, TypeError):
+                # Ignore malformed or unexpected customInstructions; derivation info here is optional.
                 pass
         
         if basket_name == "default" and is_p2pkh:

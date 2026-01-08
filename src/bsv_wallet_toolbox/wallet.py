@@ -1412,25 +1412,23 @@ class Wallet:
         except Exception as e:
             trace(logger, "wallet.create_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
             raise
-        
-        # Auto-signing disabled for now - matches test expectations
-        else:
-            # Convert CreateActionResultX to BRC-100 CreateActionResult
-            # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
-            if signer_result.txid is not None:
-                result["txid"] = signer_result.txid
-            if signer_result.tx is not None:
-                # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
-                result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
-            if signer_result.no_send_change is not None or vargs.get("options", {}).get("noSend"):
-                result["noSendChange"] = signer_result.no_send_change or []
-            if signer_result.no_send_change_output_vouts is not None:
-                result["noSendChangeOutputVouts"] = signer_result.no_send_change_output_vouts
-            if signer_result.signable_transaction is not None:
-                signable_tx = signer_result.signable_transaction.copy()
-                if "tx" in signable_tx and isinstance(signable_tx["tx"], bytes):
-                    signable_tx["tx"] = _to_byte_list(signable_tx["tx"])
-                result["signableTransaction"] = signable_tx
+
+        # Convert CreateActionResultX to BRC-100 CreateActionResult
+        # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
+        if signer_result.txid is not None:
+            result["txid"] = signer_result.txid
+        if signer_result.tx is not None:
+            # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
+            result["tx"] = _to_byte_list(signer_result.tx) if isinstance(signer_result.tx, bytes) else signer_result.tx
+        if signer_result.no_send_change is not None or vargs.get("options", {}).get("noSend"):
+            result["noSendChange"] = signer_result.no_send_change or []
+        if signer_result.no_send_change_output_vouts is not None:
+            result["noSendChangeOutputVouts"] = signer_result.no_send_change_output_vouts
+        if signer_result.signable_transaction is not None:
+            signable_tx = signer_result.signable_transaction.copy()
+            if "tx" in signable_tx and isinstance(signable_tx["tx"], bytes):
+                signable_tx["tx"] = _to_byte_list(signable_tx["tx"])
+            result["signableTransaction"] = signable_tx
         # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
 
         # Wave 4 Enhancement - BEEF integration (TS parity)
