@@ -637,12 +637,11 @@ class StorageServer:
             }
 
         except Exception as e:
-            # Unexpected error - convert to WalletError format for TS compatibility
+            # Unexpected error - log full details but return a generic internal error to the client
             logger.error(f"Internal error in method {method}: {e}", exc_info=True)
-            error_json = wallet_error_to_json(e)
             return {
                 "jsonrpc": "2.0",
-                "error": error_json,
+                "error": JsonRpcInternalError().to_dict(),
                 "id": request_id,
             }
 
