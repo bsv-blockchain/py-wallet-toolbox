@@ -263,7 +263,7 @@ def _handle_brc104_general_message(request: HttpRequest) -> HttpResponse:
                 "jsonrpc": "2.0",
                 "error": {
                     "code": -32700,
-                    "message": f"Failed to parse BRC-104 payload: {str(e)}"
+                    "message": "Failed to parse BRC-104 payload"
                 },
                 "id": None
             }, status=400)
@@ -636,7 +636,7 @@ def well_known_auth_endpoint(request: HttpRequest):
             return JsonResponse({
                 'status': 'error',
                 'code': 'ERR_INVALID_JSON',
-                'description': str(e)
+                'description': 'Invalid JSON format'
             }, status=400)
 
         logger.info(f"[AUTH] Received message: {message_data.get('messageType', 'unknown')}")
@@ -660,7 +660,7 @@ def well_known_auth_endpoint(request: HttpRequest):
         return JsonResponse({
             'status': 'error',
             'code': 'ERR_AUTH_FAILED',
-            'description': str(e)
+            'description': 'Authentication failed'
         }, status=500)
 
 
@@ -711,7 +711,7 @@ def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonRes
             return JsonResponse({
                 'status': 'error',
                 'code': 'ERR_INVALID_NONCE',
-                'description': f'Failed to decode nonces: {e}'
+                'description': 'Failed to decode nonces'
             }, status=400)
         
         # Sign using wallet - try different parameters to match Go server
@@ -808,5 +808,5 @@ def _handle_initial_request(request: HttpRequest, message_data: dict) -> JsonRes
         return JsonResponse({
             'status': 'error',
             'code': 'ERR_INITIAL_REQUEST_FAILED',
-            'description': str(e)
+            'description': 'Initial request failed'
         }, status=500)

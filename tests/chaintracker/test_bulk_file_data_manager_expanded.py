@@ -88,12 +88,12 @@ class TestBulkFileDataManagerOptions:
     def test_default_cdn_url_main(self) -> None:
         """Test _default_cdn_url for main chain."""
         url = BulkFileDataManagerOptions._default_cdn_url("main")
-        assert "projectbabbage.com" in url and "blockheaders" in url
+        assert url.startswith("https://cdn.projectbabbage.com/") and "blockheaders" in url
 
     def test_default_cdn_url_test(self) -> None:
         """Test _default_cdn_url for test chain."""
         url = BulkFileDataManagerOptions._default_cdn_url("test")
-        assert "testnet" in url and "blockheaders" in url
+        assert url.startswith("https://cdn-testnet.projectbabbage.com/") and "blockheaders" in url
 
 
 class TestBulkFileDataManager:
