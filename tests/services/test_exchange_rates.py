@@ -225,7 +225,7 @@ class TestExchangeRates:
 
         options = create_default_options("main")
         # To use your own API key, uncomment:
-        # options.exchangeratesapi_key = 'YOUR_API_KEY'
+        # options.exchangeratesapiKey = 'YOUR_API_KEY'
 
         # When
         import asyncio

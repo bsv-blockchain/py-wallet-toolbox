@@ -62,7 +62,7 @@ class TaskSendWaiting(WalletMonitorTask):
         current_time = int(time.time() * 1000)
         filtered_reqs = []
         for req in reqs:
-            updated_at = req.get("updatedAt") or req.get("updatedAt")
+            updated_at = req.get("updatedAt") 
             if updated_at is not None:
                 # Convert updated_at to milliseconds since epoch
                 if hasattr(updated_at, 'timestamp'):  # datetime object
@@ -83,7 +83,7 @@ class TaskSendWaiting(WalletMonitorTask):
 
         for req in filtered_reqs:
             txid = req.get("txid")
-            req_id = req.get("provenTxReqId") or req.get("provenTxReqId")
+            req_id = req.get("provenTxReqId")
 
             if not txid or not req_id:
                 continue
