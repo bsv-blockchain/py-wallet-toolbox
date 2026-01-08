@@ -306,7 +306,17 @@ def _handle_brc104_general_message(request: HttpRequest) -> HttpResponse:
         # Get StorageServer instance and process JSON-RPC request
         server = get_storage_server()
         response_data = server.handle_json_rpc_request(request_data)
-        
+
+        # Sanitize response to ensure no sensitive exception details are exposed
+        if isinstance(response_data, dict) and "error" in response_data:
+            error_obj = response_data["error"]
+            if isinstance(error_obj, dict) and "message" in error_obj:
+                # Ensure error message doesn't contain exception details
+                message = error_obj["message"]
+                if isinstance(message, str) and ("Traceback" in message or "Exception" in message or " at 0x" in message):
+                    # Replace potentially sensitive error message with generic one
+                    response_data["error"]["message"] = "Internal error"
+
         # Create BRC-104 response
         return _create_brc104_response(request, request_id_bytes, response_data, 200)
         
@@ -492,6 +502,16 @@ def _handle_plain_json_rpc(request: HttpRequest) -> JsonResponse:
 
         # Process JSON-RPC request
         response_data = server.handle_json_rpc_request(request_data)
+
+        # Sanitize response to ensure no sensitive exception details are exposed
+        if isinstance(response_data, dict) and "error" in response_data:
+            error_obj = response_data["error"]
+            if isinstance(error_obj, dict) and "message" in error_obj:
+                # Ensure error message doesn't contain exception details
+                message = error_obj["message"]
+                if isinstance(message, str) and ("Traceback" in message or "Exception" in message or " at 0x" in message):
+                    # Replace potentially sensitive error message with generic one
+                    response_data["error"]["message"] = "Internal error"
 
         # Return JSON response with custom encoder for bytes
         response = JsonResponse(response_data, status=200, encoder=BytesEncoder)
