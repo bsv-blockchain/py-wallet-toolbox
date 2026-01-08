@@ -118,7 +118,7 @@ def seed_storage(storage: StorageProvider) -> dict[str, Any]:
     tx4_id = storage.insert_transaction(
         {
             "userId": user1_id,
-            "status": "completed",  # Must be completed/unproven/sending for allocate_change_input
+            "status": "completed",  # Must be completed/unproven/sending for allocate_funding_input
             "reference": "ref-u1-4",
             "isOutgoing": False,
             "satoshis": 150_000,
@@ -216,21 +216,21 @@ def seed_storage(storage: StorageProvider) -> dict[str, Any]:
         }
     )
     # Add additional outputs for user1 to support tests requiring larger amounts
-    # Use tx4 which has "completed" status (required for allocate_change_input)
+    # Use tx4 which has "completed" status (required for allocate_funding_input)
     # Both outputs must be in basket_ids[0] which is the "default" basket used by create_action
-    # Note: allocate_change_input requires change=True and type="P2PKH" for outputs to be allocatable
+    # Note: allocate_funding_input requires change=True and type="P2PKH" for outputs to be allocatable
     output4_id = storage.insert_output(
         {
             "transactionId": tx4_id,
             "userId": user1_id,
-            "basketId": basket_ids[0],  # "default" basket - required for allocate_change_input
+            "basketId": basket_ids[0],  # "default" basket - required for allocate_funding_input
             "spendable": True,
-            "change": True,  # Must be True for allocate_change_input
+            "change": True,  # Must be True for allocate_funding_input
             "vout": 0,
             "satoshis": 150_000,  # More than enough for test_create_action_known_txids_return_txid_only (90005 needed) + fees + change
             "providedBy": "storage",
             "purpose": "change",  # Changed from "payment" to match change=True
-            "type": "P2PKH",  # Must be "P2PKH" for allocate_change_input
+            "type": "P2PKH",  # Must be "P2PKH" for allocate_funding_input
             "txid": "d" * 64,
             "lockingScript": b"\x20\x21",
             "spentBy": None,  # Explicitly set to None to ensure it's allocatable
@@ -242,14 +242,14 @@ def seed_storage(storage: StorageProvider) -> dict[str, Any]:
         {
             "transactionId": tx4_id,
             "userId": user1_id,
-            "basketId": basket_ids[0],  # "default" basket - required for allocate_change_input
+            "basketId": basket_ids[0],  # "default" basket - required for allocate_funding_input
             "spendable": True,
-            "change": True,  # Must be True for allocate_change_input
+            "change": True,  # Must be True for allocate_funding_input
             "vout": 1,
             "satoshis": 2_000,  # Enough for test_create_action_output_tags_persisted (1205 needed)
             "providedBy": "storage",
             "purpose": "change",  # Changed from "payment" to match change=True
-            "type": "P2PKH",  # Must be "P2PKH" for allocate_change_input
+            "type": "P2PKH",  # Must be "P2PKH" for allocate_funding_input
             "txid": "e" * 64,
             "lockingScript": b"\x22\x23",
             "spentBy": None,  # Explicitly set to None to ensure it's allocatable

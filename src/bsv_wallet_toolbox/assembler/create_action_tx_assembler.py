@@ -412,21 +412,42 @@ class CreateActionTransactionAssembler:
         storage_output: StorageCreateTransactionSdkOutput
     ) -> Script:
         """Create a locking script for a change output.
-        
-        Change outputs are locked to ourselves using BRC-29.
+
+        Change outputs are locked to ourselves using BRC-29 with SELF counterparty.
         """
+        from bsv.wallet import Counterparty, CounterpartyType, Protocol
+        from bsv.script import P2PKH
+
+        # For change outputs, use transaction-level derivation_prefix (shared by all change outputs in this tx)
+        # and output-level derivation_suffix (unique per change output)
+        # Both are base64 strings used directly (not decoded) - matches Go/TS behavior
+        derivation_prefix = self.create_action_result.derivation_prefix or ""
+        derivation_suffix = storage_output.derivation_suffix or ""
+
+        # Create KeyID with base64 strings (not decoded) - KeyID.__str__() will use them directly
         key_id = KeyID(
-            derivation_prefix=self.create_action_result.derivation_prefix,
-            derivation_suffix=storage_output.derivation_suffix or "",
+            derivation_prefix=derivation_prefix,
+            derivation_suffix=derivation_suffix,
         )
-        
+
         # Validate key_id
         key_id.validate()
-        
-        # Lock for ourselves (we are both sender and recipient)
-        return lock_for_counterparty(
-            sender_private_key=self.key_deriver,
-            key_id=key_id,
-            recipient_public_key=self.key_deriver,
+
+        # For change outputs, use SELF counterparty (we are locking to ourselves)
+        protocol = Protocol(security_level=2, protocol="3241645161d8")
+        counterparty = Counterparty(type=CounterpartyType.SELF)
+
+        # Derive the public key using SELF counterparty (matches signer logic)
+        derived_pub_key = self.key_deriver.derive_public_key(
+            protocol=protocol,
+            key_id=str(key_id),
+            counterparty=counterparty,
+            for_self=True
         )
+
+        # Create P2PKH locking script
+        p2pkh = P2PKH()
+        locking_script = p2pkh.lock(derived_pub_key.hash160())
+
+        return locking_script
 

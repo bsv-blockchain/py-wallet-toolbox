@@ -57,7 +57,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
         assert result["changeOutputs"] == [{"satoshis": 1608, "lockingScriptLength": 25}]
         assert result["size"] == 1739330
         assert result["fee"] == 3479
@@ -102,7 +102,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 4715, "outputId": 15027, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 4715, "outputId": 15027, "spendable": False}]
         assert result["changeOutputs"] == []
         assert result["size"] == 1739296
         assert result["fee"] == 3479
@@ -147,7 +147,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 1575097, "outputId": 15101, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 1575097, "outputId": 15101, "spendable": False}]
         assert result["changeOutputs"] == [{"satoshis": 908230, "lockingScriptLength": 25}]
         assert result["size"] == 432
         assert result["fee"] == 1
@@ -191,7 +191,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [
+        assert result["allocatedFundingInputs"] == [
             {"satoshis": 535280, "outputId": 14146, "spendable": False},
             {"satoshis": 160865, "outputId": 14142, "spendable": False},
         ]
@@ -240,7 +240,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
         assert len(result["changeOutputs"]) == 5  # 4 target + 1 extra
         assert result["changeOutputs"] == [
             {"satoshis": 1237, "lockingScriptLength": 25},
@@ -342,7 +342,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [
+        assert result["allocatedFundingInputs"] == [
             {"satoshis": 1004, "outputId": 15011, "spendable": False},
             {"satoshis": 1000, "outputId": 15017, "spendable": False},
         ]
@@ -379,7 +379,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [
+        assert result["allocatedFundingInputs"] == [
             {"satoshis": 1004, "outputId": 15011, "spendable": False},
             {"satoshis": 1000, "outputId": 15017, "spendable": False},
         ]
@@ -416,7 +416,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [
+        assert result["allocatedFundingInputs"] == [
             {"satoshis": 1004, "outputId": 15011, "spendable": False},
             {"satoshis": 1000, "outputId": 15017, "spendable": False},
         ]
@@ -465,7 +465,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
         assert len(result["changeOutputs"]) == 5
         assert result["changeOutputs"] == [
             {"satoshis": 1526, "lockingScriptLength": 25},
@@ -517,7 +517,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 10735, "outputId": 15106, "spendable": False}]
         assert len(result["changeOutputs"]) == 5
         assert result["size"] == 1739749  # Larger due to bigger input
         assert result["fee"] == 3480
@@ -558,7 +558,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == []  # No additional inputs needed
+        assert result["allocatedFundingInputs"] == []  # No additional inputs needed
         assert result["changeOutputs"] == [{"satoshis": 1000, "lockingScriptLength": 25}]
         assert result["size"] == 158
         assert result["fee"] == 1
@@ -600,7 +600,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
         assert len(result["changeOutputs"]) == 5
         assert result["changeOutputs"] == [
             {"satoshis": 1597, "lockingScriptLength": 25},
@@ -649,7 +649,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 6323, "outputId": 15005, "spendable": False}]
         assert len(result["changeOutputs"]) == 5
         assert result["changeOutputs"] == [
             {"satoshis": 1309, "lockingScriptLength": 25},
@@ -700,7 +700,7 @@ class TestGenerateChangeSdk:
         result = generate_change_sdk(params, available_change)
 
         # Then
-        assert result["allocatedChangeInputs"] == [{"satoshis": 474866, "outputId": 15332, "spendable": False}]
+        assert result["allocatedFundingInputs"] == [{"satoshis": 474866, "outputId": 15332, "spendable": False}]
         assert result["changeOutputs"] == [{"satoshis": 165863, "lockingScriptLength": 25}]
         assert result["size"] == 433
         assert result["fee"] == 1
@@ -731,7 +731,7 @@ class TestGenerateChangeSdk:
                     # ... many more inputs (d5 has 79 inputs total)
                 ],
                 "expected": {
-                    "allocatedChangeInputs": [],
+                    "allocatedFundingInputs": [],
                     "changeOutputs": [{"satoshis": 799, "lockingScriptLength": 25}],
                     "size": 191,
                     "fee": 1,
@@ -746,7 +746,7 @@ class TestGenerateChangeSdk:
         for test_case in test_cases:
             result = generate_change_sdk(test_case["params"], test_case["availableChange"])
 
-            assert result["allocatedChangeInputs"] == test_case["expected"]["allocatedChangeInputs"]
+            assert result["allocatedFundingInputs"] == test_case["expected"]["allocatedFundingInputs"]
             assert result["changeOutputs"] == test_case["expected"]["changeOutputs"]
             assert result["size"] == test_case["expected"]["size"]
             assert result["fee"] == test_case["expected"]["fee"]

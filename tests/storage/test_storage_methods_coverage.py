@@ -10,7 +10,7 @@ import pytest
 
 from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.storage.methods import (
-    GenerateChangeInput,
+    GenerateFundingInput,
     ListActionsArgs,
     ListOutputsArgs,
     StorageProcessActionArgs,
@@ -58,9 +58,9 @@ class TestStorageDataclasses:
         assert results.send_with_results == {"status": "sent"}
         assert results.not_delayed_results == {"status": "processed"}
 
-    def test_generate_change_input(self) -> None:
-        """Test GenerateChangeInput dataclass."""
-        input_spec = GenerateChangeInput(satoshis=100000, locking_script="76a914...")
+    def test_generate_funding_input(self) -> None:
+        """Test GenerateFundingInput dataclass."""
+        input_spec = GenerateFundingInput(satoshis=100000, locking_script="76a914...")
 
         assert input_spec.satoshis == 100000
         assert input_spec.locking_script == "76a914..."
@@ -257,7 +257,7 @@ class TestGenerateChangeExtended:
         """Test basic generate_change functionality."""
         mock_storage = Mock()
         auth = {"userId": 1}
-        available_change = [GenerateChangeInput(satoshis=100000, locking_script="script1")]
+        available_change = [GenerateFundingInput(satoshis=100000, locking_script="script1")]
         params = {
             "auth": auth,
             "availableChange": available_change,
@@ -272,8 +272,8 @@ class TestGenerateChangeExtended:
         mock_storage = Mock()
         auth = {"userId": 1}
         available_change = [
-            GenerateChangeInput(satoshis=50000, locking_script="script1"),
-            GenerateChangeInput(satoshis=75000, locking_script="script2"),
+            GenerateFundingInput(satoshis=50000, locking_script="script1"),
+            GenerateFundingInput(satoshis=75000, locking_script="script2"),
         ]
         params = {
             "auth": auth,
@@ -288,7 +288,7 @@ class TestGenerateChangeExtended:
         """Test generate_change when insufficient outputs available."""
         mock_storage = Mock()
         auth = {"userId": 1}
-        available_change = [GenerateChangeInput(satoshis=1000, locking_script="script1")]
+        available_change = [GenerateFundingInput(satoshis=1000, locking_script="script1")]
         params = {
             "auth": auth,
             "availableChange": available_change,
@@ -690,7 +690,7 @@ class TestGenerateChange:
         """Test basic generate_change functionality."""
         storage = Mock()
         auth = {"userId": "user123"}
-        inputs = [GenerateChangeInput(satoshis=100000, locking_script="script1")]
+        inputs = [GenerateFundingInput(satoshis=100000, locking_script="script1")]
         total_output_amount = 50000
         change_keys = [{"key": "data"}]
 
@@ -1244,9 +1244,9 @@ class TestGenerateChangeAdvanced:
         storage = Mock()
         auth = {"userId": "user123"}
         inputs = [
-            GenerateChangeInput(satoshis=100000, locking_script="script1"),
-            GenerateChangeInput(satoshis=200000, locking_script="script2"),
-            GenerateChangeInput(satoshis=150000, locking_script="script3"),
+            GenerateFundingInput(satoshis=100000, locking_script="script1"),
+            GenerateFundingInput(satoshis=200000, locking_script="script2"),
+            GenerateFundingInput(satoshis=150000, locking_script="script3"),
         ]
         total_output_amount = 300000
         change_keys = [{"key": "data1"}, {"key": "data2"}]
@@ -1261,7 +1261,7 @@ class TestGenerateChangeAdvanced:
         """Test generate_change when change is zero."""
         storage = Mock()
         auth = {"userId": "user123"}
-        inputs = [GenerateChangeInput(satoshis=100000, locking_script="script1")]
+        inputs = [GenerateFundingInput(satoshis=100000, locking_script="script1")]
         total_output_amount = 100000  # Exact match, no change
         change_keys = [{"key": "data"}]
 
@@ -1276,7 +1276,7 @@ class TestGenerateChangeAdvanced:
         """Test generate_change with large amounts."""
         storage = Mock()
         auth = {"userId": "user123"}
-        inputs = [GenerateChangeInput(satoshis=1000000000, locking_script="script1")]
+        inputs = [GenerateFundingInput(satoshis=1000000000, locking_script="script1")]
         total_output_amount = 100000
         change_keys = [{"key": "data"}]
 
@@ -1378,8 +1378,8 @@ class TestEdgeCases:
         params = {
             "auth": {"userId": "user123"},
             "availableChange": [
-                GenerateChangeInput(satoshis=500, locking_script="script1"),
-                GenerateChangeInput(satoshis=300, locking_script="script2"),
+                GenerateFundingInput(satoshis=500, locking_script="script1"),
+                GenerateFundingInput(satoshis=300, locking_script="script2"),
             ],
             "targetAmount": 1000,
             "exactSatoshis": 1000
@@ -1395,7 +1395,7 @@ class TestEdgeCases:
         params = {
             "auth": {"userId": "user123"},
             "availableChange": [
-                GenerateChangeInput(satoshis=500, locking_script="script1"),
+                GenerateFundingInput(satoshis=500, locking_script="script1"),
             ],
             "targetAmount": 1000
         }
@@ -1410,8 +1410,8 @@ class TestEdgeCases:
         params = {
             "auth": {"userId": "user123"},
             "availableChange": [
-                GenerateChangeInput(satoshis=1000, locking_script="script1"),
-                GenerateChangeInput(satoshis=500, locking_script="script2"),
+                GenerateFundingInput(satoshis=1000, locking_script="script1"),
+                GenerateFundingInput(satoshis=500, locking_script="script2"),
             ],
             "targetAmount": 1200
         }
@@ -1426,9 +1426,9 @@ class TestEdgeCases:
         params = {
             "auth": {"userId": "user123"},
             "availableChange": [
-                GenerateChangeInput(satoshis=1000, locking_script="script1"),
-                GenerateChangeInput(satoshis=500, locking_script="script2"),
-                GenerateChangeInput(satoshis=200, locking_script="script3"),
+                GenerateFundingInput(satoshis=1000, locking_script="script1"),
+                GenerateFundingInput(satoshis=500, locking_script="script2"),
+                GenerateFundingInput(satoshis=200, locking_script="script3"),
             ],
             "targetAmount": 600
         }
@@ -1443,7 +1443,7 @@ class TestEdgeCases:
         params = {
             "auth": {"userId": "user123"},
             "availableChange": [
-                GenerateChangeInput(satoshis=1000, locking_script="script1"),
+                GenerateFundingInput(satoshis=1000, locking_script="script1"),
             ],
             "targetAmount": 800,
             "exactSatoshis": 1000

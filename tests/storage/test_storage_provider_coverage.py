@@ -1455,12 +1455,12 @@ class TestAdminOperations:
 class TestChangeAllocation:
     """Test change allocation operations."""
 
-    def test_allocate_change_input(self, storage_provider, test_user) -> None:
+    def test_allocate_funding_input(self, storage_provider, test_user) -> None:
         """Test allocating change input."""
         # Skip due to complex signature requirements
         # FIXED: Complex setup not needed - test passes with existing fixtures
 
-    def test_count_change_inputs(self, storage_provider, test_user) -> None:
+    def test_count_funding_inputs(self, storage_provider, test_user) -> None:
         """Test counting change inputs."""
         # Skip due to model attribute issue
         # FIXED: Model attribute issues were resolved - test now passes

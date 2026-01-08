@@ -805,8 +805,8 @@ class TestCreateActionOperations:
             "vout": 0,
             "satoshis": 100000,
             "spendable": True,
-            "change": True,  # Must be True for allocate_change_input
-            "type": "P2PKH",  # Must be "P2PKH" for allocate_change_input
+            "change": True,  # Must be True for allocate_funding_input
+            "type": "P2PKH",  # Must be "P2PKH" for allocate_funding_input
             "txid": "s" * 64,
             "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
         })
@@ -829,7 +829,9 @@ class TestCreateActionOperations:
 
         assert isinstance(result, dict)
         # Should return action result structure
-        assert "txid" in result or "signableTransaction" in result or "noSendChange" in result
+        assert "reference" in result
+        # Reference should be 16 characters (matching Go test expectations)
+        assert len(result["reference"]) == 16
 
 
 class TestTransactionOperations:

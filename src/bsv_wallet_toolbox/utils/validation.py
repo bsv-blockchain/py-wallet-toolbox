@@ -415,8 +415,10 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     vargs["isNewTx"] = vargs["isRemixChange"] or len(inputs) > 0 or len(outputs) > 0
     vargs["isDelayed"] = opts.get("acceptDelayedBroadcast", True)
     vargs["isNoSend"] = opts.get("noSend", False)
-    # isSignAction is True when signAndProcess is explicitly False
-    vargs["isSignAction"] = opts.get("signAndProcess") is False
+    # isSignAction matches TypeScript: vargs.isNewTx && (!vargs.options.signAndProcess || vargs.inputs.some(i => i.unlockingScript === undefined))
+    sign_and_process = opts.get("signAndProcess", True)  # Default is True in TypeScript
+    has_undefined_unlocking_script = any(inp.get("unlockingScript") is None for inp in inputs)
+    vargs["isSignAction"] = vargs["isNewTx"] and (not sign_and_process or has_undefined_unlocking_script)
 
     return vargs
 

@@ -62,6 +62,8 @@ from collections.abc import Callable
 from functools import partial
 from typing import Any
 
+from ..errors import WalletError
+from ..storage.methods.generate_change import InsufficientFundsError as GenerateChangeInsufficientFundsError
 from ..storage.provider import StorageProvider
 
 logger = logging.getLogger(__name__)
@@ -133,6 +135,94 @@ class JsonRpcInternalError(JsonRpcError):
 
     code = -32603
     message = "Internal error"
+
+
+def wallet_error_to_json(error: Exception) -> dict[str, Any]:
+    """Convert a WalletError instance to JSON format compatible with TypeScript WalletErrorFromJson.
+    
+    This function mirrors the behavior of TypeScript WalletError.unknownToJson() to ensure
+    proper error serialization across the Python/TypeScript boundary.
+    
+    Reference: 
+        - TypeScript: ts-sdk/src/wallet/WalletError.ts (unknownToJson)
+        - TypeScript: wallet-toolbox/src/sdk/WalletError.ts (unknownToJson)
+        - TypeScript: wallet-toolbox/src/sdk/WalletErrorFromJson.ts
+    
+    Args:
+        error: Exception instance to convert
+        
+    Returns:
+        Dictionary with error details in format expected by TypeScript client
+    """
+    # Check if it's InsufficientFundsError from generate_change.py
+    if isinstance(error, GenerateChangeInsufficientFundsError):
+        # Map required/short to totalSatoshisNeeded/moreSatoshisNeeded (camelCase for TS)
+        return {
+            "name": "WERR_INSUFFICIENT_FUNDS",
+            "message": str(error),
+            "isError": True,
+            "code": 7,
+            "totalSatoshisNeeded": error.required,
+            "moreSatoshisNeeded": error.short,
+        }
+    
+    # Check if it's a WalletError base class
+    if isinstance(error, WalletError):
+        # Get error class name
+        error_name = error.__class__.__name__
+        
+        # Map common error names to WERR_ format
+        if error_name == "InsufficientFundsError":
+            # This is the one from errors/wallet_errors.py
+            if hasattr(error, "total_satoshis_needed") and hasattr(error, "more_satoshis_needed"):
+                return {
+                    "name": "WERR_INSUFFICIENT_FUNDS",
+                    "message": str(error),
+                    "isError": True,
+                    "code": 7,
+                    "totalSatoshisNeeded": error.total_satoshis_needed,
+                    "moreSatoshisNeeded": error.more_satoshis_needed,
+                }
+        
+        # For other WalletError subclasses, use the class name
+        # Convert Python class names to WERR_ format if needed
+        if not error_name.startswith("WERR_"):
+            # Try to map common names
+            name_mapping = {
+                "InvalidParameterError": "WERR_INVALID_PARAMETER",
+                "ValidationError": "WERR_INVALID_PARAMETER",
+                "OperationError": "WERR_INVALID_OPERATION",
+                "StateError": "WERR_INVALID_OPERATION",
+            }
+            error_name = name_mapping.get(error_name, f"WERR_{error_name.upper()}")
+        
+        result = {
+            "name": error_name,
+            "message": str(error),
+            "isError": True,
+        }
+        
+        # Add InvalidParameterError parameter if available
+        if error_name == "WERR_INVALID_PARAMETER" and hasattr(error, "parameter"):
+            result["parameter"] = error.parameter
+            result["code"] = 6
+        
+        return result
+    
+    # For regular Exception instances
+    if isinstance(error, Exception):
+        return {
+            "name": error.__class__.__name__,
+            "message": str(error),
+            "isError": True,
+        }
+    
+    # For unknown error types
+    return {
+        "name": "WERR_UNKNOWN",
+        "message": str(error),
+        "isError": True,
+    }
 
 
 class StorageServer:
@@ -320,15 +410,15 @@ class StorageServer:
 
         # Debug: Log first few methods to see what's available
         all_methods = dir(storage_provider)
-        logger.warning(f"[DEBUG] StorageProvider has {len(all_methods)} total attributes/methods")
-        logger.warning(f"[DEBUG] First 20 methods: {all_methods[:20]}")
-        logger.warning(f"[DEBUG] Methods starting with 'set': {[m for m in all_methods if m.startswith('set')]}")
-        logger.warning(f"[DEBUG] hasattr(storage_provider, 'set_active'): {hasattr(storage_provider, 'set_active')}")
+        logger.debug(f"StorageProvider has {len(all_methods)} total attributes/methods")
+        logger.debug(f"First 20 methods: {all_methods[:20]}")
+        logger.debug(f"Methods starting with 'set': {[m for m in all_methods if m.startswith('set')]}")
+        logger.debug(f"hasattr(storage_provider, 'set_active'): {hasattr(storage_provider, 'set_active')}")
         try:
             method = getattr(storage_provider, 'set_active', None)
-            logger.warning(f"[DEBUG] getattr(storage_provider, 'set_active', None): {method}")
+            logger.debug(f"getattr(storage_provider, 'set_active', None): {method}")
         except Exception as e:
-            logger.warning(f"[DEBUG] getattr exception: {e}")
+            logger.debug(f"getattr exception: {e}")
         
         for json_rpc_method, python_method in json_rpc_to_python_methods.items():
             # Debug: Check if method exists
@@ -363,7 +453,7 @@ class StorageServer:
             else:
                 logger.warning(f"StorageProvider missing method: {python_method} (for JSON-RPC: {json_rpc_method})")
 
-        logger.info(f"Registered {len(self._methods)} StorageProvider methods as JSON-RPC endpoints")
+        logger.debug(f"Registered {len(self._methods)} StorageProvider methods as JSON-RPC endpoints")
 
     def _validate_json_rpc_request(
         self,
@@ -524,6 +614,19 @@ class StorageServer:
                 "id": request_id,
             }
 
+        except WalletError as e:
+            # Convert WalletError instances to JSON format compatible with TypeScript
+            # TS parity: Mirrors StorageServer.ts behavior where WalletError.unknownToJson(error)
+            # is placed directly in the error field
+            # This includes InsufficientFundsError from generate_change.py and other WalletError subclasses
+            logger.warning(f"WalletError in method {method}: {e}")
+            error_json = wallet_error_to_json(e)
+            return {
+                "jsonrpc": "2.0",
+                "error": error_json,
+                "id": request_id,
+            }
+
         except TypeError as e:
             # Parameter type error
             logger.warning(f"Invalid params for method {method}: {e}")
@@ -534,11 +637,12 @@ class StorageServer:
             }
 
         except Exception as e:
-            # Unexpected error
+            # Unexpected error - convert to WalletError format for TS compatibility
             logger.error(f"Internal error in method {method}: {e}", exc_info=True)
+            error_json = wallet_error_to_json(e)
             return {
                 "jsonrpc": "2.0",
-                "error": JsonRpcInternalError().to_dict(),
+                "error": error_json,
                 "id": request_id,
             }
 

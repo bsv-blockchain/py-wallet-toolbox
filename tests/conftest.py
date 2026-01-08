@@ -256,7 +256,7 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     storage.insert_output({
         "transactionId": tx_id,
         "userId": user_id,
-        "basketId": basket_id,  # "default" basket - required for allocate_change_input
+        "basketId": basket_id,  # "default" basket - required for allocate_funding_input
         "spendable": True,
         "change": True,  # Change outputs are spendable
         "vout": 0,

@@ -1394,12 +1394,15 @@ class Wallet:
         # Apply wallet-level configuration for complete transaction handling
         # TS: vargs.includeAllSourceTransactions = this.includeAllSourceTransactions
         if "includeAllSourceTransactions" not in vargs:
-            vargs["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", False)
+            vargs["includeAllSourceTransactions"] = getattr(self, "include_all_source_transactions", True)
 
         # Apply random values if configured (TS: if (this.randomVals && this.randomVals.length > 1))
         random_vals = getattr(self, "random_vals", None)
         if random_vals and len(random_vals) > 1 and "randomVals" not in vargs:
             vargs["randomVals"] = random_vals[:]
+
+        # Note: isSignAction is already computed in validate_create_action_args
+        # No need to recompute here - validation handles it correctly
 
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
         try:
@@ -1408,10 +1411,10 @@ class Wallet:
         except Exception as e:
             trace(logger, "wallet.create_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
             raise
-        
+
         # Convert CreateActionResultX to BRC-100 CreateActionResult
-        # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
         result: dict[str, Any] = {}
+        # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
         if signer_result.txid is not None:
             result["txid"] = signer_result.txid
         if signer_result.tx is not None:
@@ -1422,7 +1425,10 @@ class Wallet:
         if signer_result.no_send_change_output_vouts is not None:
             result["noSendChangeOutputVouts"] = signer_result.no_send_change_output_vouts
         if signer_result.signable_transaction is not None:
-            result["signableTransaction"] = signer_result.signable_transaction
+            signable_tx = signer_result.signable_transaction.copy()
+            if "tx" in signable_tx and isinstance(signable_tx["tx"], bytes):
+                signable_tx["tx"] = _to_byte_list(signable_tx["tx"])
+            result["signableTransaction"] = signable_tx
         # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
 
         # Wave 4 Enhancement - BEEF integration (TS parity)

@@ -113,6 +113,7 @@ markers = [
 # Entity tests deferred to Phase 5 (see conftest_entity_skip.py)
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# Truncate long assertion diffs to avoid massive output
 
 [tool.coverage.run]
 source = ["src"]

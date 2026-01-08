@@ -20,10 +20,16 @@ class InternalError(WalletError):
 
 class InsufficientFundsError(WalletError):
     """Insufficient funds for transaction."""
-    def __init__(self, required: int, short: int):
-        super().__init__(f"Insufficient funds. Required: {required}, Short: {short}")
-        self.required = required
-        self.short = short
+    def __init__(self, total_satoshis_needed: int, more_satoshis_needed: int):
+        message = (
+            f"Insufficient funds in the available inputs to cover the cost of the required outputs "
+            f"and the transaction fee ({more_satoshis_needed} more satoshis are needed, "
+            f"for a total of {total_satoshis_needed}), plus whatever would be required in order to "
+            f"pay the fee to unlock and spend the outputs used to provide the additional satoshis."
+        )
+        super().__init__(message)
+        self.required = total_satoshis_needed
+        self.short = more_satoshis_needed
 
 
 @dataclass
@@ -39,7 +45,7 @@ class GenerateChangeSdkOutput:
 
 
 @dataclass
-class GenerateChangeSdkChangeInput:
+class GenerateChangeSdkFundingInput:
     output_id: int
     satoshis: int
 
@@ -73,7 +79,7 @@ class GenerateChangeSdkParams:
 
 @dataclass
 class GenerateChangeSdkResult:
-    allocated_change_inputs: list[GenerateChangeSdkChangeInput]
+    allocated_funding_inputs: list[GenerateChangeSdkFundingInput]
     change_outputs: list[GenerateChangeSdkChangeOutput]
     size: int
     fee: int
@@ -81,11 +87,11 @@ class GenerateChangeSdkResult:
     max_possible_satoshis_adjustment: dict[str, int] | None = None
 
 
-class AllocateChangeInputCallback(Protocol):
-    def __call__(self, target_satoshis: int, exact_satoshis: int | None = None) -> GenerateChangeSdkChangeInput | None: ...
+class AllocateFundingInputCallback(Protocol):
+    def __call__(self, target_satoshis: int, exact_satoshis: int | None = None) -> GenerateChangeSdkFundingInput | None: ...
 
 
-class ReleaseChangeInputCallback(Protocol):
+class ReleaseFundingInputCallback(Protocol):
     def __call__(self, output_id: int) -> None: ...
 
 
@@ -149,14 +155,14 @@ def transaction_size(input_script_lengths: list[int], output_script_lengths: lis
 
 def generate_change_sdk(
     params: GenerateChangeSdkParams,
-    allocate_change_input: AllocateChangeInputCallback,
-    release_change_input: ReleaseChangeInputCallback
+    allocate_funding_input: AllocateFundingInputCallback,
+    release_funding_input: ReleaseFundingInputCallback
 ) -> GenerateChangeSdkResult:
     """
     Simplified port of generateChangeSdk from TypeScript.
     """
     r = GenerateChangeSdkResult(
-        allocated_change_inputs=[],
+        allocated_funding_inputs=[],
         change_outputs=[],
         size=0,
         fee=0,
@@ -188,7 +194,7 @@ def generate_change_sdk(
         fixed_outputs = params.fixed_outputs
 
         def funding() -> int:
-            return sum(x.satoshis for x in fixed_inputs) + sum(x.satoshis for x in r.allocated_change_inputs)
+            return sum(x.satoshis for x in fixed_inputs) + sum(x.satoshis for x in r.allocated_funding_inputs)
 
         def spending() -> int:
             return sum(x.satoshis for x in fixed_outputs)
@@ -199,31 +205,27 @@ def generate_change_sdk(
         def fee_func() -> int:
             return funding() - spending() - change()
 
-        def size_func(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
+        def size_func(added_funding_inputs: int = 0, added_change_outputs: int = 0) -> int:
             input_script_lengths = [x.unlocking_script_length for x in fixed_inputs] + \
-                                   [params.change_unlocking_script_length] * (len(r.allocated_change_inputs) + added_change_inputs)
+                                   [params.change_unlocking_script_length] * (len(r.allocated_funding_inputs) + added_funding_inputs)
 
             output_script_lengths = [x.locking_script_length for x in fixed_outputs] + \
                                     [params.change_locking_script_length] * (len(r.change_outputs) + added_change_outputs)
 
             size = transaction_size(input_script_lengths, output_script_lengths)
-            print(f"DEBUG: size_func: fixed_inputs={len(fixed_inputs)}, allocated_change_inputs={len(r.allocated_change_inputs)}, added_change_inputs={added_change_inputs}, change_unlocking_length={params.change_unlocking_script_length}")
-            print(f"DEBUG: size_func: fixed_outputs={len(fixed_outputs)}, change_outputs={len(r.change_outputs)}, added_change_outputs={added_change_outputs}, change_locking_length={params.change_locking_script_length}")
-            print(f"DEBUG: size_func: input_lengths={input_script_lengths}, output_lengths={output_script_lengths}, total_size={size}")
             return size
 
-        def fee_target(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
-            size = size_func(added_change_inputs, added_change_outputs)
+        def fee_target(added_funding_inputs: int = 0, added_change_outputs: int = 0) -> int:
+            size = size_func(added_funding_inputs, added_change_outputs)
             fee = math.ceil((size / 1000) * sats_per_kb)
-            print(f"DEBUG: fee_target: size={size}, sats_per_kb={sats_per_kb}, fee={fee}")
             return fee
 
         fee_excess_now = 0
 
-        def fee_excess(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
+        def fee_excess(added_funding_inputs: int = 0, added_change_outputs: int = 0) -> int:
             nonlocal fee_excess_now
-            fe = funding() - spending() - change() - fee_target(added_change_inputs, added_change_outputs)
-            if added_change_inputs == 0 and added_change_outputs == 0:
+            fe = funding() - spending() - change() - fee_target(added_funding_inputs, added_change_outputs)
+            if added_funding_inputs == 0 and added_change_outputs == 0:
                 fee_excess_now = fe
             return fe
 
@@ -232,17 +234,17 @@ def generate_change_sdk(
         target_net_count = params.target_net_count
         
         def net_change_count() -> int:
-            return len(r.change_outputs) - len(r.allocated_change_inputs)
+            return len(r.change_outputs) - len(r.allocated_funding_inputs)
 
         def add_output_to_balance_new_input() -> bool:
             # If we assume target_net_count is always defined (default 0)
             return net_change_count() - 1 < target_net_count
 
-        def release_allocated_change_inputs() -> None:
+        def release_allocated_funding_inputs() -> None:
             nonlocal fee_excess_now
-            while len(r.allocated_change_inputs) > 0:
-                i = r.allocated_change_inputs.pop()
-                release_change_input(i.output_id)
+            while len(r.allocated_funding_inputs) > 0:
+                i = r.allocated_funding_inputs.pop()
+                release_funding_input(i.output_id)
             fee_excess()
 
         # Initial population of change outputs
@@ -260,21 +262,19 @@ def generate_change_sdk(
                     return True
                 
                 exact_satoshis: int | None = None
-                if len(r.change_outputs) == 0: 
-                    pass 
+                if target_net_count == 0 and len(r.change_outputs) == 0:
+                    exact_satoshis = -fee_excess(1)
 
                 ao = 1 if add_output_to_balance_new_input() else 0
                 fee_excess_val = fee_excess(1, ao)
                 target_satoshis = -fee_excess_val + (2 * params.change_initial_satoshis if ao == 1 else 0)
 
-                print(f"DEBUG: Fee calculation: fee_excess={fee_excess_val}, ao={ao}, change_initial_satoshis={params.change_initial_satoshis}, target_satoshis={target_satoshis}")
-
-                allocated_input = allocate_change_input(target_satoshis, exact_satoshis)
+                allocated_input = allocate_funding_input(target_satoshis, exact_satoshis)
                 
                 if not allocated_input:
                     return False
                 
-                r.allocated_change_inputs.append(allocated_input)
+                r.allocated_funding_inputs.append(allocated_input)
                 
                 if not removing_outputs and fee_excess() > 0:
                     if ao == 1 or len(r.change_outputs) == 0:
@@ -286,7 +286,7 @@ def generate_change_sdk(
 
             while True:
                 # Starvation loop
-                release_allocated_change_inputs()
+                release_allocated_funding_inputs()
                 
                 while fee_excess() < 0:
                     ok = attempt_to_fund_transaction()
@@ -304,20 +304,20 @@ def generate_change_sdk(
                     break
                 
                 # Optimization loop (churn reduction)
-                change_inputs = list(r.allocated_change_inputs)
-                while len(change_inputs) > 1 and len(r.change_outputs) > 1:
+                funding_inputs = list(r.allocated_funding_inputs)
+                while len(funding_inputs) > 1 and len(r.change_outputs) > 1:
                     last_output = r.change_outputs[-1]
                     # find index where satoshis <= lastOutput.satoshis
                     idx = -1
-                    for i, ci in enumerate(change_inputs):
-                        if ci.satoshis <= last_output.satoshis:
+                    for i, fi in enumerate(funding_inputs):
+                        if fi.satoshis <= last_output.satoshis:
                             idx = i
                             break
-                    
+
                     if idx < 0:
                         break
                     r.change_outputs.pop()
-                    change_inputs.pop(idx)
+                    funding_inputs.pop(idx)
                 
         fund_transaction()
 
@@ -333,11 +333,12 @@ def generate_change_sdk(
             }
 
         if fee_excess() < 0:
-            release_allocated_change_inputs()
+            release_allocated_funding_inputs()
             raise InsufficientFundsError(spending() + fee_target(), -fee_excess_now)
 
+        # If needed, seek funding to avoid overspending on fees without a change output to recapture it.
         if len(r.change_outputs) == 0 and fee_excess_now > 0:
-            release_allocated_change_inputs()
+            release_allocated_funding_inputs()
             raise InsufficientFundsError(spending() + fee_target(), params.change_first_satoshis)
 
         while len(r.change_outputs) > 0 and fee_excess_now > 0:
@@ -375,7 +376,7 @@ def validate_generate_change_sdk_result(
 ) -> tuple[bool, str]:
     ok = True
     log_msg = ""
-    sum_in = sum(x.satoshis for x in params.fixed_inputs) + sum(x.satoshis for x in r.allocated_change_inputs)
+    sum_in = sum(x.satoshis for x in params.fixed_inputs) + sum(x.satoshis for x in r.allocated_funding_inputs)
     sum_out = sum(x.satoshis for x in params.fixed_outputs) + sum(x.satoshis for x in r.change_outputs)
     
     if r.fee < 0:

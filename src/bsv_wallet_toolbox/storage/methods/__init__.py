@@ -13,7 +13,7 @@ from typing import Any
 # The functions exported here are wrappers that delegate to StorageProvider methods.
 
 from .generate_change import (
-    GenerateChangeSdkChangeInput,
+    GenerateChangeSdkFundingInput,
     GenerateChangeSdkChangeOutput,
     GenerateChangeSdkInput,
     GenerateChangeSdkOutput,
@@ -30,8 +30,8 @@ from .generate_change import (
 
 
 @dataclass
-class GenerateChangeInput:
-    """Input specification for change generation."""
+class GenerateFundingInput:
+    """Input specification for funding generation."""
     satoshis: int
     locking_script: str
 
@@ -231,7 +231,7 @@ __all__ = [  # noqa: RUF022
     # Types from generate_change
     "GenerateChangeSdkInput",
     "GenerateChangeSdkOutput",
-    "GenerateChangeSdkChangeInput",
+    "GenerateChangeSdkFundingInput",
     "GenerateChangeSdkChangeOutput",
     "GenerateChangeSdkParams",
     "GenerateChangeSdkResult",
@@ -240,7 +240,7 @@ __all__ = [  # noqa: RUF022
     "InsufficientFundsError",
     "InternalError",
     # Type definitions
-    "GenerateChangeInput",
+    "GenerateFundingInput",
     "ListActionsArgs",
     "ListOutputsArgs",
     "StorageProcessActionArgs",

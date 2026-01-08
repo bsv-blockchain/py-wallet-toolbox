@@ -91,7 +91,7 @@ class TestUniversalVectorsCreateAction:
         assert "reference" in signable_tx
         assert "tx" in signable_tx
         assert isinstance(signable_tx["reference"], str)
-        assert isinstance(signable_tx["tx"], bytes)  # BEEF bytes
+        assert isinstance(signable_tx["tx"], list)  # BEEF bytes as list
 
     def test_createaction_nosignandprocess_wire_matches_universal_vectors(
         self, load_test_vectors: Callable[[str], tuple[dict, dict]], wallet_with_services

@@ -12,7 +12,7 @@ Phase 4 Implementation Status:
 
 ✅ Phase 4 Completed:
   ✅ Multi-provider strategy: Implemented for all service methods
-     - post_beef(): GorillaPool → TAAL → Bitails fallback
+     - post_beef(): ARC multi-provider failover (TAAL → GorillaPool → Bitails)
      - getMerklePath(): WhatsOnChain → Bitails with notes aggregation
      - getRawTx(): Multi-provider with txid validation
      - getUtxoStatus(): Multi-provider with 2-retry strategy
@@ -104,11 +104,13 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
     # Chaintracks URL for fiat exchange rates (empty as per TS implementation)
     chaintracks_fiat_exchange_rates_url = ""
 
-    # ARC TAAL default URL
+    # ARC TAAL default URL (fallback/alternative)
     arc_url = "https://arc.taal.com" if chain == "main" else "https://arc-test.taal.com"
 
-    # ARC GorillaPool default URL
-    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else None
+    # ARC GorillaPool default URL (primary ARC provider)
+    # For testnet: https://testnet.arc.gorillapool.io
+    # For mainnet: https://arc.gorillapool.io
+    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else "https://testnet.arc.gorillapool.io"
 
     return WalletServicesOptions(
         chain=chain,
@@ -1393,6 +1395,34 @@ class Services(WalletServices):
                 detail = f"{parse_error!s}; {exc!s}" if parse_error else str(exc)
                 raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
+        # Debug: Log rawTx being processed
+        # Check if it's AtomicBEEF format (starts with 01010101) or raw transaction
+        is_atomic_beef = beef.startswith("01010101")
+        if is_atomic_beef:
+            self.logger.debug(
+                "Services.post_beef: processing AtomicBEEF, txid=%s, beef_len=%d bytes, beef_hex (first 100 chars): %s...",
+                txid,
+                len(beef) // 2,
+                beef[:100]
+            )
+            # After parsing, log the extracted raw transaction
+            if tx:
+                raw_tx_from_beef = tx.hex()
+                self.logger.debug(
+                    "Services.post_beef: extracted rawTx from AtomicBEEF, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                    txid,
+                    len(raw_tx_from_beef) // 2,
+                    raw_tx_from_beef[:100]
+                )
+        else:
+            # It's already raw transaction hex
+            self.logger.debug(
+                "Services.post_beef: processing rawTx, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 200 chars): %s...",
+                txid,
+                len(beef) // 2,
+                beef[:200]
+            )
+
         def _fmt_arc_error(res: Any) -> str:
             # ARC.broadcast returns PostTxResultForTxid.
             # When it fails, res.data is typically PostTxResultForTxidError with:
@@ -1421,52 +1451,17 @@ class Services(WalletServices):
 
         # Debug: high-level broadcast context
         self.logger.debug(
-            "Services.post_beef: txid=%s, txids=%s, providers={'gorillapool': %s, 'taal': %s, 'bitails': %s}",
+            "Services.post_beef: txid=%s, txids=%s, providers={'taal': %s, 'gorillapool': %s, 'bitails': %s}",
             txid,
             txids,
-            bool(self.arc_gorillapool),
             bool(self.arc_taal),
+            bool(self.arc_gorillapool),
             bool(self.bitails),
         )
 
-        # 1. Try ARC GorillaPool (if configured)
-        if self.arc_gorillapool:
-            try:
-                # Handle async broadcast - ARC expects Transaction object
-                if tx is None:
-                    raise ValueError("ARC broadcast requires transaction object")
-                res = self._run_async(self.arc_gorillapool.broadcast(tx))
-
-                if getattr(res, "status", "") == "success":
-                    return {
-                        "accepted": True,
-                        "txid": txid,
-                        "message": getattr(res, "message", "Broadcast successful"),
-                    }
-                elif getattr(res, "status", "") == "rate_limited":
-                    return {
-                        "accepted": False,
-                        "rateLimited": True,
-                        "message": getattr(res, "description", "Rate limited"),
-                    }
-                elif getattr(res, "double_spend", False):
-                    return {
-                        "accepted": False,
-                        "doubleSpend": True,
-                        "message": getattr(res, "description", "Double spend detected"),
-                    }
-                provider_errors["arcGorillaPool"] = _fmt_arc_error(res)
-                self.logger.debug(
-                    "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
-                    getattr(res, "status", None),
-                    getattr(res, "double_spend", None),
-                )
-            except Exception as e:
-                provider_errors["arcGorillaPool"] = str(e)
-                self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
-
-        # 2. Try ARC TAAL (if configured)
+        # 1. Try ARC TAAL first (if configured)
         if self.arc_taal:
+            self.logger.debug("Services.post_beef: Attempting TAAL broadcast (first priority)")
             try:
                 # Handle async broadcast - ARC expects Transaction object
                 if tx is None:
@@ -1501,7 +1496,58 @@ class Services(WalletServices):
                 provider_errors["arcTaal"] = str(e)
                 self.logger.debug("Services.post_beef: TAAL broadcast exception: %s", e)
 
-        # 3. Try Bitails (if configured)
+        # 2. Try ARC GorillaPool (if configured) - fallback after TAAL
+        if self.arc_gorillapool:
+            self.logger.debug("Services.post_beef: Attempting GorillaPool broadcast (TAAL failed)")
+            try:
+                # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
+                # Debug: Verify transaction hex is raw transaction, not AtomicBEEF
+                tx_hex = tx.hex() if hasattr(tx, "hex") else None
+                if tx_hex:
+                    self.logger.debug(
+                        "Services.post_beef: Transaction.hex() result, txid=%s, hex_len=%d bytes, hex (first 100 chars): %s...",
+                        txid,
+                        len(tx_hex) // 2,
+                        tx_hex[:100]
+                    )
+                    if tx_hex.startswith("01010101"):
+                        self.logger.error(
+                            "Services.post_beef: ERROR - Transaction.hex() returns AtomicBEEF format! "
+                            "This should be raw transaction hex. Transaction object may be corrupted."
+                        )
+                res = self._run_async(self.arc_gorillapool.broadcast(tx))
+
+                if getattr(res, "status", "") == "success":
+                    return {
+                        "accepted": True,
+                        "txid": txid,
+                        "message": getattr(res, "message", "Broadcast successful"),
+                    }
+                elif getattr(res, "status", "") == "rate_limited":
+                    return {
+                        "accepted": False,
+                        "rateLimited": True,
+                        "message": getattr(res, "description", "Rate limited"),
+                    }
+                elif getattr(res, "double_spend", False):
+                    return {
+                        "accepted": False,
+                        "doubleSpend": True,
+                        "message": getattr(res, "description", "Double spend detected"),
+                    }
+                provider_errors["arcGorillaPool"] = _fmt_arc_error(res)
+                self.logger.debug(
+                    "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
+                )
+            except Exception as e:
+                provider_errors["arcGorillaPool"] = str(e)
+                self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
+
+        # 3. Try Bitails (if configured) - final fallback
         if self.bitails:
             try:
                 # Bitails expects a Beef object, pass beef_obj if available, otherwise tx
@@ -1517,27 +1563,30 @@ class Services(WalletServices):
                 provider_errors["bitails"] = str(e)
                 self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
 
-        # Fallback: If no providers configured, return mocked success for test compatibility
-        if not self.arc_gorillapool and not self.arc_taal and not self.bitails:
-            self.logger.debug("Services.post_beef: no providers configured, returning mocked success")
-            return {"accepted": True, "txid": txid, "message": "mocked"}
+        # Return failure - all configured providers were attempted
+        message = provider_errors.get("arcTaal", "TAAL broadcast failed")
 
-        # Otherwise return failure
-        # Prefer ARC error details (when available) because they tend to be most actionable.
-        if "arcTaal" in provider_errors:
-            message = provider_errors["arcTaal"]
-        elif "arcGorillaPool" in provider_errors:
-            message = provider_errors["arcGorillaPool"]
-        elif "bitails" in provider_errors:
-            message = provider_errors["bitails"]
-        else:
-            message = "No broadcast providers available"
-
-        if len(provider_errors) > 1:
-            # Include other provider failures for completeness.
-            extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
-            if extras:
-                message = f"{message}; other_failures: {extras}"
+        # Log all provider errors for debugging
+        if provider_errors:
+            self.logger.warning(
+                "Services.post_beef: All providers failed. Errors: %s",
+                provider_errors
+            )
+            # Include all provider failures in the message for better debugging
+            if len(provider_errors) > 1:
+                extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
+                if extras:
+                    message = f"{message}; other_failures: {extras}"
+            # Also include which providers were tried
+            tried_providers = []
+            if self.arc_gorillapool:
+                tried_providers.append("GorillaPool")
+            if self.arc_taal:
+                tried_providers.append("TAAL")
+            if self.bitails:
+                tried_providers.append("Bitails")
+            if tried_providers:
+                message = f"{message} (tried: {', '.join(tried_providers)})"
 
         self.logger.debug(
             "Services.post_beef: all providers failed, last_error=%r, txids=%s",

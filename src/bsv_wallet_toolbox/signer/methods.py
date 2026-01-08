@@ -147,13 +147,13 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
     if vargs.get("isNewTx"):
         trace(logger, "signer.create_action.new_tx.call", auth=auth, args=vargs)
         prior = _create_new_tx(wallet, auth, vargs)
-        trace(
-            logger,
-            "signer.create_action.new_tx.result",
-            reference=getattr(prior, "reference", None),
-            amount=getattr(prior, "amount", None),
-            dcr=getattr(prior, "dcr", None),
-        )
+        # trace(
+        #     logger,
+        #     "signer.create_action.new_tx.result",
+        #     reference=getattr(prior, "reference", None),
+        #     amount=getattr(prior, "amount", None),
+        #     dcr=getattr(prior, "dcr", None),
+        # )
 
         if vargs.get("isSignAction"):
             signable = _make_signable_transaction_result(prior, wallet, vargs)
@@ -281,7 +281,7 @@ def build_signable_transaction(
     inputs.sort(key=lambda x: x["storageInput"].get("vin", 0))
 
     pending_storage_inputs: list[PendingStorageInput] = []
-    total_change_inputs = 0
+    total_funding_inputs = 0
 
     # Add inputs
     for input_data in inputs:
@@ -329,6 +329,7 @@ def build_signable_transaction(
         # StorageCreateTransactionSdkInput uses camelCase keys (TS parity / @wallet-infra).
         # We intentionally do NOT accept snake_case here: the storage boundary must be consistent.
         source_txid = storage_input.get("sourceTxid") or ""
+
         if not isinstance(source_txid, str) or len(source_txid) != 64:
             raise WalletError(
                 "storage_input.sourceTxid must be a 64-hex txid. "
@@ -336,14 +337,18 @@ def build_signable_transaction(
             )
 
         # Record pending storage input metadata for later BRC-29 signing (TS parity)
+        # IMPORTANT: Store base64 strings directly (not decoded) to match keyID format used during internalization
+        # Go/TS use base64 strings directly in keyID: keyID = "base64_prefix base64_suffix"
         derivation_prefix_b64 = storage_input.get("derivationPrefix") or ""
         derivation_suffix_b64 = storage_input.get("derivationSuffix") or ""
+        unlocker_pub = storage_input.get("senderIdentityKey") or ""
+        # Store base64 strings directly (not decoded) to match keyID format
         pending_storage_inputs.append(
             PendingStorageInput(
                 vin=len(tx.inputs),
-                derivation_prefix=_decode_remittance_component(derivation_prefix_b64),
-                derivation_suffix=_decode_remittance_component(derivation_suffix_b64),
-                unlocker_pub_key=storage_input.get("senderIdentityKey") or "",
+                derivation_prefix=derivation_prefix_b64,  # Store base64, not decoded
+                derivation_suffix=derivation_suffix_b64,  # Store base64, not decoded
+                unlocker_pub_key=unlocker_pub,
                 source_satoshis=storage_input.get("sourceSatoshis") or 0,
                 locking_script=storage_input.get("sourceLockingScript") or "",
             )
@@ -374,13 +379,13 @@ def build_signable_transaction(
                 pass
 
         tx.add_input(tx_input)
-        total_change_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
+        total_funding_inputs += validate_satoshis(tx_input.satoshis or 0, "storage_input.sourceSatoshis")
 
     # Calculate amount (total non-foreign inputs minus change outputs)
     total_change_outputs = sum(
         output.get("satoshis", 0) for output in storage_outputs if output.get("purpose") == "change"
     )
-    amount = total_change_inputs - total_change_outputs
+    amount = total_funding_inputs - total_change_outputs
 
     return tx, amount, pending_storage_inputs, ""
 
@@ -467,8 +472,18 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     locker_pub = create_input.get("lockerPubKey", "")
                 else:
                     # Wallet-managed change: derive from storage metadata
-                    key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}".strip()
+                    # NOTE: Do NOT strip() here - the keyID format is "prefix suffix" with newlines preserved
+                    # The test uses: keyID = `${derivationPrefixStr} ${derivationSuffixStr}` (no strip)
+                    # So we need: key_id = f"{prefix} {suffix}" (no strip) to match exactly
+                    key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}"
                     locker_pub = pdi.unlocker_pub_key
+
+                    logger.debug(f"🔑 Key derivation for input {input_data.source_output_index}:")
+                    logger.debug(f"  derivation_prefix: {pdi.derivation_prefix!r} (len={len(pdi.derivation_prefix)})")
+                    logger.debug(f"  derivation_suffix: {pdi.derivation_suffix!r} (len={len(pdi.derivation_suffix)})")
+                    logger.debug(f"  key_id: {key_id!r} (len={len(key_id)})")
+                    logger.debug(f"  unlocker_pub_key: {locker_pub[:30] if locker_pub else None}...")
+                    logger.debug(f"  source_locking_script: {pdi.locking_script[:50] if pdi.locking_script else None}...")
 
                 if not key_id:
                     raise WalletError(
@@ -479,13 +494,43 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 if locker_pub:
                     from bsv.keys import PublicKey as PubKey
 
-                    locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
+                    locker_pub_key = PublicKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
                     counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
+                    logger.debug(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
                 else:
                     counterparty = Counterparty(type=CounterpartyType.SELF)
+                    logger.debug(f"  Using CounterpartyType.SELF (no senderIdentityKey)")
 
                 # Derive private key for this input
+                logger.debug(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
                 derived_private_key = wallet.key_deriver.derive_private_key(brc29_protocol, key_id, counterparty)
+                
+                # Verify the derived key matches the locking script
+                derived_pub_key = derived_private_key.public_key()
+                derived_pub_key_hash = derived_pub_key.hash160()
+                from bsv.script import P2PKH
+                p2pkh = P2PKH()
+                expected_locking_script = p2pkh.lock(derived_pub_key_hash)
+                expected_locking_script_hex = expected_locking_script.hex()
+                
+                # Get the actual locking script from the input
+                actual_locking_script_hex = pdi.locking_script if isinstance(pdi.locking_script, str) else pdi.locking_script.hex() if hasattr(pdi.locking_script, 'hex') else ""
+                
+                logger.debug(f"  Derived public key: {derived_pub_key.to_hex()}")
+                logger.debug(f"  Derived public key hash160: {derived_pub_key_hash.hex()}")
+                logger.debug(f"  Expected locking script: {expected_locking_script_hex}")
+                logger.debug(f"  Actual locking script: {actual_locking_script_hex}")
+                
+                if expected_locking_script_hex != actual_locking_script_hex:
+                    logger.error(f"  ❌ MISMATCH: Derived key does not match locking script!")
+                    logger.error(f"    Expected hash160: {derived_pub_key_hash.hex()}")
+                    logger.error(f"    Actual hash160:   {actual_locking_script_hex[6:46] if len(actual_locking_script_hex) >= 46 else 'N/A'}")
+                    logger.error(f"    Expected script:  {expected_locking_script_hex}")
+                    logger.error(f"    Actual script:    {actual_locking_script_hex}")
+                    logger.error(f"    This will cause script evaluation errors!")
+                    logger.error(f"    Check: keyID format, counterparty type, or identity key")
+                else:
+                    logger.debug(f"  ✅ Derived key matches locking script")
 
                 # Step 2: Create P2PKH unlock template
                 p2pkh = P2PKH()
@@ -566,7 +611,7 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         # Create new transaction for processing
         trace(logger, "signer.process_action.no_prior.recover", auth=auth)
         prior = _create_new_tx(wallet, auth, vargs)
-        trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, dcr=prior.dcr, amount=prior.amount)
+        trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, amount=prior.amount)
 
         # Build signable transaction
         tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
@@ -630,7 +675,7 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
         if not prior:
             trace(logger, "signer.sign_action.recover_from_storage.miss", reference=reference)
             raise WalletError(f"Unable to recover signAction reference '{reference}' from storage or memory.")
-        trace(logger, "signer.sign_action.recover_from_storage.hit", reference=reference, dcr=prior.dcr)
+        trace(logger, "signer.sign_action.recover_from_storage.hit", reference=reference)
 
     # inputBeef might be empty for transactions with only wallet-managed inputs
     # TypeScript requires it, but we'll be more lenient for testing
@@ -1351,21 +1396,16 @@ def _setup_wallet_payment_for_output(
         )
 
         # Step 2: Extract payment derivation parameters (support both camelCase and snake_case)
-        # These are Base64 encoded - decode them for keyID construction
-        import base64
+        # These are Base64 encoded strings - use them directly in keyID (matches Go/TS behavior)
+        # Go validation does: keyID := brc29.KeyID{DerivationPrefix: string(payment.DerivationPrefix), ...}
+        # where payment.DerivationPrefix is primitives.Base64String (just a string type, not decoded)
+        # Then keyID.String() returns: k.DerivationPrefix + " " + k.DerivationSuffix (base64 strings)
         derivation_prefix_b64 = payment_remittance.get("derivationPrefix") or payment_remittance.get("derivationPrefix", "")
         derivation_suffix_b64 = payment_remittance.get("derivationSuffix") or payment_remittance.get("derivationSuffix", "")
         
-        # Decode Base64 to get raw values for keyID (matches Go SDK behavior)
-        try:
-            derivation_prefix = base64.b64decode(derivation_prefix_b64).decode("utf-8") if derivation_prefix_b64 else ""
-            derivation_suffix = base64.b64decode(derivation_suffix_b64).decode("utf-8") if derivation_suffix_b64 else ""
-        except Exception:
-            # Fallback to using values as-is if not valid Base64
-            derivation_prefix = derivation_prefix_b64
-            derivation_suffix = derivation_suffix_b64
-        
-        key_id = f"{derivation_prefix} {derivation_suffix}".strip()
+        # Use base64 strings directly in keyID (matches Go/TS behavior - they don't decode before using in keyID)
+        # NOTE: Do NOT strip() - keyID format must match exactly: "prefix suffix"
+        key_id = f"{derivation_prefix_b64} {derivation_suffix_b64}"
 
         # Step 3: Get sender identity key for key derivation
         sender_identity_key = payment_remittance.get("senderIdentityKey") or payment_remittance.get("senderIdentityKey", "")
@@ -1409,15 +1449,13 @@ def _setup_wallet_payment_for_output(
             # Rich debug context for E2E analysis (enabled under DEBUG loglevel).
             logger.debug(
                 "wallet_payment_debug mismatch index=%s senderIdentityKey=%s key_id=%s "
-                "derivationPrefix(b64)=%s derivationSuffix(b64)=%s derivationPrefix(raw)=%s derivationSuffix(raw)=%s "
+                "derivationPrefix(b64)=%s derivationSuffix(b64)=%s "
                 "expected_pkh=%s",
                 output_index,
                 sender_identity_key,
                 key_id,
                 derivation_prefix_b64,
                 derivation_suffix_b64,
-                derivation_prefix,
-                derivation_suffix,
                 pub_key_hash.hex(),
             )
             try:

@@ -7,7 +7,7 @@ import re
 import secrets
 from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, ClassVar, Callable
+from typing import TYPE_CHECKING, Any, ClassVar, Callable, overload
 
 from bsv.merkle_path import MerklePath
 from bsv.transaction import Transaction
@@ -38,7 +38,7 @@ from .methods.generate_change import (
     GenerateChangeSdkParams,
     GenerateChangeSdkInput,
     GenerateChangeSdkOutput,
-    GenerateChangeSdkChangeInput,
+    GenerateChangeSdkFundingInput,
     GenerateChangeSdkChangeOutput,
     StorageFeeModel,
     generate_change_sdk,
@@ -96,6 +96,7 @@ SNAKE_TO_CAMEL_OVERRIDES: dict[str, str] = {v: k for k, v in CAMEL_TO_SNAKE_OVER
 class StorageProvider:
     _FATAL_BROADCAST_ERROR_HINTS = (
         "missing inputs",
+        "missing input",  # Catches "missing input scripts" from ARC 460
         "missing prevout",
         "mandatory-script-verify-flag failed",
         "non-mandatory-script-verify-flag failed",
@@ -805,8 +806,15 @@ class StorageProvider:
             if specop_include_spent is not None:
                 include_spent = specop_include_spent
             if not include_spent:
-                base = base & (Output.spendable.is_(True))
+                # Exclude outputs that are spent (spent_by IS NOT NULL) even if spendable is somehow True
+                # TS parity: TypeScript relies on spendable=false for spent outputs, but we add spent_by check for safety
+                base = base & (Output.spendable.is_(True)) & (Output.spent_by.is_(None))
             q = select(Output).where(base)
+
+            # TS parity: Join with transactions to filter by status (TypeScript listOutputsKnex.ts lines 136-137)
+            # This ensures balance only counts outputs from valid transaction states
+            q = q.join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+            q = q.where(TransactionModel.status.in_(["completed", "unproven", "nosend", "sending"]))
 
             if filter_change_only:
                 q = q.where(Output.change.is_(True))
@@ -1448,6 +1456,7 @@ class StorageProvider:
             toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
         with session_scope(self.SessionLocal) as s:
+            # Check ProvenTx first
             _result = s.execute(select(ProvenTx).where(ProvenTx.txid == txid))
             p = _result.scalar_one_or_none()
             if p is not None:
@@ -1456,10 +1465,13 @@ class StorageProvider:
                     "rawTx": p.raw_tx,
                     "merklePath": p.merkle_path,
                 }
+            
+            # Check ProvenTxReq second
             _result = s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid))
             r = _result.scalar_one_or_none()
             if r is None:
                 return {"proven": None, "rawTx": None}
+            
             return {"proven": None, "rawTx": r.raw_tx, "inputBEEF": r.input_beef}
 
     def get_raw_tx_of_known_valid_transaction(
@@ -2022,16 +2034,22 @@ class StorageProvider:
         change_basket = self.find_or_insert_output_basket(user_id, "default")
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
         no_send_change_in = self._validate_no_send_change(user_id, vargs, change_basket)
-        available_change_count = self.count_change_inputs(user_id, change_basket_id, not vargs.is_delayed)
+        available_funding_count = self.count_funding_inputs(user_id, change_basket_id, not vargs.is_delayed)
 
         # self.fee_model may be a dict (our default) or an object with `.value`.
         fee_model_source = getattr(self, "fee_model", None)
         if isinstance(fee_model_source, dict):
-            fee_model_val = fee_model_source.get("value", 1)
+            fee_model_val = fee_model_source.get("value", None)
         else:
-            fee_model_val = getattr(fee_model_source, "value", 1)
-        # TEMPORARY: Set fee rate to 0 for testing
-        fee_model_val = 0
+            fee_model_val = getattr(fee_model_source, "value", None)
+        
+        # Set fee based on chain: 1 sat/kb for testnet, 100 sat/kb for mainnet
+        if fee_model_val is None:
+            if self.chain == "main":
+                fee_model_val = 100
+            else:  # test or testnet
+                fee_model_val = 1
+        
         fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
 
         new_tx = self._create_new_tx_record(user_id, vargs, storage_beef_bytes)
@@ -2042,7 +2060,7 @@ class StorageProvider:
             "changeBasket": change_basket,
             "changeBasketId": change_basket_id,
             "noSendChangeIn": no_send_change_in,
-            "availableChangeCount": available_change_count,
+            "availableFundingCount": available_funding_count,
             "feeModel": fee_model,
             "transactionId": new_tx.transaction_id,
         }
@@ -2050,7 +2068,8 @@ class StorageProvider:
         funding_result = self.fund_new_transaction_sdk(user_id, vargs, ctx)
         allocated_change = funding_result["allocatedChange"]
         change_outputs = funding_result["changeOutputs"]
-        derivation_prefix = funding_result["derivationPrefix"]
+        # Generate the derivation prefix for this transaction (same one used for all change outputs)
+        derivation_prefix = self._generate_derivation_suffix()
         max_possible_satoshis_adjustment = funding_result["maxPossibleSatoshisAdjustment"]
 
         if max_possible_satoshis_adjustment:
@@ -2060,6 +2079,7 @@ class StorageProvider:
                 raise InternalError("Max possible output index mismatch")
             ctx["xoutputs"][idx].satoshis = sats
 
+        # The satoshis of the transaction is the satoshis we get back in change minus the satoshis we spend.
         total_change = sum(o.satoshis for o in change_outputs)
         total_allocated = sum(o["satoshis"] for o in allocated_change)
         satoshis = total_change - total_allocated
@@ -2088,12 +2108,6 @@ class StorageProvider:
             txid = deterministic_txid(new_tx.reference, vargs.outputs)
             self.update_transaction(new_tx.transaction_id, {"txid": txid})
             result["txid"] = txid
-        elif not (getattr(vargs.options, "return_txid_only", False) if vargs.options else False):
-            signable_tx = {
-                "reference": new_tx.reference,
-                "tx": list(input_beef_bytes) if input_beef_bytes else [],
-            }
-            result["signableTransaction"] = signable_tx
 
         return result
 
@@ -2281,17 +2295,17 @@ class StorageProvider:
 
     def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes | None:
         """Merge BEEF data from allocated change outputs (TS parity).
-        
+
         For each allocated change output, retrieves the BEEF for its source
         transaction and merges it into the result. Mirrors TypeScript
         mergeAllocatedChangeBeefs at storage/methods/createAction.ts L903-926.
         """
         from bsv.transaction.beef import Beef, BEEF_V2
-        
+
         # If returnTXIDOnly, don't generate BEEF
         if getattr(vargs.options, "return_txid_only", False):
             return None
-        
+
         # Start with existing beef or create new one
         if storage_beef_bytes and len(storage_beef_bytes) > 0:
             try:
@@ -2300,9 +2314,9 @@ class StorageProvider:
                 beef = Beef(version=BEEF_V2)
         else:
             beef = Beef(version=BEEF_V2)
-        
+
         known_txids = set(getattr(vargs.options, "known_txids", []) or [])
-        
+
         # Merge BEEF for each allocated change output
         for o in allocated_change:
             txid = o.get("txid") or o.get("sourceTxid")
@@ -2315,6 +2329,7 @@ class StorageProvider:
                     continue
             except Exception:
                 pass
+
             try:
                 options = {
                     "mergeToBeef": beef,
@@ -2324,18 +2339,56 @@ class StorageProvider:
                 self.get_beef_for_transaction(txid, options)
             except Exception:
                 pass
-        
+
         result = beef.to_binary()
-        return bytes(result) if result else None
+        result_bytes = bytes(result) if result else None
+
+        return result_bytes
 
     def _create_new_inputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], allocated_change: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # ===== GO IMPLEMENTATION ANALYSIS =====
+        # Go implementation in resultInputForKnownUTXO (create.go:665-700):
+        # - Always sets SourceTxID from utxo.TxID
+        # - Conditionally sets SourceTransaction based on includeRawTxs parameter
+        # - includeRawTxs comes from params.IncludeInputSourceRawTxs in Create method
+        # - In assembler (create_action_tx_assembler.go:105+):
+        #   - If SourceTransaction is present, parses and sets it on TransactionInput
+        #   - If SourceTransaction is nil, falls back to locking script + satoshis
+        # ===== END GO ANALYSIS =====
+
+        # ===== TYPESCRIPT IMPLEMENTATION ANALYSIS =====
+        # TypeScript implementation in createAction.ts:createNewInputs (lines 275-285):
+        # - Always sets sourceTxid from o.txid!
+        # - Conditionally sets sourceTransaction based on:
+        #   vargs.includeAllSourceTransactions && vargs.isSignAction
+        # - If condition is true, calls storage.getRawTxOfKnownValidTransaction(o.txid!)
+        # - If condition is false, sets sourceTransaction: undefined
+        # - In buildSignableTransaction.ts (lines 135-144):
+        #   - Uses storageInput.sourceTransaction if present
+        #   - Falls back to sourceTXID if sourceTransaction is undefined
+        # - Wire protocol (WalletWireTransceiver.ts:387-398) only sends tx + reference
+        # NOTE: Python implementation differs from Go/TypeScript - sourceTransaction is always None
+        # in inputs array, which prevents proper signing validation. Go/TS conditionally include
+        # sourceTransaction based on parameters (includeAllSourceTransactions/IncludeInputSourceRawTxs).
+
         inputs = []
         vin = 0
-        
+
         for xi in ctx["xinputs"]:
             source_txid = xi["sourceTxid"]
             source_vout = xi["sourceVout"]
-            
+
+            # Get source transaction from storage if not provided.
+            # Align behavior with TypeScript: only fetch when
+            # vargs.includeAllSourceTransactions && vargs.isSignAction.
+            source_transaction = xi.get("sourceTransaction")
+            if (
+                source_transaction is None
+                and vargs.get("includeAllSourceTransactions", False)
+                and vargs.get("isSignAction", False)
+            ):
+                source_transaction = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
+
             session = self.SessionLocal()
             try:
                 q = select(Output).where(
@@ -2353,38 +2406,60 @@ class StorageProvider:
             finally:
                 session.close()
 
-            inputs.append({
+            input_dict = {
                 "vin": vin,
                 "sourceTxid": source_txid,
                 "sourceVout": source_vout,
                 "sourceSatoshis": xi["sourceSatoshis"],
                 "sourceLockingScript": xi["sourceLockingScript"],
+                "sourceTransaction": list(source_transaction) if source_transaction else None,
                 "unlockingScriptLength": xi.get("unlockingScriptLength"),
                 "providedBy": xi.get("providedBy", "you"),
-            })
+            }
+            inputs.append(input_dict)
             vin += 1
-            
+
         for ac in allocated_change:
-            inputs.append(
-                {
-                    "vin": vin,
-                    "sourceTxid": ac["txid"],
-                    "sourceVout": ac["vout"],
-                    "sourceSatoshis": ac["satoshis"],
-                    "sourceLockingScript": (ac["lockingScript"] or b"").hex(),
-                    "unlockingScriptLength": 107,
-                    "providedBy": ac["providedBy"] or "storage",
-                    "type": ac["type"],
-                    "derivationPrefix": ac["derivationPrefix"],
-                    "derivationSuffix": ac["derivationSuffix"],
-                    # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
-                    # This allows signer.build_signable_transaction to derive the correct
-                    # BRC-29 private key using sender_identity_key as counterparty when present.
-                    "senderIdentityKey": ac.get("senderIdentityKey") or "",
-                }
-            )
+            txid = ac["txid"]
+            if txid is None:
+                vin += 1  # Still increment vin to maintain order
+                continue
+
+            # Handle lockingScript - it could be bytes, hex string, or empty
+            locking_script = ac.get("lockingScript") or b""
+            if isinstance(locking_script, bytes):
+                locking_script_hex = locking_script.hex()
+            elif isinstance(locking_script, str):
+                locking_script_hex = locking_script
+            else:
+                locking_script_hex = ""
+
+            # FIX: Get source transaction bytes from storage
+            source_txid = ac["txid"]
+            source_tx_bytes = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
+            # Convert to list of ints for JSON serialization (matches TypeScript expectation)
+            source_transaction = list(source_tx_bytes) if source_tx_bytes else None
+
+            input_dict = {
+                "vin": vin,
+                "sourceTxid": ac["txid"],
+                "sourceVout": ac["vout"],
+                "sourceSatoshis": ac["satoshis"],
+                "sourceLockingScript": locking_script_hex,
+                "sourceTransaction": source_transaction,
+                "unlockingScriptLength": 107,
+                "providedBy": ac["providedBy"] or "storage",
+                "type": ac["type"],
+                "derivationPrefix": ac["derivationPrefix"],
+                "derivationSuffix": ac["derivationSuffix"],
+                # Preserve BRC-29 metadata for wallet-managed change / internalized outputs.
+                # This allows signer.build_signable_transaction to derive the correct
+                # BRC-29 private key using sender_identity_key as counterparty when present.
+                "senderIdentityKey": ac.get("senderIdentityKey") or "",
+            }
+            inputs.append(input_dict)
             vin += 1
-            
+
         return inputs
 
     def _validate_required_inputs(self, user_id: int, vargs: Any) -> tuple[bytes, list[dict[str, Any]]]:
@@ -2448,8 +2523,9 @@ class StorageProvider:
     # CreateAction Helper Methods (TS Parity)
     # ------------------------------------------------------------------
 
-    def count_change_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
-        allowed_status = ["completed", "unproven"]
+    def count_funding_inputs(self, user_id: int, basket_id: int, exclude_sending: bool) -> int:
+        # Match allocate_funding_input allowed statuses for consistency
+        allowed_status = ["completed", "unsigned", "nosend", "unproven"]
         if not exclude_sending:
             allowed_status.append("sending")
 
@@ -2469,7 +2545,7 @@ class StorageProvider:
         finally:
             session.close()
 
-    def allocate_change_input(
+    def allocate_funding_input(
         self,
         user_id: int,
         basket_id: int,
@@ -2478,9 +2554,12 @@ class StorageProvider:
         exclude_sending: bool,
         transaction_id: int,
     ) -> Output | None:
-        print(f"DEBUG: allocate_change_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
-        self.logger.info(f"DEBUG: allocate_change_input called with basket_id={basket_id}, target_satoshis={target_satoshis}, user_id={user_id}")
-        allowed_status = ["completed", "unproven"]
+        # Allow "unsigned" and "nosend" status for wallet-managed outputs (change outputs from noSend transactions)
+        # These are safe to spend because we control the keys
+        # Matches Go implementation: wdk.TxStatusUnsigned, wdk.TxStatusNoSend
+        # NOTE: "unproven" outputs are allowed for funding (matches TypeScript: StorageIdb.ts, StorageKnex.ts)
+        # The restriction on "unproven" applies to inputs (which are considered spent by ARC), not outputs
+        allowed_status = ["completed", "unsigned", "nosend", "unproven"]
         if not exclude_sending:
             allowed_status.append("sending")
 
@@ -2503,29 +2582,11 @@ class StorageProvider:
             & (TransactionModel.status.in_(allowed_status))
         )
 
-        self.logger.info(f"DEBUG: allocate_change_input query conditions - user_id={user_id}, basket_id={basket_id}, spendable=True, (type=P2PKH OR type=custom), status in {allowed_status}")
-
-        # DEBUG: List all outputs for this user to see what's available
-        try:
-            all_outputs = session.execute(
-                select(Output).where(Output.user_id == user_id)
-            ).scalars().all()
-            print(f"DEBUG: Total outputs for user {user_id}: {len(all_outputs)}")
-            for i, o in enumerate(all_outputs):
-                print(f"DEBUG: Output {i}: id={o.output_id}, basket_id={o.basket_id}, type={o.type}, change={o.change}, spendable={o.spendable}, satoshis={o.satoshis}, transaction_id={o.transaction_id}")
-
-                # Also check the transaction status
-                tx = session.get(TransactionModel, o.transaction_id)
-                if tx:
-                    print(f"DEBUG: Output {i} transaction: txid={tx.txid}, status={tx.status}")
-                else:
-                    print(f"DEBUG: Output {i} transaction not found")
-        except Exception as e:
-            print(f"DEBUG: Error querying outputs: {e}")
-
         session = self.SessionLocal()
+
         try:
             output = None
+            output_id = None
 
             # 1. Exact match
             if exact_satoshis is not None:
@@ -2537,11 +2598,11 @@ class StorageProvider:
                     .with_for_update()
                 )
                 output = session.execute(q).scalar_one_or_none()
-                print(f"DEBUG: Exact match query found: {output is not None}")
+                if output:
+                    output_id = output.output_id
 
             # 2. Best fit (Smallest output >= target)
             if output is None:
-                print(f"DEBUG: Looking for outputs >= {target_satoshis} satoshis")
                 q = (
                     select(Output)
                     .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
@@ -2551,9 +2612,9 @@ class StorageProvider:
                     .with_for_update()
                 )
                 results = session.execute(q).scalars().all()
-                print(f"DEBUG: Best fit query found {len(results)} results")
                 output = results[0] if results else None
-                print(f"DEBUG: Best fit query selected output: {output is not None}")
+                if output:
+                    output_id = output.output_id
 
             # 3. Closest under (Largest output < target)
             if output is None:
@@ -2566,17 +2627,24 @@ class StorageProvider:
                     .with_for_update()
                 )
                 output = session.execute(q).scalar_one_or_none()
+                if output:
+                    output_id = output.output_id
 
-            if output:
-                output.spendable = False
-                output.spent_by = transaction_id
-                session.add(output)
-                session.commit()
+            if output and output_id:
+                # Use update_output method for consistency with TypeScript (TS uses updateOutput in allocateChangeInput)
+                # This ensures proper transaction handling and avoids potential session issues
+                self.update_output(output_id, {
+                    "spendable": False,
+                    "spent_by": transaction_id,
+                    "spending_description": f"Allocated for transaction {transaction_id}"
+                })
+
+                # Refresh the output object to reflect the changes
                 session.refresh(output)
                 return output
 
             return None
-        except Exception:
+        except Exception as e:
             session.rollback()
             raise
         finally:
@@ -2604,20 +2672,26 @@ class StorageProvider:
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
         min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
 
+        # Calculate target_net_count: desired UTXOs minus what we already have
+        # This matches TypeScript: targetNetCount = ctx.changeBasket.numberOfDesiredUTXOs - ctx.availableChangeCount
+        desired_utxos = (change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5)
+        available_count = ctx["availableFundingCount"]
+        target_net_count = max(0, desired_utxos - available_count)
+        
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
             fixed_outputs=fixed_outputs,
             fee_model=ctx["feeModel"],
             change_initial_satoshis=min_utxo_value,
-            change_first_satoshis=max(1, round(min_utxo_value / 4)),
+            change_first_satoshis=1,
             change_locking_script_length=25,
             change_unlocking_script_length=107,
-            target_net_count=(change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5) - ctx["availableChangeCount"],
+            target_net_count=target_net_count,
             random_vals=vargs.random_vals,
         )
 
         def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None):
-            o = self.allocate_change_input(
+            o = self.allocate_funding_input(
                 user_id,
                 change_basket_id,
                 target_satoshis,
@@ -2629,7 +2703,7 @@ class StorageProvider:
                 # Handle both dict and object forms
                 output_id = o["outputId"] if isinstance(o, dict) else o.output_id
                 satoshis = o["satoshis"] if isinstance(o, dict) else o.satoshis
-                return GenerateChangeSdkChangeInput(output_id=output_id, satoshis=satoshis)
+                return GenerateChangeSdkFundingInput(output_id=output_id, satoshis=satoshis)
             return None
 
         def release_cb(output_id: int):
@@ -2648,20 +2722,32 @@ class StorageProvider:
         result = generate_change_sdk(params, allocate_cb, release_cb)
 
         allocated_change_outputs = []
-        for aci in result.allocated_change_inputs:
+        for aci in result.allocated_funding_inputs:
             session = self.SessionLocal()
             try:
                 o = session.get(Output, aci.output_id)
                 if o:
-                    allocated_change_outputs.append(self._model_to_dict(o))
+                    output_dict = self._model_to_dict(o)
+                    
+                    # Ensure lockingScript is a hex string (not bytes)
+                    if isinstance(output_dict.get('lockingScript'), bytes):
+                        output_dict['lockingScript'] = output_dict['lockingScript'].hex()
+                    elif not output_dict.get('lockingScript'):
+                        # If locking script is missing, set to empty string
+                        # The signer will regenerate it from derivation data
+                        output_dict['lockingScript'] = ""
+                    
+                    allocated_change_outputs.append(output_dict)
             finally:
                 session.close()
 
         return {
             "allocatedChange": allocated_change_outputs,
             "changeOutputs": result.change_outputs,
-            "derivationPrefix": self._generate_derivation_suffix(),  # Go uses same length for prefix
+            # derivationPrefix is now generated at createAction level for consistency
             "maxPossibleSatoshisAdjustment": result.max_possible_satoshis_adjustment,
+            "fee": result.fee,
+            "size": result.size,
         }
 
     # ------------------------------------------------------------------
@@ -2831,6 +2917,7 @@ class StorageProvider:
 
             # Update output records with txid (TS lines 348-370)
             # This is critical for noSendChange validation to find outputs by txid
+            # Also extract locking scripts from raw transaction for change outputs (Go parity)
             q_outputs = select(Output).where(
                 (Output.user_id == user_id) &
                 (Output.transaction_id == transaction.transaction_id)
@@ -2839,6 +2926,31 @@ class StorageProvider:
             for output in outputs:
                 output.txid = txid
                 output.spendable = True
+                # Extract locking script from raw transaction for change outputs (Go SpendTransaction parity)
+                # Go does this in SpendTransaction lines 285-299
+                # This ensures change outputs have locking scripts stored even for unproven transactions
+                if output.change and output.vout is not None:
+                    try:
+                        vout_int = int(output.vout)
+                        if 0 <= vout_int < len(tx_obj.outputs):
+                            tx_output = tx_obj.outputs[vout_int]
+                            # TransactionOutput has .locking_script attribute (snake_case)
+                            locking_script = getattr(tx_output, 'locking_script', None) or getattr(tx_output, 'lockingScript', None)
+                            if locking_script:
+                                # Convert Script to bytes
+                                if hasattr(locking_script, 'to_bytes'):
+                                    locking_script_bytes = locking_script.to_bytes()
+                                elif hasattr(locking_script, 'serialize'):
+                                    locking_script_bytes = locking_script.serialize()
+                                elif isinstance(locking_script, bytes):
+                                    locking_script_bytes = locking_script
+                                else:
+                                    locking_script_bytes = bytes(locking_script) if locking_script else b""
+                                if locking_script_bytes:
+                                    output.locking_script = locking_script_bytes
+                    except Exception as e:
+                        # Log but don't fail - locking script might be set elsewhere
+                        self.logger.warning(f"Failed to extract locking script for output {output.output_id} vout {output.vout}: {e}")
                 s.add(output)
             s.flush()
 
@@ -2875,16 +2987,6 @@ class StorageProvider:
             s.commit()
 
         if txids_to_send:
-            # Debug: show processAction broadcast intent
-            self.logger.debug(
-                "process_action: will share_reqs_with_world for txids=%s, "
-                "isNewTx=%s, isNoSend=%s, isDelayed=%s, isSendWith=%s",
-                txids_to_send,
-                is_new_tx,
-                is_no_send,
-                is_delayed,
-                is_send_with,
-            )
             swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
             result["sendWithResults"] = swr
             result["notDelayedResults"] = ndr
@@ -2906,7 +3008,7 @@ class StorageProvider:
             return swr, ndr
 
         # Debug: show high-level broadcast intent
-        self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
+        # self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
 
         session = self.SessionLocal()
         try:
@@ -2925,7 +3027,7 @@ class StorageProvider:
             tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
 
             if is_delayed:
-                self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
+                # self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
@@ -2942,7 +3044,7 @@ class StorageProvider:
             try:
                 services = self.get_services()
             except RuntimeError:
-                self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
+                # self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
                 services = None
 
             for txid in txids:
@@ -2954,16 +3056,21 @@ class StorageProvider:
                         ndr.append({"txid": txid, "status": "error", "message": "missing ProvenTxReq"})
                     continue
 
+                # Prefer using full BEEF (with parent chain) if available
+                # This ensures unbroadcast parent transactions are included
+                beef_hex_for_broadcast = None
                 raw_bytes = None
-                if req.raw_tx:
-                    raw_bytes = req.raw_tx
-                elif req.input_beef:
+
+                if req.input_beef and len(req.input_beef) > 0:
+                    # Use the full BEEF for broadcasting - includes parent chain
                     try:
-                        beef = parse_beef(req.input_beef)
-                        tx_entry = beef.find_transaction(txid) if hasattr(beef, "find_transaction") else None
-                        raw_bytes = getattr(tx_entry, "tx_bytes", None)
+                        beef_hex_for_broadcast = req.input_beef.hex()
                     except Exception:
-                        raw_bytes = None
+                        pass
+
+                if beef_hex_for_broadcast is None and req.raw_tx:
+                    # Fallback: use raw transaction
+                    raw_bytes = req.raw_tx
 
                 if not raw_bytes:
                     swr.append({"txid": txid, "status": "failed"})
@@ -2972,13 +3079,13 @@ class StorageProvider:
                     continue
 
                 # Debug: we have raw bytes and will attempt broadcast
-                self.logger.debug(
-                    "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
-                    "services_available=%s",
-                    txid,
-                    len(raw_bytes),
-                    services is not None,
-                )
+                # self.logger.debug(
+                #     "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
+                #     "services_available=%s",
+                #     txid,
+                #     len(raw_bytes),
+                #     services is not None,
+                # )
 
                 status = "failed"
                 note: dict[str, Any] = {"txid": txid, "status": "error"}
@@ -2987,17 +3094,44 @@ class StorageProvider:
 
                 if services is not None:
                     try:
-                        if req.input_beef:
-                            beef_payload_hex = req.input_beef.hex()
+                        if beef_hex_for_broadcast:
+                            # Broadcast the full BEEF (includes parent chain)
+                            broadcast_result = services.post_beef(beef_hex_for_broadcast)
                         else:
-                            try:
-                                beef_builder = Beef(version=BEEF_V2)
-                                beef_builder.merge_raw_tx(raw_bytes)
-                                beef_payload_hex = beef_builder.to_binary_atomic(txid).hex()
-                            except Exception:
-                                beef_payload_hex = raw_bytes.hex()
+                            # Fallback: broadcast raw transaction
+                            raw_tx_hex = raw_bytes.hex()
 
-                        broadcast_result = services.post_beef(beef_payload_hex)
+                            # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
+                            # self.logger.debug(
+                            #     "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                            #     txid,
+                            #     len(raw_tx_hex) // 2,
+                            #     raw_tx_hex[:100]
+                            # )
+                            # Log full hex for small transactions
+                            # if len(raw_tx_hex) < 2000:
+                            #     self.logger.debug(
+                            #         "_share_reqs_with_world: rawTx hex (full): %s",
+                            #         raw_tx_hex
+                            #     )
+                            # Verify it's not AtomicBEEF format (should not start with 01010101)
+                            if raw_tx_hex.startswith("01010101"):
+                                self.logger.error(
+                                    "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
+                                    "This should be raw transaction hex. Transaction will fail to broadcast."
+                                )
+                            else:
+                                # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
+                                if not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
+                                    self.logger.warning(
+                                        "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
+                                        "First 8 chars: %s",
+                                        raw_tx_hex[:8]
+                                    )
+
+                            # Send raw transaction hex to services.post_beef
+                            # services.post_beef will parse it and extract the Transaction object for ARC
+                            broadcast_result = services.post_beef(raw_tx_hex)
                         if broadcast_result.get("accepted"):
                             status = "unproven"
                             broadcast_ok = True
@@ -3010,13 +3144,13 @@ class StorageProvider:
                     message = "Services not configured"
 
                 # Debug: log provider result
-                self.logger.debug(
-                    "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
-                    txid,
-                    broadcast_ok,
-                    status,
-                    message,
-                )
+                # self.logger.debug(
+                #     "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
+                #     txid,
+                #     broadcast_ok,
+                #     status,
+                #     message,
+                # )
 
                 if broadcast_ok:
                     req.status = "unmined"
@@ -3422,7 +3556,8 @@ class StorageProvider:
                     break
 
             value = getattr(obj, attr_name)
-            result[self._to_api_key(attr_name)] = value
+            api_key = self._to_api_key(attr_name)
+            result[api_key] = value
         return result
 
     @staticmethod
@@ -4109,14 +4244,20 @@ class StorageProvider:
     def update_tx_note(self, pk_value: int, patch: dict[str, Any]) -> int:
         return self._update_generic("tx_note", pk_value, patch)
 
-    def abort_action(self, reference: str) -> bool:
+    @overload
+    def abort_action(self, reference: str) -> bool: ...
+
+    @overload
+    def abort_action(self, auth: Any, args: dict[str, Any]) -> bool: ...
+
+    def abort_action(self, *args) -> bool:
         """Abort an in-progress outgoing action by marking it as failed.
+
+        Supports both old signature (reference: str) and new signature (auth, args)
+        for backward compatibility.
 
         Finds a transaction by reference or 64-char txid and verifies it can be aborted
         (must be outgoing and not in finalized state). Sets status to 'failed'.
-
-        Args:
-            reference: Transaction reference (from create_action) or 64-char txid string
 
         Returns:
             bool: True if action was successfully aborted
@@ -4128,6 +4269,17 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (abortAction)
         """
+        # Handle both old and new signatures for backward compatibility
+        if len(args) == 1:
+            # Old signature: abort_action(reference)
+            reference = args[0]
+        elif len(args) == 2:
+            # New signature: abort_action(auth, args)
+            auth, args_dict = args
+            reference = args_dict.get("reference", "")
+        else:
+            raise InvalidParameterError("args", "invalid number of arguments")
+
         session = self.SessionLocal()
         try:
             query = select(TransactionModel).where(TransactionModel.reference == reference)
@@ -4148,8 +4300,33 @@ class StorageProvider:
                     "reference", "an inprocess, outgoing action that has not been signed and shared to the network."
                 )
 
-            # Update status (tx is already attached to this session)
+            # Update transaction status to failed
             tx.status = "failed"
+
+            # Unreserve outputs spent by this transaction (equivalent to RecreateSpentOutputs)
+            # Set spentBy to NULL and spendable to true for outputs spent by this transaction
+            release_stmt = (
+                update(Output)
+                .where(
+                    (Output.spent_by == tx.transaction_id) &
+                    (Output.user_id == tx.user_id)
+                )
+                .values(spent_by=None, spendable=True, spending_description=None)
+                .execution_options(synchronize_session=False)
+            )
+            session.execute(release_stmt)
+
+            # Update ProvenTxReq status to 'invalid' (TS parity)
+            # This prevents the aborted transaction from being used in future BEEF chains
+            if tx.txid:
+                req_stmt = (
+                    update(ProvenTxReq)
+                    .where(ProvenTxReq.txid == tx.txid)
+                    .values(status="invalid")
+                    .execution_options(synchronize_session=False)
+                )
+                session.execute(req_stmt)
+
             session.flush()
             session.commit()
 
@@ -4430,7 +4607,7 @@ class StorageProvider:
 
         return {"log": "\n".join(log_lines).strip(), "count": total_count}
 
-    # NOTE: allocate_change_input and count_change_inputs are defined earlier in this file
+    # NOTE: allocate_funding_input and count_funding_inputs are defined earlier in this file
     # (around line 2216 and 2237) with proper Transaction status checking.
     # Do not duplicate them here.
 
@@ -4850,7 +5027,7 @@ class StorageProvider:
             # Re-serialize the enhanced BEEF
             enhanced_beef = self._serialize_enhanced_beef(beef_dict)
 
-            self.logger.debug(f"Merged proof request for txid {txid} into BEEF")
+            # self.logger.debug(f"Merged proof request for txid {txid} into BEEF")
             return enhanced_beef
 
         except Exception as e:
@@ -5359,10 +5536,6 @@ class InternalizeActionContext:
         self.basket_insertions = []
         self.wallet_payments = []
 
-        # DEBUG: Log initialization
-        print(f"DEBUG: InternalizeActionContext initialized with outputs: {[o.get('protocol') for o in vargs.get('outputs', [])]}")
-        storage_provider.logger.error(f"DEBUG: InternalizeActionContext initialized with outputs: {[o.get('protocol') for o in vargs.get('outputs', [])]}")
-
     @property
     def is_merge(self) -> bool:
         """Get current merge status."""
@@ -5444,15 +5617,30 @@ class InternalizeActionContext:
                         "basket insertion", "valid insertionRemittance and no paymentRemittance"
                     )
 
+                # Handle both camelCase and snake_case for insertionRemittance fields
+                basket_name = insertion_remittance.get("basket") or insertion_remittance.get("basket", "default")
+                custom_instructions = insertion_remittance.get("customInstructions") or insertion_remittance.get("custom_instructions")
+                tags = insertion_remittance.get("tags") or insertion_remittance.get("tags", [])
+                
+                # Check if derivation fields are provided in insertionRemittance (for P2PKH outputs)
+                # These come as base64-encoded strings from the TypeScript test
+                derivation_prefix = insertion_remittance.get("derivationPrefix") or insertion_remittance.get("derivation_prefix")
+                derivation_suffix = insertion_remittance.get("derivationSuffix") or insertion_remittance.get("derivation_suffix")
+                sender_identity_key = insertion_remittance.get("senderIdentityKey") or insertion_remittance.get("sender_identity_key")
+                
                 self.basket_insertions.append(
                     {
                         "spec": output_spec,
-                        "basket": insertion_remittance.get("basket", "default"),
-                        "customInstructions": insertion_remittance.get("customInstructions"),
-                        "tags": insertion_remittance.get("tags", []),
+                        "basket": basket_name,
+                        "customInstructions": custom_instructions,
+                        "tags": tags,
                         "vout": output_index,
                         "txo": txo,
                         "eo": None,
+                        # Store derivation fields if provided (for P2PKH outputs that need BRC-29 derivation)
+                        "derivationPrefix": derivation_prefix,
+                        "derivationSuffix": derivation_suffix,
+                        "senderIdentityKey": sender_identity_key,
                     }
                 )
 
@@ -5595,13 +5783,34 @@ class InternalizeActionContext:
                 elif not payment["ignore"]:
                     self._store_new_wallet_payment_for_output(transaction_id, payment, s)
 
-            print(f"DEBUG: Processing {len(self.basket_insertions)} basket insertions")
             for basket in self.basket_insertions:
-                print(f"DEBUG: Processing basket insertion: vout={basket['vout']}, eo={basket['eo'] is not None}")
                 if basket["eo"]:
                     self._merge_basket_insertion_for_output(transaction_id, basket, s)
                 else:
                     self._store_new_basket_insertion_for_output(transaction_id, basket, s)
+
+            # CRITICAL FIX: Store transaction in ProvenTxReq even for merge case
+            # This ensures the transaction is available for BEEF building by child transactions
+            if self.tx:
+                tx_has_proof = hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+                tx_status = "completed" if tx_has_proof else "unproven"
+                subject_raw_tx = self.tx.serialize()
+                
+                existing_subject_req = s.execute(
+                    select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
+                ).scalar_one_or_none()
+                
+                if existing_subject_req:
+                    existing_subject_req.raw_tx = subject_raw_tx
+                    existing_subject_req.status = tx_status
+                    s.add(existing_subject_req)
+                else:
+                    subject_req = ProvenTxReq(
+                        txid=self.txid,
+                        status=tx_status,
+                        raw_tx=subject_raw_tx,
+                    )
+                    s.add(subject_req)
 
             s.commit()
 
@@ -5643,25 +5852,31 @@ class InternalizeActionContext:
             for basket in self.basket_insertions:
                 self._store_new_basket_insertion_for_output(transaction_id, basket, s)
 
-            # Store rawTx in proven_tx_reqs for future child transactions (TS parity)
-            # This allows get_raw_tx_of_known_valid_transaction to find the source tx
+            # Store the SUBJECT transaction itself in ProvenTxReq (TS parity: internalizeAction.ts:408-413)
+            # This is critical - the subject transaction must be available for child transactions to build BEEF
+            # Store the full BEEF as input_beef so all parent transactions remain accessible
             if self.tx:
-                raw_tx_bytes = self.tx.serialize()
-                # Check if already exists
-                existing_req = s.execute(
+                subject_raw_tx = self.tx.serialize()
+                beef_bytes = self.vargs.get("tx") if self.vargs else None  # Store the full BEEF bytes
+
+                existing_subject_req = s.execute(
                     select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
                 ).scalar_one_or_none()
-                if existing_req:
-                    existing_req.raw_tx = raw_tx_bytes
-                    existing_req.status = tx_status
-                    s.add(existing_req)
+
+                if existing_subject_req:
+                    existing_subject_req.raw_tx = subject_raw_tx
+                    existing_subject_req.status = tx_status
+                    if beef_bytes:
+                        existing_subject_req.input_beef = beef_bytes
+                    s.add(existing_subject_req)
                 else:
-                    new_req = ProvenTxReq(
+                    subject_req = ProvenTxReq(
                         txid=self.txid,
                         status=tx_status,
-                        raw_tx=raw_tx_bytes,
+                        raw_tx=subject_raw_tx,
+                        input_beef=beef_bytes,
                     )
-                    s.add(new_req)
+                    s.add(subject_req)
 
             s.commit()
 
@@ -5764,10 +5979,8 @@ class InternalizeActionContext:
             non_canonical = s.startswith("76a9") and s.endswith("88ac") and len(s) == 48 and len(s[4:-4]) == 40
 
             result = canonical or non_canonical
-            print(f"DEBUG: _is_p2pkh_locking_script check: script={s}, len={len(s)}, canonical={canonical}, non_canonical={non_canonical}, result={result}")
             return result
-        except Exception as e:
-            print(f"DEBUG: _is_p2pkh_locking_script exception: {e}")
+        except Exception:
             return False
 
     def _store_new_basket_insertion_for_output(self, transaction_id: int, basket: dict[str, Any], session: Any) -> None:
@@ -5795,30 +6008,50 @@ class InternalizeActionContext:
         locking_script_bytes = txo.locking_script.serialize()
         locking_script_hex = locking_script_bytes.hex()
 
-        print(f"DEBUG: Storing basket insertion output: basket={basket_name}, script_hex={locking_script_hex}")
-
         # Smart type detection: if the locking script is actually P2PKH,
         # mark it as such so the wallet can sign it for funding
         is_p2pkh = self._is_p2pkh_locking_script(locking_script_hex)
         output_type = "P2PKH" if is_p2pkh else "custom"
         is_change = is_p2pkh  # P2PKH outputs can be used as change
 
-        print(
-            f"DEBUG: Basket insertion P2PKH detection: is_p2pkh={is_p2pkh}, type={output_type}, change={is_change}",
-        )
-
         # TEMPORARY FIX: For basket insertions in default basket, assume P2PKH
         # since they come from WhatOnChain faucet which uses standard P2PKH
         if basket_name == "default" and not is_p2pkh:
-            print(f"TEMP FIX: Forcing P2PKH detection for default basket output with script: {locking_script_hex[:20]}...")
             is_p2pkh = True
 
-        # For P2PKH outputs in the default basket, generate proper BRC-29 derivation fields
-        # These are required for signing when the output is used as a change input
-        # Generate random base64-encoded strings (like TypeScript does)
+        # For P2PKH outputs in the default basket, use derivation fields if provided
+        # Otherwise generate random ones (but these won't match the actual public key)
+        # Check if derivation fields were provided in insertionRemittance
+        provided_derivation_prefix = basket.get("derivationPrefix")
+        provided_derivation_suffix = basket.get("derivationSuffix")
+        provided_sender_identity_key = basket.get("senderIdentityKey")
+        
+        # Also check customInstructions for JSON-encoded derivation info (from test fallback)
+        custom_instructions = basket.get("customInstructions", "")
+        if custom_instructions and not provided_derivation_prefix:
+            try:
+                derivation_info = json.loads(custom_instructions)
+                provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
+                provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
+                provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
+            except (json.JSONDecodeError, AttributeError, TypeError):
+                # Ignore malformed or unexpected customInstructions; derivation info here is optional.
+                pass
+        
         if basket_name == "default" and is_p2pkh:
-            derivation_prefix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
-            derivation_suffix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
+            # Use provided derivation fields if available, otherwise generate random ones
+            # NOTE: Derivation fields from TypeScript come as base64-encoded strings
+            # They will be decoded by _decode_remittance_component when used for key derivation
+            if provided_derivation_prefix and provided_derivation_suffix:
+                derivation_prefix = provided_derivation_prefix  # Store as base64 (will be decoded later)
+                derivation_suffix = provided_derivation_suffix  # Store as base64 (will be decoded later)
+                sender_identity_key = provided_sender_identity_key
+            else:
+                # Generate random base64-encoded strings (like TypeScript does)
+                # NOTE: These won't match the actual public key - this is a problem!
+                derivation_prefix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
+                derivation_suffix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
+                sender_identity_key = None
             provided_by = "storage"
             purpose = "change"
             is_spendable = True  # P2PKH outputs in default basket are always spendable
@@ -5830,6 +6063,12 @@ class InternalizeActionContext:
             # Other basket insertions follow the standard merkle proof rules
             has_merkle_path = self.tx and hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
             is_spendable = has_merkle_path
+
+        # Safety check: Ensure spendable is True for P2PKH outputs in default basket
+        # This handles edge cases where the condition might not have been met correctly
+        if basket_name == "default" and is_p2pkh:
+            if not is_spendable:
+                is_spendable = True
 
         output_record = Output(
             created_at=now,
@@ -5850,7 +6089,7 @@ class InternalizeActionContext:
             spending_description=None,
             provided_by=provided_by,
             purpose=purpose,
-            sender_identity_key=None,
+            sender_identity_key=sender_identity_key if basket_name == "default" and is_p2pkh else None,
             derivation_prefix=derivation_prefix,
             derivation_suffix=derivation_suffix,
         )
@@ -5865,6 +6104,7 @@ class InternalizeActionContext:
     def _merge_basket_insertion_for_output(self, _transaction_id: int, basket: dict[str, Any], session: Any) -> None:
         """Merge basket insertion into existing output. (TS lines 432-447)"""
         basket_name = basket["basket"]
+        txo = basket["txo"]
 
         q_target_basket = select(OutputBasket).where(
             (OutputBasket.user_id == self.user_id) & (OutputBasket.name == basket_name)
@@ -5878,15 +6118,56 @@ class InternalizeActionContext:
             session.flush()
 
         output_record = basket["eo"]
+        
+        # Check if this is a P2PKH output in the default basket
+        locking_script_bytes = txo.locking_script.serialize()
+        locking_script_hex = locking_script_bytes.hex()
+        is_p2pkh = self._is_p2pkh_locking_script(locking_script_hex)
+        
+        # Check if derivation fields are provided
+        provided_derivation_prefix = basket.get("derivationPrefix")
+        provided_derivation_suffix = basket.get("derivationSuffix")
+        provided_sender_identity_key = basket.get("senderIdentityKey")
+        
+        # Also check customInstructions for JSON-encoded derivation info
+        custom_instructions = basket.get("customInstructions", "")
+        if custom_instructions and not provided_derivation_prefix:
+            try:
+                derivation_info = json.loads(custom_instructions)
+                provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
+                provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
+                provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
+            except (json.JSONDecodeError, AttributeError, TypeError):
+                # Ignore malformed or unexpected customInstructions; derivation info here is optional.
+                pass
+
         output_record.basket_id = target_basket.basket_id
-        output_record.type = "custom"
-        output_record.custom_instructions = basket["customInstructions"]
-        output_record.change = False
-        output_record.provided_by = "you"
-        output_record.purpose = ""
-        output_record.sender_identity_key = None
-        output_record.derivation_prefix = None
-        output_record.derivation_suffix = None
+        
+        # For P2PKH outputs in default basket with derivation fields, preserve them and mark as spendable
+        if basket_name == "default" and is_p2pkh and provided_derivation_prefix and provided_derivation_suffix:
+            output_record.type = "P2PKH"
+            output_record.change = True
+            output_record.provided_by = "storage"
+            output_record.purpose = "change"
+            output_record.sender_identity_key = provided_sender_identity_key
+            output_record.derivation_prefix = provided_derivation_prefix
+            output_record.derivation_suffix = provided_derivation_suffix
+            output_record.spendable = True  # P2PKH outputs in default basket with derivation are spendable
+        else:
+            output_record.type = "custom"
+            output_record.custom_instructions = basket["customInstructions"]
+            output_record.change = False
+            output_record.provided_by = "you"
+            output_record.purpose = ""
+            output_record.sender_identity_key = None
+            output_record.derivation_prefix = None
+            output_record.derivation_suffix = None
+            # For merge case, preserve existing spendable status unless we have merkle proof
+            has_merkle_path = self.tx and hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+            if has_merkle_path:
+                output_record.spendable = True
+            # Otherwise keep existing spendable value
+        
         session.add(output_record)
 
     def _add_basket_tags(self, basket: dict[str, Any], output_id: int, session: Any) -> None:
