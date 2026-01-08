@@ -157,9 +157,10 @@ def wallet_error_to_json(error: Exception) -> dict[str, Any]:
     # Check if it's InsufficientFundsError from generate_change.py
     if isinstance(error, GenerateChangeInsufficientFundsError):
         # Map required/short to totalSatoshisNeeded/moreSatoshisNeeded (camelCase for TS)
+        # Use a generic, non-sensitive message instead of the raw exception text.
         return {
             "name": "WERR_INSUFFICIENT_FUNDS",
-            "message": str(error),
+            "message": "Insufficient funds.",
             "isError": True,
             "code": 7,
             "totalSatoshisNeeded": error.required,
