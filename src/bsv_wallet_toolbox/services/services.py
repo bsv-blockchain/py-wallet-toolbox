@@ -1563,12 +1563,7 @@ class Services(WalletServices):
                 provider_errors["bitails"] = str(e)
                 self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
 
-        # Fallback: If TAAL is not configured, return mocked success for test compatibility
-        if not self.arc_taal:
-            self.logger.debug("Services.post_beef: TAAL not configured, returning mocked success")
-            return {"accepted": True, "txid": txid, "message": "mocked"}
-
-        # Otherwise return failure - all configured providers were attempted
+        # Return failure - all configured providers were attempted
         message = provider_errors.get("arcTaal", "TAAL broadcast failed")
 
         # Log all provider errors for debugging

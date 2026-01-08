@@ -2378,9 +2378,15 @@ class StorageProvider:
             source_txid = xi["sourceTxid"]
             source_vout = xi["sourceVout"]
 
-            # Get source transaction from storage if not provided
+            # Get source transaction from storage if not provided.
+            # Align behavior with TypeScript: only fetch when
+            # vargs.includeAllSourceTransactions && vargs.isSignAction.
             source_transaction = xi.get("sourceTransaction")
-            if source_transaction is None:
+            if (
+                source_transaction is None
+                and vargs.get("includeAllSourceTransactions", False)
+                and vargs.get("isSignAction", False)
+            ):
                 source_transaction = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
 
             session = self.SessionLocal()
