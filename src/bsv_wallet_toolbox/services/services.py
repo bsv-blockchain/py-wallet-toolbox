@@ -12,7 +12,7 @@ Phase 4 Implementation Status:
 
 ✅ Phase 4 Completed:
   ✅ Multi-provider strategy: Implemented for all service methods
-     - post_beef(): TAAL only (others commented out)
+     - post_beef(): ARC multi-provider failover (TAAL → GorillaPool → Bitails)
      - getMerklePath(): WhatsOnChain → Bitails with notes aggregation
      - getRawTx(): Multi-provider with txid validation
      - getUtxoStatus(): Multi-provider with 2-retry strategy

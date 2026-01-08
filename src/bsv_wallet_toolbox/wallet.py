@@ -1405,7 +1405,6 @@ class Wallet:
         # No need to recompute here - validation handles it correctly
 
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
-        result: dict[str, Any] = {}
         try:
             signer_result = signer_create_action(self, auth, vargs)
             trace(logger, "wallet.create_action.signer_result", originator=originator, signer_result=getattr(signer_result, "__dict__", signer_result))
@@ -1414,6 +1413,7 @@ class Wallet:
             raise
 
         # Convert CreateActionResultX to BRC-100 CreateActionResult
+        result: dict[str, Any] = {}
         # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
         if signer_result.txid is not None:
             result["txid"] = signer_result.txid
