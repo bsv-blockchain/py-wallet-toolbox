@@ -288,8 +288,6 @@ def build_signable_transaction(
         storage_input = input_data["storageInput"]
         args_input = input_data["argsInput"]
 
-        vin = storage_input.get("vin", 0)
-
         # Skip inputs that are handled via BEEF (they don't need explicit input processing)
         if storage_input.get("beef"):
             continue
@@ -343,8 +341,6 @@ def build_signable_transaction(
         # Go/TS use base64 strings directly in keyID: keyID = "base64_prefix base64_suffix"
         derivation_prefix_b64 = storage_input.get("derivationPrefix") or ""
         derivation_suffix_b64 = storage_input.get("derivationSuffix") or ""
-        decoded_prefix = _decode_remittance_component(derivation_prefix_b64)  # For display/debug only
-        decoded_suffix = _decode_remittance_component(derivation_suffix_b64)  # For display/debug only
         unlocker_pub = storage_input.get("senderIdentityKey") or ""
         # Store base64 strings directly (not decoded) to match keyID format
         pending_storage_inputs.append(
@@ -481,9 +477,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     # So we need: key_id = f"{prefix} {suffix}" (no strip) to match exactly
                     key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}"
                     locker_pub = pdi.unlocker_pub_key
-                    
-                    import logging
-                    logger = logging.getLogger(__name__)
+
                     logger.debug(f"🔑 Key derivation for input {input_data.source_output_index}:")
                     logger.debug(f"  derivation_prefix: {pdi.derivation_prefix!r} (len={len(pdi.derivation_prefix)})")
                     logger.debug(f"  derivation_suffix: {pdi.derivation_suffix!r} (len={len(pdi.derivation_suffix)})")

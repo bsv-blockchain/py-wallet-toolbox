@@ -2367,37 +2367,9 @@ class StorageProvider:
         #   - Uses storageInput.sourceTransaction if present
         #   - Falls back to sourceTXID if sourceTransaction is undefined
         # - Wire protocol (WalletWireTransceiver.ts:387-398) only sends tx + reference
-        # ===== END TYPESCRIPT ANALYSIS =====
-
-        # ===== COMPARISON: GO vs TYPESCRIPT vs PYTHON =====
-        # GO IMPLEMENTATION:
-        # - resultInputForKnownUTXO: Always sets SourceTxID, conditionally sets SourceTransaction
-        # - Condition: params.IncludeInputSourceRawTxs parameter
-        # - Assembler: If SourceTransaction present, uses it; else falls back to lockingScript+satoshis
-        # - BEEF: Includes source transactions when available
-        #
-        # TYPESCRIPT IMPLEMENTATION:
-        # - createNewInputs: Always sets sourceTxid, conditionally sets sourceTransaction
-        # - Condition: vargs.includeAllSourceTransactions && vargs.isSignAction
-        # - buildSignableTransaction: Uses sourceTransaction if present, falls back to sourceTXID
-        # - Wire protocol: Only sends BEEF tx + reference (no separate inputs array)
-        #
-        # PYTHON IMPLEMENTATION (CURRENT):
-        # - _create_new_inputs: Always sets sourceTxid, NEVER sets sourceTransaction (always None)
-        # - _merge_allocated_change_beefs: Creates BEEF with source transactions via get_beef_for_transaction
-        # - build_signable_transaction: Looks for sourceTransaction in storage inputs, falls back to sourceTXID
-        # - create_action: Returns inputs array + signableTransaction with BEEF
-        #
-        # KEY DIFFERENCES IDENTIFIED:
-        # 1. PYTHON: sourceTransaction is ALWAYS None in inputs array - this is the bug!
-        # 2. GO/TS: Conditionally include sourceTransaction based on parameters
-        # 3. TS: Uses includeAllSourceTransactions flag, GO uses IncludeInputSourceRawTxs
-        # 4. PYTHON: Includes both inputs array AND signableTransaction.tx BEEF
-        # 5. TS: Only sends signableTransaction.tx BEEF (no separate inputs array)
-        #
-        # THE BUG: Python never populates sourceTransaction in the inputs returned to signer,
-        # so build_signable_transaction cannot find source transactions for signing validation.
-        # ===== END COMPARISON =====
+        # NOTE: Python implementation differs from Go/TypeScript - sourceTransaction is always None
+        # in inputs array, which prevents proper signing validation. Go/TS conditionally include
+        # sourceTransaction based on parameters (includeAllSourceTransactions/IncludeInputSourceRawTxs).
 
         inputs = []
         vin = 0
@@ -2655,7 +2627,7 @@ class StorageProvider:
             if output and output_id:
                 # Use update_output method for consistency with TypeScript (TS uses updateOutput in allocateChangeInput)
                 # This ensures proper transaction handling and avoids potential session issues
-                updated = self.update_output(output_id, {
+                self.update_output(output_id, {
                     "spendable": False,
                     "spent_by": transaction_id,
                     "spending_description": f"Allocated for transaction {transaction_id}"
@@ -3009,16 +2981,6 @@ class StorageProvider:
             s.commit()
 
         if txids_to_send:
-            # Debug: show processAction broadcast intent
-            # self.logger.debug(
-            #     "process_action: will share_reqs_with_world for txids=%s, "
-            #     "isNewTx=%s, isNoSend=%s, isDelayed=%s, isSendWith=%s",
-            #     txids_to_send,
-            #     is_new_tx,
-            #     is_no_send,
-            #     is_delayed,
-            #     is_send_with,
-            # )
             swr, ndr = self._share_reqs_with_world(auth, txids_to_send, is_delayed)
             result["sendWithResults"] = swr
             result["notDelayedResults"] = ndr
@@ -6043,7 +6005,6 @@ class InternalizeActionContext:
         # TEMPORARY FIX: For basket insertions in default basket, assume P2PKH
         # since they come from WhatOnChain faucet which uses standard P2PKH
         if basket_name == "default" and not is_p2pkh:
-            print(f"TEMP FIX: Forcing P2PKH detection for default basket output with script: {locking_script_hex[:20]}...")
             is_p2pkh = True
 
         # For P2PKH outputs in the default basket, use derivation fields if provided
@@ -6057,7 +6018,6 @@ class InternalizeActionContext:
         custom_instructions = basket.get("customInstructions", "")
         if custom_instructions and not provided_derivation_prefix:
             try:
-                import json
                 derivation_info = json.loads(custom_instructions)
                 provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
                 provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
@@ -6160,14 +6120,14 @@ class InternalizeActionContext:
         custom_instructions = basket.get("customInstructions", "")
         if custom_instructions and not provided_derivation_prefix:
             try:
-                import json
                 derivation_info = json.loads(custom_instructions)
                 provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
                 provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
                 provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
             except (json.JSONDecodeError, AttributeError, TypeError):
+                # Ignore malformed or unexpected customInstructions; derivation info here is optional.
                 pass
-        
+
         output_record.basket_id = target_basket.basket_id
         
         # For P2PKH outputs in default basket with derivation fields, preserve them and mark as spendable

@@ -114,7 +114,6 @@ markers = [
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 # Truncate long assertion diffs to avoid massive output
-maxfail = 1
 
 [tool.coverage.run]
 source = ["src"]

@@ -449,7 +449,5 @@ class CreateActionTransactionAssembler:
         p2pkh = P2PKH()
         locking_script = p2pkh.lock(derived_pub_key.hash160())
 
-        print(f"  Derived public key: {derived_pub_key.hex()}")
-        print(f"  Generated locking script: {locking_script.hex()}")
         return locking_script
 

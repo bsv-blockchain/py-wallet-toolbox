@@ -348,11 +348,6 @@ class ARC:
             logger = logging.getLogger(__name__)
             logger.debug(f"ARC {self.name} HTTP response status: {response.status_code}")
 
-            try:
-                response_json = response.json()
-            except Exception:
-                response_json = None
-
             if response.status_code in (200, 201):
                 arc_response_data = response.json()
                 response_txid = arc_response_data.get("txid")

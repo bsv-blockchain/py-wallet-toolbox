@@ -192,7 +192,7 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
                     (
                         i
                         for i, fi in enumerate(funding_inputs_copy)
-                        if int(ci["satoshis"]) <= int(last_output["satoshis"])
+                        if int(fi["satoshis"]) <= int(last_output["satoshis"])
                     ),
                     -1,
                 )

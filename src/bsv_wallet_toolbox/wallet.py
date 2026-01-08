@@ -1414,22 +1414,6 @@ class Wallet:
             raise
         
         # Auto-signing disabled for now - matches test expectations
-        # TODO: Implement auto-signing when signAndProcess is true
-        # if signer_result.signable_transaction is not None and vargs.get("options", {}).get("signAndProcess", True):
-            trace(logger, "wallet.create_action.auto_signing", reference=signer_result.signable_transaction.get("reference"))
-            sign_options = vargs.get("options", {}).copy()
-            sign_options["isSignAction"] = False  # Force signing, not returning signable
-            sign_result = signer_sign_action(self, auth, {
-                "reference": signer_result.signable_transaction["reference"],
-                "spends": {},
-                "options": sign_options
-            })
-            # Merge sign result into result
-            if sign_result.get("txid") is not None:
-                result["txid"] = sign_result["txid"]
-            if sign_result.get("tx") is not None:
-                result["tx"] = _to_byte_list(sign_result["tx"]) if isinstance(sign_result["tx"], bytes) else sign_result["tx"]
-            # Don't include signableTransaction in final result
         else:
             # Convert CreateActionResultX to BRC-100 CreateActionResult
             # Note: sendWithResults and notDelayedResults are internal and not part of BRC-100 spec
