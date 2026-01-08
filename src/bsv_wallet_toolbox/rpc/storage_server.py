@@ -410,15 +410,15 @@ class StorageServer:
 
         # Debug: Log first few methods to see what's available
         all_methods = dir(storage_provider)
-        logger.warning(f"[DEBUG] StorageProvider has {len(all_methods)} total attributes/methods")
-        logger.warning(f"[DEBUG] First 20 methods: {all_methods[:20]}")
-        logger.warning(f"[DEBUG] Methods starting with 'set': {[m for m in all_methods if m.startswith('set')]}")
-        logger.warning(f"[DEBUG] hasattr(storage_provider, 'set_active'): {hasattr(storage_provider, 'set_active')}")
+        logger.debug(f"StorageProvider has {len(all_methods)} total attributes/methods")
+        logger.debug(f"First 20 methods: {all_methods[:20]}")
+        logger.debug(f"Methods starting with 'set': {[m for m in all_methods if m.startswith('set')]}")
+        logger.debug(f"hasattr(storage_provider, 'set_active'): {hasattr(storage_provider, 'set_active')}")
         try:
             method = getattr(storage_provider, 'set_active', None)
-            logger.warning(f"[DEBUG] getattr(storage_provider, 'set_active', None): {method}")
+            logger.debug(f"getattr(storage_provider, 'set_active', None): {method}")
         except Exception as e:
-            logger.warning(f"[DEBUG] getattr exception: {e}")
+            logger.debug(f"getattr exception: {e}")
         
         for json_rpc_method, python_method in json_rpc_to_python_methods.items():
             # Debug: Check if method exists
@@ -453,7 +453,7 @@ class StorageServer:
             else:
                 logger.warning(f"StorageProvider missing method: {python_method} (for JSON-RPC: {json_rpc_method})")
 
-        logger.info(f"Registered {len(self._methods)} StorageProvider methods as JSON-RPC endpoints")
+        logger.debug(f"Registered {len(self._methods)} StorageProvider methods as JSON-RPC endpoints")
 
     def _validate_json_rpc_request(
         self,

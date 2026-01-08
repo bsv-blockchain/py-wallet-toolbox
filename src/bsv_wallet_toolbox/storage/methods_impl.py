@@ -248,7 +248,7 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                             # Broadcast the transaction
                             import logging
                             logger = logging.getLogger(__name__)
-                            logger.info(f"Broadcasting transaction {txid} (beef length: {len(beef_hex)} chars)")
+                            logger.debug(f"Broadcasting transaction {txid} (beef length: {len(beef_hex)} chars)")
                             # Debug: Log rawTx being broadcast
                             logger.debug(
                                 "process_action: broadcasting rawTx for txid=%s, beef_hex_len=%d bytes, beef_hex (first 200 chars): %s...",
@@ -260,12 +260,12 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                             if len(beef_hex) < 1000:
                                 logger.debug("process_action: rawTx hex (full): %s", beef_hex)
                             broadcast_result = services.post_beef(beef_hex)
-                            logger.info(f"Broadcast result for {txid}: {broadcast_result}")
+                            logger.debug(f"Broadcast result for {txid}: {broadcast_result}")
                             
                             if broadcast_result.get("accepted") or broadcast_result.get("success"):
                                 post_result["status"] = "unproven"
                                 storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "unproven"})
-                                logger.info(f"Transaction {txid} broadcast successfully")
+                                logger.debug(f"Transaction {txid} broadcast successfully")
                             elif broadcast_result.get("rateLimited"):
                                 post_result["status"] = "sending"
                                 storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "sending"})

@@ -482,22 +482,14 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     key_id = f"{pdi.derivation_prefix} {pdi.derivation_suffix}"
                     locker_pub = pdi.unlocker_pub_key
                     
-                    # Debug logging for key derivation (use print to ensure visibility)
-                    print(f"🔑 Key derivation for input {input_data.source_output_index}:")
-                    print(f"  derivation_prefix: {pdi.derivation_prefix!r} (len={len(pdi.derivation_prefix)})")
-                    print(f"  derivation_suffix: {pdi.derivation_suffix!r} (len={len(pdi.derivation_suffix)})")
-                    print(f"  key_id: {key_id!r} (len={len(key_id)})")
-                    print(f"  unlocker_pub_key: {locker_pub[:30] if locker_pub else None}...")
-                    print(f"  source_locking_script: {pdi.locking_script[:50] if pdi.locking_script else None}...")
-                    
                     import logging
                     logger = logging.getLogger(__name__)
-                    logger.info(f"🔑 Key derivation for input {input_data.source_output_index}:")
-                    logger.info(f"  derivation_prefix: {pdi.derivation_prefix!r} (len={len(pdi.derivation_prefix)})")
-                    logger.info(f"  derivation_suffix: {pdi.derivation_suffix!r} (len={len(pdi.derivation_suffix)})")
-                    logger.info(f"  key_id: {key_id!r} (len={len(key_id)})")
-                    logger.info(f"  unlocker_pub_key: {locker_pub[:30] if locker_pub else None}...")
-                    logger.info(f"  source_locking_script: {pdi.locking_script[:50] if pdi.locking_script else None}...")
+                    logger.debug(f"🔑 Key derivation for input {input_data.source_output_index}:")
+                    logger.debug(f"  derivation_prefix: {pdi.derivation_prefix!r} (len={len(pdi.derivation_prefix)})")
+                    logger.debug(f"  derivation_suffix: {pdi.derivation_suffix!r} (len={len(pdi.derivation_suffix)})")
+                    logger.debug(f"  key_id: {key_id!r} (len={len(key_id)})")
+                    logger.debug(f"  unlocker_pub_key: {locker_pub[:30] if locker_pub else None}...")
+                    logger.debug(f"  source_locking_script: {pdi.locking_script[:50] if pdi.locking_script else None}...")
 
                 if not key_id:
                     raise WalletError(
@@ -510,18 +502,13 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
 
                     locker_pub_key = PublicKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
                     counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
-                    print(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
-                    logger.info(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
+                    logger.debug(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
                 else:
                     counterparty = Counterparty(type=CounterpartyType.SELF)
-                    print(f"  Using CounterpartyType.SELF (no senderIdentityKey)")
-                    logger.info(f"  Using CounterpartyType.SELF (no senderIdentityKey)")
+                    logger.debug(f"  Using CounterpartyType.SELF (no senderIdentityKey)")
 
                 # Derive private key for this input
-                print(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
-                if locker_pub:
-                    print(f"  Counterparty identity key: {locker_pub_key.to_hex()[:30]}...")
-                logger.info(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
+                logger.debug(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
                 derived_private_key = wallet.key_deriver.derive_private_key(brc29_protocol, key_id, counterparty)
                 
                 # Verify the derived key matches the locking script
@@ -535,23 +522,12 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 # Get the actual locking script from the input
                 actual_locking_script_hex = pdi.locking_script if isinstance(pdi.locking_script, str) else pdi.locking_script.hex() if hasattr(pdi.locking_script, 'hex') else ""
                 
-                print(f"  Derived public key: {derived_pub_key.to_hex()}")
-                print(f"  Derived public key hash160: {derived_pub_key_hash.hex()}")
-                print(f"  Expected locking script: {expected_locking_script_hex}")
-                print(f"  Actual locking script: {actual_locking_script_hex}")
-                logger.info(f"  Derived public key: {derived_pub_key.to_hex()}")
-                logger.info(f"  Derived public key hash160: {derived_pub_key_hash.hex()}")
-                logger.info(f"  Expected locking script: {expected_locking_script_hex}")
-                logger.info(f"  Actual locking script: {actual_locking_script_hex}")
+                logger.debug(f"  Derived public key: {derived_pub_key.to_hex()}")
+                logger.debug(f"  Derived public key hash160: {derived_pub_key_hash.hex()}")
+                logger.debug(f"  Expected locking script: {expected_locking_script_hex}")
+                logger.debug(f"  Actual locking script: {actual_locking_script_hex}")
                 
                 if expected_locking_script_hex != actual_locking_script_hex:
-                    print(f"  ❌ MISMATCH: Derived key does not match locking script!")
-                    print(f"    Expected hash160: {derived_pub_key_hash.hex()}")
-                    print(f"    Actual hash160:   {actual_locking_script_hex[6:46] if len(actual_locking_script_hex) >= 46 else 'N/A'}")
-                    print(f"    Expected script:  {expected_locking_script_hex}")
-                    print(f"    Actual script:    {actual_locking_script_hex}")
-                    print(f"    This will cause script evaluation errors!")
-                    print(f"    Check: keyID format, counterparty type, or identity key")
                     logger.error(f"  ❌ MISMATCH: Derived key does not match locking script!")
                     logger.error(f"    Expected hash160: {derived_pub_key_hash.hex()}")
                     logger.error(f"    Actual hash160:   {actual_locking_script_hex[6:46] if len(actual_locking_script_hex) >= 46 else 'N/A'}")
@@ -560,8 +536,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     logger.error(f"    This will cause script evaluation errors!")
                     logger.error(f"    Check: keyID format, counterparty type, or identity key")
                 else:
-                    print(f"  ✅ Derived key matches locking script")
-                    logger.info(f"  ✅ Derived key matches locking script")
+                    logger.debug(f"  ✅ Derived key matches locking script")
 
                 # Step 2: Create P2PKH unlock template
                 p2pkh = P2PKH()

@@ -231,9 +231,6 @@ class ARC:
                 len(raw_tx_hex) // 2,
                 raw_tx_hex[:100]
             )
-            # Log full hex for small transactions
-            if len(raw_tx_hex) < 1000:
-                logger.debug("ARC %s.broadcast: raw_tx hex (full): %s", self.name, raw_tx_hex)
             # Verify it's not AtomicBEEF format (should not start with 01010101)
             if raw_tx_hex.startswith("01010101"):
                 logger.warning(
@@ -286,8 +283,8 @@ class ARC:
         # Debug: Log authorization header (masked) and endpoint
         import logging
         logger = logging.getLogger(__name__)
-        logger.info(f"ARC {self.name} endpoint: {url}")
-        logger.info(f"ARC {self.name} base URL: {self.url}")
+        logger.debug(f"ARC {self.name} endpoint: {url}")
+        logger.debug(f"ARC {self.name} base URL: {self.url}")
         if "Authorization" in headers:
             auth_header = headers["Authorization"]
             if auth_header.startswith("Bearer "):
@@ -296,7 +293,7 @@ class ARC:
                 logger.info(f"ARC {self.name} Authorization header: Bearer {masked_key} (length: {len(api_key_part)})")
         else:
             logger.warning(f"ARC {self.name} Authorization header: NOT SET")
-        logger.info(f"ARC {self.name} API key present: {bool(self.api_key)}")
+        logger.debug(f"ARC {self.name} API key present: {bool(self.api_key)}")
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
@@ -326,9 +323,8 @@ class ARC:
         except Exception as e:
             logger.warning(f"ARC {self.name}: Could not parse transaction to extract input txids: {e}")
 
-        logger.info(f"ARC {self.name} broadcasting txid: {txid}")
-        logger.info(f"ARC {self.name} input dependencies: {input_txids}")
-        logger.info(f"ARC {self.name} full raw TX hex ({len(raw_tx) // 2} bytes): {raw_tx}")
+        logger.debug(f"ARC {self.name} broadcasting txid: {txid}")
+        logger.debug(f"ARC {self.name} input dependencies: {input_txids}")
 
         # Log additional debug info for truncated display if needed
         logger.debug(
@@ -350,14 +346,12 @@ class ARC:
             # Log response status for debugging
             import logging
             logger = logging.getLogger(__name__)
-            logger.info(f"ARC {self.name} HTTP response status: {response.status_code}")
+            logger.debug(f"ARC {self.name} HTTP response status: {response.status_code}")
 
-            # Log full response body for debugging
             try:
                 response_json = response.json()
-                logger.info(f"ARC {self.name} full response body: {response_json}")
             except Exception:
-                logger.info(f"ARC {self.name} raw response body: {response.text}")
+                response_json = None
 
             if response.status_code in (200, 201):
                 arc_response_data = response.json()
@@ -506,9 +500,9 @@ class ARC:
                 else:
                     full_raw_entries.append(tid)
 
-            logger.info(f"ARC {self.name} BEEF contains {len(beef.txs)} transactions: {list(beef.txs.keys())}")
-            logger.info(f"ARC {self.name} TxID-only entries: {txid_only_entries}")
-            logger.info(f"ARC {self.name} Full raw tx entries: {full_raw_entries}")
+            logger.debug(f"ARC {self.name} BEEF contains {len(beef.txs)} transactions: {list(beef.txs.keys())}")
+            logger.debug(f"ARC {self.name} TxID-only entries: {txid_only_entries}")
+            logger.debug(f"ARC {self.name} Full raw tx entries: {full_raw_entries}")
 
         # Extract raw transaction from BEEF (ARC expects raw tx, not BEEF)
         # Use the first/last txid (ARC typically processes one transaction)

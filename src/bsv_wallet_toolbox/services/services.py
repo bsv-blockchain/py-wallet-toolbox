@@ -1414,8 +1414,6 @@ class Services(WalletServices):
                     len(raw_tx_from_beef) // 2,
                     raw_tx_from_beef[:100]
                 )
-                if len(raw_tx_from_beef) < 1000:
-                    self.logger.debug("Services.post_beef: extracted rawTx hex (full): %s", raw_tx_from_beef)
         else:
             # It's already raw transaction hex
             self.logger.debug(
@@ -1424,9 +1422,6 @@ class Services(WalletServices):
                 len(beef) // 2,
                 beef[:200]
             )
-            # Log full hex for small transactions
-            if len(beef) < 1000:
-                self.logger.debug("Services.post_beef: rawTx hex (full): %s", beef)
 
         def _fmt_arc_error(res: Any) -> str:
             # ARC.broadcast returns PostTxResultForTxid.
