@@ -447,14 +447,15 @@ def _create_brc104_response(request: HttpRequest, request_id_bytes: bytes,
     except Exception as e:
         import traceback
         logger.error(f"[BRC104] Failed to create BRC-104 response: {e}\n{traceback.format_exc()}")
-        # Fallback to plain JSON response with generic error
+        # Fallback to plain JSON response with generic error.
+        # Do not reuse potentially tainted json_rpc_response; return a fully generic error.
         return JsonResponse({
             "jsonrpc": "2.0",
             "error": {
                 "code": -32603,
                 "message": "Internal error"
             },
-            "id": json_rpc_response.get("id") if isinstance(json_rpc_response, dict) else None
+            "id": None
         }, status=500, encoder=BytesEncoder)
 
 
