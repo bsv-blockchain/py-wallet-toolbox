@@ -41,9 +41,11 @@ import requests
 
 from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 from bsv_wallet_toolbox.utils.merkle_path_utils import normalize_merkle_path_value
-from bsv_wallet_toolbox.services.services import ATOMIC_BEEF_HEX_PREFIX
 
 logger = logging.getLogger(__name__)
+
+# AtomicBEEF format prefix for detection
+ATOMIC_BEEF_HEX_PREFIX = "01010101"
 
 
 @dataclass
@@ -169,7 +171,7 @@ class ARC:
 
         if isinstance(config, str):
             # Config as simple API key string
-            self.api_key = config.strip() if isinstance(config, str) else config
+            self.api_key = config.strip()
             self.deployment_id = default_deployment_id()
             self.callback_url: str | None = None
             self.callback_token: str | None = None
