@@ -202,6 +202,22 @@ def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
         pass  # Best effort cleanup
 
 
+def compute_txid_from_hex(raw_tx_hex: str) -> str:
+    """Compute transaction ID from raw transaction hex string.
+
+    Args:
+        raw_tx_hex: Raw transaction as hexadecimal string.
+
+    Returns:
+        Transaction ID as hexadecimal string.
+
+    Raises:
+        ValueError: If raw_tx_hex is not valid hex.
+    """
+    raw_tx_bytes = bytes.fromhex(raw_tx_hex)
+    return bytes(double_sha256_be(raw_tx_bytes)).hex()
+
+
 def shutdown_async_runner() -> None:
     """Shutdown the global async runner.
 
@@ -226,7 +242,7 @@ def shutdown_async_runner() -> None:
 #   - Prefer thread-based concurrency or single-process deployment for applications using this module.
 #   - If forking is unavoidable, either:
 #       * Import this module only inside child processes after the fork, or
-#       * Call shutdown_async_runner() in the parent process before forking, and ensure each child
+#       * MUST call shutdown_async_runner() in the parent process BEFORE forking, and ensure each child
 #         imports this module after the fork so it creates a fresh async runner.
 #
 # Note: Lazy initialization would require significant refactoring across 35+ usages throughout the codebase.
@@ -896,8 +912,7 @@ class Services(WalletServices):
                     raw_tx_hex = r.get("rawTx")
                     if raw_tx_hex:
                         try:
-                            raw_tx_bytes = bytes.fromhex(raw_tx_hex)
-                            computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
+                            computed_txid = compute_txid_from_hex(raw_tx_hex)
                         except (ValueError, TypeError):
                             r["error"] = {"message": "provider returned invalid rawTx data", "code": "INVALID_DATA"}
                             r.pop("rawTx", None)
@@ -929,8 +944,7 @@ class Services(WalletServices):
                 elif isinstance(r, str):
                     # Backwards-compatible path for providers that return raw hex directly.
                     try:
-                        raw_tx_bytes = bytes.fromhex(r)
-                        computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
+                        computed_txid = compute_txid_from_hex(r)
                     except (ValueError, TypeError):
                         # Treat invalid hex as provider failure.
                         services.add_service_call_failure(service_to_call, "invalid data")

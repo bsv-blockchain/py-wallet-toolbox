@@ -517,7 +517,12 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             # Serialize to 80-byte header
             # version: 4 bytes little-endian
             header = struct.pack("<I", version)
-            # previousblockhash: 32 bytes (reversed from big-endian hex)
+            # previousblockhash: 32 bytes
+            # NOTE: Blockchain hashes are conventionally represented as big-endian hex
+            # (as returned by APIs like WhatsOnChain), but in the serialized block header
+            # they are stored in little-endian byte order. We reverse the bytes here to
+            # convert from the big-endian hex representation to the little-endian binary
+            # format used on the wire. The same convention applies to merkleroot and bits.
             try:
                 header += bytes.fromhex(prev_hash)[::-1]
             except ValueError as e:
