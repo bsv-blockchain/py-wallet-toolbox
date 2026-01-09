@@ -1,1 +1,0 @@
-"""Monitor manual tests package."""
