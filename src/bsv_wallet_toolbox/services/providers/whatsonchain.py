@@ -15,6 +15,7 @@ Reference:
 """
 
 import asyncio
+import struct
 from typing import Any
 from urllib.parse import urlencode
 
@@ -505,7 +506,6 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             # WhatsOnChain returns header fields, not serialized bytes.
             # We need to serialize them into 80-byte block header format:
             # version (4) + prevHash (32) + merkleRoot (32) + time (4) + bits (4) + nonce (4) = 80 bytes
-            import struct
             
             version = data.get("version", 0)
             prev_hash = data.get("previousblockhash", "0" * 64)

@@ -68,7 +68,9 @@ from .wallet_services_options import WalletServicesOptions
 MAXINT: int = 0xFFFFFFFF
 BLOCK_LIMIT: int = 500_000_000
 CACHE_TTL_MSECS: int = 120000  # 2-minute TTL for service caches
-ATOMIC_BEEF_PREFIX: str = "01010101"  # Magic string prefix for AtomicBEEF format detection
+ATOMIC_BEEF_HEX_PREFIX: str = "01010101"  # Hex string prefix for AtomicBEEF format detection
+# Backwards-compatible alias (deprecated): prefer ATOMIC_BEEF_HEX_PREFIX
+ATOMIC_BEEF_PREFIX: str = ATOMIC_BEEF_HEX_PREFIX
 
 
 
@@ -996,7 +998,7 @@ class Services(WalletServices):
             raise InvalidParameterError("txid", "a valid hexadecimal string")
 
         # Generate cache key
-        cache_key = f"merklePath:{txid}"
+        cache_key = f"merkle_path:{txid}"
 
         # Check cache first
         cached = self.merkle_path_cache.get(cache_key)

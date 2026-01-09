@@ -31,6 +31,7 @@ Reference Implementation: ts-wallet-toolbox/src/services/providers/ARC.ts
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -40,6 +41,8 @@ import requests
 
 from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 from bsv_wallet_toolbox.utils.merkle_path_utils import normalize_merkle_path_value
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -220,8 +223,6 @@ class ARC:
             raw_tx_hex = tx.hex()
             txid = tx.txid()
             # Debug: Log the raw transaction being broadcast
-            import logging
-            logger = logging.getLogger(__name__)
             logger.debug(
                 "ARC %s.broadcast: broadcasting Transaction, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
                 self.name,
@@ -279,8 +280,6 @@ class ARC:
         now = datetime.now(timezone.utc).isoformat()
         
         # Debug: Log authorization header (masked) and endpoint
-        import logging
-        logger = logging.getLogger(__name__)
         logger.debug(f"ARC {self.name} endpoint: {url}")
         logger.debug(f"ARC {self.name} base URL: {self.url}")
         if "Authorization" in headers:
@@ -308,8 +307,6 @@ class ARC:
         nne = make_note_extended(self.name, now)
 
         # Debug: Log rawTx being broadcast
-        import logging
-        logger = logging.getLogger(__name__)
 
         # Parse transaction to extract input dependencies
         input_txids = []
@@ -341,8 +338,6 @@ class ARC:
             )
 
             # Log response status for debugging
-            import logging
-            logger = logging.getLogger(__name__)
             logger.debug(f"ARC {self.name} HTTP response status: {response.status_code}")
 
             if response.status_code in (200, 201):
