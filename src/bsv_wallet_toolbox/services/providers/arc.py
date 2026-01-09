@@ -168,7 +168,7 @@ class ARC:
 
         if isinstance(config, str):
             # Config as simple API key string
-            self.api_key = config.strip() if isinstance(config, str) else config
+            self.api_key = config.strip() if config and isinstance(config, str) else config
             self.deployment_id = default_deployment_id()
             self.callback_url: str | None = None
             self.callback_token: str | None = None
@@ -176,7 +176,7 @@ class ARC:
         else:
             # Config as ArcConfig object
             cfg = config or ArcConfig()
-            self.api_key = cfg.api_key.strip() if isinstance(cfg.api_key, str) else cfg.api_key
+            self.api_key = cfg.api_key.strip() if cfg.api_key and isinstance(cfg.api_key, str) else cfg.api_key
             self.deployment_id = cfg.deployment_id or default_deployment_id()
             self.callback_url = cfg.callback_url
             self.callback_token = cfg.callback_token

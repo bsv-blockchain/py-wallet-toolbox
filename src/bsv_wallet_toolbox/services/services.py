@@ -1195,7 +1195,7 @@ class Services(WalletServices):
                 raise InvalidParameterError("output", "64 hex characters")
 
         # Generate cache key from parameters
-        cache_key = f"utxoCache:{output}:{output_format}:{outpoint}"
+        cache_key = f"utxo:{output}:{output_format}:{outpoint}"
 
         # Check cache first
         cached = self.utxo_status_cache.get(cache_key)

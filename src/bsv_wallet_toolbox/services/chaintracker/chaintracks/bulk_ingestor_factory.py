@@ -27,7 +27,7 @@ def create_bulk_ingestors(chain: Chain,
     ingestors = []
 
     # Create CDN bulk ingestor (Project Babbage)
-    cdn_ingestor = BulkIngestorCDN(chain, CDNReader.BABEAGE_CDN_BASE_URL)
+    cdn_ingestor = BulkIngestorCDN(chain, CDNReader.BABBAGE_CDN_BASE_URL)
     ingestors.append(NamedBulkIngestor(
         name="chaintracks_cdn",
         ingestor=cdn_ingestor

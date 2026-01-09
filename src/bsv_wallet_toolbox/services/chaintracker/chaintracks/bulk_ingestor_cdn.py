@@ -28,7 +28,7 @@ class BulkIngestorCDN(BulkIngestor):
             source_url: CDN base URL (defaults to Project Babbage)
         """
         self.chain = chain
-        self.source_url = source_url or CDNReader.BABEAGE_CDN_BASE_URL
+        self.source_url = source_url or CDNReader.BABBAGE_CDN_BASE_URL
         self.reader = CDNReader(self.source_url)
 
         logger.info("BulkIngestorCDN initialized for %s chain",
