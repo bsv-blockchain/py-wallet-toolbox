@@ -165,7 +165,7 @@ class ARC:
 
         if isinstance(config, str):
             # Config as simple API key string
-            self.api_key = config
+            self.api_key = config.strip() if isinstance(config, str) else config
             self.deployment_id = default_deployment_id()
             self.callback_url: str | None = None
             self.callback_token: str | None = None
@@ -173,7 +173,7 @@ class ARC:
         else:
             # Config as ArcConfig object
             cfg = config or ArcConfig()
-            self.api_key = cfg.api_key
+            self.api_key = cfg.api_key.strip() if isinstance(cfg.api_key, str) else cfg.api_key
             self.deployment_id = cfg.deployment_id or default_deployment_id()
             self.callback_url = cfg.callback_url
             self.callback_token = cfg.callback_token
@@ -194,9 +194,7 @@ class ARC:
         }
 
         if self.api_key:
-            # Ensure API key is stripped of whitespace
-            api_key_clean = self.api_key.strip() if isinstance(self.api_key, str) else self.api_key
-            headers["Authorization"] = f"Bearer {api_key_clean}"
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         if self.callback_url:
             headers["X-CallbackUrl"] = self.callback_url

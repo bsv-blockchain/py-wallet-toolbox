@@ -108,12 +108,11 @@ class CacheManager(Generic[T]):
 
     @staticmethod
     def _validate_key(key: str) -> str:
-        """Enforce camelCase keys for cache entries.
+        """Validate cache keys by prohibiting underscores.
 
-        This validation only prevents snake_case keys (containing underscores)
-        but does not validate full camelCase format. Keys like 'ALLCAPS' or
-        'lowercase' are allowed, but keys with underscores like 'some_key'
-        are rejected.
+        This validation prevents snake_case keys (containing underscores) but does not
+        enforce full camelCase format. Keys like 'ALLCAPS' or 'lowercase' are allowed,
+        but keys with underscores like 'some_key' are rejected.
 
         Args:
             key: Cache key to validate
