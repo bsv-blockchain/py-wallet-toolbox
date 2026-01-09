@@ -212,10 +212,12 @@ def wallet_error_to_json(error: Exception) -> dict[str, Any]:
     
     # For regular Exception instances
     if isinstance(error, Exception):
-        # Log the internal error details server-side while returning a generic message to the client.
-        # Use warning level with sanitized message to avoid exposing sensitive information in stack traces
-        logger.warning("Unhandled internal exception serialized as WERR_INTERNAL: %s: %s",
-                      type(error).__name__, str(error))
+        # Log a generic internal error message server-side while returning a generic message to the client.
+        # Do not log the full exception message to avoid exposing potentially sensitive information.
+        logger.warning(
+            "Unhandled internal exception serialized as WERR_INTERNAL: %s (details redacted)",
+            type(error).__name__,
+        )
         return {
             "name": "WERR_INTERNAL",
             "message": "An internal error occurred.",

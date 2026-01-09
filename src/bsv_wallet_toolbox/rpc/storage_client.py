@@ -136,8 +136,17 @@ class StorageClient:
         # canonicalize it as "" vs "/". That can change the signed payload for the
         # authenticated request and cause server-side "Invalid signature".
         parsed = urlparse(endpoint_url)
-        if parsed.path == "":
-            endpoint_url = urlunparse(parsed._replace(path="/"))
+        if not parsed.path:
+            endpoint_url = urlunparse(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    "/",
+                    parsed.params,
+                    parsed.query,
+                    parsed.fragment,
+                )
+            )
 
         self.wallet = wallet
         self.endpoint_url = endpoint_url

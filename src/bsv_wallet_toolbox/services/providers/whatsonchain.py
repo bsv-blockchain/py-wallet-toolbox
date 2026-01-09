@@ -74,9 +74,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         if network not in ("main", "test"):
             raise ValueError(f"Invalid network: {network}. Must be 'main' or 'test'.")
+        super().__init__(network=network, api_key=api_key, http_client=http_client)
         self.chain = network
         self.api_key = api_key
-        super().__init__(network=network, api_key=api_key, http_client=http_client)
 
     async def get_chain(self) -> Chain:
         """Confirm the chain.
