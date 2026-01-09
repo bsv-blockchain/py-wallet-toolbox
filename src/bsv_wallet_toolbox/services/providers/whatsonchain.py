@@ -518,9 +518,19 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             # version: 4 bytes little-endian
             header = struct.pack("<I", version)
             # previousblockhash: 32 bytes (reversed from big-endian hex)
-            header += bytes.fromhex(prev_hash)[::-1]
+            try:
+                header += bytes.fromhex(prev_hash)[::-1]
+            except ValueError as e:
+                raise RuntimeError(
+                    f"Invalid previousblockhash hex '{prev_hash}' for height {height}: {e}"
+                ) from e
             # merkleroot: 32 bytes (reversed from big-endian hex)
-            header += bytes.fromhex(merkle_root)[::-1]
+            try:
+                header += bytes.fromhex(merkle_root)[::-1]
+            except ValueError as e:
+                raise RuntimeError(
+                    f"Invalid merkleroot hex '{merkle_root}' for height {height}: {e}"
+                ) from e
             # time: 4 bytes little-endian
             header += struct.pack("<I", timestamp)
             # bits: 4 bytes little-endian (from hex string like "1d00ffff")
