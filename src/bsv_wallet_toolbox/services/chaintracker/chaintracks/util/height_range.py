@@ -162,7 +162,7 @@ class HeightRange:
 
         # Check if ranges are disjoint
         if self.max_height + 1 < other.min_height or other.max_height + 1 < self.min_height:
-            raise ValueError("union would create disjoint ranges")
+            raise ValueError("cannot union disjoint ranges")
 
         min_height = min(self.min_height, other.min_height)
         max_height = max(self.max_height, other.max_height)

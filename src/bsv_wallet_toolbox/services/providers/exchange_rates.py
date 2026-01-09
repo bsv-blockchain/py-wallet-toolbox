@@ -63,7 +63,7 @@ async def update_exchangeratesapi(
         - toolbox/ts-wallet-toolbox/src/services/providers/exchangeRates.ts
     """
     if not options.get("exchangeratesapiKey"):
-        raise InvalidParameterError("options.exchangeratesapiKey is required")
+        raise InvalidParameterError("exchangeratesapiKey is required")
 
     api_key = options.get("exchangeratesapiKey")
 

@@ -68,9 +68,9 @@ class CDNReader:
     """HTTP client for fetching bulk header data from CDN."""
 
     # Base URL for Project Babbage CDN
-    BABEAGE_CDN_BASE_URL = "https://cdn.projectbabbage.com/blockheaders"
+    BABBAGE_CDN_BASE_URL = "https://cdn.projectbabbage.com/blockheaders"
 
-    def __init__(self, base_url: str = BABEAGE_CDN_BASE_URL, timeout: int = 30):
+    def __init__(self, base_url: str = BABBAGE_CDN_BASE_URL, timeout: int = 30):
         """Initialize CDN reader.
 
         Args:

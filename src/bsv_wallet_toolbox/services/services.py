@@ -561,7 +561,7 @@ class Services(WalletServices):
                 header = None
 
         if not header:
-            raise InvalidParameterError("hash", f"valid blockhash '{block_hash}' on chain {self.chain}")
+            raise InvalidParameterError("hash", f"blockhash '{block_hash}' not found on chain {self.chain}")
 
         if isinstance(header, dict):
             return header
