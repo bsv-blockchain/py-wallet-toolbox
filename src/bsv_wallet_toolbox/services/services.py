@@ -207,10 +207,10 @@ def shutdown_async_runner() -> None:
     _ASYNC_RUNNER.shutdown()
 
 
-# Register cleanup on exit
-atexit.register(shutdown_async_runner)
-
 _ASYNC_RUNNER = _AsyncRunner()
+
+# Register cleanup on exit (only after successful runner initialization)
+atexit.register(shutdown_async_runner)
 
 
 class Services(WalletServices):
@@ -1540,7 +1540,7 @@ class Services(WalletServices):
                 elif getattr(res, "status", "") == "rate_limited":
                     return {
                         "accepted": False,
-                        "rateLimited": True,
+                        "rate_limited": True,
                         "message": getattr(res, "description", "Rate limited"),
                     }
                 elif getattr(res, "double_spend", False):
@@ -1591,7 +1591,7 @@ class Services(WalletServices):
                 elif getattr(res, "status", "") == "rate_limited":
                     return {
                         "accepted": False,
-                        "rateLimited": True,
+                        "rate_limited": True,
                         "message": getattr(res, "description", "Rate limited"),
                     }
                 elif getattr(res, "double_spend", False):

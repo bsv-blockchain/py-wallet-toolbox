@@ -125,6 +125,6 @@ class CacheManager(Generic[T]):
             ValueError: If key contains underscores
         """
         if "_" in key:
-            msg = f"CacheManager keys must be camelCase: {key}"
+            msg = f"CacheManager keys must not contain underscores: {key}"
             raise ValueError(msg)
         return key

@@ -147,7 +147,7 @@ class Bitails:
             config: Configuration options (api_key, headers).
         """
         self.chain = chain
-        self.config = config or BitailsConfig()
+        self.config = config or BitailsConfig()  # Stored for testing and API compatibility
 
         self.api_key = self.config.api_key or ""
         self.url = "https://api.bitails.io/" if chain == "main" else "https://test-api.bitails.io/"

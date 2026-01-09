@@ -281,16 +281,22 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._find_header_for_height(height)
 
-    async def _find_header_for_height(self, height: int) -> BlockHeader | None:
-        """Internal implementation of find_header_for_height."""
-        if height < 0:
-            raise ValueError(f"Height {height} must be a non-negative integer")
+    async def _fetch_header(self, url: str, height: int | None = None, hash_override: str | None = None) -> BlockHeader | None:
+        """Fetch and parse a block header from WhatsOnChain API.
 
+        Args:
+            url: The API endpoint URL to fetch from
+            height: Block height (if known, otherwise extracted from response)
+            hash_override: Block hash (if known, otherwise extracted from response)
+
+        Returns:
+            BlockHeader object or None if not found
+        """
         request_options = {"method": "GET", "headers": self._get_http_headers()}
+        response = await self.http_client.fetch(url, request_options)
 
-        response = await self.http_client.fetch(f"{self.URL}/block/{height}/header", request_options)
         if response.ok:
-            data = response.json()["data"]
+            data = response.json().get("data") or {}
             if not data:
                 return None
 
@@ -303,13 +309,20 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 time=data.get("time", 0),
                 bits=data.get("bits", 0),
                 nonce=data.get("nonce", 0),
-                height=height,
-                hash=data.get("hash", ""),
+                height=height if height is not None else int(data.get("height", 0)),
+                hash=hash_override if hash_override is not None else data.get("hash", ""),
             )
         elif response.status_code == 404:
             return None
         else:
-            raise RuntimeError(f"Failed to get header for height {height}: {response.json()}")
+            raise RuntimeError(f"Failed to get header from {url}: {response.json()}")
+
+    async def _find_header_for_height(self, height: int) -> BlockHeader | None:
+        """Internal implementation of find_header_for_height."""
+        if height < 0:
+            raise ValueError(f"Height {height} must be a non-negative integer")
+
+        return await self._fetch_header(f"{self.URL}/block/{height}/header", height=height)
 
     async def find_header_for_block_hash(self, hash: str) -> BlockHeader | None:
         """Get a block header by block hash.
@@ -343,26 +356,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         if not isinstance(hash, str) or len(hash) != 64:
             return None
 
-        request_options = {"method": "GET", "headers": self._get_http_headers()}
-
-        response = await self.http_client.fetch(f"{self.URL}/block/hash/{hash}", request_options)
-        if response.ok:
-            data = response.json().get("data") or {}
-            if not data:
-                return None
-            return BlockHeader(
-                version=data.get("version", 0),
-                previousHash=data.get("previousblockhash", ""),
-                merkleRoot=data.get("merkleroot", ""),
-                time=data.get("time", 0),
-                bits=data.get("bits", 0),
-                nonce=data.get("nonce", 0),
-                height=int(data.get("height", 0)),
-                hash=data.get("hash", hash),
-            )
-        if response.status_code == 404:
-            return None
-        raise RuntimeError(f"Failed to get header for hash {hash}: {response.json()}")
+        return await self._fetch_header(f"{self.URL}/block/hash/{hash}", hash_override=hash)
 
     async def add_header(self, header: BaseBlockHeader) -> None:
         """Submit a possibly new header for adding.

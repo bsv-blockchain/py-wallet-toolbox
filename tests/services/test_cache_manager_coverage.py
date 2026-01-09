@@ -84,7 +84,7 @@ class TestCacheManager:
         """Ensure snake_case keys are rejected to enforce camelCase policy."""
         cache: CacheManager[str] = CacheManager()
 
-        with pytest.raises(ValueError, match="camelCase"):
+        with pytest.raises(ValueError, match="must not contain underscores"):
             cache.set("snake_key", "value", 1000)
 
     def test_get_nonexistent_key(self) -> None:
