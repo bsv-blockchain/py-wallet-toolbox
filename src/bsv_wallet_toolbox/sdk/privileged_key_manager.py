@@ -27,10 +27,11 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
-    """Validate protocol-related arguments to enforce standardized camelCase keys.
+    """Validate protocol-related arguments to enforce standardized protocol key names.
 
-    The privileged key manager only accepts standardized camelCase keys (protocolID/keyID). Any snake_case
-    variants or non-standard casing (protocolId/keyId) are treated as configuration errors.
+    The privileged key manager only accepts the specific protocol-related keys ``protocolID`` and ``keyID``.
+    Any snake_case variants (``protocol_id``/``key_id``) or other casing variants (``protocolId``/``keyId``)
+    are treated as configuration errors.
 
     Args:
         args: Arguments dictionary that may contain protocol parameters

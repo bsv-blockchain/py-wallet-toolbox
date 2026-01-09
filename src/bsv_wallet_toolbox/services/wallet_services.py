@@ -51,7 +51,6 @@ class WalletServices(ABC):
                   Accepts both Chain enum values and string values. String values
                   are automatically converted to Chain enum internally for consistency.
                   Defaults to 'main' as string to maintain backward compatibility.
-                  The string default 'main' is automatically converted to Chain.MAIN in the implementation.
         """
         # Convert string values to Chain enum for backward compatibility
         if isinstance(chain, str):

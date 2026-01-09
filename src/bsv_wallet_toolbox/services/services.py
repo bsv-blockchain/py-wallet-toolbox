@@ -998,7 +998,7 @@ class Services(WalletServices):
             raise InvalidParameterError("txid", "a valid hexadecimal string")
 
         # Generate cache key
-        cache_key = f"merkle_path:{txid}"
+        cache_key = f"merklePath:{txid}"
 
         # Check cache first
         cached = self.merkle_path_cache.get(cache_key)

@@ -524,7 +524,12 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             # time: 4 bytes little-endian
             header += struct.pack("<I", timestamp)
             # bits: 4 bytes little-endian (from hex string like "1d00ffff")
-            header += bytes.fromhex(bits_hex)[::-1]
+            try:
+                header += bytes.fromhex(bits_hex)[::-1]
+            except ValueError as e:
+                # Handle odd-length hex strings or invalid hex
+                logger.warning(f"Invalid bits hex '{bits_hex}' for height {height}, using default: {e}")
+                header += bytes.fromhex("00000000")[::-1]
             # nonce: 4 bytes little-endian
             header += struct.pack("<I", nonce)
             
