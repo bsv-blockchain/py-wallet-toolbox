@@ -403,8 +403,6 @@ class ARC:
                         if error_data.detail:
                             note["detail"] = error_data.detail
                         # Enhanced logging for debugging
-                        import logging
-                        logger = logging.getLogger(__name__)
                         logger.error(f"ARC {self.name} full error response (status {response.status_code}): {response_data}")
 
                         if response.status_code == 460 and "Missing input scripts" in str(response_data.get("detail", "")):
@@ -414,8 +412,6 @@ class ARC:
                     response_text = response.text
                     if response_text:
                         note["data"] = response_text[:128]
-                        import logging
-                        logger = logging.getLogger(__name__)
                         logger.warning(f"ARC {self.name} error response (non-JSON, status {response.status_code}): {response_text[:200]}")
 
                 result.notes.append(note)
@@ -476,8 +472,6 @@ class ARC:
                 raise
 
         # Debug: Log BEEF structure before broadcast
-        import logging
-        logger = logging.getLogger(__name__)
         if hasattr(beef, 'txs') and isinstance(beef.txs, dict):
             txid_only_entries = []
             full_raw_entries = []

@@ -697,6 +697,7 @@ class StorageServer:
 
 
 # Backward compatibility alias
+# Deprecated: Use StorageServer instead
 JsonRpcServer = StorageServer
 
 
