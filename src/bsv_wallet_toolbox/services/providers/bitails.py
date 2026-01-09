@@ -168,7 +168,7 @@ class Bitails:
         }
 
         if isinstance(self.api_key, str) and self.api_key.strip():
-            headers["Authorization"] = f"Bearer {self.api_key}"
+            headers["Authorization"] = self.api_key
 
         return headers
 

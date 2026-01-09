@@ -207,6 +207,10 @@ def shutdown_async_runner() -> None:
     _ASYNC_RUNNER.shutdown()
 
 
+# Global async runner initialized at module import time.
+# Note: This could potentially cause issues in forked processes, but lazy initialization
+# would require significant refactoring across 35+ usages throughout the codebase.
+# The current approach is acceptable for the primary use case of long-running applications.
 _ASYNC_RUNNER = _AsyncRunner()
 
 # Register cleanup on exit (only after successful runner initialization)
@@ -856,11 +860,11 @@ class Services(WalletServices):
         result: dict[str, Any] = {"txid": txid}
 
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
                 # Note: get_raw_tx takes only txid, unlike get_merkle_path which also takes services
-                r = self._run_async(stc.service(txid))
+                r = self._run_async(service_to_call.service(txid))
 
                 # Provider contract:
                 # - Preferred (TS-style): dict with "rawTx" and optional "error"
@@ -881,7 +885,7 @@ class Services(WalletServices):
                                 result["rawTx"] = raw_tx_hex
                                 result["name"] = r.get("name")
                                 result.pop("error", None)
-                                services.add_service_call_success(stc)
+                                services.add_service_call_success(service_to_call)
                                 return raw_tx_hex
 
                             # Hash mismatch - mark as error
@@ -892,13 +896,13 @@ class Services(WalletServices):
                             r.pop("rawTx", None)
 
                     if r.get("error"):
-                        services.add_service_call_error(stc, r["error"])
+                        services.add_service_call_error(service_to_call, r["error"])
                         if "error" not in result:
                             result["error"] = r["error"]
                     elif not r.get("rawTx"):
-                        services.add_service_call_success(stc, "not found")
+                        services.add_service_call_success(service_to_call, "not found")
                     else:
-                        services.add_service_call_failure(stc)
+                        services.add_service_call_failure(service_to_call)
                 elif isinstance(r, str):
                     # Backwards-compatible path for providers that return raw hex directly.
                     try:
@@ -906,14 +910,14 @@ class Services(WalletServices):
                         computed_txid = bytes(double_sha256_be(raw_tx_bytes)).hex()
                     except (ValueError, TypeError):
                         # Treat invalid hex as provider failure.
-                        services.add_service_call_failure(stc, "invalid data")
+                        services.add_service_call_failure(service_to_call, "invalid data")
                     else:
                         if computed_txid.lower() == txid.lower():
                             # Match found
                             result["rawTx"] = r
-                            result["name"] = getattr(stc, "provider_name", None)
+                            result["name"] = getattr(service_to_call, "provider_name", None)
                             result.pop("error", None)
-                            services.add_service_call_success(stc)
+                            services.add_service_call_success(service_to_call)
                             return r
 
                         # Hash mismatch - mark as error
@@ -921,15 +925,15 @@ class Services(WalletServices):
                             "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
                             "code": "TXID_MISMATCH",
                         }
-                        services.add_service_call_error(stc, error)
+                        services.add_service_call_error(service_to_call, error)
                         if "error" not in result:
                             result["error"] = error
                 else:
                     # None or unsupported type -> treat as not found
-                    services.add_service_call_success(stc, "not found")
+                    services.add_service_call_success(service_to_call, "not found")
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
                 if "error" not in result:
                     result["error"] = {"message": str(e), "code": "PROVIDER_ERROR"}
 
@@ -1007,10 +1011,10 @@ class Services(WalletServices):
         last_error: dict[str, Any] | None = None
 
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                r = self._run_async(stc.service(txid, self))
+                r = self._run_async(service_to_call.service(txid, self))
 
                 # Collect notes from all providers
                 if isinstance(r, dict) and r.get("notes"):
@@ -1026,19 +1030,19 @@ class Services(WalletServices):
                     result["header"] = r.get("header")
                     result["name"] = r.get("name")
                     result.pop("error", None)
-                    services.add_service_call_success(stc)
+                    services.add_service_call_success(service_to_call)
                     break
 
                 # Record errors/failures
                 if isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
+                    services.add_service_call_error(service_to_call, r["error"])
                     if "error" not in result:
                         result["error"] = r["error"]
                 else:
-                    services.add_service_call_failure(stc)
+                    services.add_service_call_failure(service_to_call)
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
                 last_error = {"message": str(e), "code": "PROVIDER_ERROR"}
                 if "error" not in result:
                     result["error"] = last_error
@@ -1211,28 +1215,28 @@ class Services(WalletServices):
         # Retry loop: up to 2 attempts
         for _retry in range(2):
             for _tries in range(services.count):
-                stc = services.service_to_call
+                service_to_call = services.service_to_call
                 try:
                     # Call service (handle async if needed)
-                    if asyncio.iscoroutinefunction(stc.service):
-                        r = self._run_async(stc.service(output, output_format, outpoint))
+                    if asyncio.iscoroutinefunction(service_to_call.service):
+                        r = self._run_async(service_to_call.service(output, output_format, outpoint))
                     else:
-                        r = stc.service(output, output_format, outpoint)
+                        r = service_to_call.service(output, output_format, outpoint)
 
                     if isinstance(r, dict) and r.get("status") == "success":
                         # Success - cache and return
-                        services.add_service_call_success(stc)
+                        services.add_service_call_success(service_to_call)
                         result = r
                         self.utxo_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
                         return result
                     # Failure or not found
                     elif isinstance(r, dict) and r.get("error"):
-                        services.add_service_call_error(stc, r["error"])
+                        services.add_service_call_error(service_to_call, r["error"])
                     else:
-                        services.add_service_call_failure(stc)
+                        services.add_service_call_failure(service_to_call)
 
                 except Exception as e:
-                    services.add_service_call_error(stc, e)
+                    services.add_service_call_error(service_to_call, e)
 
                 services.next()
 
@@ -1300,28 +1304,28 @@ class Services(WalletServices):
 
         # Failover loop
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                if asyncio.iscoroutinefunction(stc.service):
-                    r = self._run_async(stc.service(script_hash))
+                if asyncio.iscoroutinefunction(service_to_call.service):
+                    r = self._run_async(service_to_call.service(script_hash))
                 else:
-                    r = stc.service(script_hash)
+                    r = service_to_call.service(script_hash)
 
                 if isinstance(r, dict) and r.get("status") == "success":
                     # Success - cache and return
                     result = r
-                    services.add_service_call_success(stc)
+                    services.add_service_call_success(service_to_call)
                     self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
                     return result
                 # Failure or not found
                 elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
+                    services.add_service_call_error(service_to_call, r["error"])
                 else:
-                    services.add_service_call_failure(stc)
+                    services.add_service_call_failure(service_to_call)
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
 
             services.next()
 
@@ -1381,26 +1385,26 @@ class Services(WalletServices):
 
         # Failover loop
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                r = self._run_async(stc.service(txid, use_next))
+                r = self._run_async(service_to_call.service(txid, use_next))
 
                 # For transaction status, any response with transaction data or valid status is success
                 if isinstance(r, dict) and ("status" in r or "txid" in r) and not r.get("error"):
                     # Valid transaction status - cache and return
                     result = r
-                    services.add_service_call_success(stc)
+                    services.add_service_call_success(service_to_call)
                     self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
                     return result
                 # Failure or error
                 elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
+                    services.add_service_call_error(service_to_call, r["error"])
                 else:
-                    services.add_service_call_failure(stc)
+                    services.add_service_call_failure(service_to_call)
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
 
             services.next()
 

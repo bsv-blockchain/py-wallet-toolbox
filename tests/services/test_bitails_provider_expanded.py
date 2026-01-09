@@ -67,7 +67,7 @@ class TestBitailsInitialization:
         expected = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": "Bearer test_key_123"
+            "Authorization": "test_key_123"
         }
         assert headers == expected
 
@@ -84,7 +84,7 @@ class TestBitailsInitialization:
         expected = {
             "Content-Type": "application/json",
             "Accept": "application/json",
-            "Authorization": "Bearer key123",
+            "Authorization": "key123",
             "X-Custom": "value",
             "User-Agent": "test"
         }

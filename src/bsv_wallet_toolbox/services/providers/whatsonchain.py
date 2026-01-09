@@ -80,6 +80,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     async def get_chain(self) -> Chain:
         """Confirm the chain.
 
+        This method must remain async to satisfy the ChaintracksClientApi interface contract
+        (defined as @abstractmethod async def get_chain()), even though the implementation
+        performs no I/O operations and could be synchronous.
+
         Returns:
             Chain identifier
         """

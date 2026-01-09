@@ -41,18 +41,18 @@ def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
     if "protocol_id" in args:
         raise InvalidParameterError(
             "protocol_id",
-            "invalid protocol identifier key; use 'protocolID' instead of 'protocol_id' or 'protocolId'",
+            "invalid protocol identifier key 'protocol_id'; use 'protocolID' instead",
         )
     if "protocolId" in args:
         raise InvalidParameterError(
             "protocolId",
-            "invalid protocol identifier key; use 'protocolID' instead of 'protocolId' or 'protocol_id'",
+            "invalid protocol identifier key 'protocolId'; use 'protocolID' instead",
         )
 
     if "key_id" in args:
-        raise InvalidParameterError("key_id", "invalid key identifier key; use 'keyID' instead of 'key_id' or 'keyId'")
+        raise InvalidParameterError("key_id", "invalid key identifier key 'key_id'; use 'keyID' instead")
     if "keyId" in args:
-        raise InvalidParameterError("keyId", "invalid key identifier key; use 'keyID' instead of 'keyId' or 'key_id'")
+        raise InvalidParameterError("keyId", "invalid key identifier key 'keyId'; use 'keyID' instead")
 
     return args
 

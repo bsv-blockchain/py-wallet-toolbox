@@ -572,7 +572,7 @@ class ChaintracksStorageMemory(ChaintracksStorage):
         session = self.session_factory()
         try:
             # Check if we have a migrations table
-            # Using text() for hardcoded SQL to prevent SQL injection (table/column names are static)
+            # Using text() to execute a hardcoded raw SQL query via SQLAlchemy (no user input involved)
             result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"))
             if not result.fetchone():
                 # Create migrations table
