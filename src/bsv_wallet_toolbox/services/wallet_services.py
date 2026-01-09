@@ -43,12 +43,16 @@ class WalletServices(ABC):
         chain: The blockchain network ('main' or 'test')
     """
 
-    def __init__(self, chain: Chain = Chain.MAIN) -> None:
+    def __init__(self, chain: Chain | str = Chain.MAIN) -> None:
         """Initialize wallet services.
 
         Args:
-            chain: Blockchain network ('main' or 'test')
+            chain: Blockchain network ('main' or 'test') as Chain enum or string.
+                  String values are automatically converted to Chain enum for backward compatibility.
         """
+        # Convert string values to Chain enum for backward compatibility
+        if isinstance(chain, str):
+            chain = Chain(chain)
         self.chain: Chain = chain
 
     @abstractmethod

@@ -46,6 +46,7 @@ from collections.abc import Callable
 from time import time
 from typing import Any
 from urllib.parse import urlparse
+import atexit
 
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
@@ -137,15 +138,77 @@ class _AsyncRunner:
         self._loop = asyncio.new_event_loop()
         self._loop_thread = threading.Thread(target=self._run_loop, daemon=True)
         self._loop_thread.start()
+        self._shutdown_event = threading.Event()
 
     def _run_loop(self) -> None:
         asyncio.set_event_loop(self._loop)
-        self._loop.run_forever()
+        try:
+            self._loop.run_forever()
+        finally:
+            # Cleanup when loop stops
+            try:
+                _cancel_all_tasks(self._loop)
+                self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+                self._loop.run_until_complete(self._loop.shutdown_default_executor())
+            except Exception:
+                pass  # Best effort cleanup
 
     def run(self, coro: Any) -> Any:
+        if self._shutdown_event.is_set():
+            raise RuntimeError("AsyncRunner has been shut down")
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
         return future.result()
 
+    def shutdown(self) -> None:
+        """Shutdown the background event loop and thread.
+
+        This method should be called when the application is shutting down
+        to ensure proper cleanup of the background thread and event loop.
+        """
+        if self._shutdown_event.is_set():
+            return  # Already shut down
+
+        self._shutdown_event.set()
+
+        # Stop the event loop
+        if self._loop.is_running():
+            self._loop.call_soon_threadsafe(self._loop.stop)
+
+        # Wait for thread to finish
+        if self._loop_thread.is_alive():
+            self._loop_thread.join(timeout=5.0)
+
+        # Final cleanup
+        try:
+            if not self._loop.is_closed():
+                self._loop.close()
+        except Exception:
+            pass  # Best effort cleanup
+
+
+def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
+    """Cancel all pending tasks in the event loop."""
+    try:
+        pending_tasks = [t for t in asyncio.all_tasks(loop) if not t.done()]
+        for task in pending_tasks:
+            task.cancel()
+        if pending_tasks:
+            loop.run_until_complete(asyncio.gather(*pending_tasks, return_exceptions=True))
+    except Exception:
+        pass  # Best effort cleanup
+
+
+def shutdown_async_runner() -> None:
+    """Shutdown the global async runner.
+
+    This function should be called when the application is shutting down
+    to ensure proper cleanup of the background thread and event loop.
+    """
+    _ASYNC_RUNNER.shutdown()
+
+
+# Register cleanup on exit
+atexit.register(shutdown_async_runner)
 
 _ASYNC_RUNNER = _AsyncRunner()
 

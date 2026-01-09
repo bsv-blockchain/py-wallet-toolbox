@@ -87,7 +87,11 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
     def _get_chain(self) -> Chain:
         """Internal implementation of get_chain."""
-        return Chain.MAIN if self.network == "main" else Chain.TEST
+        if self.network == "main":
+            return Chain.MAIN
+        if self.network == "test":
+            return Chain.TEST
+        raise ValueError(f"Unexpected network value: {self.network!r}. Expected 'main' or 'test'.")
 
     # ------------------------------------------------------------------ #
     # Override selected py-sdk tracker methods to avoid signature clash  #

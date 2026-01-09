@@ -39,14 +39,20 @@ def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
         The original args dict (validation is performed in-place)
     """
     if "protocol_id" in args:
-        raise InvalidParameterError("protocol_id", "use standardized camelCase key (protocolID)")
+        raise InvalidParameterError(
+            "protocol_id",
+            "invalid protocol identifier key; use 'protocolID' instead of 'protocol_id' or 'protocolId'",
+        )
     if "protocolId" in args:
-        raise InvalidParameterError("protocolId", "use standardized camelCase key (protocolID)")
+        raise InvalidParameterError(
+            "protocolId",
+            "invalid protocol identifier key; use 'protocolID' instead of 'protocolId' or 'protocol_id'",
+        )
 
     if "key_id" in args:
-        raise InvalidParameterError("key_id", "use standardized camelCase key (keyID)")
+        raise InvalidParameterError("key_id", "invalid key identifier key; use 'keyID' instead of 'key_id' or 'keyId'")
     if "keyId" in args:
-        raise InvalidParameterError("keyId", "use standardized camelCase key (keyID)")
+        raise InvalidParameterError("keyId", "invalid key identifier key; use 'keyID' instead of 'keyId' or 'key_id'")
 
     return args
 
