@@ -46,7 +46,6 @@ from collections.abc import Callable
 from time import time
 from typing import Any
 from urllib.parse import urlparse
-import atexit
 
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
@@ -213,13 +212,17 @@ def shutdown_async_runner() -> None:
 
 
 # Global async runner initialized at module import time.
-# Note: This could potentially cause issues in forked processes, but lazy initialization
-# would require significant refactoring across 35+ usages throughout the codebase.
+# WARNING: This module is incompatible with process forking (multiprocessing, gunicorn workers).
+# The event loop and background thread will be copied to child processes, leading to undefined behavior.
+# Use thread-based concurrency or single-process deployment for applications using this module.
+#
+# Note: Lazy initialization would require significant refactoring across 35+ usages throughout the codebase.
 # The current approach is acceptable for the primary use case of long-running applications.
 _ASYNC_RUNNER = _AsyncRunner()
 
-# Register cleanup on exit (only after successful runner initialization)
-atexit.register(shutdown_async_runner)
+# Note: atexit cleanup is not registered to avoid issues with forked processes and daemon threads.
+# Applications should ensure proper shutdown by calling shutdown_async_runner() explicitly if needed.
+# The async runner will be cleaned up naturally when the process exits.
 
 
 class Services(WalletServices):
@@ -1469,6 +1472,7 @@ class Services(WalletServices):
 
         # Debug: Log rawTx being processed
         # Check if it's AtomicBEEF format (starts with ATOMIC_BEEF_PREFIX) or raw transaction
+        # Both beef and ATOMIC_BEEF_PREFIX are hex strings, so direct string comparison works
         is_atomic_beef = beef.startswith(ATOMIC_BEEF_PREFIX)
         if is_atomic_beef:
             self.logger.debug(

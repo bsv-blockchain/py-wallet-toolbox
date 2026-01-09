@@ -107,20 +107,50 @@ class CacheManager(Generic[T]):
         return self.get(key) is not None
 
     @staticmethod
-    def _validate_key(key: str) -> str:
-        """Validate cache keys by prohibiting underscores.
+    def to_camel_case(key: str) -> str:
+        """Convert an underscore-delimited key to camelCase.
 
-        This prevents snake_case keys (those containing underscores) but does not
-        enforce any specific alternative naming style.
+        This helper is intended for API consumers who need to migrate from
+        snake_case (or other underscore-delimited formats) to the camelCase
+        style enforced by :meth:`_validate_key`.
+
+        Examples:
+            >>> CacheManager.to_camel_case("my_cache_key")
+            'myCacheKey'
+            >>> CacheManager.to_camel_case("alreadyCamel")
+            'alreadyCamel'
 
         Args:
-            key: Cache key to validate
+            key: Original cache key that may contain underscores.
 
         Returns:
-            The validated key (unchanged if valid)
+            A camelCase version of the key with underscores removed.
+        """
+        if "_" not in key:
+            return key
+        parts = [part for part in key.split("_") if part]
+        if not parts:
+            return ""
+        head, *tail = parts
+        return head + "".join(part[:1].upper() + part[1:] for part in tail)
+
+    @staticmethod
+    def _validate_key(key: str) -> str:
+        """Validate cache keys by enforcing a camelCase naming convention.
+
+        Cache keys must not contain underscores and should follow camelCase
+        (for example: ``myCacheKey`` or ``anotherKey123``). For callers that
+        currently use snake_case keys, use :meth:`to_camel_case` to obtain a
+        compliant key before interacting with the cache.
+
+        Args:
+            key: Cache key to validate.
+
+        Returns:
+            The validated key (unchanged if valid).
 
         Raises:
-            ValueError: If key contains underscores
+            ValueError: If key contains underscores.
         """
         if "_" in key:
             msg = f"CacheManager keys must not contain underscores: {key}"
