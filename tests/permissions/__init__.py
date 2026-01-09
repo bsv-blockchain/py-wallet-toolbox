@@ -1,1 +1,0 @@
-"""Permissions tests module."""

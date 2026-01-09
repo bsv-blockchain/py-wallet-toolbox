@@ -1,2 +1,0 @@
-"""Signer tests module."""
-
