@@ -1401,8 +1401,8 @@ class WalletPermissionsManager:
             originator = args.get("originator")
             basket = args.get("basket")
             reason = args.get("reason")
-            seek_permission = args.get("seekPermission", args.get("seekPermission", True))
-            usage_type = args.get("usageType", args.get("usageType", "insertion"))
+            seek_permission = args.get("seekPermission", True)
+            usage_type = args.get("usageType", "insertion")
 
         # Admin bypass
         if originator == self._admin_originator:

@@ -413,18 +413,6 @@ class StorageServer:
             "updateProvenTxReqWithNewProvenTx": "update_proven_tx_req_with_new_proven_tx",
         }
 
-        # Debug: Log first few methods to see what's available
-        all_methods = dir(storage_provider)
-        logger.debug(f"StorageProvider has {len(all_methods)} total attributes/methods")
-        logger.debug(f"First 20 methods: {all_methods[:20]}")
-        logger.debug(f"Methods starting with 'set': {[m for m in all_methods if m.startswith('set')]}")
-        logger.debug(f"hasattr(storage_provider, 'set_active'): {hasattr(storage_provider, 'set_active')}")
-        try:
-            method = getattr(storage_provider, 'set_active', None)
-            logger.debug(f"getattr(storage_provider, 'set_active', None): {method}")
-        except Exception as e:
-            logger.debug(f"getattr exception: {e}")
-        
         for json_rpc_method, python_method in json_rpc_to_python_methods.items():
             # Debug: Check if method exists
             has_method = hasattr(storage_provider, python_method)
