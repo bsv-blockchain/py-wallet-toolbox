@@ -72,6 +72,8 @@ ATOMIC_BEEF_HEX_PREFIX: str = "01010101"  # Hex string prefix for AtomicBEEF for
 # Backwards-compatible alias (deprecated): prefer ATOMIC_BEEF_HEX_PREFIX
 ATOMIC_BEEF_PREFIX: str = ATOMIC_BEEF_HEX_PREFIX
 
+logger = logging.getLogger(__name__)
+
 
 
 def create_default_options(chain: Chain) -> WalletServicesOptions:
@@ -153,8 +155,8 @@ class _AsyncRunner:
                 _cancel_all_tasks(self._loop)
                 self._loop.run_until_complete(self._loop.shutdown_asyncgens())
                 self._loop.run_until_complete(self._loop.shutdown_default_executor())
-            except Exception:
-                pass  # Best effort cleanup
+            except Exception as e:
+                logger.debug(f"Non-fatal error during async runner cleanup: {e}")
 
     def run(self, coro: Any) -> Any:
         if self._shutdown_event.is_set():

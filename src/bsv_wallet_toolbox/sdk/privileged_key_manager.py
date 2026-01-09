@@ -25,6 +25,10 @@ from bsv.wallet import ProtoWallet
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
     """Validate protocol-related arguments to enforce standardized protocol key names.
@@ -181,8 +185,8 @@ class PrivilegedKeyManager:
                 self._chunk_pad_prop_names = []
                 self._decoy_prop_names_destroy = []
 
-            except Exception:
-                pass  # Swallow any errors in the destruction process
+            except Exception as e:
+                logger.warning(f"Error during privileged key destruction (non-fatal): {e}")
             finally:
                 if self._destroy_timer is not None:
                     self._destroy_timer.cancel()
