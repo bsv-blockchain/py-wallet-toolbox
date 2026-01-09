@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from tests.services.conftest import MockWalletServices
-from bsv_wallet_toolbox.services.wallet_services import WalletServices
+from bsv_wallet_toolbox.services.wallet_services import WalletServices, Chain
 
 
 
@@ -18,13 +18,13 @@ class TestWalletServicesInitialization:
     def test_services_creation_basic(self, mock_wallet_services) -> None:
         """Test creating services with basic parameters."""
         assert mock_wallet_services is not None
-        assert mock_wallet_services.chain == "main"
+        assert mock_wallet_services.chain.value == "main"
 
     def test_services_with_chain(self) -> None:
         """Test creating services with chain parameter."""
         # Create service with test chain directly
         test_services = MockWalletServices("test")
-        assert test_services.chain == "test"
+        assert test_services.chain.value == "test"
 
     def test_services_with_providers(self, mock_wallet_services) -> None:
         """Test creating services with custom providers."""

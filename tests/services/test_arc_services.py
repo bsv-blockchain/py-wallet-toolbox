@@ -11,6 +11,7 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 
 try:
     from bsv_wallet_toolbox.services import Services
+    from bsv_wallet_toolbox.services.wallet_services import Chain
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
@@ -228,7 +229,7 @@ class TestArcServices:
         with patch('bsv_wallet_toolbox.services.services.ServiceCollection'):
             services = Services(valid_arc_config)
             assert services is not None
-            assert services.chain == valid_arc_config["chain"]
+            assert services.chain.value == valid_arc_config["chain"]
 
     @pytest.mark.asyncio
     async def test_arc_post_beef_invalid_beef_data(self, mock_services, invalid_beef_data) -> None:

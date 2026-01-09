@@ -541,7 +541,7 @@ class TestServicesErrorHandling:
 
             # Service should maintain configuration
             assert services is not None
-            assert services.chain == "main"
+            assert services.chain.value == "main"
 
             # Configuration should be accessible
             if hasattr(services, '_options') or hasattr(services, 'options'):

@@ -9,6 +9,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.services import Services
+from bsv_wallet_toolbox.services.wallet_services import Chain
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
@@ -106,7 +107,7 @@ def test_get_chain_tracker_configuration_persistence() -> None:
     # Tracker should be aware of the service's chain
     assert hasattr(tracker, 'chain') or hasattr(services, 'chain')
     if hasattr(services, 'chain'):
-        assert services.chain == "main"
+        assert services.chain.value == "main"
 
 
 def test_get_chain_tracker_network_operations() -> None:
