@@ -41,6 +41,7 @@ import requests
 
 from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 from bsv_wallet_toolbox.utils.merkle_path_utils import normalize_merkle_path_value
+from bsv_wallet_toolbox.services.services import ATOMIC_BEEF_HEX_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -230,12 +231,12 @@ class ARC:
                 len(raw_tx_hex) // 2,
                 raw_tx_hex[:100]
             )
-            # Verify it's not AtomicBEEF format (should not start with 01010101)
-            if raw_tx_hex.startswith("01010101"):
+            # Verify it's not AtomicBEEF format (should not start with ATOMIC_BEEF_HEX_PREFIX)
+            if raw_tx_hex.startswith(ATOMIC_BEEF_HEX_PREFIX):
                 logger.warning(
-                    "ARC %s.broadcast: WARNING - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
+                    "ARC %s.broadcast: WARNING - raw_tx appears to be AtomicBEEF format (starts with %s)! "
                     "This should be a raw transaction hex, not AtomicBEEF. Transaction may fail to broadcast.",
-                    self.name
+                    self.name, ATOMIC_BEEF_HEX_PREFIX
                 )
             return self.post_raw_tx(raw_tx_hex, [txid])
         # Non-Transaction payloads (e.g., raw hex or BEEF) are not supported for ARC broadcast

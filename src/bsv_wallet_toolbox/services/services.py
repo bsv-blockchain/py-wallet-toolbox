@@ -207,22 +207,37 @@ def shutdown_async_runner() -> None:
 
     This function should be called when the application is shutting down
     to ensure proper cleanup of the background thread and event loop.
+
+    When using process forking (e.g. multiprocessing, gunicorn pre-fork workers),
+    call this function in the parent process *before* forking to avoid copying
+    a running event loop and thread into child processes. Each child process
+    should then import this module after the fork so it can create its own
+    independent async runner.
     """
     _ASYNC_RUNNER.shutdown()
 
 
 # Global async runner initialized at module import time.
 # WARNING: This module is incompatible with process forking (multiprocessing, gunicorn workers).
-# The event loop and background thread will be copied to child processes, leading to undefined behavior.
-# Use thread-based concurrency or single-process deployment for applications using this module.
+# The event loop and background thread will be copied to child processes, leading to undefined behavior
+# if a fork occurs after this module has been imported and the runner is active.
+#
+# Recommended usage:
+#   - Prefer thread-based concurrency or single-process deployment for applications using this module.
+#   - If forking is unavoidable, either:
+#       * Import this module only inside child processes after the fork, or
+#       * Call shutdown_async_runner() in the parent process before forking, and ensure each child
+#         imports this module after the fork so it creates a fresh async runner.
 #
 # Note: Lazy initialization would require significant refactoring across 35+ usages throughout the codebase.
-# The current approach is acceptable for the primary use case of long-running applications.
+# The current approach is acceptable for the primary use case of long-running applications, provided
+# that the above guidelines are followed when using process forking.
 _ASYNC_RUNNER = _AsyncRunner()
 
 # Note: atexit cleanup is not registered to avoid issues with forked processes and daemon threads.
-# Applications should ensure proper shutdown by calling shutdown_async_runner() explicitly if needed.
-# The async runner will be cleaned up naturally when the process exits.
+# Applications should ensure proper shutdown by calling shutdown_async_runner() explicitly when
+# the process is exiting or before creating child processes via fork, if this module has already
+# been imported.
 
 
 class Services(WalletServices):
