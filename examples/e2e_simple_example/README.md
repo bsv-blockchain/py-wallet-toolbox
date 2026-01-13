@@ -1,234 +1,234 @@
-# E2E Simple Example: 2ウォレット往復送金テスト
+# E2E Simple Example: 2-Wallet Roundtrip Payment Test
 
-Alice と Bob の 2 つのウォレット間で相互に送受金できることを確認するエンドツーエンドテストです。
+An end-to-end test to confirm that two wallets (Alice and Bob) can send and receive payments to each other.
 
-## 概要
+## Overview
 
-このスクリプトは以下の流れでテストを実行します：
+This script executes tests in the following flow:
 
-1. **ウォレット初期化**: Alice と Bob の独立した 2 つのウォレットを作成
-2. **Faucet 受金**: Alice のウォレットアドレスを表示し、ユーザーが Faucet から入金
-3. **Transaction Internalize** (オプション): Faucet トランザクションを BRC-29 wallet payment プロトコルで取り込み
-4. **双方向送金**:
-   - Alice: 残高の 80% を Bob に P2PKH 送金
-   - Bob: 受け取った資金から 80% を Alice に P2PKH 送金
-5. **結果表示**: 最終残高とトランザクション ID を表示
+1. **Wallet Initialization**: Create two independent wallets for Alice and Bob
+2. **Faucet Receipt**: Display Alice's wallet address and have user receive funds from Faucet
+3. **Transaction Internalize** (Optional): Incorporate Faucet transaction using BRC-29 wallet payment protocol
+4. **Bidirectional Payments**:
+   - Alice: Send 80% of balance to Bob via P2PKH
+   - Bob: Send 80% of received funds back to Alice via P2PKH
+5. **Result Display**: Display final balances and transaction IDs
 
-## セットアップ
+## Setup
 
-### 1. 環境ファイルの準備
+### 1. Prepare Environment File
 
 ```bash
-# スクリプトディレクトリに移動
+# Navigate to script directory
 cd examples/e2e_simple_example
 
-# .env ファイルを作成
+# Create .env file
 cp env.example .env
 ```
 
-### 2. .env の設定
+### 2. Configure .env
 
-`env.example` をコピーした `.env` ファイルに以下の値を設定します：
+Set the following values in the `.env` file copied from `env.example`:
 
 ```env
-# ネットワーク選択（testnet 推奨）
+# Network selection (testnet recommended)
 BSV_NETWORK=test
 
-# Taal ARC API キー（必須）
+# Taal ARC API key (required)
 TAAL_ARC_API_KEY=your_taal_arc_api_key_here
 
-# ストレージオプション（次のいずれかを選択）
+# Storage options (choose one of the following)
 
-# オプション A: ローカル SQLite ストレージ（デフォルト）
-# この場合、wallet_alice.db と wallet_bob.db がローカルに作成されます
-# USE_STORAGE_SERVER の設定なし
+# Option A: Local SQLite storage (default)
+# In this case, wallet_alice.db and wallet_bob.db will be created locally
+# No USE_STORAGE_SERVER setting
 
-# オプション B: リモートストレージサーバー（BRC-104 認証必須）
+# Option B: Remote storage server (BRC-104 authentication required)
 # USE_STORAGE_SERVER=true
 # STORAGE_SERVER_URL=http://localhost:8080
 ```
 
-**注意**: `TAAL_ARC_API_KEY` は必須です。テストネットの場合は以下から取得できます：
-- https://www.taal.com/ でアカウントを作成して API キーを取得
+**Note**: `TAAL_ARC_API_KEY` is required. For testnet, obtain it from:
+- Create an account at https://www.taal.com/ to get an API key
 
-### 3. 依存パッケージのインストール
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-または、プロジェクトをローカルで開発している場合：
+Or, if developing the project locally:
 
 ```bash
 pip install -e ../../
 python-dotenv
 ```
 
-## 実行方法
+## How to Run
 
 ```bash
 python e2e_two_party_roundtrip.py
 ```
 
-### 実行の流れ
+### Execution Flow
 
-1. **スクリプト起動**
-   - 環境変数を読み込み
-   - Alice と Bob のウォレットを初期化
-   - ストレージ接続を確認
+1. **Script Startup**
+   - Load environment variables
+   - Initialize wallets for Alice and Bob
+   - Confirm storage connections
 
-2. **Alice のアドレス表示**
+2. **Alice's Address Display**
    ```
    Alice's receive address: <address>
    ```
-   この出力を確認してください。
+   Please confirm this output.
 
-3. **Faucet からの入金を待機**
-   - スクリプトは以下のいずれかから入金するよう指示します：
-     - テストネット: https://testnet-faucet.bsv.dev/
-     - メインネット: https://faucet.bsv.dev/
-   - ブロックエクスプローラで確認後、`Enter` キーを押して続行
+3. **Wait for Faucet Deposit**
+   - The script will instruct you to deposit from one of the following:
+     - Testnet: https://testnet-faucet.bsv.dev/
+     - Mainnet: https://faucet.bsv.dev/
+   - After confirming in block explorer, press `Enter` to continue
 
-4. **トランザクション ID の入力（オプション）**
-   - Faucet トランザクションの txid を入力（64 文字の 16 進数）
-   - または空のまま `Enter` を押して internalize をスキップ
-   - スキップした場合、後続の送金も実行されません
+4. **Transaction ID Input (Optional)**
+   - Enter faucet transaction txid (64-character hexadecimal)
+   - Or leave empty and press `Enter` to skip internalize
+   - If skipped, subsequent payments will not execute
 
-5. **Alice → Bob 送金**
-   - Alice の残高の 80% を Bob に送金
-   - 成功後、トランザクション ID が表示されます
+5. **Alice → Bob Payment**
+   - Alice sends 80% of balance to Bob
+   - Transaction ID will be displayed after success
 
-6. **Bob → Alice 送金**
-   - Bob が受け取った資金から 80% を Alice に返送
-   - 成功後、トランザクション ID が表示されます
+6. **Bob → Alice Payment**
+   - Bob sends 80% of received funds back to Alice
+   - Transaction ID will be displayed after success
 
-7. **結果表示**
-   - 最終残高とトランザクション ID を表示
-   - ブロックエクスプローラで検証するための情報を提供
+7. **Result Display**
+   - Display final balances and transaction IDs
+   - Provide information for verification in block explorer
 
-## トラブルシューティング
+## Troubleshooting
 
-### `TAAL_ARC_API_KEY not set` エラー
+### `TAAL_ARC_API_KEY not set` Error
 
-**原因**: `.env` ファイルに `TAAL_ARC_API_KEY` が設定されていません
+**Cause**: `TAAL_ARC_API_KEY` is not set in `.env` file
 
-**対策**:
+**Solution**:
 ```bash
-# .env ファイルを確認
+# Check .env file
 cat .env
 
-# TAAL_ARC_API_KEY が見つからない場合は設定
+# Set TAAL_ARC_API_KEY if not found
 echo "TAAL_ARC_API_KEY=your_key_here" >> .env
 ```
 
-### ストレージ接続エラー
+### Storage Connection Error
 
-**ローカルストレージの場合**:
-- `wallet_alice.db` と `wallet_bob.db` がスクリプトと同じディレクトリに作成されます
-- `.gitignore` に登録済みなので心配なし
+**For Local Storage**:
+- `wallet_alice.db` and `wallet_bob.db` will be created in the same directory as the script
+- Already registered in `.gitignore`, so no worries
 
-**リモートストレージの場合**:
+**For Remote Storage**:
 ```
 Error: Unable to connect to storage server
 ```
 
-**対策**:
-1. `STORAGE_SERVER_URL` が正しいか確認
-2. ストレージサーバーが起動しているか確認
-3. ローカルストレージでの実行に切り替え（`USE_STORAGE_SERVER` をコメントアウト）
+**Solution**:
+1. Confirm `STORAGE_SERVER_URL` is correct
+2. Confirm storage server is running
+3. Switch to local storage execution (comment out `USE_STORAGE_SERVER`)
 
-### Faucet 入金タイムアウト
+### Faucet Deposit Timeout
 
-**原因**: ブロックチェーンへの反映が遅い
+**Cause**: Slow reflection to blockchain
 
-**対策**:
-1. ブロックエクスプローラで入金を確認
-2. テストネットの場合、数分待つ
-3. スクリプトを再実行し、同じ txid で internalize
+**Solution**:
+1. Confirm deposit in block explorer
+2. For testnet, wait a few minutes
+3. Re-run script and internalize with same txid
 
-### 送金に失敗する場合
+### If Payment Fails
 
-**原因**: 残高不足またはネットワークエラー
+**Cause**: Insufficient balance or network error
 
-**対策**:
-1. 十分な残高があるか確認（`Faucet 入金の際に十分な額を送る`）
-2. ネットワーク接続を確認
-3. `TAAL_ARC_API_KEY` が有効か確認
+**Solution**:
+1. Confirm sufficient balance (send adequate amount when depositing from faucet)
+2. Confirm network connection
+3. Confirm `TAAL_ARC_API_KEY` is valid
 
-## 検証方法
+## Verification Method
 
-トランザクションはテスト時に **確実にブロードキャスト** されます。ブロックエクスプローラで検証：
+Transactions are **definitely broadcast** during testing. Verify in block explorer:
 
-### テストネット
-- https://whatsonchain.com/ (testnet を選択)
-- 検索フィールドにトランザクション ID を入力
+### Testnet
+- https://whatsonchain.com/ (select testnet)
+- Enter transaction ID in search field
 
-### メインネット
+### Mainnet
 - https://www.bsvexplorer.io/
-- 検索フィールドにトランザクション ID を入力
+- Enter transaction ID in search field
 
-## ストレージについて
+## About Storage
 
-### ローカルストレージ（デフォルト）
+### Local Storage (Default)
 
 - Alice: `wallet_alice.db`
 - Bob: `wallet_bob.db`
-- SQLite 形式
-- 自動的に `.gitignore` に登録済み
+- SQLite format
+- Automatically registered in `.gitignore`
 
-### リモートストレージ
+### Remote Storage
 
-- BRC-104 認証が必須
-- `STORAGE_SERVER_URL` で指定したサーバーを使用
-- 複数のアプリケーション間でウォレット状態を共有可能
+- BRC-104 authentication required
+- Uses server specified by `STORAGE_SERVER_URL`
+- Can share wallet state across multiple applications
 
-## 注意事項
+## Notes
 
-### セキュリティ
+### Security
 
-- ✅ `.env` ファイルに秘密鍵やシードを保存しないでください（テストのみの使用）
-- ✅ `.env` ファイルは `.gitignore` に登録済みなので Git でコミットされません
-- ✅ 本番環境では環境変数や AWS Secrets Manager など安全な方法で管理してください
+- ✅ Do not save private keys or seeds in `.env` file (testing use only)
+- ✅ `.env` file is already registered in `.gitignore` so won't be committed to Git
+- ✅ In production, manage securely using environment variables or AWS Secrets Manager
 
-### テストネット推奨
+### Testnet Recommended
 
-- テストネットで十分にテストしてからメインネットを使用してください
-- メインネットでのテストには実資金が必要です
+- Please test sufficiently on testnet before using mainnet
+- Mainnet testing requires real funds
 
-### ARC ブロードキャスト
+### ARC Broadcasting
 
-- このテストはスクリプトで Taal ARC API を使用してブロードキャストします
-- Bitails と GorillaPool はこのテストでは無効化されています
-- 確実なブロードキャストのため、十分な手数料で設定されています
+- This test broadcasts using Taal ARC API in the script
+- Bitails and GorillaPool are disabled for this test
+- Set with sufficient fees for reliable broadcasting
 
-## 実装詳細
+## Implementation Details
 
-### ストレージ切り替え
+### Storage Switching
 
-スクリプトは以下の優先度でストレージを選択します：
+The script selects storage with the following priority:
 
-1. `USE_STORAGE_SERVER=true` が設定されている場合 → リモートストレージ
-2. それ以外の場合 → ローカル SQLite
+1. When `USE_STORAGE_SERVER=true` is set → Remote storage
+2. Otherwise → Local SQLite
 
-### Services の初期化
+### Services Initialization
 
-- `TAAL_ARC_API_KEY` から Taal ARC API キーを注入
-- Bitails と GorillaPool は無効化
-- リトライロジックとキャッシング機構は有効
+- Inject Taal ARC API key from `TAAL_ARC_API_KEY`
+- Bitails and GorillaPool are disabled
+- Retry logic and caching mechanism are enabled
 
-### P2PKH 送金
+### P2PKH Payment
 
-- 標準的な Pay-to-Public-Key-Hash（P2PKH）の形式
-- `bsv.script.P2PKH` クラスを使用したロック
+- Standard Pay-to-Public-Key-Hash (P2PKH) format
+- Locking using `bsv.script.P2PKH` class
 
 ### BRC-29 Wallet Payment Protocol
 
-Faucet からの受け入れは BRC-29 wallet payment プロトコルで処理：
+Faucet receipts are processed using BRC-29 wallet payment protocol:
 
-- `senderIdentityKey`: Faucet の公開鍵（PrivateKey(1).public_key()）
-- `derivationPrefix/Suffix`: テスト用固定値（base64 エンコード）
+- `senderIdentityKey`: Faucet's public key (PrivateKey(1).public_key())
+- `derivationPrefix/Suffix`: Fixed test values (base64 encoded)
 
-## ライセンス
+## License
 
-このテストスクリプトは wallet-toolbox に含まれます。
+This test script is included in wallet-toolbox.
 

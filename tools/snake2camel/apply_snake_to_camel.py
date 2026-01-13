@@ -6,11 +6,11 @@ from pathlib import Path
 import libcst as cst
 from libcst.metadata import PositionProvider
 
-# --- 設定 ---
+# --- Configuration ---
 INPUT_CSV = "snake_case_keys_report.csv"
 
 def load_mapping(csv_path):
-    """CSVを読み込み、 {(ファイル名, 行, 列, 元のキー): 新しいキー} の辞書を作る"""
+    """Load CSV and create a dictionary {(filename, line, column, original_key): new_key}"""
     mapping = {}
     with open(csv_path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -26,7 +26,7 @@ def load_mapping(csv_path):
 
 
 def normalize_literal(value: str) -> str:
-    """extractor側と同じロジックでクォートやプレフィックスを除去する。"""
+    """Remove quotes and prefixes using the same logic as extractor."""
     return re.sub(r"^([rfb]*['\"]{1,3})|(['\"]{1,3})$", "", value)
 
 
@@ -37,7 +37,7 @@ class SnakeToCamelTransformer(cst.CSTTransformer):
         super().__init__()
         self.file_path = str(Path(file_path).resolve())
         self.mapping = mapping
-        self.count = 0  # このファイルで変換した数
+        self.count = 0  # Number of conversions in this file
         self.source_lines = source_lines
         self.change_records = []
 
@@ -49,7 +49,7 @@ class SnakeToCamelTransformer(cst.CSTTransformer):
         
         if lookup_key in self.mapping:
             new_val = self.mapping[lookup_key]
-            # 元のクォート形式（' か "）を維持して置換
+            # Preserve original quote format (' or ") when replacing
             quote = current_value[0] if current_value[0] in ("'", '"') else "'"
             new_value_str = f"{quote}{new_val}{quote}"
             original_line = self.source_lines[pos.line - 1] if self.source_lines and pos.line - 1 < len(self.source_lines) else ""
@@ -69,8 +69,8 @@ class SnakeToCamelTransformer(cst.CSTTransformer):
         return None
 
     def leave_SimpleString(self, original_node, updated_node):
-        # 辞書のキー、ブラケット内の文字列、.get()の引数などは
-        # すべて SimpleString として現れるため、ここで一括判定
+        # Dictionary keys, strings in brackets, .get() arguments, etc.
+        # all appear as SimpleString, so check them all here
         new_value_str = self._get_new_key(original_node, original_node.value)
         if new_value_str:
             return updated_node.with_changes(value=new_value_str)
@@ -78,7 +78,7 @@ class SnakeToCamelTransformer(cst.CSTTransformer):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true", help="ファイルを書き換えずに結果だけ表示する")
+    parser.add_argument("--dry-run", action="store_true", help="Display results without modifying files")
     args = parser.parse_args()
 
     if not Path(INPUT_CSV).exists():
@@ -114,7 +114,7 @@ def main():
             wrapper = cst.metadata.MetadataWrapper(tree)
             transformer = SnakeToCamelTransformer(file_path, mapping, source_lines)
             
-            # 変換実行
+            # Execute transformation
             new_tree = wrapper.visit(transformer)
             
             if transformer.count == 0:

@@ -404,7 +404,7 @@ class WalletAdapter:
             encryption_args.protocol_id OR encryption_args.protocolID
               = {securityLevel: 1, protocol: 'server hmac'}
             encryption_args.key_id OR encryption_args.keyID = string
-            encryption_args.counterparty = {type: 1}  (ANYONE) など
+            encryption_args.counterparty = {type: 1}  (ANYONE)  etc.
         
         py-wallet-toolbox expects:
             protocolID = [securityLevel, protocol]

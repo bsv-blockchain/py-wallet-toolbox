@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""BRC-100 全28メソッドの網羅的テスト
+"""Comprehensive test of all 28 BRC-100 methods
 
 Usage:
-    # ローカルSQLiteストレージを使用（デフォルト）
+    # Use local SQLite storage (default)
     python test_all_28_methods.py
 
-    # Babbageリモートストレージを使用
+    # Use Babbage remote storage
     USE_REMOTE_STORAGE=true python test_all_28_methods.py
 
-    # wallet-infraサーバーを使用
+    # Use wallet-infra server
     USE_WALLET_INFRA=true python test_all_28_methods.py
 
-    # wallet-infraサーバーを使用（認証バイパス - テスト用のみ）
+    # Use wallet-infra server (auth bypass - testing only)
     USE_WALLET_INFRA=true BYPASS_WALLET_INFRA_AUTH=true python test_all_28_methods.py
 """
 
@@ -46,7 +46,7 @@ from src.config import (
 
 
 def test_method(name: str, func, *args, **kwargs):
-    """テストメソッドを実行し、結果を表示"""
+    """Execute test method and display results"""
     try:
         result = func(*args, **kwargs)
         print(f"  ✅ {name}")
@@ -63,7 +63,7 @@ FAUCET_DERIVATION_SUFFIX = "faucet-suffix-01"
 
 def main():
     print("=" * 70)
-    print("🔍 BRC-100 全28メソッド テスト")
+    print("🔍 BRC-100 All 28 Methods Test")
     print("=" * 70)
     
     # Initialize wallet
@@ -78,8 +78,8 @@ def main():
     remote_storage_mode = use_remote_storage()
 
     if wallet_infra_mode:
-        print(f"\n🏗️  wallet-infraモード: {get_wallet_infra_url()}")
-        print("⚠️  wallet-infraはBRC-104認証が必要です")
+        print(f"\n🏗️  wallet-infra mode: {get_wallet_infra_url()}")
+        print("⚠️  wallet-infra requires BRC-104 authentication")
         print("-" * 70)
 
         # First create wallet with local storage (required for StorageClient auth)
@@ -96,46 +96,46 @@ def main():
 
         # Test wallet-infra connection
         if bypass_auth:
-            print("\n🔄 wallet-infra認証をバイパスして直接接続...")
-            print("   注意: これはテスト目的のみです。本番環境では使用しないでください。")
+            print("\n🔄 Bypassing wallet-infra authentication for direct connection...")
+            print("   Note: This is for testing purposes only. Do not use in production.")
 
             # Create new wallet instance using StorageClient as storage provider (bypass auth)
-            print("\n🔄 wallet-infraストレージを使用したwalletインスタンスを作成中...")
+            print("\n🔄 Creating wallet instance using wallet-infra storage...")
             wallet = Wallet(
                 chain=network,
                 services=services,
                 key_deriver=key_deriver,
                 storage_provider=infra_client,
             )
-            print("✅ wallet-infra walletインスタンス作成成功 (認証バイパス)!")
+            print("✅ wallet-infra wallet instance created successfully (auth bypass)!")
         else:
             try:
-                print("\n🔄 wallet-infraに接続中...")
+                print("\n🔄 Connecting to wallet-infra...")
                 infra_settings = infra_client.make_available()
-                print(f"✅ wallet-infra接続成功!")
+                print(f"✅ wallet-infra connection successful!")
                 print(f"   Storage Identity Key: {infra_settings.get('storageIdentityKey', 'N/A')}")
                 print(f"   Chain: {infra_settings.get('chain', 'N/A')}")
 
                 # Create new wallet instance using StorageClient as storage provider
-                print("\n🔄 wallet-infraストレージを使用したwalletインスタンスを作成中...")
+                print("\n🔄 Creating wallet instance using wallet-infra storage...")
                 wallet = Wallet(
                     chain=network,
                     services=services,
                     key_deriver=key_deriver,
                     storage_provider=infra_client,
                 )
-                print("✅ wallet-infra walletインスタンス作成成功!")
+                print("✅ wallet-infra wallet instance created successfully!")
 
             except Exception as e:
-                print(f"⚠️  wallet-infra認証失敗: {e}")
-                print("   これはPython SDKの既知の問題です。ローカルストレージでテストを続行します...")
-                print("   注意: wallet-infra認証はPythonでは現在サポートされていません。")
-                print("   テスト用に BYPASS_WALLET_INFRA_AUTH=true を設定して認証をバイパスできます。")
+                print(f"⚠️  wallet-infra authentication failed: {e}")
+                print("   This is a known issue with Python SDK. Continuing tests with local storage...")
+                print("   Note: wallet-infra authentication is not currently supported in Python.")
+                print("   For testing, you can set BYPASS_WALLET_INFRA_AUTH=true to bypass authentication.")
                 wallet_infra_mode = False  # Fall back to local
 
     if not wallet_infra_mode and remote_storage_mode:
-        print(f"\n🌐 リモートストレージモード: {get_remote_storage_url(network)}")
-        print("⚠️  リモートストレージはBRC-104認証が必要です")
+        print(f"\n🌐 Remote storage mode: {get_remote_storage_url(network)}")
+        print("⚠️  Remote storage requires BRC-104 authentication")
         print("-" * 70)
 
         # First create wallet with local storage (required for StorageClient auth)
@@ -152,29 +152,29 @@ def main():
 
         # Test remote connection
         try:
-            print("\n🔄 リモートストレージに接続中...")
+            print("\n🔄 Connecting to remote storage...")
             remote_settings = remote_client.make_available()
-            print(f"✅ リモートストレージ接続成功!")
+            print(f"✅ Remote storage connection successful!")
             print(f"   Storage Identity Key: {remote_settings.get('storageIdentityKey', 'N/A')}")
             print(f"   Chain: {remote_settings.get('chain', 'N/A')}")
 
             # Create new wallet instance using StorageClient as storage provider
-            print("\n🔄 リモートストレージを使用したwalletインスタンスを作成中...")
+            print("\n🔄 Creating wallet instance using remote storage...")
             wallet = Wallet(
                 chain=network,
                 services=services,
                 key_deriver=key_deriver,
                 storage_provider=remote_client,
             )
-            print("✅ リモートストレージ walletインスタンス作成成功!")
+            print("✅ Remote storage wallet instance created successfully!")
 
         except Exception as e:
-            print(f"❌ リモートストレージ接続失敗: {e}")
-            print("   ローカルストレージで続行します...")
+            print(f"❌ Remote storage connection failed: {e}")
+            print("   Continuing with local storage...")
             remote_storage_mode = False  # Fall back to local
 
     if not wallet_infra_mode and not remote_storage_mode:
-        print("\n💾 ローカルストレージモード")
+        print("\n💾 Local storage mode")
         storage_provider = get_storage_provider(network)
         wallet = Wallet(
             chain=network,
@@ -184,19 +184,19 @@ def main():
         )
 
     # -------------------------------------------------------------------------
-    # デモ追加: Faucet 用 BRC-29 受取アドレスを表示
+    # Demo addition: Display faucet BRC-29 receiving address
     # -------------------------------------------------------------------------
     try:
-        # このデモでは、Go/TS の faucet 例と同じ BRC-29 パターンを使う:
-        # - senderIdentityKey として AnyoneKey (= PrivateKey(1).public_key())
-        # - derivationPrefix / derivationSuffix は固定文字列
+        # In this demo, use the same BRC-29 pattern as the Go/TS faucet example:
+        # - senderIdentityKey as AnyoneKey (= PrivateKey(1).public_key())
+        # - derivationPrefix / derivationSuffix are fixed strings
 
-        # ルート秘密鍵（デモ用に KeyDeriver から直接参照）
+        # Root private key (directly referenced from KeyDeriver for demo)
         root_priv = getattr(key_deriver, "_root_private_key", None)
         if root_priv is None:
-            raise RuntimeError("KeyDeriver から root_private_key を取得できませんでした。")
+            raise RuntimeError("Could not retrieve root_private_key from KeyDeriver.")
 
-        # sender (faucet 側) は AnyoneKey として扱う
+        # sender (faucet side) is treated as AnyoneKey
         anyone_key = PrivateKey(1).public_key()
         print(f"anyone_key: {anyone_key.hex()}")
 
@@ -205,7 +205,7 @@ def main():
             derivation_suffix=FAUCET_DERIVATION_SUFFIX,
         )
 
-        # 受取側（自分）のアドレスを BRC-29 で生成
+        # Generate receiver (self) address using BRC-29
         is_testnet = (network == "test")
         addr_info = address_for_self(
             sender_public_key=anyone_key.hex(),
@@ -216,31 +216,31 @@ def main():
         addr = addr_info["address_string"]
 
         print("\n" + "-" * 70)
-        print("📥  Faucet 用受取アドレス（BRC-29）")
+        print("📥  Faucet receiving address (BRC-29)")
         print("-" * 70)
-        print("このアドレスに Faucet から少額の BSV を送ってみてください。")
-        print("※ このスクリプト単体では UTXO を消費しません。")
-        print("   `faucet_internalize_and_create_action.py` と組み合わせると、")
-        print("   受け取ったコインを internalize → create_action で使うデモになります。")
+        print("Try sending a small amount of BSV from a Faucet to this address.")
+        print("※ This script alone does not consume UTXOs.")
+        print("   When combined with `faucet_internalize_and_create_action.py`,")
+        print("   it becomes a demo of using received coins in internalize → create_action.")
         print(f"\n   Address: {addr}")
         if is_testnet:
-            print("\n   テストネット用 Faucet 例:")
+            print("\n   Testnet faucet examples:")
             print("     - https://scrypt.io/faucet")
             print("     - https://witnessonchain.com/faucet/tbsv")
 
-        input("\n⏸ Faucet から送金したら Enter を押してテストを続行します...")
+        input("\n⏸ Press Enter to continue tests after sending from faucet...")
     except Exception as e:  # noqa: PERF203
-        print(f"\n⚠️  受取アドレス表示中にエラーが発生しました: {str(e)[:60]}")
+        print(f"\n⚠️  Error occurred while displaying receiving address: {str(e)[:60]}")
 
-    print(f"\n🟢 ネットワーク: {network}")
+    print(f"\n🟢 Network: {network}")
     print("\n" + "-" * 70)
-    
+
     results = {}
-    
+
     # =========================================================================
-    # カテゴリ 1: 基本情報 (4メソッド)
+    # Category 1: Basic Information (4 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 1: 基本情報")
+    print("\n📋 Category 1: Basic Information")
     print("-" * 40)
     
     # 1. get_network
@@ -268,9 +268,9 @@ def main():
     )
     
     # =========================================================================
-    # カテゴリ 2: ブロックチェーン情報 (2メソッド)
+    # Category 2: Blockchain Information (2 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 2: ブロックチェーン情報")
+    print("\n📋 Category 2: Blockchain Information")
     print("-" * 40)
     
     # 5. get_height
@@ -286,9 +286,9 @@ def main():
     )
     
     # =========================================================================
-    # カテゴリ 3: 鍵管理 (3メソッド)
+    # Category 3: Key Management (3 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 3: 鍵管理")
+    print("\n📋 Category 3: Key Management")
     print("-" * 40)
     
     # 7. get_public_key
@@ -298,7 +298,7 @@ def main():
     )
     
     # 8. reveal_counterparty_key_linkage
-    # counterpartyは実際の公開鍵が必要
+    # counterparty requires an actual public key
     pub_key = results.get('get_public_key', {})
     if pub_key and 'publicKey' in pub_key:
         results['reveal_counterparty_key_linkage'], _ = test_method(
@@ -311,7 +311,7 @@ def main():
             }
         )
     else:
-        print("  ⏭️  8. reveal_counterparty_key_linkage (公開鍵取得失敗)")
+        print("  ⏭️  8. reveal_counterparty_key_linkage (failed to get public key)")
     
     # 9. reveal_specific_key_linkage
     results['reveal_specific_key_linkage'], _ = test_method(
@@ -325,9 +325,9 @@ def main():
     )
     
     # =========================================================================
-    # カテゴリ 4: 署名 (2メソッド)
+    # Category 4: Signatures (2 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 4: 署名")
+    print("\n📋 Category 4: Signatures")
     print("-" * 40)
     
     test_data = list("Hello, BRC-100!".encode())
@@ -357,12 +357,12 @@ def main():
             }
         )
     else:
-        print("  ⏭️  11. verify_signature (署名失敗のためスキップ)")
+        print("  ⏭️  11. verify_signature (skipped due to signature failure)")
     
     # =========================================================================
-    # カテゴリ 5: HMAC (2メソッド)
+    # Category 5: HMAC (2 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 5: HMAC")
+    print("\n📋 Category 5: HMAC")
     print("-" * 40)
     
     # 12. create_hmac
@@ -390,12 +390,12 @@ def main():
             }
         )
     else:
-        print("  ⏭️  13. verify_hmac (HMAC作成失敗のためスキップ)")
+        print("  ⏭️  13. verify_hmac (skipped due to HMAC creation failure)")
     
     # =========================================================================
-    # カテゴリ 6: 暗号化 (2メソッド)
+    # Category 6: Encryption (2 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 6: 暗号化")
+    print("\n📋 Category 6: Encryption")
     print("-" * 40)
     
     plaintext = list("Secret message!".encode())
@@ -424,12 +424,12 @@ def main():
             }
         )
     else:
-        print("  ⏭️  15. decrypt (暗号化失敗のためスキップ)")
+        print("  ⏭️  15. decrypt (skipped due to encryption failure)")
     
     # =========================================================================
-    # カテゴリ 7: アクション管理 (5メソッド)
+    # Category 7: Action Management (5 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 7: アクション管理")
+    print("\n📋 Category 7: Action Management")
     print("-" * 40)
     
     # 16. list_actions
@@ -438,7 +438,7 @@ def main():
         wallet.list_actions, {"labels": [], "limit": 10}
     )
     
-    # 17. create_action (資金必要)
+    # 17. create_action (funds required)
     results['create_action'], _ = test_method(
         "17. create_action",
         wallet.create_action, {
@@ -452,14 +452,14 @@ def main():
     )
     
     # 18. sign_action
-    # sign_action はカスタムスクリプトを使う場合に必要
-    # signAndProcess=False で create_action を呼び、返された reference を使う
-    # 
-    # 簡単なテストケース: OP_RETURN出力のみ（入力はウォレットが自動選択）の場合
-    # sign_action は不要（ウォレットが署名）なので、カスタム入力ケースをテスト
+    # sign_action is needed when using custom scripts
+    # Call create_action with signAndProcess=False and use the returned reference
+    #
+    # Simple test case: Only OP_RETURN output (wallet auto-selects inputs)
+    # sign_action is not needed (wallet signs automatically), so test custom input case
     try:
-        # Step 1: signAndProcess=False で create_action
-        # これにより signableTransaction が返される
+        # Step 1: create_action with signAndProcess=False
+        # This returns signableTransaction
         signable_result = wallet.create_action({
             "description": "Test for sign_action - signable transaction",
             "outputs": [{
@@ -468,7 +468,7 @@ def main():
                 "outputDescription": "Test output for sign_action",
             }],
             "options": {
-                "signAndProcess": False,  # ← これで signableTransaction が返る
+                "signAndProcess": False,  # ← This returns signableTransaction
             }
         })
         
@@ -477,28 +477,28 @@ def main():
             reference = st.get("reference")
             
             if reference:
-                # Step 2: sign_action を呼ぶ
-                # この場合、ウォレットの入力なので spends は空でOK
+                # Step 2: Call sign_action
+                # In this case, spends can be empty since wallet provides inputs
                 results['sign_action'], sign_ok = test_method(
                     "18. sign_action",
                     wallet.sign_action, {
                         "reference": reference,
-                        "spends": {},  # ウォレット入力は自動署名
+                        "spends": {},  # Wallet inputs are auto-signed
                         "options": {"acceptDelayedBroadcast": True}
                     }
                 )
             else:
-                print("  ⚠️  18. sign_action: signableTransaction に reference がありません")
+                print("  ⚠️  18. sign_action: signableTransaction has no reference")
         else:
-            print("  ⚠️  18. sign_action: signAndProcess=False でも signableTransaction が返されませんでした")
+            print("  ⚠️  18. sign_action: signableTransaction not returned even with signAndProcess=False")
     except Exception as e:
         print(f"  ⚠️  18. sign_action: {str(e)[:60]}")
     
     # 19. abort_action
-    # abort_action をテストするには unsigned 状態のアクションが必要
-    # signAndProcess=False で create_action を呼び、sign_action を呼ばずに abort
+    # abort_action needs an unsigned action to test
+    # Call create_action with signAndProcess=False, then abort without calling sign_action
     try:
-        # Step 1: abort_action テスト用に新しい unsigned アクションを作成
+        # Step 1: Create a new unsigned action for abort_action testing
         abort_test_result = wallet.create_action({
             "description": "Test for abort_action - will be aborted",
             "outputs": [{
@@ -507,7 +507,7 @@ def main():
                 "outputDescription": "Test output for abort_action",
             }],
             "options": {
-                "signAndProcess": False,  # ← unsigned 状態で止める
+                "signAndProcess": False,  # ← Stop in unsigned state
             }
         })
         
@@ -515,15 +515,15 @@ def main():
             abort_reference = abort_test_result["signableTransaction"].get("reference")
             
             if abort_reference:
-                # Step 2: この unsigned アクションを abort
+                # Step 2: Abort this unsigned action
                 results['abort_action'], _ = test_method(
                     "19. abort_action",
                     wallet.abort_action, {"reference": abort_reference}
                 )
             else:
-                print("  ⚠️  19. abort_action: signableTransaction に reference がありません")
+                print("  ⚠️  19. abort_action: signableTransaction has no reference")
         else:
-            # signableTransaction がない場合、list_actions から unsigned を探す
+            # If no signableTransaction, look for unsigned actions from list_actions
             actions_for_abort = wallet.list_actions({"labels": [], "limit": 10})
             unsigned_for_abort = [a for a in actions_for_abort.get('actions', []) if a.get('status') == 'unsigned']
             if unsigned_for_abort and unsigned_for_abort[0].get('reference'):
@@ -532,12 +532,12 @@ def main():
                     wallet.abort_action, {"reference": unsigned_for_abort[0]['reference']}
                 )
             else:
-                print("  ⏭️  19. abort_action (unsignedアクションが作成できませんでした)")
+                print("  ⏭️  19. abort_action (could not create unsigned action)")
     except Exception as e:
         print(f"  ⚠️  19. abort_action: {str(e)[:60]}")
     
     # 20. internalize_action
-    # 既にinternalizeされたtxを使用してテスト（重複internalizeはエラーになるが、メソッド自体は動作確認）
+    # Test using already internalized tx (duplicate internalize causes error, but method itself works)
     from src.transaction_management import _build_atomic_beef_for_txid
     test_txid = "8e609cd401cdec648c71f6a5ec09a395f87567e71421b04fe6389adf6552bde7"
     try:
@@ -558,9 +558,9 @@ def main():
         print(f"  ⚠️  20. internalize_action: {str(e)[:60]}")
     
     # =========================================================================
-    # カテゴリ 8: アウトプット管理 (3メソッド)
+    # Category 8: Output Management (3 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 8: アウトプット管理")
+    print("\n📋 Category 8: Output Management")
     print("-" * 40)
     
     # 21. list_outputs
@@ -569,9 +569,9 @@ def main():
         wallet.list_outputs, {"basket": "default", "limit": 10}
     )
     
-    # 21b. balance (specOpWalletBalance を使用)
+    # 21b. balance (using specOpWalletBalance)
     results['balance'], _ = test_method(
-        "21b. balance (残高取得)",
+        "21b. balance (get balance)",
         wallet.balance
     )
     
@@ -585,9 +585,9 @@ def main():
     )
     
     # =========================================================================
-    # カテゴリ 9: 証明書管理 (4メソッド)
+    # Category 9: Certificate Management (4 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 9: 証明書管理")
+    print("\n📋 Category 9: Certificate Management")
     print("-" * 40)
     
     # 23. list_certificates
@@ -628,10 +628,10 @@ def main():
             }
         )
     else:
-        print("  ⏭️  24. acquire_certificate (公開鍵取得失敗)")
+        print("  ⏭️  24. acquire_certificate (failed to get public key)")
     
     # 25. prove_certificate
-    # prove_certificateは保存済み証明書とverifier公開鍵、有効なkeyringが必要
+    # prove_certificate requires stored certificate, verifier public key, and valid keyring
     # Note: prove_certificate requires a certificate with valid keyring to decrypt/re-encrypt
     # Since our test certificate has empty keyring, this will fail
     # In production, certificates would be acquired from a real certifier with proper encryption
@@ -661,9 +661,9 @@ def main():
             except Exception as e:
                 print(f"  ⚠️  25. prove_certificate: {str(e)[:60]}")
         else:
-            print("  ⏭️  25. prove_certificate (有効なkeyring必要 - issuanceプロトコルで取得した証明書で使用)")
-    else:
-        print("  ⏭️  25. prove_certificate (有効な証明書必要)")
+            print("  ⏭️  25. prove_certificate (valid keyring required - use certificate obtained via issuance protocol)")
+        else:
+            print("  ⏭️  25. prove_certificate (valid certificate required)")
     
     # 26. relinquish_certificate
     if pub_key and 'publicKey' in pub_key:
@@ -676,12 +676,12 @@ def main():
             }
         )
     else:
-        print("  ⏭️  26. relinquish_certificate (公開鍵取得失敗)")
+        print("  ⏭️  26. relinquish_certificate (failed to get public key)")
     
     # =========================================================================
-    # カテゴリ 10: ディスカバリー (2メソッド)
+    # Category 10: Discovery (2 methods)
     # =========================================================================
-    print("\n📋 カテゴリ 10: ディスカバリー")
+    print("\n📋 Category 10: Discovery")
     print("-" * 40)
     
     # 27. discover_by_identity_key
@@ -703,10 +703,10 @@ def main():
     )
     
     # =========================================================================
-    # 結果サマリー
+    # Results Summary
     # =========================================================================
     print("\n" + "=" * 70)
-    print("📊 結果サマリー")
+    print("📊 Results Summary")
     print("=" * 70)
     
     # Count results
@@ -735,13 +735,13 @@ def main():
         else:
             skipped += 1
     
-    print(f"\n  テスト実行: {tested}/28")
-    print(f"  成功: {passed}")
-    print(f"  スキップ: {skipped} (資金/有効データ必要)")
-    print(f"  エラー: {tested - passed}")
+    print(f"\n  Tests run: {tested}/28")
+    print(f"  Successful: {passed}")
+    print(f"  Skipped: {skipped} (funds/valid data required)")
+    print(f"  Errors: {tested - passed}")
     
     print("\n" + "=" * 70)
-    print("✅ BRC-100 メソッドテスト完了")
+    print("✅ BRC-100 Method Tests Completed")
     print("=" * 70)
 
 
