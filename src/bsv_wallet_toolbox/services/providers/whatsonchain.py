@@ -86,7 +86,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         performs no I/O operations and could be synchronous.
 
         Returns:
-            Chain identifier
+            Chain enum value (Chain.MAIN or Chain.TEST)
         """
         return self._get_chain()
 

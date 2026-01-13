@@ -70,8 +70,6 @@ MAXINT: int = 0xFFFFFFFF
 BLOCK_LIMIT: int = 500_000_000
 CACHE_TTL_MSECS: int = 120000  # 2-minute TTL for service caches
 ATOMIC_BEEF_HEX_PREFIX: str = "01010101"  # Hex string prefix for AtomicBEEF format detection
-# Backwards-compatible alias (deprecated): prefer ATOMIC_BEEF_HEX_PREFIX
-ATOMIC_BEEF_PREFIX: str = ATOMIC_BEEF_HEX_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -1523,9 +1521,9 @@ class Services(WalletServices):
                 raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
         # Debug: Log rawTx being processed
-        # Check if it's AtomicBEEF format (starts with ATOMIC_BEEF_PREFIX) or raw transaction
-        # Both beef and ATOMIC_BEEF_PREFIX are hex strings, so direct string comparison works
-        is_atomic_beef = beef.startswith(ATOMIC_BEEF_PREFIX)
+        # Check if it's AtomicBEEF format (starts with ATOMIC_BEEF_HEX_PREFIX) or raw transaction
+        # Both beef and ATOMIC_BEEF_HEX_PREFIX are hex strings, so direct string comparison works
+        is_atomic_beef = beef.startswith(ATOMIC_BEEF_HEX_PREFIX)
         if is_atomic_beef:
             self.logger.debug(
                 "Services.post_beef: processing AtomicBEEF, txid=%s, beef_len=%d bytes, beef_hex (first 100 chars): %s...",
@@ -1640,7 +1638,7 @@ class Services(WalletServices):
                         len(tx_hex) // 2,
                         tx_hex[:100]
                     )
-                    if tx_hex.startswith(ATOMIC_BEEF_PREFIX):
+                    if tx_hex.startswith(ATOMIC_BEEF_HEX_PREFIX):
                         self.logger.error(
                             "Services.post_beef: ERROR - Transaction.hex() returns AtomicBEEF format! "
                             "This should be raw transaction hex. Transaction object may be corrupted."

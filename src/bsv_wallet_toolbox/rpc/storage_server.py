@@ -399,7 +399,7 @@ class StorageServer:
             "processAction": "process_action",
             "internalizeAction": "internalize_action",
             "findCertificatesAuth": "find_certificates",  # Note: TS has Auth suffix
-            "findOutputBaskets": "find_output_baskets",
+            "findOutputBaskets": "find_output_baskets",  # TS/Go/Python clients call 'findOutputBaskets' with [auth, args]
             "findOutputsAuth": "find_outputs",  # Note: TS has Auth suffix
             "findProvenTxReqs": "find_proven_tx_reqs",
             "listActions": "list_actions",
