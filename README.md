@@ -1,5 +1,5 @@
 # BSV BLOCKCHAIN | Wallet Toolbox for Python
-[![build](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml/badge.svg)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
+[![build](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
 [![PyPI version](https://img.shields.io/pypi/v/bsv-sdk)](https://pypi.org/project/bsv-sdk)
 [![Python versions](https://img.shields.io/pypi/pyversions/bsv-sdk)](https://pypi.org/project/bsv-sdk)
 [![Coverage](https://img.shields.io/badge/coverage-70.9317347940675%25-yellowgreen)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
