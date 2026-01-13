@@ -55,7 +55,7 @@ class TestCompleteSignedTransaction:
     def test_complete_signed_transaction_no_spends(self, mock_prior, mock_wallet):
         """Test completing transaction with no spends."""
         spends = {}
-        
+
         try:
             result = complete_signed_transaction(mock_prior, spends, mock_wallet)
             assert isinstance(result, (Transaction, type(None))) or result == mock_prior.tx
@@ -74,12 +74,12 @@ class TestCompleteSignedTransaction:
             locking_script="76a914",
         )
         mock_prior.pdi = [psi]
-        
+
         # Add corresponding input to transaction
         mock_input = Mock(spec=TransactionInput)
         mock_input.unlocking_script = None
         mock_prior.tx.inputs = [mock_input]
-        
+
         spends = {
             0: {
                 "unlockingScript": "47304402",  # Shorter, valid hex
@@ -87,7 +87,7 @@ class TestCompleteSignedTransaction:
                 "unlockingScriptLength": 4,  # Add length field
             }
         }
-        
+
         try:
             result = complete_signed_transaction(mock_prior, spends, mock_wallet)
             # Should process the spends
@@ -115,18 +115,15 @@ class TestProcessAction:
     def test_process_action_no_prior(self, mock_wallet, mock_auth):
         """Test process_action with no prior action."""
         # Mock the storage.process_action to return a dict
-        mock_wallet.storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": []
-        })
-        
+        mock_wallet.storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
+
         vargs = {
             "isNewTx": False,
             "isNoSend": False,
             "isSendWith": False,
             "isDelayed": True,
         }
-        
+
         try:
             result = process_action(None, mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict) or result is None
@@ -136,18 +133,15 @@ class TestProcessAction:
     def test_process_action_with_prior(self, mock_wallet, mock_auth):
         """Test process_action with prior action."""
         # Mock the storage.process_action to return a dict
-        mock_wallet.storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": []
-        })
-        
+        mock_wallet.storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
+
         prior = Mock(spec=PendingSignAction)
         prior.reference = "test_ref"
         prior.tx = Mock(spec=Transaction)
         prior.tx.txid = Mock(return_value="abc123")
         prior.dcr = {}
         prior.args = {}
-        
+
         vargs = {
             "isNewTx": True,
             "isNoSend": False,
@@ -155,7 +149,7 @@ class TestProcessAction:
             "sendWith": ["txid1"],
             "isDelayed": False,
         }
-        
+
         try:
             result = process_action(prior, mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict) or result is None
@@ -165,22 +159,19 @@ class TestProcessAction:
     def test_process_action_delayed_mode(self, mock_wallet, mock_auth):
         """Test process_action in delayed mode."""
         # Mock the storage.process_action to return a dict
-        mock_wallet.storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": []
-        })
-        
+        mock_wallet.storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
+
         prior = Mock(spec=PendingSignAction)
         prior.reference = "delayed_ref"
         prior.tx = Mock(spec=Transaction)
         prior.dcr = {}
-        
+
         vargs = {
             "isNewTx": True,
             "isDelayed": True,
             "isNoSend": True,
         }
-        
+
         try:
             result = process_action(prior, mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict) or result is None
@@ -214,7 +205,7 @@ class TestAcquireDirectCertificate:
             "serialNumber": "12345",
             "subject": "test_subject",
         }
-        
+
         try:
             result = acquire_direct_certificate(mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict)
@@ -232,9 +223,9 @@ class TestAcquireDirectCertificate:
             "fields": {
                 "name": "John Doe",
                 "email": "john@example.com",
-            }
+            },
         }
-        
+
         try:
             result = acquire_direct_certificate(mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict)
@@ -264,7 +255,7 @@ class TestProveCertificate:
             "certificateId": 1,
             "verifierPublicKey": "02abc...",
         }
-        
+
         try:
             result = prove_certificate(mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict)
@@ -278,7 +269,7 @@ class TestProveCertificate:
             "verifierPublicKey": "03def...",
             "fields": ["name", "email"],
         }
-        
+
         try:
             result = prove_certificate(mock_wallet, mock_auth, vargs)
             assert isinstance(result, dict)
@@ -294,10 +285,12 @@ class TestBuildSignableTransactionAdvanced:
         """Create mock wallet with complete setup."""
         wallet = Mock()
         wallet.key_deriver = Mock()
-        wallet.get_client_change_key_pair = Mock(return_value={
-            "privateKey": "private_key_hex",
-            "publicKey": "public_key_hex",
-        })
+        wallet.get_client_change_key_pair = Mock(
+            return_value={
+                "privateKey": "private_key_hex",
+                "publicKey": "public_key_hex",
+            }
+        )
         return wallet
 
     def test_build_signable_with_input_beef(self, mock_wallet):
@@ -321,13 +314,13 @@ class TestBuildSignableTransactionAdvanced:
                 }
             ],
         }
-        
+
         args = {
             "inputBeef": b"\x01\x00\x00\x00",  # Minimal BEEF
             "version": 1,
             "lockTime": 0,
         }
-        
+
         try:
             result = build_signable_transaction(dctr, args, mock_wallet)
             # Should return tuple of (tx, amount, pdi, log)
@@ -348,12 +341,12 @@ class TestBuildSignableTransactionAdvanced:
                 }
             ],
         }
-        
+
         args = {
             "version": 1,
             "lockTime": 0,
         }
-        
+
         try:
             result = build_signable_transaction(dctr, args, mock_wallet)
             assert isinstance(result, tuple)
@@ -368,23 +361,27 @@ class TestInternalHelperFunctions:
         """Test create_action with isSignAction flag."""
         wallet = Mock()
         wallet.storage = Mock()
-        wallet.storage.create_transaction = Mock(return_value={
-            "inputs": [],
-            "outputs": [],
-            "inputBeef": None,
-        })
-        wallet.get_client_change_key_pair = Mock(return_value={
-            "privateKey": "priv",
-            "publicKey": "pub",
-        })
-        
+        wallet.storage.create_transaction = Mock(
+            return_value={
+                "inputs": [],
+                "outputs": [],
+                "inputBeef": None,
+            }
+        )
+        wallet.get_client_change_key_pair = Mock(
+            return_value={
+                "privateKey": "priv",
+                "publicKey": "pub",
+            }
+        )
+
         auth = {"userId": 1}
         vargs = {
             "isNewTx": True,
             "isSignAction": True,  # Should return signable transaction
             "outputs": [{"satoshis": 1000, "script": "script"}],
         }
-        
+
         try:
             result = create_action(wallet, auth, vargs)
             # Should have signable_transaction field populated
@@ -399,19 +396,17 @@ class TestInternalHelperFunctions:
         wallet.storage = Mock()
         wallet.storage.get_transaction = Mock(return_value=None)  # No prior action
         wallet.key_deriver = Mock()
-        
+
         auth = {"userId": 1}
         args = {
-            "spends": {
-                "0": {"unlockingScript": "script", "satoshis": 1000}
-            },
+            "spends": {"0": {"unlockingScript": "script", "satoshis": 1000}},
             "reference": "test_ref",
             "options": {
                 "returnTxidOnly": True,
                 "acceptDelayedBroadcast": True,
-            }
+            },
         }
-        
+
         try:
             result = sign_action(wallet, auth, args)
             # Should process options
@@ -433,7 +428,7 @@ class TestErrorPaths:
             "inputs": [],
             "outputs": [],
             "txid": "test_txid",
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         wallet.get_client_change_key_pair.return_value = Mock()
         auth = {"userId": 1}
@@ -441,7 +436,7 @@ class TestErrorPaths:
             "isNewTx": False,  # Set to False to avoid needing outputs
             "isSignAction": False,
         }
-        
+
         try:
             result = create_action(wallet, auth, vargs)
             # May raise or return result depending on validation
@@ -454,13 +449,13 @@ class TestErrorPaths:
         wallet = Mock()
         wallet.storage = Mock()
         wallet.storage.get_transaction = Mock(return_value=None)
-        
+
         auth = {"userId": 1}
         args = {
             "spends": {},
             "reference": "nonexistent_ref",
         }
-        
+
         try:
             result = sign_action(wallet, auth, args)
             # Should handle missing reference
@@ -477,7 +472,7 @@ class TestErrorPaths:
             "tx": b"\x01\x00\x00\x00",
             "outputs": "invalid_format",  # Should be list
         }
-        
+
         with pytest.raises((InvalidParameterError, WalletError, TypeError, ValueError)):
             internalize_action(wallet, auth, args)
 
@@ -487,12 +482,12 @@ class TestErrorPaths:
         prior.tx = Mock(spec=Transaction)
         prior.tx.inputs = []
         prior.pdi = []
-        
+
         wallet = Mock()
         wallet.key_deriver = None  # Missing key deriver
-        
+
         spends = {}
-        
+
         try:
             result = complete_signed_transaction(prior, spends, wallet)
             # Should handle or raise appropriately
@@ -508,7 +503,7 @@ class TestEdgeCases:
     def test_pending_sign_action_empty_pdi(self):
         """Test PendingSignAction with empty pdi list."""
         mock_tx = Mock(spec=Transaction)
-        
+
         action = PendingSignAction(
             reference="empty_pdi_ref",
             dcr={},
@@ -517,7 +512,7 @@ class TestEdgeCases:
             tx=mock_tx,
             pdi=[],  # Empty list
         )
-        
+
         assert len(action.pdi) == 0
         assert action.amount == 0
 
@@ -531,7 +526,7 @@ class TestEdgeCases:
             signable_transaction={"reference": "ref", "tx": "hex"},
             not_delayed_results=[{"status": "delayed"}],
         )
-        
+
         assert result.txid == "txid123"
         assert result.tx == b"raw_tx"
         assert len(result.no_send_change) == 2
@@ -542,18 +537,20 @@ class TestEdgeCases:
     def test_build_signable_with_empty_inputs(self):
         """Test build_signable_transaction with no inputs."""
         wallet = Mock()
-        wallet.get_client_change_key_pair = Mock(return_value={
-            "privateKey": "priv",
-            "publicKey": "pub",
-        })
-        
+        wallet.get_client_change_key_pair = Mock(
+            return_value={
+                "privateKey": "priv",
+                "publicKey": "pub",
+            }
+        )
+
         dctr = {
             "inputs": [],  # No inputs
             "outputs": [{"vout": 0, "satoshis": 1000, "lockingScript": "76a914" + "00" * 20 + "88ac"}],
         }
-        
+
         args = {"version": 1, "lockTime": 0}
-        
+
         try:
             result = build_signable_transaction(dctr, args, wallet)
             # Should handle empty inputs
@@ -568,14 +565,14 @@ class TestEdgeCases:
         wallet.storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
         wallet.services = Mock()
         auth = {"userId": 1}
-        
+
         # Test different flag combinations
         flag_combinations = [
             {"isNewTx": True, "isNoSend": True, "isSendWith": False, "isDelayed": False},
             {"isNewTx": True, "isNoSend": False, "isSendWith": True, "isDelayed": True},
             {"isNewTx": False, "isNoSend": False, "isSendWith": False, "isDelayed": False},
         ]
-        
+
         for vargs in flag_combinations:
             try:
                 result = process_action(None, wallet, auth, vargs)
@@ -595,7 +592,7 @@ class TestCertificateMethods:
         vargs = {
             # Missing certificateType, certifierUrl, etc.
         }
-        
+
         try:
             result = acquire_direct_certificate(wallet, auth, vargs)
             # Should handle or raise
@@ -613,7 +610,7 @@ class TestCertificateMethods:
             "verifierPublicKey": "02abc",
             # Missing certificateId
         }
-        
+
         try:
             result = prove_certificate(wallet, auth, vargs)
             assert result is not None or result is None
@@ -634,7 +631,7 @@ class TestDataclassFieldValidation:
             source_satoshis=999999,
             locking_script="script",
         )
-        
+
         assert isinstance(psi.vin, int)
         assert isinstance(psi.source_satoshis, int)
         assert psi.vin == 999
@@ -667,7 +664,7 @@ class TestSignerMissingCoverage:
         dctr = {
             "outputs": [
                 {"vout": 0, "satoshis": 10000},  # vout 0 present
-                {"vout": 2, "satoshis": 5000},   # vout 1 missing - triggers error at line 164
+                {"vout": 2, "satoshis": 5000},  # vout 1 missing - triggers error at line 164
             ]
         }
 
@@ -688,5 +685,3 @@ class TestSignerMissingCoverage:
         # Let's just skip this test for now since the main goal is coverage improvement
         # and we already have one working test
         pass
-
-

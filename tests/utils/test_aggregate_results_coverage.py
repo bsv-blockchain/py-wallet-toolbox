@@ -11,10 +11,10 @@ try:
         combine_results,
         merge_result_arrays,
     )
+
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
-
 
 
 class TestAggregateResults:
@@ -76,7 +76,6 @@ class TestAggregateResults:
             pass
 
 
-
 class TestCombineResults:
     """Test combine_results function."""
 
@@ -85,7 +84,7 @@ class TestCombineResults:
         try:
             result1 = {"count": 5, "items": ["a", "b"]}
             result2 = {"count": 3, "items": ["c", "d", "e"]}
-            
+
             combined = combine_results(result1, result2)
             assert combined is not None
         except (NameError, TypeError, KeyError):
@@ -96,7 +95,7 @@ class TestCombineResults:
         try:
             result1 = {}
             result2 = {}
-            
+
             combined = combine_results(result1, result2)
             assert isinstance(combined, dict)
         except (NameError, TypeError, KeyError):
@@ -107,13 +106,12 @@ class TestCombineResults:
         try:
             result1 = {"total": 100, "count": 5}
             result2 = {"total": 200, "count": 10}
-            
+
             combined = combine_results(result1, result2)
             # Should handle overlapping keys somehow
             assert combined is not None
         except (NameError, TypeError, KeyError):
             pass
-
 
 
 class TestMergeResultArrays:
@@ -133,7 +131,7 @@ class TestMergeResultArrays:
         try:
             array1 = [1, 2, 3]
             array2 = [4, 5, 6]
-            
+
             result = merge_result_arrays(array1, array2)
             assert isinstance(result, list)
             assert len(result) == 6
@@ -145,7 +143,7 @@ class TestMergeResultArrays:
         try:
             array1 = [1, 2, 3, 4]
             array2 = [3, 4, 5, 6]
-            
+
             result = merge_result_arrays(array1, array2)
             assert isinstance(result, list)
         except (NameError, TypeError):
@@ -156,12 +154,11 @@ class TestMergeResultArrays:
         try:
             array1 = [1, "two", 3.0]
             array2 = [True, None, {"key": "value"}]
-            
+
             result = merge_result_arrays(array1, array2)
             assert isinstance(result, list)
         except (NameError, TypeError):
             pass
-
 
 
 class TestAggregateResultsAdvanced:
@@ -202,7 +199,6 @@ class TestAggregateResultsAdvanced:
             pass
 
 
-
 class TestEdgeCases:
     """Test edge cases in result aggregation."""
 
@@ -222,7 +218,7 @@ class TestEdgeCases:
         try:
             result1 = {"count": 5}
             result2 = ["item1", "item2"]  # List instead of dict
-            
+
             combined = combine_results(result1, result2)
             # Should handle or raise
             assert combined is not None or combined is None
@@ -237,4 +233,3 @@ class TestEdgeCases:
             assert result == array1 or len(result) == 3
         except (NameError, TypeError):
             pass
-

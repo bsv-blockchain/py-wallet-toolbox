@@ -103,7 +103,7 @@ class DeterministicRandomizer(Randomizer):
         Args:
             seed: Optional seed value for API compatibility (currently unused)
         """
-        self._base_character = ord('a')  # 0x61
+        self._base_character = ord("a")  # 0x61
         self._roll_counter = 0
 
     def random_bytes(self, length: int) -> bytes:
@@ -166,8 +166,9 @@ class DeterministicRandomizer(Randomizer):
             Base64-encoded string
         """
         import base64
+
         random_bytes = self.random_bytes(length)
-        return base64.b64encode(random_bytes).decode('ascii')
+        return base64.b64encode(random_bytes).decode("ascii")
 
     def random_int(self, min_value: int, max_value: int) -> int:
         """Generate deterministic "random" integer.

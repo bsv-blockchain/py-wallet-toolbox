@@ -34,7 +34,7 @@ class TestChaintracksFetch:
 
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/__tests/ChaintracksFetch.test.ts
                    test('0 fetchJson')
-        
+
         Note: Requires network access to cdn.projectbabbage.com
         """
         # Given

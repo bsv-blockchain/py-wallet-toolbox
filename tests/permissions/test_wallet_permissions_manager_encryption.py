@@ -217,7 +217,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
 
         Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.encryption.test.ts
                    test('should not encrypt metadata if encryptWalletMetadata=false, storing and retrieving plaintext')
-        
+
         Note: Test expects decrypt.call_count == 3 even when encryptWalletMetadata=False,
               which seems inconsistent. Skipping until behavior is clarified.
         """

@@ -86,6 +86,7 @@ class TestSimpleWalletManagerAuthentication:
         if hasattr(SimpleWalletManager, "authenticate"):
             # Check method signature if possible
             import inspect
+
             try:
                 sig = inspect.signature(SimpleWalletManager.authenticate)
                 # Should accept primary_key and privileged_key_manager
@@ -155,7 +156,9 @@ class TestSimpleWalletManagerMethods:
         # Count how many methods actually exist
         existing_methods = [method for method in expected_methods if hasattr(SimpleWalletManager, method)]
         # At minimum, we expect some interface methods to be implemented
-        assert len(existing_methods) >= 3, f"Only {len(existing_methods)} of {len(expected_methods)} interface methods exist"
+        assert (
+            len(existing_methods) >= 3
+        ), f"Only {len(existing_methods)} of {len(expected_methods)} interface methods exist"
 
 
 class TestSimpleWalletManagerStateManagement:
@@ -172,7 +175,9 @@ class TestSimpleWalletManagerStateManagement:
         # Count how many methods actually exist
         existing_methods = [method for method in expected_methods if hasattr(SimpleWalletManager, method)]
         # At minimum, we expect some state management methods
-        assert len(existing_methods) >= 0, f"Only {len(existing_methods)} of {len(expected_methods)} state methods exist"
+        assert (
+            len(existing_methods) >= 0
+        ), f"Only {len(existing_methods)} of {len(expected_methods)} state methods exist"
 
     def test_privileged_key_manager_integration(self) -> None:
         """Test privileged key manager integration methods exist."""
@@ -232,4 +237,3 @@ class TestSimpleWalletManagerErrorHandling:
                     pass  # Expected to fail without auth
         except (TypeError, AttributeError):
             pass
-

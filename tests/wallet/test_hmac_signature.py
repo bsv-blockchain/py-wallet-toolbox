@@ -12,28 +12,24 @@ from bsv_wallet_toolbox import Wallet
 @pytest.fixture
 def hmac_test_data():
     """Fixture providing test data for HMAC operations."""
-    return {
-        "data": b"Test data for HMAC",
-        "protocolID": [0, "test"],
-        "keyID": "hmac_key_1"
-    }
+    return {"data": b"Test data for HMAC", "protocolID": [0, "test"], "keyID": "hmac_key_1"}
 
 
 @pytest.fixture
 def signature_test_data():
     """Fixture providing test data for signature operations.
-    
+
     Note: TS ProtoWallet uses different defaults:
     - createSignature: counterparty ?? 'anyone'
     - verifySignature: counterparty ?? 'self'
-    
+
     For consistent testing, we explicitly set counterparty='self'.
     """
     return {
         "data": b"Data to sign",
         "protocolID": [0, "test"],
         "keyID": "signing_key_1",
-        "counterparty": "self"  # Explicit counterparty for consistency
+        "counterparty": "self",  # Explicit counterparty for consistency
     }
 
 
@@ -44,7 +40,7 @@ def invalid_hmac_args():
         "data": b"Test data",
         "hmac": [1, 2, 3],  # Wrong format/length
         "protocolID": [0, "test"],
-        "keyID": "hmac_key_1"
+        "keyID": "hmac_key_1",
     }
 
 
@@ -56,7 +52,7 @@ def invalid_signature_args():
         "signature": [1, 2, 3],  # Invalid signature
         "publicKey": "invalid_key",
         "protocolID": [0, "test"],
-        "keyID": "signing_key_1"
+        "keyID": "signing_key_1",
     }
 
 
@@ -81,8 +77,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_empty_data(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty data bytes
-           When: Call create_hmac
-           Then: Returns valid HMAC for empty data
+        When: Call create_hmac
+        Then: Returns valid HMAC for empty data
         """
         # Given
         args = {"data": b"", "protocolID": [0, "test"], "keyID": "hmac_key_1"}
@@ -98,8 +94,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_large_data(self, wallet_with_storage: Wallet) -> None:
         """Given: Large data (10KB)
-           When: Call create_hmac
-           Then: Handles large data correctly
+        When: Call create_hmac
+        Then: Handles large data correctly
         """
         # Given
         large_data = b"A" * 10000
@@ -115,11 +111,11 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_unicode_data(self, wallet_with_storage: Wallet) -> None:
         """Given: Unicode data encoded as bytes
-           When: Call create_hmac
-           Then: Handles unicode correctly
+        When: Call create_hmac
+        Then: Handles unicode correctly
         """
         # Given
-        unicode_data = "Hello 世界 🌍".encode('utf-8')
+        unicode_data = "Hello 世界 🌍".encode("utf-8")
         args = {"data": unicode_data, "protocolID": [0, "test"], "keyID": "hmac_key_1"}
 
         # When
@@ -132,8 +128,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_different_protocols_produce_different_hmacs(self, wallet_with_storage: Wallet) -> None:
         """Given: Same data with different protocols
-           When: Call create_hmac
-           Then: Produces different HMACs
+        When: Call create_hmac
+        Then: Produces different HMACs
         """
         # Given
         data = b"Test data"
@@ -151,8 +147,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_different_keys_produce_different_hmacs(self, wallet_with_storage: Wallet) -> None:
         """Given: Same data with different keys
-           When: Call create_hmac
-           Then: Produces different HMACs
+        When: Call create_hmac
+        Then: Produces different HMACs
         """
         # Given
         data = b"Test data"
@@ -170,8 +166,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_missing_data_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing data parameter
-           When: Call create_hmac
-           Then: Raises appropriate error
+        When: Call create_hmac
+        Then: Raises appropriate error
         """
         # Given
         args = {"protocolID": [0, "test"], "keyID": "hmac_key_1"}
@@ -186,8 +182,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_none_data_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None data
-           When: Call create_hmac
-           Then: Raises appropriate error
+        When: Call create_hmac
+        Then: Raises appropriate error
         """
         # Given
         args = {"data": None, "protocolID": [0, "test"], "keyID": "hmac_key_1"}
@@ -201,8 +197,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_invalid_protocol_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Invalid protocolID format
-           When: Call create_hmac
-           Then: Raises appropriate error
+        When: Call create_hmac
+        Then: Raises appropriate error
         """
         # Given
         args = {"data": b"test", "protocolID": "invalid", "keyID": "hmac_key_1"}
@@ -213,8 +209,8 @@ class TestWalletCreateHmac:
 
     def test_create_hmac_empty_key_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty keyID
-           When: Call create_hmac
-           Then: Raises appropriate error
+        When: Call create_hmac
+        Then: Raises appropriate error
         """
         # Given
         args = {"data": b"test", "protocolID": [0, "test"], "keyID": ""}
@@ -275,8 +271,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_wrong_key_returns_invalid(self, wallet_with_storage: Wallet) -> None:
         """Given: HMAC created with one key, verified with different key
-           When: Call verify_hmac
-           Then: Returns valid=False
+        When: Call verify_hmac
+        Then: Returns valid=False
         """
         # Given - Create HMAC with key1
         create_args = {"data": b"Test data", "protocolID": [0, "test"], "keyID": "hmac_key_1"}
@@ -299,8 +295,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_wrong_protocol_returns_invalid(self, wallet_with_storage: Wallet) -> None:
         """Given: HMAC created with one protocol, verified with different protocol
-           When: Call verify_hmac
-           Then: Returns valid=False
+        When: Call verify_hmac
+        Then: Returns valid=False
         """
         # Given - Create HMAC with protocol1
         create_args = {"data": b"Test data", "protocolID": [0, "test1"], "keyID": "hmac_key_1"}
@@ -323,8 +319,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_modified_data_returns_invalid(self, wallet_with_storage: Wallet) -> None:
         """Given: HMAC created with original data, verified with modified data
-           When: Call verify_hmac
-           Then: Returns valid=False
+        When: Call verify_hmac
+        Then: Returns valid=False
         """
         # Given - Create HMAC with original data
         original_data = b"Original data"
@@ -348,8 +344,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_empty_hmac_raises_error(self, wallet_with_storage: Wallet, hmac_test_data) -> None:
         """Given: Empty HMAC list
-           When: Call verify_hmac
-           Then: Returns invalid or raises error
+        When: Call verify_hmac
+        Then: Returns invalid or raises error
         """
         # Given
         verify_args = {
@@ -368,8 +364,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_wrong_hmac_length_raises_error(self, wallet_with_storage: Wallet, hmac_test_data) -> None:
         """Given: HMAC with wrong length
-           When: Call verify_hmac
-           Then: Returns invalid or raises error
+        When: Call verify_hmac
+        Then: Returns invalid or raises error
         """
         # Given
         verify_args = {
@@ -388,8 +384,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_missing_data_raises_error(self, wallet_with_storage: Wallet, hmac_test_data) -> None:
         """Given: Missing data parameter
-           When: Call verify_hmac
-           Then: Raises appropriate error or returns invalid
+        When: Call verify_hmac
+        Then: Raises appropriate error or returns invalid
         """
         # Given
         create_result = wallet_with_storage.create_hmac(hmac_test_data)
@@ -410,8 +406,8 @@ class TestWalletVerifyHmac:
 
     def test_verify_hmac_none_hmac_raises_error(self, wallet_with_storage: Wallet, hmac_test_data) -> None:
         """Given: None HMAC
-           When: Call verify_hmac
-           Then: Raises appropriate error
+        When: Call verify_hmac
+        Then: Raises appropriate error
         """
         # Given
         verify_args = {
@@ -447,8 +443,8 @@ class TestWalletCreateSignature:
 
     def test_create_signature_empty_data(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty data to sign
-           When: Call create_signature
-           Then: Returns valid signature for empty data
+        When: Call create_signature
+        Then: Returns valid signature for empty data
         """
         # Given
         args = {"data": b"", "protocolID": [0, "test"], "keyID": "signing_key_1"}
@@ -463,8 +459,8 @@ class TestWalletCreateSignature:
 
     def test_create_signature_large_data(self, wallet_with_storage: Wallet) -> None:
         """Given: Large data to sign
-           When: Call create_signature
-           Then: Handles large data correctly
+        When: Call create_signature
+        Then: Handles large data correctly
         """
         # Given
         large_data = b"A" * 10000
@@ -480,8 +476,8 @@ class TestWalletCreateSignature:
 
     def test_create_signature_different_data_produces_different_signatures(self, wallet_with_storage: Wallet) -> None:
         """Given: Different data with same key
-           When: Call create_signature
-           Then: Produces different signatures
+        When: Call create_signature
+        Then: Produces different signatures
         """
         # Given
         args1 = {"data": b"Data 1", "protocolID": [0, "test"], "keyID": "signing_key_1"}
@@ -498,8 +494,8 @@ class TestWalletCreateSignature:
 
     def test_create_signature_missing_data_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing data parameter
-           When: Call create_signature
-           Then: Raises appropriate error or signs empty data
+        When: Call create_signature
+        Then: Raises appropriate error or signs empty data
         """
         # Given
         args = {"protocolID": [0, "test"], "keyID": "signing_key_1"}
@@ -514,8 +510,8 @@ class TestWalletCreateSignature:
 
     def test_create_signature_none_data_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None data
-           When: Call create_signature
-           Then: Raises appropriate error or signs empty data
+        When: Call create_signature
+        Then: Raises appropriate error or signs empty data
         """
         # Given
         args = {"data": None, "protocolID": [0, "test"], "keyID": "signing_key_1"}
@@ -573,9 +569,7 @@ class TestWalletVerifySignature:
         create_result = wallet_with_storage.create_signature(create_args)
 
         # Get public key for verification
-        pubkey_result = wallet_with_storage.get_public_key(
-            {"protocolID": [0, "test"], "keyID": "signing_key_1"}
-        )
+        pubkey_result = wallet_with_storage.get_public_key({"protocolID": [0, "test"], "keyID": "signing_key_1"})
 
         # Try to verify the signature against different data
         verify_args = {
@@ -597,12 +591,17 @@ class TestWalletVerifySignature:
         """Given: Signature verified with wrong public key (passed as publicKey parameter)
            When: Call verify_signature
            Then: ProtoWallet ignores publicKey and uses protocolID/keyID to derive key
-           
+
         Note: ProtoWallet does not use the publicKey parameter - it derives the key
         from protocolID/keyID. This test verifies that behavior.
         """
         # Given - Create signature with key1 and counterparty='self'
-        create_args = {"data": b"Test data", "protocolID": [0, "test"], "keyID": "signing_key_1", "counterparty": "self"}
+        create_args = {
+            "data": b"Test data",
+            "protocolID": [0, "test"],
+            "keyID": "signing_key_1",
+            "counterparty": "self",
+        }
         create_result = wallet_with_storage.create_signature(create_args)
 
         # Get different public key (but ProtoWallet will ignore this)
@@ -629,16 +628,14 @@ class TestWalletVerifySignature:
 
     def test_verify_signature_modified_data_returns_invalid(self, wallet_with_storage: Wallet) -> None:
         """Given: Signature verified against modified data
-           When: Call verify_signature
-           Then: Returns valid=False
+        When: Call verify_signature
+        Then: Returns valid=False
         """
         # Given - Create signature
         create_args = {"data": b"Original data", "protocolID": [0, "test"], "keyID": "signing_key_1"}
         create_result = wallet_with_storage.create_signature(create_args)
 
-        pubkey_result = wallet_with_storage.get_public_key(
-            {"protocolID": [0, "test"], "keyID": "signing_key_1"}
-        )
+        pubkey_result = wallet_with_storage.get_public_key({"protocolID": [0, "test"], "keyID": "signing_key_1"})
 
         verify_args = {
             "data": b"Modified data",  # Different data
@@ -655,10 +652,12 @@ class TestWalletVerifySignature:
         assert "valid" in result
         assert result["valid"] is False
 
-    def test_verify_signature_invalid_signature_format_raises_error(self, wallet_with_storage: Wallet, signature_test_data) -> None:
+    def test_verify_signature_invalid_signature_format_raises_error(
+        self, wallet_with_storage: Wallet, signature_test_data
+    ) -> None:
         """Given: Invalid signature format
-           When: Call verify_signature
-           Then: Raises appropriate error or returns invalid
+        When: Call verify_signature
+        Then: Raises appropriate error or returns invalid
         """
         # Given
         pubkey_result = wallet_with_storage.get_public_key(
@@ -677,10 +676,12 @@ class TestWalletVerifySignature:
         with pytest.raises((ValueError, TypeError, RuntimeError)):
             wallet_with_storage.verify_signature(verify_args)
 
-    def test_verify_signature_invalid_public_key_raises_error(self, wallet_with_storage: Wallet, signature_test_data) -> None:
+    def test_verify_signature_invalid_public_key_raises_error(
+        self, wallet_with_storage: Wallet, signature_test_data
+    ) -> None:
         """Given: Invalid public key format
-           When: Call verify_signature
-           Then: Raises appropriate error
+        When: Call verify_signature
+        Then: Raises appropriate error
         """
         # Given - Create valid signature first
         create_result = wallet_with_storage.create_signature(signature_test_data)
@@ -702,10 +703,12 @@ class TestWalletVerifySignature:
         except (ValueError, TypeError, RuntimeError):
             pass  # Also acceptable
 
-    def test_verify_signature_missing_signature_raises_error(self, wallet_with_storage: Wallet, signature_test_data) -> None:
+    def test_verify_signature_missing_signature_raises_error(
+        self, wallet_with_storage: Wallet, signature_test_data
+    ) -> None:
         """Given: Missing signature parameter
-           When: Call verify_signature
-           Then: Raises appropriate error
+        When: Call verify_signature
+        Then: Raises appropriate error
         """
         # Given
         pubkey_result = wallet_with_storage.get_public_key(

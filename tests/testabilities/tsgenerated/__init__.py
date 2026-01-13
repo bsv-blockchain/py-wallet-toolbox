@@ -40,4 +40,3 @@ __all__ = [
     "BEEF_TO_INTERNALIZE_MERKLE_ROOT",
     "parent_transaction_atomic_beef",
 ]
-

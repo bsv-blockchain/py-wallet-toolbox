@@ -84,28 +84,22 @@ class WOCClient:
         # Base URLs for WhatsOnChain
         self.base_urls = {
             "main": "https://api.whatsonchain.com/v1/bsv/main",
-            "test": "https://api.whatsonchain.com/v1/bsv/test"
+            "test": "https://api.whatsonchain.com/v1/bsv/test",
         }
 
         # Setup requests session with retry strategy
         self.session = requests.Session()
 
-        retry_strategy = Retry(
-            total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            backoff_factor=1
-        )
+        retry_strategy = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], backoff_factor=1)
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
         # Set headers
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "py-wallet-toolbox"
-        })
+        self.session.headers.update(
+            {"Accept": "application/json", "Content-Type": "application/json", "User-Agent": "py-wallet-toolbox"}
+        )
 
         if api_key:
             self.session.headers["Authorization"] = f"Bearer {api_key}"

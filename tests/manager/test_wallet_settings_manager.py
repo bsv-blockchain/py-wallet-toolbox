@@ -57,4 +57,3 @@ def test_delete_removes_persisted_settings() -> None:
 
     assert "settings" not in kv_store._store  # type: ignore[attr-defined]
     assert manager.get() == DEFAULT_SETTINGS
-

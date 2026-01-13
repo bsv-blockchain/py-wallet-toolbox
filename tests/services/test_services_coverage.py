@@ -146,4 +146,3 @@ class TestServicesChainTracker:
                     assert header is not None
         except (TypeError, AttributeError):
             pass
-

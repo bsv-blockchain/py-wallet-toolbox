@@ -77,7 +77,7 @@ def serialize_base_block_header(header: BaseBlockHeader) -> bytes:
     buffer = bytearray(80)
 
     # Version (4 bytes, little endian)
-    buffer[0:4] = int(header["version"]).to_bytes(4, 'little')
+    buffer[0:4] = int(header["version"]).to_bytes(4, "little")
 
     # Previous hash (32 bytes, reversed)
     prev_hash_bytes = bytes.fromhex(header["previousHash"])[::-1]
@@ -88,13 +88,13 @@ def serialize_base_block_header(header: BaseBlockHeader) -> bytes:
     buffer[36:68] = merkle_root_bytes
 
     # Time (4 bytes, little endian)
-    buffer[68:72] = int(header["time"]).to_bytes(4, 'little')
+    buffer[68:72] = int(header["time"]).to_bytes(4, "little")
 
     # Bits (4 bytes, little endian)
-    buffer[72:76] = int(header["bits"]).to_bytes(4, 'little')
+    buffer[72:76] = int(header["bits"]).to_bytes(4, "little")
 
     # Nonce (4 bytes, little endian)
-    buffer[76:80] = int(header["nonce"]).to_bytes(4, 'little')
+    buffer[76:80] = int(header["nonce"]).to_bytes(4, "little")
 
     return bytes(buffer)
 
@@ -116,22 +116,22 @@ def deserialize_base_block_header(buffer: bytes, offset: int = 0) -> BaseBlockHe
         raise ValueError("Buffer too small for block header")
 
     # Version (4 bytes, little endian)
-    version = int.from_bytes(buffer[offset:offset+4], 'little')
+    version = int.from_bytes(buffer[offset : offset + 4], "little")
 
     # Previous hash (32 bytes, reversed)
-    prev_hash = buffer[offset+4:offset+36][::-1].hex()
+    prev_hash = buffer[offset + 4 : offset + 36][::-1].hex()
 
     # Merkle root (32 bytes, reversed)
-    merkle_root = buffer[offset+36:offset+68][::-1].hex()
+    merkle_root = buffer[offset + 36 : offset + 68][::-1].hex()
 
     # Time (4 bytes, little endian)
-    time_val = int.from_bytes(buffer[offset+68:offset+72], 'little')
+    time_val = int.from_bytes(buffer[offset + 68 : offset + 72], "little")
 
     # Bits (4 bytes, little endian)
-    bits = int.from_bytes(buffer[offset+72:offset+76], 'little')
+    bits = int.from_bytes(buffer[offset + 72 : offset + 76], "little")
 
     # Nonce (4 bytes, little endian)
-    nonce = int.from_bytes(buffer[offset+76:offset+80], 'little')
+    nonce = int.from_bytes(buffer[offset + 76 : offset + 80], "little")
 
     return {
         "version": version,

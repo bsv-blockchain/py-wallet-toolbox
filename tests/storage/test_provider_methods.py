@@ -181,7 +181,7 @@ class TestStorageProviderOutputOperations:
             "purpose": "change",
             "type": "change",
             "txid": "d" * 64,
-            "lockingScript": bytes([0x76, 0xa9, 0x14] + [0] * 20 + [0x88, 0xac]),  # P2PKH
+            "lockingScript": bytes([0x76, 0xA9, 0x14] + [0] * 20 + [0x88, 0xAC]),  # P2PKH
             "createdAt": datetime.now(timezone.utc),
             "updatedAt": datetime.now(timezone.utc),
         }
@@ -250,7 +250,7 @@ class TestStorageProviderProvenTxOperations:
             "txid": "f" * 64,
             "height": 100000,
             "index": 0,
-            "merklePath": json.dumps({"path": [], "blockHeight": 100000}).encode('utf-8'),
+            "merklePath": json.dumps({"path": [], "blockHeight": 100000}).encode("utf-8"),
             "rawTx": bytes([5, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
             "blockHash": "g" * 64,
             "merkleRoot": "h" * 64,

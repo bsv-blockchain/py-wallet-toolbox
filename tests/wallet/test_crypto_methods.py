@@ -40,10 +40,7 @@ def valid_decryption_args():
 @pytest.fixture
 def valid_public_key_args():
     """Fixture providing valid public key arguments."""
-    return {
-        "protocolID": [0, "test"],
-        "keyID": "test_key_1"
-    }
+    return {"protocolID": [0, "test"], "keyID": "test_key_1"}
 
 
 @pytest.fixture
@@ -53,7 +50,7 @@ def valid_linkage_args():
         "counterparty": "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097",
         "verifier": "03ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "privileged": True,
-        "privilegedReason": "Testing key linkage revelation"
+        "privilegedReason": "Testing key linkage revelation",
     }
 
 
@@ -100,8 +97,8 @@ class TestWalletGetPublicKey:
 
     def test_get_public_key_with_empty_args_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty arguments
-           When: Call get_public_key
-           Then: Raises error for missing required parameters
+        When: Call get_public_key
+        Then: Raises error for missing required parameters
         """
         # Given
         args = {}
@@ -112,8 +109,8 @@ class TestWalletGetPublicKey:
 
     def test_get_public_key_with_none_protocol_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None protocolID
-           When: Call get_public_key
-           Then: Raises appropriate error
+        When: Call get_public_key
+        Then: Raises appropriate error
         """
         # Given
         args = {"protocolID": None, "keyID": "test"}
@@ -124,8 +121,8 @@ class TestWalletGetPublicKey:
 
     def test_get_public_key_with_empty_key_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty keyID string
-           When: Call get_public_key
-           Then: Raises error
+        When: Call get_public_key
+        Then: Raises error
         """
         # Given
         args = {"protocolID": [0, "test"], "keyID": ""}
@@ -136,8 +133,8 @@ class TestWalletGetPublicKey:
 
     def test_get_public_key_with_invalid_protocol_id_format(self, wallet_with_storage: Wallet) -> None:
         """Given: Invalid protocolID format
-           When: Call get_public_key
-           Then: Raises appropriate error
+        When: Call get_public_key
+        Then: Raises appropriate error
         """
         # Given - protocolID should be [number, string]
         args = {"protocolID": "invalid", "keyID": "test"}
@@ -148,8 +145,8 @@ class TestWalletGetPublicKey:
 
     def test_get_public_key_with_special_characters_in_key_id(self, wallet_with_storage: Wallet) -> None:
         """Given: KeyID with special characters
-           When: Call get_public_key
-           Then: Handles correctly or raises appropriate error
+        When: Call get_public_key
+        Then: Handles correctly or raises appropriate error
         """
         # Given
         args = {"protocolID": [0, "test"], "keyID": "test_key_!@#$%^&*()"}
@@ -185,8 +182,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_empty_plaintext(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty plaintext
-           When: Call encrypt
-           Then: Returns encrypted ciphertext for empty data
+        When: Call encrypt
+        Then: Returns encrypted ciphertext for empty data
         """
         # Given
         args = {
@@ -206,8 +203,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_large_plaintext(self, wallet_with_storage: Wallet) -> None:
         """Given: Large plaintext data
-           When: Call encrypt
-           Then: Handles large data correctly
+        When: Call encrypt
+        Then: Handles large data correctly
         """
         # Given
         large_data = b"A" * 10000  # 10KB of data
@@ -228,8 +225,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_with_missing_plaintext_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing plaintext parameter
-           When: Call encrypt
-           Then: Raises appropriate error
+        When: Call encrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -244,8 +241,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_with_none_plaintext_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None plaintext
-           When: Call encrypt
-           Then: Raises appropriate error
+        When: Call encrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -261,8 +258,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_with_invalid_counterparty_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Invalid counterparty public key format
-           When: Call encrypt
-           Then: Raises appropriate error
+        When: Call encrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -278,8 +275,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_with_empty_counterparty_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty counterparty key
-           When: Call encrypt
-           Then: Raises appropriate error
+        When: Call encrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -295,8 +292,8 @@ class TestWalletEncrypt:
 
     def test_encrypt_with_none_protocol_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None protocolID
-           When: Call encrypt
-           Then: Raises appropriate error
+        When: Call encrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -349,7 +346,7 @@ class TestWalletDecrypt:
             b"Hello, World!",
             b"",
             b"A" * 1000,
-            "Unicode: 你好世界 🌍".encode('utf-8'),
+            "Unicode: 你好世界 🌍".encode("utf-8"),
             bytes(range(256)),  # All byte values 0-255
         ]
 
@@ -377,8 +374,8 @@ class TestWalletDecrypt:
 
     def test_decrypt_empty_ciphertext_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty ciphertext
-           When: Call decrypt
-           Then: Raises appropriate error
+        When: Call decrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -394,8 +391,8 @@ class TestWalletDecrypt:
 
     def test_decrypt_invalid_ciphertext_format_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Invalid ciphertext format (non-list)
-           When: Call decrypt
-           Then: Raises appropriate error
+        When: Call decrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -445,8 +442,8 @@ class TestWalletDecrypt:
 
     def test_decrypt_with_missing_ciphertext_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing ciphertext parameter
-           When: Call decrypt
-           Then: Raises appropriate error
+        When: Call decrypt
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -483,10 +480,12 @@ class TestWalletRevealCounterpartyKeyLinkage:
             # Acceptable - ProtoWallet may not be able to parse test keys
             pass
 
-    def test_reveal_counterparty_key_linkage_without_privileged_reason_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_reveal_counterparty_key_linkage_without_privileged_reason_raises_error(
+        self, wallet_with_storage: Wallet
+    ) -> None:
         """Given: Missing privilegedReason when privileged=True
-           When: Call reveal_counterparty_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_counterparty_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -501,17 +500,19 @@ class TestWalletRevealCounterpartyKeyLinkage:
             # Should raise error for missing privileged reason
             wallet_with_storage.reveal_counterparty_key_linkage(args)
 
-    def test_reveal_counterparty_key_linkage_with_empty_counterparty_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_reveal_counterparty_key_linkage_with_empty_counterparty_raises_error(
+        self, wallet_with_storage: Wallet
+    ) -> None:
         """Given: Empty counterparty key
-           When: Call reveal_counterparty_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_counterparty_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {
             "counterparty": "",
             "verifier": "03ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "privileged": True,
-            "privilegedReason": "Testing key linkage revelation"
+            "privilegedReason": "Testing key linkage revelation",
         }
 
         # When/Then
@@ -519,17 +520,19 @@ class TestWalletRevealCounterpartyKeyLinkage:
             # Should raise error for empty counterparty
             wallet_with_storage.reveal_counterparty_key_linkage(args)
 
-    def test_reveal_counterparty_key_linkage_with_invalid_counterparty_format_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_reveal_counterparty_key_linkage_with_invalid_counterparty_format_raises_error(
+        self, wallet_with_storage: Wallet
+    ) -> None:
         """Given: Invalid counterparty key format
-           When: Call reveal_counterparty_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_counterparty_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {
             "counterparty": "invalid_key_format",
             "verifier": "03ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
             "privileged": True,
-            "privilegedReason": "Testing key linkage revelation"
+            "privilegedReason": "Testing key linkage revelation",
         }
 
         # When/Then
@@ -539,15 +542,15 @@ class TestWalletRevealCounterpartyKeyLinkage:
 
     def test_reveal_counterparty_key_linkage_with_none_verifier_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: None verifier
-           When: Call reveal_counterparty_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_counterparty_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {
             "counterparty": "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097",
             "verifier": None,
             "privileged": True,
-            "privilegedReason": "Testing key linkage revelation"
+            "privilegedReason": "Testing key linkage revelation",
         }
 
         # When/Then
@@ -629,8 +632,8 @@ class TestWalletRevealSpecificKeyLinkage:
 
     def test_reveal_specific_key_linkage_missing_protocol_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing protocolID
-           When: Call reveal_specific_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_specific_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -647,8 +650,8 @@ class TestWalletRevealSpecificKeyLinkage:
 
     def test_reveal_specific_key_linkage_missing_key_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Missing keyID
-           When: Call reveal_specific_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_specific_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {
@@ -665,8 +668,8 @@ class TestWalletRevealSpecificKeyLinkage:
 
     def test_reveal_specific_key_linkage_empty_key_id_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty keyID string
-           When: Call reveal_specific_key_linkage
-           Then: Raises appropriate error
+        When: Call reveal_specific_key_linkage
+        Then: Raises appropriate error
         """
         # Given
         args = {

@@ -107,8 +107,8 @@ class TestWalletAbortAction:
 
     def test_invalid_params_none_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs with None reference
-           When: Call abort_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call abort_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"reference": None}
@@ -119,8 +119,8 @@ class TestWalletAbortAction:
 
     def test_invalid_params_wrong_type_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs with non-string reference
-           When: Call abort_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call abort_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various wrong types
         invalid_types = [123, [], {}, True, 45.67]
@@ -134,8 +134,8 @@ class TestWalletAbortAction:
 
     def test_invalid_params_whitespace_only_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs with whitespace-only reference
-           When: Call abort_action
-           Then: Raises InvalidParameterError
+        When: Call abort_action
+        Then: Raises InvalidParameterError
         """
         # Given - Various whitespace references
         whitespace_refs = ["   ", "\t", "\n", " \t \n "]
@@ -149,8 +149,8 @@ class TestWalletAbortAction:
 
     def test_invalid_params_reference_with_invalid_chars_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs with reference containing invalid base64 characters
-           When: Call abort_action
-           Then: Raises InvalidParameterError
+        When: Call abort_action
+        Then: Raises InvalidParameterError
         """
         # Given - References with invalid base64 chars
         invalid_refs = [
@@ -163,7 +163,7 @@ class TestWalletAbortAction:
             "asterisk*here",
             "plus+but+invalid",
             "slash/invalid",
-            "backslash\\invalid"
+            "backslash\\invalid",
         ]
 
         for ref in invalid_refs:
@@ -175,8 +175,8 @@ class TestWalletAbortAction:
 
     def test_invalid_params_reference_too_short_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs with very short reference
-           When: Call abort_action
-           Then: Raises InvalidParameterError
+        When: Call abort_action
+        Then: Raises InvalidParameterError
         """
         # Given - Very short references
         short_refs = ["a", "ab", "abc", "1", "12"]
@@ -190,8 +190,8 @@ class TestWalletAbortAction:
 
     def test_invalid_params_missing_reference_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs missing reference key
-           When: Call abort_action
-           Then: Raises InvalidParameterError, KeyError or TypeError
+        When: Call abort_action
+        Then: Raises InvalidParameterError, KeyError or TypeError
         """
         # Given
         invalid_args = {}  # Missing reference key
@@ -202,15 +202,15 @@ class TestWalletAbortAction:
 
     def test_invalid_params_extra_keys_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: AbortActionArgs with extra keys beyond reference
-           When: Call abort_action
-           Then: Extra keys are ignored, processes normally or fails on reference
+        When: Call abort_action
+        Then: Extra keys are ignored, processes normally or fails on reference
         """
         # Given - Extra keys that should be ignored
         invalid_args = {
             "reference": "",  # Invalid reference
             "extraKey": "ignored",
             "anotherKey": 123,
-            "nested": {"key": "value"}
+            "nested": {"key": "value"},
         }
 
         # When/Then - Should fail on the invalid reference, not the extra keys
@@ -219,8 +219,8 @@ class TestWalletAbortAction:
 
     def test_abort_nonexistent_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Valid format reference that doesn't exist
-           When: Call abort_action
-           Then: Raises appropriate error (transaction not found)
+        When: Call abort_action
+        Then: Raises appropriate error (transaction not found)
         """
         # Given - Valid base64 format but nonexistent reference
         nonexistent_ref = "nonexistent123"
@@ -233,8 +233,8 @@ class TestWalletAbortAction:
 
     def test_abort_already_aborted_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Reference that was already aborted
-           When: Call abort_action again
-           Then: Raises appropriate error
+        When: Call abort_action again
+        Then: Raises appropriate error
         """
         # Given - First abort succeeds
         reference = "Sfh42EBViQ=="

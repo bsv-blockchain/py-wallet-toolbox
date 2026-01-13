@@ -167,9 +167,7 @@ class Setup:
         if not root_key_hex:
             dev_keys = getattr(env, "dev_keys", None) or getattr(env, "devKeys", None) or {}
             active_identity_key = (
-                args.get("identityKey")
-                or getattr(env, "identity_key", None)
-                or getattr(env, "identityKey", None)
+                args.get("identityKey") or getattr(env, "identity_key", None) or getattr(env, "identityKey", None)
             )
             if active_identity_key and isinstance(dev_keys, dict):
                 root_key_hex = dev_keys.get(active_identity_key)
@@ -206,9 +204,7 @@ class Setup:
         storage_manager.set_services(services)
 
         privileged_key_getter = args.get("privilegedKeyGetter")
-        privileged_key_manager = (
-            PrivilegedKeyManager(privileged_key_getter) if privileged_key_getter else None
-        )
+        privileged_key_manager = PrivilegedKeyManager(privileged_key_getter) if privileged_key_getter else None
 
         monitor_options = MonitorOptions(
             chain=chain,
@@ -275,13 +271,13 @@ def max_date(d1: object | None, d2: object | None) -> object | None:
 
 def to_wallet_network(chain: str) -> str:
     """Convert chain to wallet network.
-    
+
     Args:
         chain: Chain identifier ('main', 'test', 'mainnet', 'testnet', 'regtest')
-        
+
     Returns:
         Network name ('mainnet', 'testnet', 'regtest')
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - toWalletNetwork
     """
     chain_map = {
@@ -296,17 +292,17 @@ def to_wallet_network(chain: str) -> str:
 
 def verify_truthy(value: object, description: str | None = None) -> object:
     """Verify that a value is truthy, raising an error if not.
-    
+
     Args:
         value: Value to verify
         description: Optional error description
-        
+
     Returns:
         The value if truthy
-        
+
     Raises:
         ValueError: If value is falsy
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyTruthy
     """
     if not value:
@@ -317,17 +313,17 @@ def verify_truthy(value: object, description: str | None = None) -> object:
 
 def verify_hex_string(value: str, description: str | None = None) -> str:
     """Verify that a value is a valid hex string, trim and lowercase it.
-    
+
     Args:
         value: String to verify and normalize
         description: Optional error description
-        
+
     Returns:
         Trimmed and lowercased hex string
-        
+
     Raises:
         ValueError: If value is not a valid hex string
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyHexString
     """
     if not isinstance(value, str):
@@ -346,17 +342,17 @@ def verify_hex_string(value: str, description: str | None = None) -> str:
 
 def verify_id(value: int, description: str | None = None) -> int:
     """Verify that a value is a valid ID (positive integer).
-    
+
     Args:
         value: Value to verify
         description: Optional error description
-        
+
     Returns:
         The ID value
-        
+
     Raises:
         ValueError: If value is not a positive integer
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyId
     """
     verify_integer(value, description)
@@ -368,17 +364,17 @@ def verify_id(value: int, description: str | None = None) -> int:
 
 def verify_integer(value: int, description: str | None = None) -> int:
     """Verify that a value is an integer.
-    
+
     Args:
         value: Value to verify
         description: Optional error description
-        
+
     Returns:
         The integer value
-        
+
     Raises:
         ValueError: If value is not an integer
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyInteger
     """
     if not isinstance(value, int) or isinstance(value, bool):
@@ -389,17 +385,17 @@ def verify_integer(value: int, description: str | None = None) -> int:
 
 def verify_number(value: int | float, description: str | None = None) -> int | float:
     """Verify that a value is a number.
-    
+
     Args:
         value: Value to verify
         description: Optional error description
-        
+
     Returns:
         The number value
-        
+
     Raises:
         ValueError: If value is not a number
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyNumber
     """
     if not isinstance(value, (int, float)) or isinstance(value, bool):
@@ -410,17 +406,17 @@ def verify_number(value: int | float, description: str | None = None) -> int | f
 
 def verify_one(results: list, description: str | None = None) -> object:
     """Verify that a list contains exactly one element and return it.
-    
+
     Args:
         results: List to verify
         description: Optional error description
-        
+
     Returns:
         The single element in the list
-        
+
     Raises:
         ValueError: If list is empty or has multiple elements
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyOne
     """
     if len(results) == 0:
@@ -434,17 +430,17 @@ def verify_one(results: list, description: str | None = None) -> object:
 
 def verify_one_or_none(results: list, description: str | None = None) -> object | None:
     """Verify that a list contains at most one element and return it or None.
-    
+
     Args:
         results: List to verify
         description: Optional error description
-        
+
     Returns:
         The single element in the list, or None if list is empty
-        
+
     Raises:
         ValueError: If list has multiple elements
-        
+
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyOneOrNone
     """
     if len(results) == 0:

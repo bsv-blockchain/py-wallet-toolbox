@@ -21,6 +21,7 @@ class TestBroadcasterProtocol:
     def test_protocol_definition(self) -> None:
         """Test that BroadcasterProtocol is a Protocol."""
         from typing import Protocol
+
         # Check if it's a Protocol (works across Python versions)
         assert getattr(BroadcasterProtocol, "_is_protocol", False) or issubclass(BroadcasterProtocol, Protocol)
 
@@ -113,9 +114,7 @@ class TestBackgroundBroadcaster:
             await broadcaster.enqueue(b"beef", ["txid1"])
 
     @pytest.mark.asyncio
-    async def test_enqueue_and_process(
-        self, mock_broadcaster: MockBroadcaster
-    ) -> None:
+    async def test_enqueue_and_process(self, mock_broadcaster: MockBroadcaster) -> None:
         """Test enqueue and process a broadcast request."""
         bb = BackgroundBroadcaster(mock_broadcaster, max_queue_size=10)
 
@@ -136,9 +135,7 @@ class TestBackgroundBroadcaster:
         assert mock_broadcaster.broadcast_calls[0] == (b"beef_data", ["txid1", "txid2"])
 
     @pytest.mark.asyncio
-    async def test_enqueue_multiple_requests(
-        self, mock_broadcaster: MockBroadcaster
-    ) -> None:
+    async def test_enqueue_multiple_requests(self, mock_broadcaster: MockBroadcaster) -> None:
         """Test enqueue multiple broadcast requests."""
         bb = BackgroundBroadcaster(mock_broadcaster, max_queue_size=10)
 
@@ -255,4 +252,3 @@ class TestBackgroundBroadcaster:
             mock_logger.info.assert_called()
 
         await bb.stop()
-

@@ -421,4 +421,5 @@ class TestBackwardCompatibility:
     def test_json_rpc_client_alias(self) -> None:
         """Test that JsonRpcClient is an alias for StorageClient."""
         from bsv_wallet_toolbox.rpc.storage_client import JsonRpcClient
+
         assert JsonRpcClient is StorageClient

@@ -29,16 +29,10 @@ class TestBuildSignableTransactionEdgeCases:
     def test_build_signable_transaction_with_input_beef_and_txid(self):
         """Test build_signable_transaction when input_beef exists and txid is found."""
         # Mock dctr (storage create transaction result)
-        dctr = {
-            "inputs": [],
-            "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}]
-        }
+        dctr = {"inputs": [], "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}]}
 
         # Mock args with inputBeef
-        args = {
-            "inputBeef": "mock_beef_hex",
-            "isSignAction": True
-        }
+        args = {"inputBeef": "mock_beef_hex", "isSignAction": True}
 
         wallet = Mock()
         wallet.get_client_change_key_pair.return_value = ["key1", "key2"]
@@ -47,8 +41,8 @@ class TestBuildSignableTransactionEdgeCases:
         mock_beef = Mock()
         mock_beef.find_txid.return_value = {"tx": "mock_tx"}
 
-        with patch('bsv_wallet_toolbox.signer.methods.parse_beef', return_value=mock_beef):
-            with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.parse_beef", return_value=mock_beef):
+            with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
                 mock_tx = Mock()
                 mock_tx_class.return_value = mock_tx
                 mock_tx.add_input = Mock()
@@ -66,26 +60,28 @@ class TestBuildSignableTransactionEdgeCases:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "mock_script"}],
-            "storageInputs": [{
-                "vin": 0,
-                "type": "UNSUPPORTED_TYPE",
-                "derivationPrefix": "prefix",
-                "derivationSuffix": "suffix",
-                "senderIdentityKey": "key",
-                "sourceSatoshis": 1000,
-                "sourceLockingScript": "script",
-                "sourceTxid": "txid",
-                "sourceVout": 0,
-                "sourceTransaction": "deadbeef"
-            }],
-            "storageOutputs": []
+            "storageInputs": [
+                {
+                    "vin": 0,
+                    "type": "UNSUPPORTED_TYPE",
+                    "derivationPrefix": "prefix",
+                    "derivationSuffix": "suffix",
+                    "senderIdentityKey": "key",
+                    "sourceSatoshis": 1000,
+                    "sourceLockingScript": "script",
+                    "sourceTxid": "txid",
+                    "sourceVout": 0,
+                    "sourceTransaction": "deadbeef",
+                }
+            ],
+            "storageOutputs": [],
         }
 
         args = {"description": "test"}
         wallet = Mock()
         wallet.get_client_change_key_pair.return_value = ["key1", "key2"]
 
-        with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
             mock_tx = Mock()
             mock_tx_class.return_value = mock_tx
             mock_tx.add_input = Mock()
@@ -100,30 +96,32 @@ class TestBuildSignableTransactionEdgeCases:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
-            "storageInputs": [{
-                "vin": 0,
-                "type": "P2PKH",
-                "derivationPrefix": "prefix",
-                "derivationSuffix": "suffix",
-                "senderIdentityKey": "key",
-                "sourceSatoshis": 2000,
-                "sourceLockingScript": "script",
-                "sourceTxid": "txid",
-                "sourceVout": 0,
-                "sourceTransaction": "deadbeef"
-            }],
+            "storageInputs": [
+                {
+                    "vin": 0,
+                    "type": "P2PKH",
+                    "derivationPrefix": "prefix",
+                    "derivationSuffix": "suffix",
+                    "senderIdentityKey": "key",
+                    "sourceSatoshis": 2000,
+                    "sourceLockingScript": "script",
+                    "sourceTxid": "txid",
+                    "sourceVout": 0,
+                    "sourceTransaction": "deadbeef",
+                }
+            ],
             "storageOutputs": [
                 {"purpose": "change", "satoshis": 500, "vout": 1},
-                {"purpose": "change", "satoshis": 300, "vout": 2}
-            ]
+                {"purpose": "change", "satoshis": 300, "vout": 2},
+            ],
         }
 
         args = {"description": "test"}
         wallet = Mock()
         wallet.get_client_change_key_pair.return_value = ["key1", "key2"]
 
-        with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
-            with patch('bsv_wallet_toolbox.signer.methods.validate_satoshis') as mock_validate:
+        with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
+            with patch("bsv_wallet_toolbox.signer.methods.validate_satoshis") as mock_validate:
                 mock_validate.return_value = 2000
                 mock_tx = Mock()
                 mock_tx_class.return_value = mock_tx
@@ -141,15 +139,9 @@ class TestCompleteSignedTransactionEdgeCases:
     def test_complete_signed_transaction_unlock_script_length_validation(self):
         """Test complete_signed_transaction validates unlock script length."""
         prior = Mock()
-        prior.inputs = [
-            Mock(unlocking_script_length=10)  # Expected length
-        ]
+        prior.inputs = [Mock(unlocking_script_length=10)]  # Expected length
 
-        spends = {
-            0: {
-                "unlockingScript": "deadbeef" * 10  # 80 hex chars = 40 bytes, exceeds 10
-            }
-        }
+        spends = {0: {"unlockingScript": "deadbeef" * 10}}  # 80 hex chars = 40 bytes, exceeds 10
 
         wallet = Mock()
 
@@ -159,15 +151,9 @@ class TestCompleteSignedTransactionEdgeCases:
     def test_complete_signed_transaction_missing_unlocking_script_length(self):
         """Test complete_signed_transaction with missing unlocking_script_length."""
         prior = Mock()
-        prior.inputs = [
-            Mock(unlocking_script_length=None)  # Missing length
-        ]
+        prior.inputs = [Mock(unlocking_script_length=None)]  # Missing length
 
-        spends = {
-            0: {
-                "unlockingScript": "deadbeef"
-            }
-        }
+        spends = {0: {"unlockingScript": "deadbeef"}}
 
         wallet = Mock()
 
@@ -190,18 +176,11 @@ class TestProcessActionEdgeCases:
 
         wallet = Mock()
         auth = Mock()
-        vargs = {
-            "options": {
-                "noSend": True,
-                "noSendChange": ["vout1"],
-                "knownTxids": ["known1"]
-            },
-            "isDelayed": False
-        }
+        vargs = {"options": {"noSend": True, "noSendChange": ["vout1"], "knownTxids": ["known1"]}, "isDelayed": False}
 
         # Mock the transaction creation
-        with patch('bsv_wallet_toolbox.signer.methods.build_signable_transaction') as mock_build:
-            with patch('bsv_wallet_toolbox.signer.methods.complete_signed_transaction') as mock_complete:
+        with patch("bsv_wallet_toolbox.signer.methods.build_signable_transaction") as mock_build:
+            with patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete:
                 mock_build.return_value = (Mock(), 1000, [], "log")
                 mock_complete.return_value = Mock()
 
@@ -215,13 +194,7 @@ class TestSignerHelperFunctionsEdgeCases:
 
     def test_remove_unlock_scripts_with_none_values(self):
         """Test _remove_unlock_scripts with None values."""
-        args = {
-            "inputs": [
-                {"unlockingScript": "script1"},
-                {"unlockingScript": None},
-                {}  # Missing unlocking_script
-            ]
-        }
+        args = {"inputs": [{"unlockingScript": "script1"}, {"unlockingScript": None}, {}]}  # Missing unlocking_script
 
         result = _remove_unlock_scripts(args)
 

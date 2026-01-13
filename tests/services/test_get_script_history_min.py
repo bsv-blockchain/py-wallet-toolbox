@@ -15,11 +15,11 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 @pytest.fixture
 def mock_services():
     """Fixture providing mock services instance."""
-    with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
+    with patch("bsv_wallet_toolbox.services.services.ServiceCollection") as mock_service_collection:
         mock_instance = Mock()
         mock_service_collection.return_value = mock_instance
 
-        with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=Mock()):
+        with patch("bsv_wallet_toolbox.services.services.Services._get_http_client", return_value=Mock()):
             services = Services(Services.create_default_options("main"))
             yield services, mock_instance
 
@@ -30,12 +30,7 @@ def test_get_script_history_minimal_normal(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_success(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_success
@@ -54,12 +49,7 @@ def test_get_script_history_minimal_empty(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_empty(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_empty
@@ -109,12 +99,7 @@ def test_get_script_history_different_chains(mock_services) -> None:
     chains = ["main", "test"]
 
     def mock_get_script_history_chain(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_chain
@@ -135,12 +120,7 @@ def test_get_script_history_various_script_patterns(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_patterns(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_patterns
@@ -168,12 +148,7 @@ def test_get_script_history_case_insensitive_script(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_case(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_case
@@ -194,12 +169,7 @@ def test_get_script_history_unicode_script_handling(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_unicode(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_unicode
@@ -220,12 +190,7 @@ def test_get_script_history_consecutive_calls(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_consecutive(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_consecutive
@@ -248,12 +213,7 @@ def test_get_script_history_script_length_boundaries(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_boundary(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_boundary
@@ -301,7 +261,7 @@ def test_get_script_history_numeric_script(mock_services) -> None:
         services.get_script_history(1234567890)
 
     with pytest.raises((InvalidParameterError, ValueError, TypeError)):
-        services.get_script_history(0x1234567890abcdef)
+        services.get_script_history(0x1234567890ABCDEF)
 
 
 def test_get_script_history_mixed_case_script(mock_services) -> None:
@@ -310,12 +270,7 @@ def test_get_script_history_mixed_case_script(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_mixed(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_mixed
@@ -336,12 +291,7 @@ def test_get_script_history_configuration_variations(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_config(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_config
@@ -370,7 +320,7 @@ def test_get_script_history_with_results(mock_services) -> None:
             "status": "success",
             "name": "WhatsOnChain",
             "confirmed": [{"txid": "abcd" * 16, "hash": "abcd" * 16}],
-            "unconfirmed": [{"txid": "efgh" * 16, "hash": "efgh" * 16}]
+            "unconfirmed": [{"txid": "efgh" * 16, "hash": "efgh" * 16}],
         }
 
     mock_service_to_call = Mock()
@@ -399,12 +349,7 @@ def test_get_script_history_empty_results(mock_services) -> None:
     mock_instance.count = 1
 
     def mock_get_script_history_empty_results(script_hash):
-        return {
-            "status": "success",
-            "name": "WhatsOnChain",
-            "confirmed": [],
-            "unconfirmed": []
-        }
+        return {"status": "success", "name": "WhatsOnChain", "confirmed": [], "unconfirmed": []}
 
     mock_service_to_call = Mock()
     mock_service_to_call.service = mock_get_script_history_empty_results
@@ -427,7 +372,7 @@ def test_get_script_history_result_structure(mock_services) -> None:
             "status": "success",
             "name": "WhatsOnChain",
             "confirmed": [{"txid": "test", "hash": "test"}],
-            "unconfirmed": [{"txid": "test2", "hash": "test2"}]
+            "unconfirmed": [{"txid": "test2", "hash": "test2"}],
         }
 
     mock_service_to_call = Mock()

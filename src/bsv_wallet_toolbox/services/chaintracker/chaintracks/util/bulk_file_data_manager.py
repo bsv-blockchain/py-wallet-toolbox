@@ -12,11 +12,11 @@ from .height_range import HeightRange
 
 class BulkFileDataManagerOptions:
     """Options for BulkFileDataManager.
-    
+
     Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                interface BulkFileDataManagerOptions
     """
-    
+
     def __init__(
         self,
         *,
@@ -26,7 +26,7 @@ class BulkFileDataManagerOptions:
         from_known_source_url: str | None = None,
     ):
         """Initialize options.
-        
+
         Args:
             chain: Blockchain network ('main' or 'test')
             max_per_file: Maximum headers per file
@@ -37,7 +37,7 @@ class BulkFileDataManagerOptions:
         self.max_per_file = max_per_file
         self.max_retained = max_retained
         self.from_known_source_url = from_known_source_url or self._default_cdn_url(chain)
-    
+
     @staticmethod
     def _default_cdn_url(chain: str) -> str:
         """Get default CDN URL for chain."""
@@ -48,14 +48,14 @@ class BulkFileDataManagerOptions:
 
 class BulkFileData:
     """Represents a bulk file with header data.
-    
+
     Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                interface BulkFileData
     """
-    
+
     def __init__(self, file_index: int, min_height: int, max_height: int):
         """Initialize bulk file data.
-        
+
         Args:
             file_index: Index of this file
             min_height: Minimum block height in file
@@ -69,17 +69,17 @@ class BulkFileData:
 
 class BulkFileDataManager:
     """Manager for bulk block header files from CDN.
-    
+
     Provides efficient loading and caching of block headers from
     CDN sources, with configurable retention policies.
-    
+
     Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                class BulkFileDataManager
     """
-    
+
     def __init__(self, options: BulkFileDataManagerOptions):
         """Initialize manager.
-        
+
         Args:
             options: Configuration options
         """
@@ -87,16 +87,16 @@ class BulkFileDataManager:
         self.max_per_file = options.max_per_file
         self.max_retained = options.max_retained
         self.from_known_source_url = options.from_known_source_url
-        
+
         # List of bulk file descriptors
         self.bfds: list[BulkFileData] = []
-        
+
         # Initialize with mock data for testing
         self._initialize_mock_files()
-    
+
     def _initialize_mock_files(self) -> None:
         """Initialize mock file list for testing.
-        
+
         In production, this would fetch the file list from CDN.
         For now, create a reasonable mock structure.
         """
@@ -107,71 +107,71 @@ class BulkFileDataManager:
             min_h = i * self.max_per_file
             max_h = (i + 1) * self.max_per_file - 1
             self.bfds.append(BulkFileData(i, min_h, max_h))
-    
+
     @staticmethod
     def create_default_options(chain: str) -> BulkFileDataManagerOptions:
         """Create default options for a chain.
-        
+
         Args:
             chain: Blockchain network ('main' or 'test')
-        
+
         Returns:
             Default options for the chain
-        
+
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                    static createDefaultOptions()
         """
         return BulkFileDataManagerOptions(chain=chain)
-    
+
     async def get_bulk_files(self) -> list[BulkFileData]:
         """Get list of available bulk files.
-        
+
         Returns:
             List of bulk file descriptors
-        
+
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                    async getBulkFiles()
         """
         return self.bfds
-    
+
     async def get_height_range(self) -> HeightRange:
         """Get the total height range covered by all files.
-        
+
         Returns:
             Range from minimum to maximum height
-        
+
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                    async getHeightRange()
         """
         if not self.bfds:
             return HeightRange(0, -1)  # Empty range
-        
+
         min_height = min(f.min_height for f in self.bfds)
         max_height = max(f.max_height for f in self.bfds)
         return HeightRange(min_height, max_height)
-    
+
     async def update_from_url(self, url: str) -> None:
         """Update file list from a URL.
-        
+
         Args:
             url: URL to fetch file list from
-        
+
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                    async updateFromUrl()
         """
         # In production, this would fetch from the URL
         # For now, this is a no-op stub
         pass
-    
+
     async def load_data(self, file_index: int) -> bytes | None:
         """Load data for a specific file.
-        
+
         Args:
             file_index: Index of file to load
-        
+
         Returns:
             File data bytes, or None if not found
-        
+
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
                    async loadData()
         """
@@ -181,4 +181,3 @@ class BulkFileDataManager:
             if bfd.file_index == file_index:
                 return bfd.data
         return None
-

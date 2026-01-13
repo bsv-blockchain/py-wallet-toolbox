@@ -49,4 +49,3 @@ class TaskNewHeader(WalletMonitorTask):
                     log += "Triggered TaskCheckForProofs\n"
 
         return log
-

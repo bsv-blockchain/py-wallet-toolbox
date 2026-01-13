@@ -16,7 +16,7 @@ _JSON_FILE = Path(__file__).parent / "create_action_result.json"
 
 def load_create_action_result() -> dict[str, Any]:
     """Load the TS-generated CreateActionResult from JSON file.
-    
+
     Returns:
         dict: The CreateActionResult as a Python dict
     """
@@ -26,9 +26,9 @@ def load_create_action_result() -> dict[str, Any]:
 
 def create_action_result_json() -> str:
     """Get the CreateActionResult as a JSON string.
-    
+
     This is equivalent to Go's CreateActionResultJSON() function.
-    
+
     Returns:
         str: The CreateActionResult as a JSON string
     """
@@ -51,28 +51,27 @@ def _get_create_action_result() -> dict[str, Any]:
 # Module-level constant (loads on first access via property)
 class _CreateActionResultProxy:
     """Proxy to provide module-level constant access."""
-    
+
     def __getitem__(self, key: str) -> Any:
         return _get_create_action_result()[key]
-    
+
     def __repr__(self) -> str:
         return repr(_get_create_action_result())
-    
+
     def __eq__(self, other: Any) -> bool:
         return _get_create_action_result() == other
-    
+
     def get(self, key: str, default: Any = None) -> Any:
         return _get_create_action_result().get(key, default)
-    
+
     def keys(self):
         return _get_create_action_result().keys()
-    
+
     def values(self):
         return _get_create_action_result().values()
-    
+
     def items(self):
         return _get_create_action_result().items()
 
 
 CREATE_ACTION_RESULT = _CreateActionResultProxy()
-

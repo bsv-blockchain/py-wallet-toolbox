@@ -20,6 +20,7 @@ from bsv.chaintracker import ChainTracker
 
 class Chain(Enum):
     """Blockchain network enumeration."""
+
     MAIN = "main"
     TEST = "test"
 

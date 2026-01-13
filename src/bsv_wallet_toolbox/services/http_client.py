@@ -26,9 +26,7 @@ class ToolboxHttpClient(HttpClient):
         timeout_value = options.get("timeout", self.default_timeout)
         data = options.get("data")
 
-        request_timeout = (
-            aiohttp.ClientTimeout(total=timeout_value) if timeout_value is not None else None
-        )
+        request_timeout = aiohttp.ClientTimeout(total=timeout_value) if timeout_value is not None else None
 
         async with aiohttp.ClientSession(timeout=request_timeout) as session:
             async with session.request(
@@ -49,4 +47,3 @@ class ToolboxHttpClient(HttpClient):
                     body = {"data": text_payload}
 
                 return HttpResponse(ok=ok, status_code=status, json_data=body)
-

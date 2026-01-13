@@ -323,13 +323,13 @@ class Bitails:
                             result.txid = raw_txids[i]
 
                     # Set success and error_message
-                    if hasattr(result, 'error') and result.error:
+                    if hasattr(result, "error") and result.error:
                         result.success = False
                         if isinstance(result.error, dict):
                             result.error_message = str(result.error.get("message", result.error))
                         else:
                             result.error_message = str(result.error)
-                    elif not hasattr(result, 'success') or result.success is None:
+                    elif not hasattr(result, "success") or result.success is None:
                         result.success = True
 
                     results.append(result)
@@ -338,21 +338,13 @@ class Bitails:
                 error_msg = f"{response.status_code} {getattr(response, 'text', '')}".strip()
                 requested_txids = txids or raw_txids
                 for txid in requested_txids:
-                    results.append(BitailsPostRawsResult(
-                        txid=txid,
-                        success=False,
-                        error_message=error_msg
-                    ))
+                    results.append(BitailsPostRawsResult(txid=txid, success=False, error_message=error_msg))
 
         except Exception as e:
             # Return error results for all requested txids
             requested_txids = txids or raw_txids
             for txid in requested_txids:
-                results.append(BitailsPostRawsResult(
-                    txid=txid,
-                    success=False,
-                    error_message=str(e)
-                ))
+                results.append(BitailsPostRawsResult(txid=txid, success=False, error_message=str(e)))
 
         return results
 

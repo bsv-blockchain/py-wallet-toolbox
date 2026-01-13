@@ -56,11 +56,9 @@ class BulkHeaderFileInfo:
     def bulk_header_minimum_info(self) -> Any:
         """Get the minimum info for bulk operations."""
         from .bulk_ingestor_interface import BulkHeaderMinimumInfo
+
         return BulkHeaderMinimumInfo(
-            first_height=self.first_height,
-            count=self.count,
-            file_name=self.file_name,
-            source_url=self.source_url
+            first_height=self.first_height, count=self.count, file_name=self.file_name, source_url=self.source_url
         )
 
 
@@ -83,22 +81,16 @@ class CDNReader:
         # Setup requests session with retry strategy
         self.session = requests.Session()
 
-        retry_strategy = Retry(
-            total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            backoff_factor=1
-        )
+        retry_strategy = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], backoff_factor=1)
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
         # Set headers
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "py-wallet-toolbox"
-        })
+        self.session.headers.update(
+            {"Accept": "application/json", "Content-Type": "application/json", "User-Agent": "py-wallet-toolbox"}
+        )
 
     def fetch_bulk_header_files_info(self, chain: Chain) -> BulkHeaderFilesInfo:
         """Fetch metadata about available bulk header files.

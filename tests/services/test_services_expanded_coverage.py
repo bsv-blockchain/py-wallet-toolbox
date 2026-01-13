@@ -11,7 +11,6 @@ from tests.services.conftest import MockWalletServices
 from bsv_wallet_toolbox.services.wallet_services import WalletServices, Chain
 
 
-
 class TestWalletServicesInitialization:
     """Test WalletServices initialization."""
 
@@ -29,7 +28,6 @@ class TestWalletServicesInitialization:
     def test_services_with_providers(self, mock_wallet_services) -> None:
         """Test creating services with custom providers."""
         assert mock_wallet_services.get_providers() == ["whatsOnChain", "arc"]
-
 
 
 class TestWalletServicesTransactionMethods:
@@ -66,7 +64,6 @@ class TestWalletServicesTransactionMethods:
         assert result == [{"txid": "mock_txid1"}, {"txid": "mock_txid2"}]
 
 
-
 class TestWalletServicesUtxoMethods:
     """Test UTXO-related service methods."""
 
@@ -100,7 +97,6 @@ class TestWalletServicesUtxoMethods:
         assert history == {"history": ["tx1", "tx2"]}
 
 
-
 class TestWalletServicesMerklePathMethods:
     """Test merkle path service methods."""
 
@@ -113,7 +109,6 @@ class TestWalletServicesMerklePathMethods:
         """Test getting merkle path."""
         path = mock_services.get_merkle_path("0" * 64)
         assert path == {"merklePath": "mock_path"}
-
 
 
 class TestWalletServicesBlockchainMethods:
@@ -140,7 +135,6 @@ class TestWalletServicesBlockchainMethods:
         assert tip == {"hash": "mock_tip_hash", "height": 850000}
 
 
-
 class TestWalletServicesProviderManagement:
     """Test provider management in services."""
 
@@ -163,7 +157,6 @@ class TestWalletServicesProviderManagement:
         """Test getting list of providers."""
         providers = mock_services.get_providers()
         assert providers == ["whatsOnChain", "arc"]
-
 
 
 class TestWalletServicesErrorHandling:
@@ -194,7 +187,6 @@ class TestWalletServicesErrorHandling:
             pass
 
 
-
 class TestWalletServicesCaching:
     """Test caching in services."""
 
@@ -209,7 +201,6 @@ class TestWalletServicesCaching:
         height2 = mock_services.cached_height_retrieval()
         assert height1 == 850000
         assert height2 == 850000
-
 
 
 class TestWalletServicesEdgeCases:
@@ -243,4 +234,3 @@ class TestWalletServicesEdgeCases:
                 assert status is not None or status is None
         except (TypeError, AttributeError, ValueError):
             pass
-

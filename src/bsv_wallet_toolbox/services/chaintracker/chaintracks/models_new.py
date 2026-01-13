@@ -37,13 +37,15 @@ class LiveBlockHeader:
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/live_block_header.go
     """
 
-    def __init__(self,
-                 chain_block_header: dict[str, Any],
-                 chain_work: str = "",
-                 is_chain_tip: bool = False,
-                 is_active: bool = False,
-                 header_id: int = 0,
-                 previous_header_id: Optional[int] = None):
+    def __init__(
+        self,
+        chain_block_header: dict[str, Any],
+        chain_work: str = "",
+        is_chain_tip: bool = False,
+        is_active: bool = False,
+        header_id: int = 0,
+        previous_header_id: Optional[int] = None,
+    ):
         """Initialize LiveBlockHeader.
 
         Args:
@@ -114,9 +116,11 @@ class HeightRanges:
 
             if not self.live.is_empty() and self.bulk.max_height + 1 < self.live.min_height:
                 gap = self.live.min_height - self.bulk.max_height - 1
-                return Exception(f"there is a gap ({gap}) between bulk and live header storage, "
-                               f"bulk max height: {self.bulk.max_height}, "
-                               f"live min height: {self.live.min_height}")
+                return Exception(
+                    f"there is a gap ({gap}) between bulk and live header storage, "
+                    f"bulk max height: {self.bulk.max_height}, "
+                    f"live min height: {self.live.min_height}"
+                )
 
         return None
 
@@ -255,7 +259,9 @@ class StorageQueries(Protocol):
             Tuple of (height_range, error)
         """
 
-    def find_headers_for_height_less_than_or_equal_sorted(self, height: int, limit: int) -> tuple[List[LiveBlockHeader], Optional[Exception]]:
+    def find_headers_for_height_less_than_or_equal_sorted(
+        self, height: int, limit: int
+    ) -> tuple[List[LiveBlockHeader], Optional[Exception]]:
         """Find headers with height <= specified height, sorted.
 
         Args:
@@ -283,13 +289,15 @@ class InfoResponse:
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/
     """
 
-    def __init__(self,
-                 chain: str,
-                 height_bulk: int,
-                 height_live: int,
-                 storage: str,
-                 bulk_ingestors: List[str],
-                 live_ingestors: List[str]):
+    def __init__(
+        self,
+        chain: str,
+        height_bulk: int,
+        height_live: int,
+        storage: str,
+        bulk_ingestors: List[str],
+        live_ingestors: List[str],
+    ):
         """Initialize info response.
 
         Args:
@@ -313,6 +321,7 @@ class BlockHeader(TypedDict):
 
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/
     """
+
     version: int
     previousHash: str
     merkleRoot: str

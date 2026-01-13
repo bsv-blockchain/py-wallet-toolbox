@@ -20,22 +20,18 @@ except ImportError:
 @pytest.fixture
 def valid_services_config():
     """Fixture providing valid services configuration."""
-    return {
-        "chain": "main",
-        "whatsonchainApiKey": "test_woc_key",
-        "taalApiKey": "test_taal_key"
-    }
+    return {"chain": "main", "whatsonchainApiKey": "test_woc_key", "taalApiKey": "test_taal_key"}
 
 
 @pytest.fixture
 def mock_services(valid_services_config):
     """Fixture providing mock services instance."""
-    with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
+    with patch("bsv_wallet_toolbox.services.services.ServiceCollection") as mock_service_collection:
         mock_instance = Mock()
         mock_instance.count = 1  # Set count to avoid early return
         mock_service_collection.return_value = mock_instance
 
-        with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=Mock()):
+        with patch("bsv_wallet_toolbox.services.services.Services._get_http_client", return_value=Mock()):
             services = Services(valid_services_config)
             yield services, mock_instance
 
@@ -75,10 +71,9 @@ def transaction_status_responses():
                 "confirmations": 6,
                 "blockHeight": 883637,
                 "blockHash": "0000000000000000060ac8d63b78d41f58c9aba0b09f81db7d51fa4905a47263",
-                "blockTime": 1739329877
-            }
+                "blockTime": 1739329877,
+            },
         },
-
         # Unconfirmed transaction
         {
             "status": 200,
@@ -87,16 +82,11 @@ def transaction_status_responses():
                 "confirmations": 0,
                 "blockHeight": None,
                 "blockHash": None,
-                "blockTime": None
-            }
+                "blockTime": None,
+            },
         },
-
         # Transaction not found
-        {
-            "status": 404,
-            "json": {"error": "Transaction not found"}
-        },
-
+        {"status": 404, "json": {"error": "Transaction not found"}},
         # Mempool transaction
         {
             "status": 200,
@@ -106,10 +96,9 @@ def transaction_status_responses():
                 "blockHeight": None,
                 "blockHash": None,
                 "blockTime": None,
-                "inMempool": True
-            }
+                "inMempool": True,
+            },
         },
-
         # Recently confirmed (1 confirmation)
         {
             "status": 200,
@@ -118,10 +107,9 @@ def transaction_status_responses():
                 "confirmations": 1,
                 "blockHeight": 883640,
                 "blockHash": "0000000000000000089abcdef...",
-                "blockTime": 1739330000
-            }
+                "blockTime": 1739330000,
+            },
         },
-
         # Well confirmed (100+ confirmations)
         {
             "status": 200,
@@ -130,8 +118,8 @@ def transaction_status_responses():
                 "confirmations": 150,
                 "blockHeight": 883490,
                 "blockHash": "0000000000000000056fedcba...",
-                "blockTime": 1739200000
-            }
+                "blockTime": 1739200000,
+            },
         },
     ]
 
@@ -142,25 +130,18 @@ def network_error_responses():
     return [
         # HTTP 500 Internal Server Error
         {"status": 500, "text": "Internal Server Error"},
-
         # HTTP 503 Service Unavailable
         {"status": 503, "text": "Service Unavailable"},
-
         # HTTP 429 Rate Limited
         {"status": 429, "text": "Rate limit exceeded", "headers": {"Retry-After": "60"}},
-
         # HTTP 401 Unauthorized
         {"status": 401, "text": "Unauthorized"},
-
         # Timeout scenarios
         {"timeout": True, "error": "Connection timeout"},
-
         # Malformed JSON response
         {"status": 200, "text": "invalid json {{{", "malformed": True},
-
         # Empty response
         {"status": 200, "text": "", "empty": True},
-
         # Very large response (simulating memory issues)
         {"status": 200, "text": "x" * 1000000, "large": True},
     ]
@@ -172,8 +153,8 @@ def test_get_transaction_status_placeholder() -> None:
 
 def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txids) -> None:
     """Given: Invalid txid formats
-       When: Call get_transaction_status with invalid txids
-       Then: Raises appropriate errors
+    When: Call get_transaction_status with invalid txids
+    Then: Raises appropriate errors
     """
     services, _ = mock_services
 
@@ -184,8 +165,8 @@ def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txid
 
 def test_get_transaction_status_network_failure_500(mock_services, valid_txid) -> None:
     """Given: Network returns HTTP 500 error
-       When: Call get_transaction_status
-       Then: Handles server error appropriately
+    When: Call get_transaction_status
+    Then: Handles server error appropriately
     """
     services, mock_instance = mock_services
 
@@ -205,8 +186,8 @@ def test_get_transaction_status_network_failure_500(mock_services, valid_txid) -
 
 def test_get_transaction_status_network_timeout(mock_services, valid_txid) -> None:
     """Given: Network request times out
-       When: Call get_transaction_status
-       Then: Handles timeout appropriately
+    When: Call get_transaction_status
+    Then: Handles timeout appropriately
     """
     services, mock_instance = mock_services
 
@@ -226,8 +207,8 @@ def test_get_transaction_status_network_timeout(mock_services, valid_txid) -> No
 
 def test_get_transaction_status_rate_limiting_429(mock_services, valid_txid) -> None:
     """Given: API returns 429 rate limit exceeded
-       When: Call get_transaction_status
-       Then: Handles rate limiting appropriately
+    When: Call get_transaction_status
+    Then: Handles rate limiting appropriately
     """
     services, mock_instance = mock_services
 
@@ -247,8 +228,8 @@ def test_get_transaction_status_rate_limiting_429(mock_services, valid_txid) -> 
 
 def test_get_transaction_status_transaction_not_found_404(mock_services, valid_txid) -> None:
     """Given: Transaction not found (404)
-       When: Call get_transaction_status
-       Then: Returns appropriate not found result
+    When: Call get_transaction_status
+    Then: Returns appropriate not found result
     """
     services, mock_instance = mock_services
 
@@ -268,8 +249,8 @@ def test_get_transaction_status_transaction_not_found_404(mock_services, valid_t
 
 def test_get_transaction_status_malformed_response(mock_services, valid_txid) -> None:
     """Given: API returns malformed response
-       When: Call get_transaction_status
-       Then: Handles malformed response appropriately
+    When: Call get_transaction_status
+    Then: Handles malformed response appropriately
     """
     services, mock_instance = mock_services
 
@@ -289,8 +270,8 @@ def test_get_transaction_status_malformed_response(mock_services, valid_txid) ->
 
 def test_get_transaction_status_connection_error(mock_services, valid_txid) -> None:
     """Given: Connection error occurs
-       When: Call get_transaction_status
-       Then: Handles connection error appropriately
+    When: Call get_transaction_status
+    Then: Handles connection error appropriately
     """
     services, mock_instance = mock_services
 
@@ -310,8 +291,8 @@ def test_get_transaction_status_connection_error(mock_services, valid_txid) -> N
 
 def test_get_transaction_status_provider_fallback(mock_services, valid_txid) -> None:
     """Given: Primary provider fails, fallback provider succeeds
-       When: Call get_transaction_status
-       Then: Uses fallback provider successfully
+    When: Call get_transaction_status
+    Then: Uses fallback provider successfully
     """
     services, mock_instance = mock_services
     mock_instance.count = 2  # Allow 2 tries for fallback
@@ -319,6 +300,7 @@ def test_get_transaction_status_provider_fallback(mock_services, valid_txid) -> 
     # Mock primary provider failure, fallback success
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
     call_count = 0
+
     def mock_get_transaction_status_with_fallback(txid, use_next=None):
         nonlocal call_count
         call_count += 1
@@ -330,7 +312,7 @@ def test_get_transaction_status_provider_fallback(mock_services, valid_txid) -> 
                 "confirmations": 6,
                 "blockHeight": 883637,
                 "blockHash": "0000000000000000060ac8d63b78d41f58c9aba0b09f81db7d51fa4905a47263",
-                "blockTime": 1739329877
+                "blockTime": 1739329877,
             }
 
     mock_stc = Mock()
@@ -345,8 +327,8 @@ def test_get_transaction_status_provider_fallback(mock_services, valid_txid) -> 
 
 def test_get_transaction_status_confirmed_transaction(mock_services, valid_txid) -> None:
     """Given: Confirmed transaction
-       When: Call get_transaction_status
-       Then: Returns confirmed status with block details
+    When: Call get_transaction_status
+    Then: Returns confirmed status with block details
     """
     services, mock_instance = mock_services
 
@@ -355,7 +337,7 @@ def test_get_transaction_status_confirmed_transaction(mock_services, valid_txid)
         "confirmations": 6,
         "blockHeight": 883637,
         "blockHash": "0000000000000000060ac8d63b78d41f58c9aba0b09f81db7d51fa4905a47263",
-        "blockTime": 1739329877
+        "blockTime": 1739329877,
     }
 
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
@@ -376,8 +358,8 @@ def test_get_transaction_status_confirmed_transaction(mock_services, valid_txid)
 
 def test_get_transaction_status_unconfirmed_transaction(mock_services, valid_txid) -> None:
     """Given: Unconfirmed transaction
-       When: Call get_transaction_status
-       Then: Returns unconfirmed status
+    When: Call get_transaction_status
+    Then: Returns unconfirmed status
     """
     services, mock_instance = mock_services
 
@@ -386,7 +368,7 @@ def test_get_transaction_status_unconfirmed_transaction(mock_services, valid_txi
         "confirmations": 0,
         "blockHeight": None,
         "blockHash": None,
-        "blockTime": None
+        "blockTime": None,
     }
 
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
@@ -407,8 +389,8 @@ def test_get_transaction_status_unconfirmed_transaction(mock_services, valid_txi
 
 def test_get_transaction_status_mempool_transaction(mock_services, valid_txid) -> None:
     """Given: Transaction in mempool
-       When: Call get_transaction_status
-       Then: Returns mempool status
+    When: Call get_transaction_status
+    Then: Returns mempool status
     """
     services, mock_instance = mock_services
 
@@ -418,7 +400,7 @@ def test_get_transaction_status_mempool_transaction(mock_services, valid_txid) -
         "blockHeight": None,
         "blockHash": None,
         "blockTime": None,
-        "inMempool": True
+        "inMempool": True,
     }
 
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
@@ -437,8 +419,8 @@ def test_get_transaction_status_mempool_transaction(mock_services, valid_txid) -
 
 def test_get_transaction_status_different_chains(mock_services) -> None:
     """Given: Different blockchain chains
-       When: Call get_transaction_status
-       Then: Handles different chains appropriately
+    When: Call get_transaction_status
+    Then: Handles different chains appropriately
     """
     services, mock_instance = mock_services
 
@@ -455,7 +437,7 @@ def test_get_transaction_status_different_chains(mock_services) -> None:
                 "confirmations": 3,
                 "blockHeight": 1000,
                 "blockHash": "00000000000000000abcdef...",
-                "blockTime": 1640995200
+                "blockTime": 1640995200,
             }
 
         mock_stc = Mock()
@@ -470,8 +452,8 @@ def test_get_transaction_status_different_chains(mock_services) -> None:
 
 def test_get_transaction_status_multiple_providers_fallback(mock_services, valid_txid) -> None:
     """Given: Multiple providers with primary failing, secondary succeeding
-       When: Call get_transaction_status
-       Then: Successfully falls back to working provider
+    When: Call get_transaction_status
+    Then: Successfully falls back to working provider
     """
     services, mock_instance = mock_services
     mock_instance.count = 3  # Allow 3 tries for multiple provider fallback
@@ -479,6 +461,7 @@ def test_get_transaction_status_multiple_providers_fallback(mock_services, valid
     # Simulate provider list with fallback
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
     provider_call_count = 0
+
     def mock_multi_provider_fallback(txid, use_next=None):
         nonlocal provider_call_count
         provider_call_count += 1
@@ -492,7 +475,7 @@ def test_get_transaction_status_multiple_providers_fallback(mock_services, valid
                 "confirmations": 12,
                 "blockHeight": 883650,
                 "blockHash": "0000000000000000089fedcba...",
-                "blockTime": 1739331000
+                "blockTime": 1739331000,
             }
 
     mock_stc = Mock()
@@ -507,8 +490,8 @@ def test_get_transaction_status_multiple_providers_fallback(mock_services, valid
 
 def test_get_transaction_status_recently_confirmed(mock_services, valid_txid) -> None:
     """Given: Recently confirmed transaction (1 confirmation)
-       When: Call get_transaction_status
-       Then: Returns single confirmation status
+    When: Call get_transaction_status
+    Then: Returns single confirmation status
     """
     services, mock_instance = mock_services
 
@@ -517,7 +500,7 @@ def test_get_transaction_status_recently_confirmed(mock_services, valid_txid) ->
         "confirmations": 1,
         "blockHeight": 883640,
         "blockHash": "0000000000000000089abcdef...",
-        "blockTime": 1739330000
+        "blockTime": 1739330000,
     }
 
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
@@ -536,8 +519,8 @@ def test_get_transaction_status_recently_confirmed(mock_services, valid_txid) ->
 
 def test_get_transaction_status_well_confirmed(mock_services, valid_txid) -> None:
     """Given: Well confirmed transaction (100+ confirmations)
-       When: Call get_transaction_status
-       Then: Returns high confirmation count
+    When: Call get_transaction_status
+    Then: Returns high confirmation count
     """
     services, mock_instance = mock_services
 
@@ -546,7 +529,7 @@ def test_get_transaction_status_well_confirmed(mock_services, valid_txid) -> Non
         "confirmations": 150,
         "blockHeight": 883490,
         "blockHash": "0000000000000000056fedcba...",
-        "blockTime": 1739200000
+        "blockTime": 1739200000,
     }
 
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
@@ -565,8 +548,8 @@ def test_get_transaction_status_well_confirmed(mock_services, valid_txid) -> Non
 
 def test_get_transaction_status_unicode_txid_handling(mock_services) -> None:
     """Given: Txid with unicode characters (though txids are hex)
-       When: Call get_transaction_status
-       Then: Handles gracefully
+    When: Call get_transaction_status
+    Then: Handles gracefully
     """
     services, mock_instance = mock_services
 
@@ -575,11 +558,7 @@ def test_get_transaction_status_unicode_txid_handling(mock_services) -> None:
 
     # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
     def mock_get_transaction_status_unicode(txid, use_next=None):
-        return {
-            "txid": txid,
-            "confirmations": 2,
-            "blockHeight": 883638
-        }
+        return {"txid": txid, "confirmations": 2, "blockHeight": 883638}
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_unicode

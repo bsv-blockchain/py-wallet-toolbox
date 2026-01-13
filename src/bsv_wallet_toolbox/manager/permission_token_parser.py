@@ -22,9 +22,7 @@ class PushDropEncoder:
 
     @staticmethod
     def encode_permission_token(
-        token: PermissionToken,
-        admin_originator: str,
-        protocol_key: str = "1"
+        token: PermissionToken, admin_originator: str, protocol_key: str = "1"
     ) -> dict[str, Any]:
         """Encode permission token as PushDrop script.
 
@@ -54,12 +52,7 @@ class PushDropEncoder:
             counterparty = token.get("counterparty", "")
             privileged = token.get("privileged", False)
 
-            fields.extend([
-                protocol_data,
-                security_level,
-                counterparty,
-                privileged
-            ])
+            fields.extend([protocol_data, security_level, counterparty, privileged])
 
         elif token_type == "basket":
             # DBAP: Domain Basket Access Protocol
@@ -72,11 +65,7 @@ class PushDropEncoder:
             verifier = token.get("verifier", "")
             cert_fields = token.get("certFields", [])
 
-            fields.extend([
-                cert_type,
-                verifier,
-                cert_fields
-            ])
+            fields.extend([cert_type, verifier, cert_fields])
 
         elif token_type == "spending":
             # DSAP: Domain Spending Authorization Protocol
@@ -90,7 +79,7 @@ class PushDropEncoder:
             "protocolID": [2, f"admin {token_type} permission"],
             "keyID": protocol_key,
             "counterparty": "self",
-            "lockingScript": f"pushdrop_{token_type}_{token.get('originator', '')}_{token.get('txid', '')}"
+            "lockingScript": f"pushdrop_{token_type}_{token.get('originator', '')}_{token.get('txid', '')}",
         }
 
         return script_data
@@ -103,12 +92,7 @@ class PushDropDecoder:
     """
 
     @staticmethod
-    def decode_permission_token(
-        script_hex: str,
-        txid: str,
-        output_index: int,
-        satoshis: int
-    ) -> PermissionToken | None:
+    def decode_permission_token(script_hex: str, txid: str, output_index: int, satoshis: int) -> PermissionToken | None:
         """Decode PushDrop script into permission token.
 
         Args:
@@ -147,30 +131,38 @@ class PushDropDecoder:
 
         # Add type-specific fields based on token type
         if token_type == "protocol":
-            token.update({
-                "type": "protocol",
-                "protocol": "",  # Would be parsed from script
-                "securityLevel": 0,
-                "counterparty": "",
-                "privileged": False,
-            })
+            token.update(
+                {
+                    "type": "protocol",
+                    "protocol": "",  # Would be parsed from script
+                    "securityLevel": 0,
+                    "counterparty": "",
+                    "privileged": False,
+                }
+            )
         elif token_type == "basket":
-            token.update({
-                "type": "basket",
-                "basketName": "",  # Would be parsed from script
-            })
+            token.update(
+                {
+                    "type": "basket",
+                    "basketName": "",  # Would be parsed from script
+                }
+            )
         elif token_type == "certificate":
-            token.update({
-                "type": "certificate",
-                "certType": "",
-                "verifier": "",
-                "certFields": [],
-            })
+            token.update(
+                {
+                    "type": "certificate",
+                    "certType": "",
+                    "verifier": "",
+                    "certFields": [],
+                }
+            )
         elif token_type == "spending":
-            token.update({
-                "type": "spending",
-                "authorizedAmount": 0,
-            })
+            token.update(
+                {
+                    "type": "spending",
+                    "authorizedAmount": 0,
+                }
+            )
 
         return token
 
@@ -193,10 +185,7 @@ class PermissionTokenManager:
         self._decoder = PushDropDecoder()
 
     def create_token_transaction(
-        self,
-        token: PermissionToken,
-        wallet: Any,
-        old_token: PermissionToken | None = None
+        self, token: PermissionToken, wallet: Any, old_token: PermissionToken | None = None
     ) -> str:
         """Create transaction for permission token.
 
@@ -212,45 +201,44 @@ class PermissionTokenManager:
             RuntimeError: If token creation fails
         """
         # Encode token as PushDrop script
-        script_data = self._encoder.encode_permission_token(
-            token,
-            self._admin_originator
-        )
+        script_data = self._encoder.encode_permission_token(token, self._admin_originator)
 
         # Build transaction inputs
         inputs = []
         if old_token and old_token.get("txid"):
             # Spend old token
-            inputs.append({
-                "outpoint": f"{old_token['txid']}:{old_token.get('outputIndex', 0)}",
-                "unlockingScriptLength": 73,  # Typical signature length
-                "inputDescription": f"Spend old {old_token.get('type')} permission token"
-            })
+            inputs.append(
+                {
+                    "outpoint": f"{old_token['txid']}:{old_token.get('outputIndex', 0)}",
+                    "unlockingScriptLength": 73,  # Typical signature length
+                    "inputDescription": f"Spend old {old_token.get('type')} permission token",
+                }
+            )
 
         # Build transaction outputs
-        outputs = [{
-            "lockingScript": script_data["lockingScript"],
-            "satoshis": token.get("satoshis", 1),
-            "outputDescription": f"New {token.get('type')} permission token"
-        }]
+        outputs = [
+            {
+                "lockingScript": script_data["lockingScript"],
+                "satoshis": token.get("satoshis", 1),
+                "outputDescription": f"New {token.get('type')} permission token",
+            }
+        ]
 
         # Create action via wallet
         create_args = {
             "description": f"Create {token.get('type')} permission token",
             "inputs": inputs,
             "outputs": outputs,
-            "options": {
-                "randomizeOutputs": False,
-                "acceptDelayedBroadcast": False
-            }
+            "options": {"randomizeOutputs": False, "acceptDelayedBroadcast": False},
         }
 
         result = wallet.create_action(create_args, self._admin_originator)
 
         # Handle both sync and async results
-        if hasattr(result, '__await__'):
+        if hasattr(result, "__await__"):
             # Async result - for now, assume synchronous
             import asyncio
+
             try:
                 loop = asyncio.get_running_loop()
                 raise RuntimeError("Cannot handle async result in sync context")
@@ -273,11 +261,7 @@ class PermissionTokenManager:
 
         return txid
 
-    def find_token_by_outpoint(
-        self,
-        outpoint: str,
-        wallet: Any
-    ) -> dict[str, Any] | None:
+    def find_token_by_outpoint(self, outpoint: str, wallet: Any) -> dict[str, Any] | None:
         """Find token data by outpoint.
 
         Args:
@@ -291,11 +275,7 @@ class PermissionTokenManager:
         # For now, return None (placeholder)
         return None
 
-    def renew_token(
-        self,
-        old_token: PermissionToken,
-        wallet: Any
-    ) -> str:
+    def renew_token(self, old_token: PermissionToken, wallet: Any) -> str:
         """Renew a permission token by spending the old one and creating a new one.
 
         Args:
@@ -330,11 +310,7 @@ class PermissionTokenManager:
         txid = self.create_token_transaction(new_token, wallet, old_token)
         return txid
 
-    def revoke_token(
-        self,
-        token: PermissionToken,
-        wallet: Any
-    ) -> str:
+    def revoke_token(self, token: PermissionToken, wallet: Any) -> str:
         """Revoke a permission token by spending it with no new output.
 
         Args:
@@ -351,19 +327,19 @@ class PermissionTokenManager:
             raise RuntimeError("Cannot revoke token without txid")
 
         # Create transaction that spends the token with no outputs
-        inputs = [{
-            "outpoint": f"{token['txid']}:{token.get('outputIndex', 0)}",
-            "unlockingScriptLength": 73,
-            "inputDescription": f"Revoke {token.get('type')} permission token"
-        }]
+        inputs = [
+            {
+                "outpoint": f"{token['txid']}:{token.get('outputIndex', 0)}",
+                "unlockingScriptLength": 73,
+                "inputDescription": f"Revoke {token.get('type')} permission token",
+            }
+        ]
 
         create_args = {
             "description": f"Revoke {token.get('type')} permission token",
             "inputs": inputs,
             "outputs": [],  # No outputs = revocation
-            "options": {
-                "acceptDelayedBroadcast": False
-            }
+            "options": {"acceptDelayedBroadcast": False},
         }
 
         result = wallet.create_action(create_args, self._admin_originator)

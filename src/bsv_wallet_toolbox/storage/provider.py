@@ -555,21 +555,18 @@ class StorageProvider:
                 is_new = True
                 # When creating a new user, set their active_storage to this storage's identity key
                 # This matches Go implementation: provider.go:312-315
-                u = User(
-                    identity_key=identity_key,
-                    active_storage=self.storage_identity_key
-                )
+                u = User(identity_key=identity_key, active_storage=self.storage_identity_key)
                 s.add(u)
                 try:
                     s.flush()
-                    
+
                     # Create default basket for the new user
                     # This matches Go implementation: users.go:44-54 and wdk/constants.go:5,15,19
                     default_basket = OutputBasket(
                         user_id=u.user_id,
                         name="default",  # BasketNameForChange
                         number_of_desired_utxos=32,  # NumberOfDesiredUTXOsForChange
-                        minimum_desired_utxo_value=1000  # MinimumDesiredUTXOValueForChange
+                        minimum_desired_utxo_value=1000,  # MinimumDesiredUTXOValueForChange
                     )
                     s.add(default_basket)
                     s.flush()
@@ -1206,9 +1203,9 @@ class StorageProvider:
             # Try to find existing basket
             existing = s.execute(
                 select(OutputBasket).where(
-                    (OutputBasket.user_id == user_id) &
-                    (OutputBasket.name == name) &
-                    (OutputBasket.is_deleted.is_(False))
+                    (OutputBasket.user_id == user_id)
+                    & (OutputBasket.name == name)
+                    & (OutputBasket.is_deleted.is_(False))
                 )
             ).scalar_one_or_none()
 
@@ -1365,11 +1362,7 @@ class StorageProvider:
             q = (
                 select(Output)
                 .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
-                .where(
-                    (Output.user_id == user_id)
-                    & (TransactionModel.txid == txid)
-                    & (Output.vout == vout)
-                )
+                .where((Output.user_id == user_id) & (TransactionModel.txid == txid) & (Output.vout == vout))
             )
             _exec_result = s.execute(q)
             o = _exec_result.scalar_one_or_none()
@@ -1465,13 +1458,13 @@ class StorageProvider:
                     "rawTx": p.raw_tx,
                     "merklePath": p.merkle_path,
                 }
-            
+
             # Check ProvenTxReq second
             _result = s.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid))
             r = _result.scalar_one_or_none()
             if r is None:
                 return {"proven": None, "rawTx": None}
-            
+
             return {"proven": None, "rawTx": r.raw_tx, "inputBEEF": r.input_beef}
 
     def get_raw_tx_of_known_valid_transaction(
@@ -1663,10 +1656,7 @@ class StorageProvider:
         certs_with_fields = []
         for cert in basic_certs:
             # Find certificate fields for this certificate
-            field_query = {
-                "certificateId": cert["certificateId"],
-                "userId": user_id
-            }
+            field_query = {"certificateId": cert["certificateId"], "userId": user_id}
             fields_rows = self.find_certificate_fields(field_query)
 
             # Convert fields to dict format (fieldName -> fieldValue)
@@ -1683,7 +1673,7 @@ class StorageProvider:
                 "signature": None,  # Will be populated if available
                 "fields": fields,
                 "verifier": None,  # Will be populated if available
-                "keyring": master_keyring
+                "keyring": master_keyring,
             }
             certs_with_fields.append(cert_with_fields)
 
@@ -2042,14 +2032,14 @@ class StorageProvider:
             fee_model_val = fee_model_source.get("value", None)
         else:
             fee_model_val = getattr(fee_model_source, "value", None)
-        
+
         # Set fee based on chain: 1 sat/kb for testnet, 100 sat/kb for mainnet
         if fee_model_val is None:
             if self.chain == "main":
                 fee_model_val = 100
             else:  # test or testnet
                 fee_model_val = 1
-        
+
         fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
 
         new_tx = self._create_new_tx_record(user_id, vargs, storage_beef_bytes)
@@ -2117,36 +2107,34 @@ class StorageProvider:
         no_send_change = vargs.options.no_send_change
         if not no_send_change:
             return []
-        
+
         # Handle both dict and object forms of change_basket
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
-        
+
         result = []
         seen_ids = set()
         session = self.SessionLocal()
         try:
             for op in no_send_change:
                 q = select(Output).where(
-                    (Output.user_id == user_id) &
-                    (Output.txid == op["txid"]) &
-                    (Output.vout == op["vout"])
+                    (Output.user_id == user_id) & (Output.txid == op["txid"]) & (Output.vout == op["vout"])
                 )
                 output = session.execute(q).scalar_one_or_none()
-                
+
                 if (
-                    not output or
-                    output.provided_by != "storage" or
-                    output.purpose != "change" or
-                    output.spendable is False or
-                    output.spent_by is not None or
-                    (output.satoshis or 0) <= 0 or
-                    output.basket_id != change_basket_id
+                    not output
+                    or output.provided_by != "storage"
+                    or output.purpose != "change"
+                    or output.spendable is False
+                    or output.spent_by is not None
+                    or (output.satoshis or 0) <= 0
+                    or output.basket_id != change_basket_id
                 ):
                     raise InvalidParameterError("noSendChange outpoint", "valid")
-                
+
                 if output.output_id in seen_ids:
                     raise InvalidParameterError("noSendChange outpoint", "unique. Duplicates are not allowed.")
-                
+
                 seen_ids.add(output.output_id)
                 result.append(output)
             return result
@@ -2156,123 +2144,136 @@ class StorageProvider:
     def _create_new_tx_record(self, user_id: int, vargs: Any, storage_beef_bytes: bytes) -> TransactionModel:
         reference = self._generate_reference()
         created_at = self._now()
-        
-        tx_id = self.insert_transaction({
-            "userId": user_id,
-            "status": "unsigned",
-            "reference": reference,
-            "isOutgoing": True,
-            "satoshis": 0,
-            "version": vargs.version,
-            "lockTime": vargs.lock_time,
-            "description": vargs.description,
-            "inputBEEF": storage_beef_bytes,
-            "createdAt": created_at,
-            "updatedAt": created_at,
-        })
-        
+
+        tx_id = self.insert_transaction(
+            {
+                "userId": user_id,
+                "status": "unsigned",
+                "reference": reference,
+                "isOutgoing": True,
+                "satoshis": 0,
+                "version": vargs.version,
+                "lockTime": vargs.lock_time,
+                "description": vargs.description,
+                "inputBEEF": storage_beef_bytes,
+                "createdAt": created_at,
+                "updatedAt": created_at,
+            }
+        )
+
         for label in vargs.labels:
             tx_label = self.find_or_insert_tx_label(user_id, label)
             self.find_or_insert_tx_label_map(tx_id, int(tx_label["txLabelId"]))
-            
+
         session = self.SessionLocal()
         try:
             return session.get(TransactionModel, tx_id)
         finally:
             session.close()
 
-    def _create_new_outputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], change_outputs: list[GenerateChangeSdkChangeOutput], derivation_prefix: str | None = None) -> dict[str, Any]:
+    def _create_new_outputs(
+        self,
+        user_id: int,
+        vargs: Any,
+        ctx: dict[str, Any],
+        change_outputs: list[GenerateChangeSdkChangeOutput],
+        derivation_prefix: str | None = None,
+    ) -> dict[str, Any]:
         """Create output records with optional randomization (TS parity L371-409)."""
         import random
-        
+
         outputs_payload: list[dict[str, Any]] = []
         change_vouts: list[int] = []
         created_at = self._now()
         change_basket_id = ctx["changeBasketId"]
         change_basket = ctx["changeBasket"]
         change_basket_name = change_basket["name"] if isinstance(change_basket, dict) else change_basket.name
-        
+
         # Phase 1: Collect all pending outputs without inserting
         pending: list[dict[str, Any]] = []
-        
+
         for xo in ctx["xoutputs"]:
             basket_id = None
             if xo.basket:
                 b = self.find_or_insert_output_basket(user_id, xo.basket)
                 basket_id = b["basketId"] if isinstance(b, dict) else b.basket_id
-            pending.append({
-                "transactionId": ctx["transactionId"],
-                "userId": user_id,
-                "satoshis": xo.satoshis,
-                "lockingScript": xo.locking_script,
-                "outputDescription": xo.output_description or "",
-                "vout": xo.vout,
-                "providedBy": xo.provided_by,
-                "purpose": xo.purpose or "",
-                "customInstructions": xo.custom_instructions,
-                "derivationSuffix": xo.derivation_suffix,
-                "change": False,
-                "spendable": xo.purpose != "service-charge",
-                "type": "custom",
-                "basketId": basket_id,
-                "createdAt": created_at,
-                "updatedAt": created_at,
-                "_tags": xo.tags,
-                "_basket_name": xo.basket,
-                "_key_offset": xo.key_offset,
-                "_is_change": False,
-            })
-        
+            pending.append(
+                {
+                    "transactionId": ctx["transactionId"],
+                    "userId": user_id,
+                    "satoshis": xo.satoshis,
+                    "lockingScript": xo.locking_script,
+                    "outputDescription": xo.output_description or "",
+                    "vout": xo.vout,
+                    "providedBy": xo.provided_by,
+                    "purpose": xo.purpose or "",
+                    "customInstructions": xo.custom_instructions,
+                    "derivationSuffix": xo.derivation_suffix,
+                    "change": False,
+                    "spendable": xo.purpose != "service-charge",
+                    "type": "custom",
+                    "basketId": basket_id,
+                    "createdAt": created_at,
+                    "updatedAt": created_at,
+                    "_tags": xo.tags,
+                    "_basket_name": xo.basket,
+                    "_key_offset": xo.key_offset,
+                    "_is_change": False,
+                }
+            )
+
         next_vout = len(pending)
         for co in change_outputs:
             derivation_suffix = self._generate_derivation_suffix()
-            pending.append({
-                "transactionId": ctx["transactionId"],
-                "userId": user_id,
-                "satoshis": co.satoshis,
-                "lockingScript": b"",
-                "vout": next_vout,
-                "providedBy": "storage",
-                "purpose": "change",
-                "change": True,
-                "spendable": True,
-                "type": "P2PKH",
-                "basketId": change_basket_id,
-                "derivationPrefix": derivation_prefix,
-                "derivationSuffix": derivation_suffix,
-                "createdAt": created_at,
-                "updatedAt": created_at,
-                "_tags": [],
-                "_basket_name": change_basket_name,
-                "_key_offset": None,
-                "_is_change": True,
-            })
+            pending.append(
+                {
+                    "transactionId": ctx["transactionId"],
+                    "userId": user_id,
+                    "satoshis": co.satoshis,
+                    "lockingScript": b"",
+                    "vout": next_vout,
+                    "providedBy": "storage",
+                    "purpose": "change",
+                    "change": True,
+                    "spendable": True,
+                    "type": "P2PKH",
+                    "basketId": change_basket_id,
+                    "derivationPrefix": derivation_prefix,
+                    "derivationSuffix": derivation_suffix,
+                    "createdAt": created_at,
+                    "updatedAt": created_at,
+                    "_tags": [],
+                    "_basket_name": change_basket_name,
+                    "_key_offset": None,
+                    "_is_change": True,
+                }
+            )
             next_vout += 1
-        
+
         # Phase 2: Shuffle vouts if randomizeOutputs (TS parity L371-409)
         if vargs.options.randomize_outputs:
             vout_indices = list(range(len(pending)))
             random.shuffle(vout_indices)
             for i, out_data in enumerate(pending):
                 out_data["vout"] = vout_indices[i]
-        
+
         # Phase 3: Insert outputs and build result
         for out_data in pending:
             tags = out_data.pop("_tags")
             basket_name = out_data.pop("_basket_name")
             key_offset = out_data.pop("_key_offset")
             is_change = out_data.pop("_is_change")
-            
+
             locking_script = out_data["lockingScript"]
             output_id = self.insert_output(out_data)
-            
+
             for tag_name in tags:
                 tag_record = self.find_or_insert_output_tag(user_id, tag_name)
                 self.find_or_insert_output_tag_map(output_id, int(tag_record["outputTagId"]))
-            
+
             if is_change:
                 change_vouts.append(out_data["vout"])
-            
+
             result_entry: dict[str, Any] = {
                 "vout": out_data["vout"],
                 "satoshis": out_data["satoshis"],
@@ -2290,10 +2291,12 @@ class StorageProvider:
                 result_entry["keyOffset"] = key_offset
                 result_entry["customInstructions"] = out_data.get("customInstructions")
             outputs_payload.append(result_entry)
-        
+
         return {"outputs": outputs_payload, "changeVouts": change_vouts}
 
-    def _merge_allocated_change_beefs(self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes) -> bytes | None:
+    def _merge_allocated_change_beefs(
+        self, user_id: int, vargs: Any, allocated_change: list[dict[str, Any]], storage_beef_bytes: bytes
+    ) -> bytes | None:
         """Merge BEEF data from allocated change outputs (TS parity).
 
         For each allocated change output, retrieves the BEEF for its source
@@ -2345,7 +2348,9 @@ class StorageProvider:
 
         return result_bytes
 
-    def _create_new_inputs(self, user_id: int, vargs: Any, ctx: dict[str, Any], allocated_change: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _create_new_inputs(
+        self, user_id: int, vargs: Any, ctx: dict[str, Any], allocated_change: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         # ===== GO IMPLEMENTATION ANALYSIS =====
         # Go implementation in resultInputForKnownUTXO (create.go:665-700):
         # - Always sets SourceTxID from utxo.TxID
@@ -2392,9 +2397,7 @@ class StorageProvider:
             session = self.SessionLocal()
             try:
                 q = select(Output).where(
-                    (Output.user_id == user_id) &
-                    (Output.txid == source_txid) &
-                    (Output.vout == source_vout)
+                    (Output.user_id == user_id) & (Output.txid == source_txid) & (Output.vout == source_vout)
                 )
                 o = session.execute(q).scalar_one_or_none()
                 if o:
@@ -2479,11 +2482,7 @@ class StorageProvider:
                 if not isinstance(txid, str) or not isinstance(vout, int):
                     raise InvalidParameterError(f"inputs[{vin}].outpoint", "must include txid and vout")
 
-                q = select(Output).where(
-                    (Output.user_id == user_id)
-                    & (Output.txid == txid)
-                    & (Output.vout == vout)
-                )
+                q = select(Output).where((Output.user_id == user_id) & (Output.txid == txid) & (Output.vout == vout))
                 output = session.execute(q).scalar_one_or_none()
                 if not output:
                     raise InvalidParameterError(f"inputs[{vin}]", "referenced output not found. Internalize first.")
@@ -2633,11 +2632,14 @@ class StorageProvider:
             if output and output_id:
                 # Use update_output method for consistency with TypeScript (TS uses updateOutput in allocateChangeInput)
                 # This ensures proper transaction handling and avoids potential session issues
-                self.update_output(output_id, {
-                    "spendable": False,
-                    "spent_by": transaction_id,
-                    "spending_description": f"Allocated for transaction {transaction_id}"
-                })
+                self.update_output(
+                    output_id,
+                    {
+                        "spendable": False,
+                        "spent_by": transaction_id,
+                        "spending_description": f"Allocated for transaction {transaction_id}",
+                    },
+                )
 
                 # Refresh the output object to reflect the changes
                 session.refresh(output)
@@ -2670,14 +2672,22 @@ class StorageProvider:
         change_basket = ctx["changeBasket"]
         # Handle both dict and object forms of change_basket
         change_basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
-        min_utxo_value = change_basket.get("minimumDesiredUTXOValue", 5000) if isinstance(change_basket, dict) else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
+        min_utxo_value = (
+            change_basket.get("minimumDesiredUTXOValue", 5000)
+            if isinstance(change_basket, dict)
+            else getattr(change_basket, "minimum_desired_utxo_value", 5000) or 5000
+        )
 
         # Calculate target_net_count: desired UTXOs minus what we already have
         # This matches TypeScript: targetNetCount = ctx.changeBasket.numberOfDesiredUTXOs - ctx.availableChangeCount
-        desired_utxos = (change_basket.get("numberOfDesiredUTXOs", 5) if isinstance(change_basket, dict) else getattr(change_basket, "number_of_desired_utxos", 5) or 5)
+        desired_utxos = (
+            change_basket.get("numberOfDesiredUTXOs", 5)
+            if isinstance(change_basket, dict)
+            else getattr(change_basket, "number_of_desired_utxos", 5) or 5
+        )
         available_count = ctx["availableFundingCount"]
         target_net_count = max(0, desired_utxos - available_count)
-        
+
         params = GenerateChangeSdkParams(
             fixed_inputs=fixed_inputs,
             fixed_outputs=fixed_outputs,
@@ -2728,15 +2738,15 @@ class StorageProvider:
                 o = session.get(Output, aci.output_id)
                 if o:
                     output_dict = self._model_to_dict(o)
-                    
+
                     # Ensure lockingScript is a hex string (not bytes)
-                    if isinstance(output_dict.get('lockingScript'), bytes):
-                        output_dict['lockingScript'] = output_dict['lockingScript'].hex()
-                    elif not output_dict.get('lockingScript'):
+                    if isinstance(output_dict.get("lockingScript"), bytes):
+                        output_dict["lockingScript"] = output_dict["lockingScript"].hex()
+                    elif not output_dict.get("lockingScript"):
                         # If locking script is missing, set to empty string
                         # The signer will regenerate it from derivation data
-                        output_dict['lockingScript'] = ""
-                    
+                        output_dict["lockingScript"] = ""
+
                     allocated_change_outputs.append(output_dict)
             finally:
                 session.close()
@@ -2919,8 +2929,7 @@ class StorageProvider:
             # This is critical for noSendChange validation to find outputs by txid
             # Also extract locking scripts from raw transaction for change outputs (Go parity)
             q_outputs = select(Output).where(
-                (Output.user_id == user_id) &
-                (Output.transaction_id == transaction.transaction_id)
+                (Output.user_id == user_id) & (Output.transaction_id == transaction.transaction_id)
             )
             outputs = s.execute(q_outputs).scalars().all()
             for output in outputs:
@@ -2935,12 +2944,14 @@ class StorageProvider:
                         if 0 <= vout_int < len(tx_obj.outputs):
                             tx_output = tx_obj.outputs[vout_int]
                             # TransactionOutput has .locking_script attribute (snake_case)
-                            locking_script = getattr(tx_output, 'locking_script', None) or getattr(tx_output, 'lockingScript', None)
+                            locking_script = getattr(tx_output, "locking_script", None) or getattr(
+                                tx_output, "lockingScript", None
+                            )
                             if locking_script:
                                 # Convert Script to bytes
-                                if hasattr(locking_script, 'to_bytes'):
+                                if hasattr(locking_script, "to_bytes"):
                                     locking_script_bytes = locking_script.to_bytes()
-                                elif hasattr(locking_script, 'serialize'):
+                                elif hasattr(locking_script, "serialize"):
                                     locking_script_bytes = locking_script.serialize()
                                 elif isinstance(locking_script, bytes):
                                     locking_script_bytes = locking_script
@@ -2950,7 +2961,9 @@ class StorageProvider:
                                     output.locking_script = locking_script_bytes
                     except Exception as e:
                         # Log but don't fail - locking script might be set elsewhere
-                        self.logger.warning(f"Failed to extract locking script for output {output.output_id} vout {output.vout}: {e}")
+                        self.logger.warning(
+                            f"Failed to extract locking script for output {output.output_id} vout {output.vout}: {e}"
+                        )
                 s.add(output)
             s.flush()
 
@@ -3012,17 +3025,11 @@ class StorageProvider:
 
         session = self.SessionLocal()
         try:
-            reqs = (
-                session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids)))
-                .scalars()
-                .all()
-            )
+            reqs = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids))).scalars().all()
             req_map = {req.txid: req for req in reqs}
 
             tx_records = (
-                session.execute(select(TransactionModel).where(TransactionModel.txid.in_(txids)))
-                .scalars()
-                .all()
+                session.execute(select(TransactionModel).where(TransactionModel.txid.in_(txids))).scalars().all()
             )
             tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
 
@@ -3126,7 +3133,7 @@ class StorageProvider:
                                     self.logger.warning(
                                         "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
                                         "First 8 chars: %s",
-                                        raw_tx_hex[:8]
+                                        raw_tx_hex[:8],
                                     )
 
                             # Send raw transaction hex to services.post_beef
@@ -4307,10 +4314,7 @@ class StorageProvider:
             # Set spentBy to NULL and spendable to true for outputs spent by this transaction
             release_stmt = (
                 update(Output)
-                .where(
-                    (Output.spent_by == tx.transaction_id) &
-                    (Output.user_id == tx.user_id)
-                )
+                .where((Output.spent_by == tx.transaction_id) & (Output.user_id == tx.user_id))
                 .values(spent_by=None, spendable=True, spending_description=None)
                 .execution_options(synchronize_session=False)
             )
@@ -4388,14 +4392,9 @@ class StorageProvider:
                 )
 
             proven_id_subquery = (
-                select(ProvenTx.proven_tx_id)
-                .where(ProvenTx.txid == TransactionModel.txid)
-                .limit(1)
-                .scalar_subquery()
+                select(ProvenTx.proven_tx_id).where(ProvenTx.txid == TransactionModel.txid).limit(1).scalar_subquery()
             )
-            proven_exists = exists(
-                select(ProvenTx.proven_tx_id).where(ProvenTx.txid == TransactionModel.txid)
-            )
+            proven_exists = exists(select(ProvenTx.proven_tx_id).where(ProvenTx.txid == TransactionModel.txid))
             complete_stmt = (
                 update(TransactionModel)
                 .where(TransactionModel.proven_tx_id.is_(None))
@@ -4441,53 +4440,51 @@ class StorageProvider:
 
             local_count = 0
 
-            output_ids = session.execute(
-                select(Output.output_id).where(Output.transaction_id.in_(tx_ids))
-            ).scalars().all()
+            output_ids = (
+                session.execute(select(Output.output_id).where(Output.transaction_id.in_(tx_ids))).scalars().all()
+            )
 
             if output_ids:
-                deleted = session.execute(
-                    delete(OutputTagMap).where(OutputTagMap.output_id.in_(output_ids))
-                ).rowcount or 0
+                deleted = (
+                    session.execute(delete(OutputTagMap).where(OutputTagMap.output_id.in_(output_ids))).rowcount or 0
+                )
                 if deleted:
                     log_lines.append(f"{deleted} {reason} output_tags_map deleted")
                     local_count += deleted
 
-                deleted = session.execute(
-                    delete(Output).where(Output.output_id.in_(output_ids))
-                ).rowcount or 0
+                deleted = session.execute(delete(Output).where(Output.output_id.in_(output_ids))).rowcount or 0
                 if deleted:
                     log_lines.append(f"{deleted} {reason} outputs deleted")
                     local_count += deleted
 
-            deleted = session.execute(
-                delete(TxLabelMap).where(TxLabelMap.transaction_id.in_(tx_ids))
-            ).rowcount or 0
+            deleted = session.execute(delete(TxLabelMap).where(TxLabelMap.transaction_id.in_(tx_ids))).rowcount or 0
             if deleted:
                 log_lines.append(f"{deleted} {reason} tx_labels_map deleted")
                 local_count += deleted
 
-            deleted = session.execute(
-                delete(Commission).where(Commission.transaction_id.in_(tx_ids))
-            ).rowcount or 0
+            deleted = session.execute(delete(Commission).where(Commission.transaction_id.in_(tx_ids))).rowcount or 0
             if deleted:
                 log_lines.append(f"{deleted} {reason} commissions deleted")
                 local_count += deleted
 
             if mark_not_spent:
-                updated = session.execute(
-                    update(Output)
-                    .where(Output.spent_by.in_(tx_ids))
-                    .values(spendable=True, spent_by=None)
-                    .execution_options(synchronize_session=False)
-                ).rowcount or 0
+                updated = (
+                    session.execute(
+                        update(Output)
+                        .where(Output.spent_by.in_(tx_ids))
+                        .values(spendable=True, spent_by=None)
+                        .execution_options(synchronize_session=False)
+                    ).rowcount
+                    or 0
+                )
                 if updated:
                     log_lines.append(f"{updated} outputs released from spentBy due to {reason} transactions")
                     local_count += updated
 
-            deleted = session.execute(
-                delete(TransactionModel).where(TransactionModel.transaction_id.in_(tx_ids))
-            ).rowcount or 0
+            deleted = (
+                session.execute(delete(TransactionModel).where(TransactionModel.transaction_id.in_(tx_ids))).rowcount
+                or 0
+            )
             if deleted:
                 log_lines.append(f"{deleted} {reason} transactions deleted")
                 local_count += deleted
@@ -4511,39 +4508,53 @@ class StorageProvider:
                     log_lines.append(f"{cleared} completed transactions purged of transient data")
                     total_count += cleared
 
-                completed_req_ids = session.execute(
-                    select(ProvenTxReq.proven_tx_req_id).where(
-                        ProvenTxReq.updated_at < cutoff,
-                        ProvenTxReq.status == "completed",
-                        ProvenTxReq.proven_tx_id.is_not(None),
-                        ProvenTxReq.notified.is_(True),
+                completed_req_ids = (
+                    session.execute(
+                        select(ProvenTxReq.proven_tx_req_id).where(
+                            ProvenTxReq.updated_at < cutoff,
+                            ProvenTxReq.status == "completed",
+                            ProvenTxReq.proven_tx_id.is_not(None),
+                            ProvenTxReq.notified.is_(True),
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
                 if completed_req_ids:
-                    deleted = session.execute(
-                        delete(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id.in_(completed_req_ids))
-                    ).rowcount or 0
+                    deleted = (
+                        session.execute(
+                            delete(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id.in_(completed_req_ids))
+                        ).rowcount
+                        or 0
+                    )
                     if deleted:
                         log_lines.append(f"{deleted} completed proven_tx_reqs deleted")
                         total_count += deleted
 
             if params.get("purgeFailed"):
                 cutoff = _cutoff("purgeFailedAge")
-                failed_tx_ids = session.execute(
-                    select(TransactionModel.transaction_id).where(
-                        TransactionModel.updated_at < cutoff,
-                        TransactionModel.status == "failed",
+                failed_tx_ids = (
+                    session.execute(
+                        select(TransactionModel.transaction_id).where(
+                            TransactionModel.updated_at < cutoff,
+                            TransactionModel.status == "failed",
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
                 total_count += _delete_transactions(session, failed_tx_ids, "failed", True)
 
                 for status in ("invalid", "doubleSpend"):
-                    deleted = session.execute(
-                        delete(ProvenTxReq).where(
-                            ProvenTxReq.updated_at < cutoff,
-                            ProvenTxReq.status == status,
-                        )
-                    ).rowcount or 0
+                    deleted = (
+                        session.execute(
+                            delete(ProvenTxReq).where(
+                                ProvenTxReq.updated_at < cutoff,
+                                ProvenTxReq.status == status,
+                            )
+                        ).rowcount
+                        or 0
+                    )
                     if deleted:
                         log_lines.append(f"{deleted} {status} proven_tx_reqs deleted")
                         total_count += deleted
@@ -4585,22 +4596,25 @@ class StorageProvider:
                 ]
                 total_count += _delete_transactions(session, spent_ids, "spent", False)
 
-                orphan_deleted = session.execute(
-                    delete(ProvenTx).where(
-                        ~exists(
-                            select(TransactionModel.transaction_id).where(
-                                (TransactionModel.txid == ProvenTx.txid)
-                                | (TransactionModel.proven_tx_id == ProvenTx.proven_tx_id)
-                            )
-                        ),
-                        ~exists(
-                            select(ProvenTxReq.proven_tx_req_id).where(
-                                (ProvenTxReq.txid == ProvenTx.txid)
-                                | (ProvenTxReq.proven_tx_id == ProvenTx.proven_tx_id)
-                            )
-                        ),
-                    )
-                ).rowcount or 0
+                orphan_deleted = (
+                    session.execute(
+                        delete(ProvenTx).where(
+                            ~exists(
+                                select(TransactionModel.transaction_id).where(
+                                    (TransactionModel.txid == ProvenTx.txid)
+                                    | (TransactionModel.proven_tx_id == ProvenTx.proven_tx_id)
+                                )
+                            ),
+                            ~exists(
+                                select(ProvenTxReq.proven_tx_req_id).where(
+                                    (ProvenTxReq.txid == ProvenTx.txid)
+                                    | (ProvenTxReq.proven_tx_id == ProvenTx.proven_tx_id)
+                                )
+                            ),
+                        )
+                    ).rowcount
+                    or 0
+                )
                 if orphan_deleted:
                     log_lines.append(f"{orphan_deleted} orphan proven_txs deleted")
                     total_count += orphan_deleted
@@ -4755,11 +4769,7 @@ class StorageProvider:
 
         tx_model.status = "failed"
 
-        outputs = (
-            session.execute(select(Output).where(Output.spent_by == tx_model.transaction_id))
-            .scalars()
-            .all()
-        )
+        outputs = session.execute(select(Output).where(Output.spent_by == tx_model.transaction_id)).scalars().all()
         for output in outputs:
             output.spendable = True
             output.spent_by = None
@@ -4975,7 +4985,7 @@ class StorageProvider:
                 "processed": False,
                 "updated": 0,
                 "errors": [f"Failed to initialize sync processor: {e}"],
-                "done": False
+                "done": False,
             }
 
     def merge_req_to_beef_to_share_externally(self, req: dict[str, Any], beef: bytes) -> bytes:
@@ -5016,7 +5026,7 @@ class StorageProvider:
                 "requestStatus": req.get("status", "unknown"),
                 "attempts": req.get("attempts", 0),
                 "proofData": req.get("proofData"),
-                "timestamp": req.get("createdAt", self._now().isoformat())
+                "timestamp": req.get("createdAt", self._now().isoformat()),
             }
 
             # Add to BEEF metadata section
@@ -5051,8 +5061,8 @@ class StorageProvider:
         return {
             "version": 2,
             "transactions": [],  # Would contain actual transaction data
-            "metadata": [],     # Custom metadata for proof requests
-            "originalBeef": beef  # Keep original for fallback
+            "metadata": [],  # Custom metadata for proof requests
+            "originalBeef": beef,  # Keep original for fallback
         }
 
     def _serialize_enhanced_beef(self, beef_dict: dict[str, Any]) -> bytes:
@@ -5092,9 +5102,7 @@ class StorageProvider:
         """
         try:
             # Query for pending proof requests
-            pending_reqs = self.find_proven_tx_reqs({
-                "partial": {"status": "pending"}
-            })
+            pending_reqs = self.find_proven_tx_reqs({"partial": {"status": "pending"}})
 
             if not pending_reqs:
                 return {"reqs": [], "beef": None}
@@ -5102,10 +5110,7 @@ class StorageProvider:
             # Build combined BEEF from all pending requests
             combined_beef = self._build_beef_from_proven_reqs(pending_reqs)
 
-            return {
-                "reqs": pending_reqs,
-                "beef": combined_beef
-            }
+            return {"reqs": pending_reqs, "beef": combined_beef}
 
         except Exception as e:
             self.logger.error(f"Error getting reqs and beef to share: {e}")
@@ -5129,10 +5134,7 @@ class StorageProvider:
                 "version": 2,
                 "transactions": [],
                 "proofRequests": [],
-                "metadata": {
-                    "createdAt": self._now().isoformat(),
-                    "requestCount": len(reqs)
-                }
+                "metadata": {"createdAt": self._now().isoformat(), "requestCount": len(reqs)},
             }
 
             for req in reqs:
@@ -5146,7 +5148,7 @@ class StorageProvider:
                     "status": req.get("status", "pending"),
                     "attempts": req.get("attempts", 0),
                     "createdAt": req.get("createdAt"),
-                    "proofData": req.get("proofData")
+                    "proofData": req.get("proofData"),
                 }
                 beef_data["proofRequests"].append(proof_req)
 
@@ -5154,11 +5156,9 @@ class StorageProvider:
                 try:
                     tx_data = self.get_proven_or_raw_tx(txid)
                     if tx_data and tx_data.get("rawTx"):
-                        beef_data["transactions"].append({
-                            "txid": txid,
-                            "rawTx": tx_data["rawTx"],
-                            "proofRequest": proof_req
-                        })
+                        beef_data["transactions"].append(
+                            {"txid": txid, "rawTx": tx_data["rawTx"], "proofRequest": proof_req}
+                        )
                 except Exception as e:
                     self.logger.warning(f"Could not get transaction data for {txid}: {e}")
 
@@ -5184,10 +5184,11 @@ class StorageProvider:
         # In a real implementation, this would create proper BEEF binary format
         # For now, create a JSON-based representation that can be parsed
         import json
+
         beef_json = json.dumps(beef_data, default=str)
 
         # Prefix with BEEF marker for identification
-        beef_bytes = b"BEEF_JSON:" + beef_json.encode('utf-8')
+        beef_bytes = b"BEEF_JSON:" + beef_json.encode("utf-8")
 
         return beef_bytes
 
@@ -5208,9 +5209,7 @@ class StorageProvider:
             raise RuntimeError("Services must be set to synchronize transaction statuses")
 
         # Get all transactions with pending statuses
-        pending_transactions = self.find_transactions({
-            "partial": {"status": "pending"}
-        })
+        pending_transactions = self.find_transactions({"partial": {"status": "pending"}})
 
         for tx in pending_transactions:
             txid = tx["txid"]
@@ -5254,9 +5253,7 @@ class StorageProvider:
         # Find waiting transactions older than min_age
         cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=min_age_seconds)
 
-        waiting_transactions = self.find_transactions({
-            "partial": {"status": "waiting"}
-        })
+        waiting_transactions = self.find_transactions({"partial": {"status": "waiting"}})
 
         sent = 0
         failed = 0
@@ -5268,7 +5265,8 @@ class StorageProvider:
                 created_at = tx.get("createdAt")
                 if isinstance(created_at, str):
                     from datetime import datetime
-                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+
+                    created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
 
                 if created_at and created_at > cutoff_time:
                     continue  # Too new, skip
@@ -5295,11 +5293,7 @@ class StorageProvider:
                 failed += 1
                 errors.append(f"Error processing transaction {tx['txid']}: {e}")
 
-        return {
-            "sent": sent,
-            "failed": failed,
-            "errors": errors
-        }
+        return {"sent": sent, "failed": failed, "errors": errors}
 
     def abort_abandoned(self, min_age_seconds: int = 3600) -> dict[str, Any]:
         """Mark abandoned transactions as failed.
@@ -5323,16 +5317,14 @@ class StorageProvider:
         cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=min_age_seconds)
 
         # Get transactions that might be abandoned (not completed or failed)
-        processing_transactions = self.find_transactions({
-            "partial": {"status": ["created", "signed", "processing"]}
-        })
+        processing_transactions = self.find_transactions({"partial": {"status": ["created", "signed", "processing"]}})
 
         abandoned_count = 0
 
         for tx in processing_transactions:
             created_at = tx.get("createdAt")
             if isinstance(created_at, str):
-                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
 
             if created_at and created_at < cutoff_time:
                 # Mark as failed
@@ -5358,9 +5350,7 @@ class StorageProvider:
             raise RuntimeError("Services must be set to un-fail transactions")
 
         # Get failed transactions
-        failed_transactions = self.find_transactions({
-            "partial": {"status": "failed"}
-        })
+        failed_transactions = self.find_transactions({"partial": {"status": "failed"}})
 
         unfail_count = 0
 
@@ -5589,6 +5579,7 @@ class InternalizeActionContext:
     def _parse_outputs(self) -> None:
         """Parse outputs and classify (TS lines 155-189)."""
         logger = logging.getLogger(__name__)
+
         def _agent_log(hypothesis_id: str, message: str, data: dict[str, Any]) -> None:
             logger.debug(
                 "internalize_action agent_log hypothesis=%s message=%s data=%s",
@@ -5596,6 +5587,7 @@ class InternalizeActionContext:
                 message,
                 data,
             )
+
         for output_spec in self.vargs.get("outputs", []):
             output_index = output_spec.get("outputIndex", output_spec.get("outputIndex", -1))
             protocol = output_spec.get("protocol", "")
@@ -5619,15 +5611,23 @@ class InternalizeActionContext:
 
                 # Handle both camelCase and snake_case for insertionRemittance fields
                 basket_name = insertion_remittance.get("basket") or insertion_remittance.get("basket", "default")
-                custom_instructions = insertion_remittance.get("customInstructions") or insertion_remittance.get("custom_instructions")
+                custom_instructions = insertion_remittance.get("customInstructions") or insertion_remittance.get(
+                    "custom_instructions"
+                )
                 tags = insertion_remittance.get("tags") or insertion_remittance.get("tags", [])
-                
+
                 # Check if derivation fields are provided in insertionRemittance (for P2PKH outputs)
                 # These come as base64-encoded strings from the TypeScript test
-                derivation_prefix = insertion_remittance.get("derivationPrefix") or insertion_remittance.get("derivation_prefix")
-                derivation_suffix = insertion_remittance.get("derivationSuffix") or insertion_remittance.get("derivation_suffix")
-                sender_identity_key = insertion_remittance.get("senderIdentityKey") or insertion_remittance.get("sender_identity_key")
-                
+                derivation_prefix = insertion_remittance.get("derivationPrefix") or insertion_remittance.get(
+                    "derivation_prefix"
+                )
+                derivation_suffix = insertion_remittance.get("derivationSuffix") or insertion_remittance.get(
+                    "derivation_suffix"
+                )
+                sender_identity_key = insertion_remittance.get("senderIdentityKey") or insertion_remittance.get(
+                    "sender_identity_key"
+                )
+
                 self.basket_insertions.append(
                     {
                         "spec": output_spec,
@@ -5792,14 +5792,14 @@ class InternalizeActionContext:
             # CRITICAL FIX: Store transaction in ProvenTxReq even for merge case
             # This ensures the transaction is available for BEEF building by child transactions
             if self.tx:
-                tx_has_proof = hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+                tx_has_proof = hasattr(self.tx, "merkle_path") and self.tx.merkle_path is not None
                 tx_status = "completed" if tx_has_proof else "unproven"
                 subject_raw_tx = self.tx.serialize()
-                
+
                 existing_subject_req = s.execute(
                     select(ProvenTxReq).where(ProvenTxReq.txid == self.txid)
                 ).scalar_one_or_none()
-                
+
                 if existing_subject_req:
                     existing_subject_req.raw_tx = subject_raw_tx
                     existing_subject_req.status = tx_status
@@ -5819,13 +5819,13 @@ class InternalizeActionContext:
         with session_scope(self.storage.SessionLocal) as s:
             # Create transaction record
             now = datetime.now(UTC)
-            
+
             # Check if transaction has a valid merkle proof
             # If the transaction has a merkle_path, it's been proven via BEEF
             # and outputs should be spendable immediately
-            has_proof = self.tx and hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+            has_proof = self.tx and hasattr(self.tx, "merkle_path") and self.tx.merkle_path is not None
             tx_status = "completed" if has_proof else "unproven"
-            
+
             new_tx = TransactionModel(
                 user_id=self.user_id,
                 txid=self.txid,
@@ -5910,7 +5910,7 @@ class InternalizeActionContext:
         txo = payment["txo"]
 
         locking_script_bytes = txo.locking_script.serialize()
-        
+
         # Wallet payment outputs are always marked as spendable when internalized
         # This allows the wallet to use them for creating transactions immediately
         # The transaction status will track whether it's proven/unproven separately
@@ -5985,7 +5985,7 @@ class InternalizeActionContext:
 
     def _store_new_basket_insertion_for_output(self, transaction_id: int, basket: dict[str, Any], session: Any) -> None:
         """Store new basket insertion output. (TS lines 449-483)
-        
+
         Smart type detection: If the locking script is P2PKH, mark it as such even though
         it came through 'basket insertion'. This allows the wallet to use it for funding.
         """
@@ -6025,19 +6025,25 @@ class InternalizeActionContext:
         provided_derivation_prefix = basket.get("derivationPrefix")
         provided_derivation_suffix = basket.get("derivationSuffix")
         provided_sender_identity_key = basket.get("senderIdentityKey")
-        
+
         # Also check customInstructions for JSON-encoded derivation info (from test fallback)
         custom_instructions = basket.get("customInstructions", "")
         if custom_instructions and not provided_derivation_prefix:
             try:
                 derivation_info = json.loads(custom_instructions)
-                provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
-                provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
-                provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
+                provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get(
+                    "derivation_prefix"
+                )
+                provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get(
+                    "derivation_suffix"
+                )
+                provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get(
+                    "sender_identity_key"
+                )
             except (json.JSONDecodeError, AttributeError, TypeError):
                 # Ignore malformed or unexpected customInstructions; derivation info here is optional.
                 pass
-        
+
         if basket_name == "default" and is_p2pkh:
             # Use provided derivation fields if available, otherwise generate random ones
             # NOTE: Derivation fields from TypeScript come as base64-encoded strings
@@ -6049,8 +6055,8 @@ class InternalizeActionContext:
             else:
                 # Generate random base64-encoded strings (like TypeScript does)
                 # NOTE: These won't match the actual public key - this is a problem!
-                derivation_prefix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
-                derivation_suffix = base64.b64encode(secrets.token_bytes(16)).decode('ascii')
+                derivation_prefix = base64.b64encode(secrets.token_bytes(16)).decode("ascii")
+                derivation_suffix = base64.b64encode(secrets.token_bytes(16)).decode("ascii")
                 sender_identity_key = None
             provided_by = "storage"
             purpose = "change"
@@ -6061,7 +6067,7 @@ class InternalizeActionContext:
             provided_by = "you"
             purpose = ""
             # Other basket insertions follow the standard merkle proof rules
-            has_merkle_path = self.tx and hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+            has_merkle_path = self.tx and hasattr(self.tx, "merkle_path") and self.tx.merkle_path is not None
             is_spendable = has_merkle_path
 
         # Safety check: Ensure spendable is True for P2PKH outputs in default basket
@@ -6118,31 +6124,37 @@ class InternalizeActionContext:
             session.flush()
 
         output_record = basket["eo"]
-        
+
         # Check if this is a P2PKH output in the default basket
         locking_script_bytes = txo.locking_script.serialize()
         locking_script_hex = locking_script_bytes.hex()
         is_p2pkh = self._is_p2pkh_locking_script(locking_script_hex)
-        
+
         # Check if derivation fields are provided
         provided_derivation_prefix = basket.get("derivationPrefix")
         provided_derivation_suffix = basket.get("derivationSuffix")
         provided_sender_identity_key = basket.get("senderIdentityKey")
-        
+
         # Also check customInstructions for JSON-encoded derivation info
         custom_instructions = basket.get("customInstructions", "")
         if custom_instructions and not provided_derivation_prefix:
             try:
                 derivation_info = json.loads(custom_instructions)
-                provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get("derivation_prefix")
-                provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get("derivation_suffix")
-                provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get("sender_identity_key")
+                provided_derivation_prefix = derivation_info.get("derivationPrefix") or derivation_info.get(
+                    "derivation_prefix"
+                )
+                provided_derivation_suffix = derivation_info.get("derivationSuffix") or derivation_info.get(
+                    "derivation_suffix"
+                )
+                provided_sender_identity_key = derivation_info.get("senderIdentityKey") or derivation_info.get(
+                    "sender_identity_key"
+                )
             except (json.JSONDecodeError, AttributeError, TypeError):
                 # Ignore malformed or unexpected customInstructions; derivation info here is optional.
                 pass
 
         output_record.basket_id = target_basket.basket_id
-        
+
         # For P2PKH outputs in default basket with derivation fields, preserve them and mark as spendable
         if basket_name == "default" and is_p2pkh and provided_derivation_prefix and provided_derivation_suffix:
             output_record.type = "P2PKH"
@@ -6163,11 +6175,11 @@ class InternalizeActionContext:
             output_record.derivation_prefix = None
             output_record.derivation_suffix = None
             # For merge case, preserve existing spendable status unless we have merkle proof
-            has_merkle_path = self.tx and hasattr(self.tx, 'merkle_path') and self.tx.merkle_path is not None
+            has_merkle_path = self.tx and hasattr(self.tx, "merkle_path") and self.tx.merkle_path is not None
             if has_merkle_path:
                 output_record.spendable = True
             # Otherwise keep existing spendable value
-        
+
         session.add(output_record)
 
     def _add_basket_tags(self, basket: dict[str, Any], output_id: int, session: Any) -> None:
@@ -6194,9 +6206,8 @@ class InternalizeActionContext:
                 session.add(output_tag_map)
                 session.flush()
 
-
-# Entity Accessor Methods would go here if needed for InternalizeActionContext
-    def commission_entity(self) -> 'CommissionAccessor':
+    # Entity Accessor Methods would go here if needed for InternalizeActionContext
+    def commission_entity(self) -> "CommissionAccessor":
         """Get commission entity accessor for CRUD operations.
 
         Returns:
@@ -6206,9 +6217,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go CommissionEntity()
         """
         from .crud import CommissionAccessor
+
         return CommissionAccessor(self)
 
-    def transaction_entity(self) -> 'TransactionAccessor':
+    def transaction_entity(self) -> "TransactionAccessor":
         """Get transaction entity accessor for CRUD operations.
 
         Returns:
@@ -6218,9 +6230,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go TransactionEntity()
         """
         from .crud import TransactionAccessor
+
         return TransactionAccessor(self)
 
-    def user_entity(self) -> 'UserAccessor':
+    def user_entity(self) -> "UserAccessor":
         """Get user entity accessor for CRUD operations.
 
         Returns:
@@ -6230,9 +6243,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go UserEntity()
         """
         from .crud import UserAccessor
+
         return UserAccessor(self)
 
-    def output_baskets_entity(self) -> 'OutputBasketAccessor':
+    def output_baskets_entity(self) -> "OutputBasketAccessor":
         """Get output basket entity accessor for CRUD operations.
 
         Returns:
@@ -6242,9 +6256,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go OutputBasketsEntity()
         """
         from .crud import OutputBasketAccessor
+
         return OutputBasketAccessor(self)
 
-    def outputs_entity(self) -> 'OutputAccessor':
+    def outputs_entity(self) -> "OutputAccessor":
         """Get output entity accessor for CRUD operations.
 
         Returns:
@@ -6254,9 +6269,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go OutputsEntity()
         """
         from .crud import OutputAccessor
+
         return OutputAccessor(self)
 
-    def tx_note_entity(self) -> 'TxNoteAccessor':
+    def tx_note_entity(self) -> "TxNoteAccessor":
         """Get transaction note entity accessor for CRUD operations.
 
         Returns:
@@ -6266,9 +6282,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go TxNoteEntity()
         """
         from .crud import TxNoteAccessor
+
         return TxNoteAccessor(self)
 
-    def known_tx_entity(self) -> 'KnownTxAccessor':
+    def known_tx_entity(self) -> "KnownTxAccessor":
         """Get known transaction entity accessor for CRUD operations.
 
         Returns:
@@ -6278,9 +6295,10 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go KnownTxEntity()
         """
         from .crud import KnownTxAccessor
+
         return KnownTxAccessor(self)
 
-    def certifier_entity(self) -> 'CertifierAccessor':
+    def certifier_entity(self) -> "CertifierAccessor":
         """Get certifier entity accessor for read operations.
 
         Returns:
@@ -6290,15 +6308,13 @@ class InternalizeActionContext:
             go-wallet-toolbox/pkg/storage/provider.go CertifierEntity()
         """
         from .crud import CertifierAccessor
+
         return CertifierAccessor(self)
 
     @classmethod
     def create_with_factory(
-        cls,
-        chain: str,
-        storage_factory: Callable[[], 'StorageProvider'],
-        **kwargs
-    ) -> 'StorageProvider':
+        cls, chain: str, storage_factory: Callable[[], "StorageProvider"], **kwargs
+    ) -> "StorageProvider":
         """Create storage provider using factory pattern.
 
         This method allows for dependency injection and testing by accepting

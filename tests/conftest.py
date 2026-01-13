@@ -217,12 +217,15 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
 
     # Get or create user for seeding
     from datetime import datetime, timezone
-    user_id = storage.insert_user({
-        "identityKey": test_key_deriver._root_private_key.public_key().hex(),
-        "activeStorage": "test",
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
+
+    user_id = storage.insert_user(
+        {
+            "identityKey": test_key_deriver._root_private_key.public_key().hex(),
+            "activeStorage": "test",
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
+        }
+    )
 
     # Get or create default basket (use find_or_insert to match storage provider behavior)
     change_basket = storage.find_or_insert_output_basket(user_id, "default")
@@ -231,45 +234,49 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     # Seed transaction that will provide the UTXO
     # This txid matches what the universal test vector expects as input
     source_txid = "03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c"
-    tx_id = storage.insert_transaction({
-        "userId": user_id,
-        "txid": source_txid,
-        "status": "completed",
-        "reference": "test-seed-tx",
-        "isOutgoing": False,
-        "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests
-        "description": "Seeded UTXO for testing",
-        "version": 1,
-        "lockTime": 0,
-        "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
+    tx_id = storage.insert_transaction(
+        {
+            "userId": user_id,
+            "txid": source_txid,
+            "status": "completed",
+            "reference": "test-seed-tx",
+            "isOutgoing": False,
+            "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests
+            "description": "Seeded UTXO for testing",
+            "version": 1,
+            "lockTime": 0,
+            "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
+        }
+    )
 
     # Seed spendable UTXO (output at vout 0)
     # Use a simple P2PKH locking script (OP_DUP OP_HASH160 <pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG)
     pub_key = test_key_deriver._root_private_key.public_key()
     pub_key_hash = pub_key.hash160()
     # P2PKH: 76 a9 14 <20 bytes pubkey hash> 88 ac
-    locking_script = bytes([0x76, 0xa9, 0x14]) + pub_key_hash + bytes([0x88, 0xac])
-    
-    storage.insert_output({
-        "transactionId": tx_id,
-        "userId": user_id,
-        "basketId": basket_id,  # "default" basket - required for allocate_funding_input
-        "spendable": True,
-        "change": True,  # Change outputs are spendable
-        "vout": 0,
-        "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests (999 sat output + fees)
-        "providedBy": "storage",  # Changed from "test" to "storage" to match working examples
-        "purpose": "change",
-        "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
-        "txid": source_txid,
-        "lockingScript": locking_script,
-        "spentBy": None,  # Explicitly set to None to ensure it's allocatable
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
+    locking_script = bytes([0x76, 0xA9, 0x14]) + pub_key_hash + bytes([0x88, 0xAC])
+
+    storage.insert_output(
+        {
+            "transactionId": tx_id,
+            "userId": user_id,
+            "basketId": basket_id,  # "default" basket - required for allocate_funding_input
+            "spendable": True,
+            "change": True,  # Change outputs are spendable
+            "vout": 0,
+            "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests (999 sat output + fees)
+            "providedBy": "storage",  # Changed from "test" to "storage" to match working examples
+            "purpose": "change",
+            "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
+            "txid": source_txid,
+            "lockingScript": locking_script,
+            "spentBy": None,  # Explicitly set to None to ensure it's allocatable
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
+        }
+    )
 
     # Create mock Services instance for testing
     services = MockWalletServices(chain="main", height=850000)
@@ -411,7 +418,7 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "signature": "test_signature_5",
             "createdAt": datetime.now(timezone.utc),
             "updatedAt": datetime.now(timezone.utc),
-        }
+        },
     ]
 
     # Insert certificates into storage
@@ -592,12 +599,18 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                                     nodes.append(leaf["hash"])
                                     break  # Only one sibling per level
                         if index is not None and nodes:
-                            return Resp(True, 200, [{
-                                "index": index,
-                                "nodes": nodes,
-                                "target": target,
-                                "txOrId": txid,
-                            }])
+                            return Resp(
+                                True,
+                                200,
+                                [
+                                    {
+                                        "index": index,
+                                        "nodes": nodes,
+                                        "target": target,
+                                        "txOrId": txid,
+                                    }
+                                ],
+                            )
                 # For invalid txids, return 200 with empty data (not 404) to match test expectations
                 return Resp(True, 200, {})
             # getMerklePath - legacy endpoint (kept for compatibility)

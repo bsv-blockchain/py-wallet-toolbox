@@ -41,12 +41,12 @@ class TaskReorg(WalletMonitorTask):
         """Determine if task should run."""
         cutoff = now - self.aged_msecs
         q = self.monitor.deactivated_headers
-        
+
         while len(q) > 0 and cutoff > q[0]["whenMsecs"]:
             # Prepare to process deactivated headers that have aged sufficiently
             header = q.pop(0)
             self.process_queue.append(header)
-            
+
         return {"run": len(self.process_queue) > 0}
 
     def run_task(self) -> str:
@@ -90,18 +90,18 @@ class TaskReorg(WalletMonitorTask):
                         # If mp is bsv.merkle_path.MerklePath object:
                         # It doesn't have 'path' property directly exposed as list of list usually?
                         # Checking py-sdk merkle_path.py would be ideal but assuming generic access for now.
-                        
+
                         # Simplification: Assume if we got a valid MP from services for this txid, it's valid.
                         # TS logic checks if the new MP actually contains the txid.
-                        
+
                         update = {
                             "height": mp.blockHeight if hasattr(mp, "blockHeight") else mp.get("blockHeight"),
-                            "index": 0, # Placeholder, need actual offset
+                            "index": 0,  # Placeholder, need actual offset
                             "merklePath": mp.to_binary() if hasattr(mp, "to_binary") else mp.get("merklePath"),
                             "merkleRoot": h.get("merkleRoot"),
-                            "blockHash": h.get("hash")
+                            "blockHash": h.get("hash"),
                         }
-                        
+
                         # Check if block hash changed
                         if update["blockHash"] == ptx.get("blockHash"):
                             log += f"    txid {txid} merkle path update still based on deactivated header {ptx.get('blockHash')}\n"
@@ -113,10 +113,10 @@ class TaskReorg(WalletMonitorTask):
                             # Verify proof validity
                             # root = mp.compute_root(txid) ...
                             # isValid = chaintracker.isValidRootForHeight ...
-                            
-                            # For now, trust get_merkle_path result as validation logic 
+
+                            # For now, trust get_merkle_path result as validation logic
                             # requires deep integration with chaintracker which might not be fully ready.
-                            
+
                             self.monitor.storage.update_proven_tx(ptx.get("provenTxId"), update)
                             log += f"    txid {txid} proof data updated\n"
                             log += f"      blockHash {ptx.get('blockHash')} -> {update['blockHash']}\n"
@@ -125,8 +125,8 @@ class TaskReorg(WalletMonitorTask):
                         log += f"    txid {txid} merkle path update unavailable\n"
                         retry = True
                 except Exception as e:
-                     log += f"    txid {txid} error processing: {e!s}\n"
-                     retry = True
+                    log += f"    txid {txid} error processing: {e!s}\n"
+                    retry = True
 
             if retry:
                 log += "    retrying...\n"
@@ -139,4 +139,3 @@ class TaskReorg(WalletMonitorTask):
                 )
 
         return log
-

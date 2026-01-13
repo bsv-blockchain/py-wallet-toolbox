@@ -20,7 +20,9 @@ from bsv_wallet_toolbox.errors.wallet_errors import ReviewActionsError
 from bsv_wallet_toolbox.utils.atomic_beef_utils import build_atomic_beef_for_txid
 
 
-def make_wallet_payment_remittance(*, sender_identity_key: str, derivation_prefix: str, derivation_suffix: str) -> dict[str, str]:
+def make_wallet_payment_remittance(
+    *, sender_identity_key: str, derivation_prefix: str, derivation_suffix: str
+) -> dict[str, str]:
     """Create a `paymentRemittance` object for protocol='wallet payment' (BRC-29).
 
     This is the metadata the receiver needs to reconstruct the BRC-29 derivation context.
@@ -122,7 +124,9 @@ def send_wallet_payment_ex(
     )
 
     remittance = make_wallet_payment_remittance(
-        sender_identity_key=sender_identity_key, derivation_prefix=derivation_prefix, derivation_suffix=derivation_suffix
+        sender_identity_key=sender_identity_key,
+        derivation_prefix=derivation_prefix,
+        derivation_suffix=derivation_suffix,
     )
 
     create_result: dict[str, Any]
@@ -141,7 +145,10 @@ def send_wallet_payment_ex(
                         "outputDescription": output_description,
                     }
                 ],
-                "options": {"signAndProcess": bool(sign_and_process), "acceptDelayedBroadcast": bool(accept_delayed_broadcast)},
+                "options": {
+                    "signAndProcess": bool(sign_and_process),
+                    "acceptDelayedBroadcast": bool(accept_delayed_broadcast),
+                },
             }
         )
         create_result = r if isinstance(r, dict) else {}
@@ -206,5 +213,3 @@ def send_wallet_payment(
         accept_delayed_broadcast=accept_delayed_broadcast,
     )
     return str(r["txid"]), int(r["vout"]), dict(r["remittance"])
-
-

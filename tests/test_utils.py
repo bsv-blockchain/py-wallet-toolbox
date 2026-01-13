@@ -55,4 +55,3 @@ class Setup:
             True if should skip test (no env configured)
         """
         return TestUtils.no_env(chain)
-

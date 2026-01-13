@@ -83,4 +83,3 @@ class TaskFailAbandoned(WalletMonitorTask):
         if log_lines:
             return "\n".join(log_lines)
         return ""
-

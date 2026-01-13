@@ -90,9 +90,9 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            count = session.query(func.count(LiveHeadersModel.header_id)).filter(
-                LiveHeadersModel.hash == hash_str
-            ).scalar()
+            count = (
+                session.query(func.count(LiveHeadersModel.header_id)).filter(LiveHeadersModel.hash == hash_str).scalar()
+            )
             return count > 0, None
         except Exception as e:
             logger.error(f"Failed to check live header existence: {e}")
@@ -109,9 +109,7 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            model = session.query(LiveHeadersModel).filter(
-                LiveHeadersModel.hash == hash_str
-            ).first()
+            model = session.query(LiveHeadersModel).filter(LiveHeadersModel.hash == hash_str).first()
 
             if model is None:
                 return None, None
@@ -129,12 +127,11 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            model = session.query(LiveHeadersModel).filter(
-                and_(
-                    LiveHeadersModel.is_active.is_(True),
-                    LiveHeadersModel.is_chain_tip.is_(True)
-                )
-            ).first()
+            model = (
+                session.query(LiveHeadersModel)
+                .filter(and_(LiveHeadersModel.is_active.is_(True), LiveHeadersModel.is_chain_tip.is_(True)))
+                .first()
+            )
 
             if model is None:
                 return None, None
@@ -156,9 +153,9 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            session.query(LiveHeadersModel).filter(
-                LiveHeadersModel.header_id == header_id
-            ).update({"isChainTip": is_chain_tip})
+            session.query(LiveHeadersModel).filter(LiveHeadersModel.header_id == header_id).update(
+                {"isChainTip": is_chain_tip}
+            )
             return None
         except Exception as e:
             logger.error(f"Failed to set chain tip by ID: {e}")
@@ -176,9 +173,9 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            session.query(LiveHeadersModel).filter(
-                LiveHeadersModel.header_id == header_id
-            ).update({"isActive": is_active})
+            session.query(LiveHeadersModel).filter(LiveHeadersModel.header_id == header_id).update(
+                {"isActive": is_active}
+            )
             return None
         except Exception as e:
             logger.error(f"Failed to set active by ID: {e}")
@@ -229,12 +226,11 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            model = session.query(LiveHeadersModel).filter(
-                and_(
-                    LiveHeadersModel.height == height,
-                    LiveHeadersModel.is_active.is_(True)
-                )
-            ).first()
+            model = (
+                session.query(LiveHeadersModel)
+                .filter(and_(LiveHeadersModel.height == height, LiveHeadersModel.is_active.is_(True)))
+                .first()
+            )
 
             if model is None:
                 return None, None
@@ -254,10 +250,7 @@ class SQLAlchemyStorageQueries:
             session = self._get_session()
 
             # Get min and max heights
-            result = session.query(
-                func.min(LiveHeadersModel.height),
-                func.max(LiveHeadersModel.height)
-            ).first()
+            result = session.query(func.min(LiveHeadersModel.height), func.max(LiveHeadersModel.height)).first()
 
             min_height, max_height = result
 
@@ -269,8 +262,9 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to find live height range: {e}")
             return HeightRange.new_empty_height_range(), e
 
-    def find_headers_for_height_less_than_or_equal_sorted(self, height: int, limit: int) \
-            -> Tuple[List[LiveBlockHeader], Optional[Exception]]:
+    def find_headers_for_height_less_than_or_equal_sorted(
+        self, height: int, limit: int
+    ) -> Tuple[List[LiveBlockHeader], Optional[Exception]]:
         """Find headers with height <= specified height, sorted.
 
         Args:
@@ -282,9 +276,13 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            models = session.query(LiveHeadersModel).filter(
-                LiveHeadersModel.height <= height
-            ).order_by(LiveHeadersModel.height.asc()).limit(limit).all()
+            models = (
+                session.query(LiveHeadersModel)
+                .filter(LiveHeadersModel.height <= height)
+                .order_by(LiveHeadersModel.height.asc())
+                .limit(limit)
+                .all()
+            )
 
             headers = [self._model_to_live_header(model) for model in models]
             return headers, None
@@ -303,9 +301,7 @@ class SQLAlchemyStorageQueries:
         """
         try:
             session = self._get_session()
-            session.query(LiveHeadersModel).filter(
-                LiveHeadersModel.header_id.in_(ids)
-            ).delete()
+            session.query(LiveHeadersModel).filter(LiveHeadersModel.header_id.in_(ids)).delete()
             return None
         except Exception as e:
             logger.error(f"Failed to delete live headers by IDs: {e}")
@@ -342,7 +338,7 @@ class SQLAlchemyStorageQueries:
             is_chain_tip=is_chain_tip,
             is_active=is_active,
             header_id=model.header_id,
-            previous_header_id=model.previous_header_id
+            previous_header_id=model.previous_header_id,
         )
 
     def _live_header_to_model(self, header: LiveBlockHeader) -> LiveHeadersModel:
@@ -366,5 +362,5 @@ class SQLAlchemyStorageQueries:
             merkle_root=header.chain_block_header.get("merkleRoot", ""),
             time=header.chain_block_header.get("time", 0),
             bits=header.chain_block_header.get("bits", 0),
-            nonce=header.chain_block_header.get("nonce", 0)
+            nonce=header.chain_block_header.get("nonce", 0),
         )

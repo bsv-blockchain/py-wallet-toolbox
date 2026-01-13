@@ -15,7 +15,19 @@ from sqlalchemy.orm import Session
 
 from bsv_wallet_toolbox.errors import WalletError, InvalidParameterError
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
-from bsv_wallet_toolbox.storage.models import Base, Certificate, Output, OutputBasket, ProvenTx, User, Transaction as TransactionModel, TxLabel, TxLabelMap, OutputTag, OutputTagMap
+from bsv_wallet_toolbox.storage.models import (
+    Base,
+    Certificate,
+    Output,
+    OutputBasket,
+    ProvenTx,
+    User,
+    Transaction as TransactionModel,
+    TxLabel,
+    TxLabelMap,
+    OutputTag,
+    OutputTagMap,
+)
 from bsv_wallet_toolbox.storage.provider import StorageProvider
 
 
@@ -51,7 +63,7 @@ class TestListActionsAdvanced:
             "status": "completed",
             "rawTx": b"test_raw_tx",
             "satoshis": 1000,
-            "description": "Test transaction 1"
+            "description": "Test transaction 1",
         }
         tx_data2 = {
             "userId": test_user,
@@ -60,7 +72,7 @@ class TestListActionsAdvanced:
             "status": "completed",
             "rawTx": b"test_raw_tx",
             "satoshis": 2000,
-            "description": "Test transaction 2"
+            "description": "Test transaction 2",
         }
 
         # Insert transactions
@@ -100,7 +112,7 @@ class TestListActionsAdvanced:
             "status": "completed",
             "rawTx": b"test_raw_tx",
             "satoshis": 1500,
-            "description": "Test with labels"
+            "description": "Test with labels",
         }
 
         storage_provider.insert_transaction(tx_data)
@@ -135,7 +147,7 @@ class TestListActionsAdvanced:
             "status": "completed",
             "rawTx": b"test_raw_tx",
             "satoshis": 2500,
-            "description": "Test with outputs"
+            "description": "Test with outputs",
         }
 
         tx_id = storage_provider.insert_transaction(tx_data)
@@ -147,7 +159,7 @@ class TestListActionsAdvanced:
             "vout": 0,
             "satoshis": 2500,
             "spendable": True,
-            "lockingScript": b"test_script"
+            "lockingScript": b"test_script",
         }
 
         output_id = storage_provider.insert_output(output_data)
@@ -183,7 +195,7 @@ class TestListActionsAdvanced:
             "rawTx": b"test_raw_tx",
             "satoshis": -1000,
             "description": "Test with inputs",
-            "isOutgoing": True
+            "isOutgoing": True,
         }
 
         tx_id = storage_provider.insert_transaction(tx_data)
@@ -197,7 +209,7 @@ class TestListActionsAdvanced:
             "satoshis": 1000,
             "spendable": True,
             "spentBy": tx_id,  # Spent by our transaction
-            "lockingScript": b"source_script"
+            "lockingScript": b"source_script",
         }
 
         storage_provider.insert_output(output_data)
@@ -227,7 +239,7 @@ class TestListActionsAdvanced:
             "labels": ["test"],
             "includeLabels": True,
             "includeOutputs": True,
-            "includeInputs": True
+            "includeInputs": True,
         }
 
         result = storage_provider.list_actions(auth, args)
@@ -245,11 +257,7 @@ class TestInternalizeActionContext:
         from bsv_wallet_toolbox.storage.provider import InternalizeActionContext
 
         vargs = {"labels": ["test"]}
-        args = {
-            "tx": [1, 2, 3, 4],  # Mock BEEF data
-            "outputs": [],
-            "description": "Test internalize"
-        }
+        args = {"tx": [1, 2, 3, 4], "outputs": [], "description": "Test internalize"}  # Mock BEEF data
 
         context = InternalizeActionContext(storage_provider, test_user, vargs, args)
 
@@ -277,10 +285,10 @@ class TestInternalizeActionContext:
                     "paymentRemittance": {
                         "senderIdentityKey": "test_key",
                         "derivationPrefix": "m/44'/0'/0'/0",
-                        "derivationSuffix": [0]
-                    }
+                        "derivationSuffix": [0],
+                    },
                 }
-            ]
+            ],
         }
 
         context = InternalizeActionContext(storage_provider, test_user, vargs, args)
@@ -303,13 +311,9 @@ class TestInternalizeActionContext:
                 {
                     "outputIndex": 0,
                     "protocol": "basket insertion",
-                    "insertionRemittance": {
-                        "basket": "default",
-                        "customInstructions": {},
-                        "tags": ["test"]
-                    }
+                    "insertionRemittance": {"basket": "default", "customInstructions": {}, "tags": ["test"]},
                 }
-            ]
+            ],
         }
 
         context = InternalizeActionContext(storage_provider, test_user, vargs, args)
@@ -325,15 +329,7 @@ class TestInternalizeActionContext:
         mock_beef = list(range(1, 100))
 
         vargs = {"labels": []}
-        args = {
-            "tx": mock_beef,
-            "outputs": [
-                {
-                    "outputIndex": 0,
-                    "protocol": "invalid_protocol"
-                }
-            ]
-        }
+        args = {"tx": mock_beef, "outputs": [{"outputIndex": 0, "protocol": "invalid_protocol"}]}
 
         context = InternalizeActionContext(storage_provider, test_user, vargs, args)
 
@@ -375,12 +371,13 @@ class TestBEEFOperations:
         """Test getting valid BEEF for known txid."""
         from unittest.mock import Mock
         from bsv_wallet_toolbox.errors import WalletError
+
         # BEEF operations require Services to be set
         mock_services = Mock()
         mock_services.get_raw_tx = Mock(return_value=None)
         mock_services.get_merkle_path = Mock(return_value=None)
         storage_provider.set_services(mock_services)
-        
+
         txid = "0" * 64
 
         # When get_raw_tx returns None, a WalletError is expected for unknown txid
@@ -393,10 +390,7 @@ class TestBEEFOperations:
 
     def test_attempt_to_post_reqs_to_network(self, storage_provider):
         """Test attempting to post reqs to network."""
-        reqs = [
-            {"txid": "a" * 64, "status": "pending"},
-            {"txid": "b" * 64, "status": "pending"}
-        ]
+        reqs = [{"txid": "a" * 64, "status": "pending"}, {"txid": "b" * 64, "status": "pending"}]
 
         result = storage_provider.attempt_to_post_reqs_to_network(reqs)
 
@@ -421,11 +415,7 @@ class TestBEEFOperations:
 
     def test_merge_req_to_beef_to_share_externally_with_data(self, storage_provider):
         """Test merging req to beef with actual data."""
-        req = {
-            "txid": "a" * 64,
-            "status": "pending",
-            "attempts": 1
-        }
+        req = {"txid": "a" * 64, "status": "pending", "attempts": 1}
         beef = b"original_beef_data"
 
         result = storage_provider.merge_req_to_beef_to_share_externally(req, beef)
@@ -455,17 +445,13 @@ class TestChangeAllocation:
             "reference": "change_test",
             "txid": "g" * 64,
             "status": "unsigned",
-            "rawTx": b"test_raw_tx"
+            "rawTx": b"test_raw_tx",
         }
 
         tx_id = storage_provider.insert_transaction(tx_data)
 
         auth = {"userId": test_user}
-        args = {
-            "transactionId": tx_id,
-            "satoshisNeeded": 1000,
-            "basket": "default"
-        }
+        args = {"transactionId": tx_id, "satoshisNeeded": 1000, "basket": "default"}
 
         # This method may have complex requirements, test basic structure
         try:
@@ -542,12 +528,13 @@ class TestBeefOperationsExtended:
         """Test getting BEEF for non-existent transaction."""
         from unittest.mock import Mock
         from bsv_wallet_toolbox.errors import WalletError
+
         # BEEF operations require Services to be set
         mock_services = Mock()
         mock_services.get_raw_tx = Mock(return_value=None)
         mock_services.get_merkle_path = Mock(return_value=None)
         storage_provider.set_services(mock_services)
-        
+
         txid = "0" * 64
 
         # When get_raw_tx returns None, a WalletError is expected for unknown txid
@@ -601,7 +588,7 @@ class TestInsertCertificateAuth:
             "serialNumber": "auth123",
             "certifier": "certifier",
             "revocationOutpoint": "0" * 64 + ".5",
-            "signature": "sig"
+            "signature": "sig",
         }
 
         cert_id = storage_provider.insert_certificate_auth(auth, certificate)
@@ -618,11 +605,12 @@ class TestInsertCertificateAuth:
             "serialNumber": "123",
             "certifier": "cert",
             "revocationOutpoint": "0" * 64 + ".6",
-            "signature": "sig"
+            "signature": "sig",
         }
 
         # Should raise WalletError, not KeyError
         from bsv_wallet_toolbox.errors import WalletError
+
         with pytest.raises(WalletError):
             storage_provider.insert_certificate_auth(auth, certificate)
 
@@ -663,6 +651,7 @@ class TestAbortAction:
     def test_abort_action_non_existent_reference(self, storage_provider):
         """Test aborting non-existent action."""
         from bsv_wallet_toolbox.errors import InvalidParameterError
+
         with pytest.raises(InvalidParameterError):
             storage_provider.abort_action("nonexistent_ref")
 
@@ -675,7 +664,7 @@ class TestAbortAction:
             "txid": "i" * 64,
             "status": "unsigned",
             "rawTx": b"test_raw_tx",
-            "isOutgoing": True
+            "isOutgoing": True,
         }
 
         storage_provider.insert_transaction(tx_data)

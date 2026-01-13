@@ -128,8 +128,8 @@ def _convert_bits_to_work(bits: int) -> ChainWork:
     # exponent = (bits >> 24) & 0xff
     # mantissa = bits & 0x007fffff
 
-    shift = (bits >> 24) & 0xff
-    data = bits & 0x007fffff
+    shift = (bits >> 24) & 0xFF
+    data = bits & 0x007FFFFF
 
     # Calculate target: T = mantissa * 2^(8 * (exponent - 3))
     target = data

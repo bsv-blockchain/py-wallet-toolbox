@@ -13,8 +13,7 @@ from .cdn_reader import CDNReader
 from ...wallet_services import Chain
 
 
-def create_bulk_ingestors(chain: Chain,
-                          api_key: Optional[str] = None) -> List[NamedBulkIngestor]:
+def create_bulk_ingestors(chain: Chain, api_key: Optional[str] = None) -> List[NamedBulkIngestor]:
     """Create configured bulk ingestors.
 
     Args:
@@ -28,16 +27,10 @@ def create_bulk_ingestors(chain: Chain,
 
     # Create CDN bulk ingestor (Project Babbage)
     cdn_ingestor = BulkIngestorCDN(chain, CDNReader.BABBAGE_CDN_BASE_URL)
-    ingestors.append(NamedBulkIngestor(
-        name="chaintracks_cdn",
-        ingestor=cdn_ingestor
-    ))
+    ingestors.append(NamedBulkIngestor(name="chaintracks_cdn", ingestor=cdn_ingestor))
 
     # Create WhatsOnChain bulk ingestor
     woc_ingestor = BulkIngestorWOC(chain, api_key)
-    ingestors.append(NamedBulkIngestor(
-        name="whats_on_chain_cdn",
-        ingestor=woc_ingestor
-    ))
+    ingestors.append(NamedBulkIngestor(name="whats_on_chain_cdn", ingestor=woc_ingestor))
 
     return ingestors

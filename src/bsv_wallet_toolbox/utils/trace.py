@@ -80,7 +80,7 @@ def to_trace_value(value: Any) -> Any:
                 filtered_dict[str(k)] = filtered_inputs
             else:
                 filtered_dict[str(k)] = to_trace_value(v)
-        
+
         if len(filtered_dict) > MAX_DICT_ITEMS:
             items = {k: v for k, v in list(filtered_dict.items())[:MAX_DICT_ITEMS]}
             return {
@@ -109,6 +109,3 @@ def trace(logger: logging.Logger, event: str, **fields: Any) -> None:
         return
     payload = {"event": event, **{k: to_trace_value(v) for k, v in fields.items()}}
     logger.debug("AUTH_TRACE %s", json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
-
-
-

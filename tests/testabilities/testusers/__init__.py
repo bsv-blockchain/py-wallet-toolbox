@@ -21,4 +21,3 @@ __all__ = [
     "ALL_USERS",
     "ANYONE_IDENTITY_KEY",
 ]
-

@@ -27,11 +27,7 @@ class LiveIngestorWocPoll(LiveIngestor):
     Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/live_ingestor_woc_poll.go
     """
 
-    def __init__(self,
-                 chain: Chain,
-                 sync_period: float = 60.0,
-                 api_key: Optional[str] = None,
-                 cache_size: int = 500):
+    def __init__(self, chain: Chain, sync_period: float = 60.0, api_key: Optional[str] = None, cache_size: int = 500):
         """Initialize WOC polling ingestor.
 
         Args:
@@ -116,10 +112,7 @@ class LiveIngestorWocPoll(LiveIngestor):
         while not self._stop_event.is_set():
             try:
                 # Wait for sync period or stop event
-                await asyncio.wait_for(
-                    self._stop_event.wait(),
-                    timeout=self.sync_period
-                )
+                await asyncio.wait_for(self._stop_event.wait(), timeout=self.sync_period)
                 if self._stop_event.is_set():
                     break
 

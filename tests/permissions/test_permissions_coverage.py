@@ -15,6 +15,7 @@ class TestPermissionManager:
         """Test importing permission manager."""
         try:
             from bsv_wallet_toolbox.manager.permissions_wallet_manager import PermissionsWalletManager
+
             assert PermissionsWalletManager is not None
         except ImportError:
             pass
@@ -23,7 +24,7 @@ class TestPermissionManager:
         """Test creating permission manager."""
         try:
             from bsv_wallet_toolbox.manager.permissions_wallet_manager import PermissionsWalletManager
-            
+
             manager = PermissionsWalletManager()
             assert manager is not None
         except (ImportError, TypeError):
@@ -109,7 +110,7 @@ class TestPermissionGroups:
         """Test creating permission group."""
         try:
             from bsv_wallet_toolbox.permissions import PermissionGroup
-            
+
             group = PermissionGroup(name="editors", permissions=["read", "write"])
             assert group.name == "editors"
         except (ImportError, AttributeError, TypeError):
@@ -119,7 +120,7 @@ class TestPermissionGroups:
         """Test adding user to permission group."""
         try:
             from bsv_wallet_toolbox.permissions import PermissionGroup
-            
+
             group = PermissionGroup(name="editors")
             if hasattr(group, "add_user"):
                 group.add_user("user123")
@@ -135,7 +136,7 @@ class TestPermissionValidation:
         """Test validating permission string format."""
         try:
             from bsv_wallet_toolbox.permissions import validate_permission
-            
+
             assert validate_permission("read") is True or validate_permission("read") is not None
             assert validate_permission("") is False or validate_permission("") is not None
         except (ImportError, AttributeError):
@@ -145,9 +146,8 @@ class TestPermissionValidation:
         """Test parsing permission string."""
         try:
             from bsv_wallet_toolbox.permissions import parse_permission
-            
+
             result = parse_permission("resource:action")
             assert isinstance(result, (dict, tuple)) or result is not None
         except (ImportError, AttributeError, Exception):
             pass
-

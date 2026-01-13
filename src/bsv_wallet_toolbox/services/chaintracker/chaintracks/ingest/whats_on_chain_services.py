@@ -14,7 +14,17 @@ from ....providers.whatsonchain import WhatsOnChain
 class BlockHeader:
     """Simple block header class for test compatibility."""
 
-    def __init__(self, hash: str, height: int, version: int = 0, previous_hash: str = "", merkle_root: str = "", time: int = 0, bits: int = 0, nonce: int = 0):
+    def __init__(
+        self,
+        hash: str,
+        height: int,
+        version: int = 0,
+        previous_hash: str = "",
+        merkle_root: str = "",
+        time: int = 0,
+        bits: int = 0,
+        nonce: int = 0,
+    ):
         self.hash = hash
         self.height = height
         self.version = version
@@ -54,13 +64,12 @@ class WhatsOnChainServices:
             options: Service configuration options
         """
         self.options = options
-        self._woc = WhatsOnChain(
-            network=options.network,
-            api_key=options.api_key
-        )
+        self._woc = WhatsOnChain(network=options.network, api_key=options.api_key)
 
     @classmethod
-    def create_whats_on_chain_services_options(cls, chain: str, api_key: str | None = None) -> WhatsOnChainServicesOptions:
+    def create_whats_on_chain_services_options(
+        cls, chain: str, api_key: str | None = None
+    ) -> WhatsOnChainServicesOptions:
         """Create options for WhatsOnChainServices.
 
         Args:

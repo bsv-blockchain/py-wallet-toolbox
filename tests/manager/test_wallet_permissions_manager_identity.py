@@ -24,9 +24,7 @@ def test_identity_permissions_counterparty_linkage_calls_protocol_check() -> Non
         {"linkage_type": "counterparty", "counterparty": "peer.example"},
     )
 
-    assert calls == [
-        ("example.com", [2, "counterparty key linkage revelation peer.example"], "linkageRevelation")
-    ]
+    assert calls == [("example.com", [2, "counterparty key linkage revelation peer.example"], "linkageRevelation")]
 
 
 def test_identity_permissions_specific_linkage_uses_protocol_metadata() -> None:
@@ -65,4 +63,3 @@ def test_identity_permissions_resolution_skips_when_disabled() -> None:
     manager._check_identity_permissions("client.example", "resolve")  # type: ignore[attr-defined]
 
     assert calls == []
-

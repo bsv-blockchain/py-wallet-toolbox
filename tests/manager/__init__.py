@@ -1,2 +1,1 @@
 """Manager tests module."""
-

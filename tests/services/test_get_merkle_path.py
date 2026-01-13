@@ -24,17 +24,13 @@ except (ImportError, AttributeError):
 @pytest.fixture
 def valid_services_config():
     """Fixture providing valid services configuration."""
-    return {
-        "chain": "main",
-        "whatsonchainApiKey": "test_woc_key",
-        "taalApiKey": "test_taal_key"
-    }
+    return {"chain": "main", "whatsonchainApiKey": "test_woc_key", "taalApiKey": "test_taal_key"}
 
 
 @pytest.fixture
 def mock_services(valid_services_config):
     """Fixture providing mock services instance."""
-    with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
+    with patch("bsv_wallet_toolbox.services.services.ServiceCollection") as mock_service_collection:
         mock_instance = Mock()
         # Set count property to return 1 (number of mock services)
         type(mock_instance).count = PropertyMock(return_value=1)
@@ -44,7 +40,7 @@ def mock_services(valid_services_config):
         mock_instance.next = Mock()  # No-op for next()
         mock_service_collection.return_value = mock_instance
 
-        with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=Mock()):
+        with patch("bsv_wallet_toolbox.services.services.Services._get_http_client", return_value=Mock()):
             services = Services(valid_services_config)
             yield services, mock_instance, mock_stc
 
@@ -84,12 +80,18 @@ def valid_merkle_path_response():
             "nonce": 596827153,
             "previousHash": "00000000000000000d9f6889dd6743500adee204ea25d8a57225ecd48b111769",
             "time": 1739329877,
-            "version": 1040187392
+            "version": 1040187392,
         },
         "merklePath": {
             "blockHeight": 883637,
             "path": [
-                [{"hash": "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4", "offset": 46, "txid": True}],
+                [
+                    {
+                        "hash": "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4",
+                        "offset": 46,
+                        "txid": True,
+                    }
+                ],
                 [{"hash": "066f6fa6fa988f2e3a9d6fe35fa0d3666c652dac35cabaeebff3738a4e67f68f", "offset": 47}],
                 [{"hash": "232089a6f77c566151bc4701fda394b5cc5bf17073140d46a73c4c3ed0a7b911", "offset": 22}],
                 [{"hash": "c639b3a6ce127f67dbd01c7331a6fca62a4b429830387bd68ac6ac05e162116d", "offset": 10}],
@@ -98,11 +100,11 @@ def valid_merkle_path_response():
                 [{"hash": "c49a18028e230dd1439b26794c08c339506f24a450f067c4facd4e0d5a346490", "offset": 0}],
                 [{"hash": "0ba57d1b1fad6874de3640c01088e3dedad3507e5b3a3102b9a8a8055f3df88b", "offset": 1}],
                 [{"hash": "c830edebe5565c19ba584ec73d49129344d17539f322509b7c314ae641c2fcdb", "offset": 1}],
-                [{"hash": "ff62d5ed2a94eb93a2b7d084b8f15b12083573896b6a58cf871507e3352c75f5", "offset": 1}]
-            ]
+                [{"hash": "ff62d5ed2a94eb93a2b7d084b8f15b12083573896b6a58cf871507e3352c75f5", "offset": 1}],
+            ],
         },
         "name": "WoCTsc",
-        "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathSuccess"}]
+        "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathSuccess"}],
     }
 
 
@@ -112,28 +114,20 @@ def network_error_responses():
     return [
         # HTTP 500 Internal Server Error
         {"status": 500, "text": "Internal Server Error"},
-
         # HTTP 503 Service Unavailable
         {"status": 503, "text": "Service Unavailable"},
-
         # HTTP 429 Rate Limited
         {"status": 429, "text": "Rate limit exceeded", "headers": {"Retry-After": "60"}},
-
         # HTTP 401 Unauthorized
         {"status": 401, "text": "Unauthorized"},
-
         # HTTP 404 Not Found (transaction not found)
         {"status": 404, "text": "Not Found"},
-
         # Timeout scenarios
         {"timeout": True, "error": "Connection timeout"},
-
         # Malformed JSON response
         {"status": 200, "text": "invalid json {{{", "malformed": True},
-
         # Empty response
         {"status": 200, "text": "", "empty": True},
-
         # Very large response (simulating memory issues)
         {"status": 200, "text": "x" * 1000000, "large": True},
     ]
@@ -154,9 +148,9 @@ class TestGetMerklePath:
 
         Reference: wallet-toolbox/src/services/__tests/getMerklePath.test.ts
                    test('0')
-        
+
         Note: This test requires:
-        - Async/await support for service calls  
+        - Async/await support for service calls
         - Live network connection to fetch merkle paths
         - Services return dict format, test expects object notation
         """
@@ -176,8 +170,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_invalid_txid_formats(self, mock_services, invalid_txids) -> None:
         """Given: Invalid txid formats
-           When: Call get_merkle_path with invalid txids
-           Then: Handles invalid formats appropriately
+        When: Call get_merkle_path with invalid txids
+        Then: Handles invalid formats appropriately
         """
         services, _, _ = mock_services
 
@@ -188,8 +182,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_network_failure_500(self, mock_services, valid_txid) -> None:
         """Given: Network returns HTTP 500 error
-           When: Call get_merkle_path
-           Then: Handles server error appropriately
+        When: Call get_merkle_path
+        Then: Handles server error appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -205,8 +199,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_network_timeout(self, mock_services, valid_txid) -> None:
         """Given: Network request times out
-           When: Call get_merkle_path
-           Then: Handles timeout appropriately
+        When: Call get_merkle_path
+        Then: Handles timeout appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -222,8 +216,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_rate_limiting_429(self, mock_services, valid_txid) -> None:
         """Given: API returns 429 rate limit exceeded
-           When: Call get_merkle_path
-           Then: Handles rate limiting appropriately
+        When: Call get_merkle_path
+        Then: Handles rate limiting appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -239,8 +233,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_transaction_not_found_404(self, mock_services, valid_txid) -> None:
         """Given: Transaction not found (404)
-           When: Call get_merkle_path
-           Then: Handles not found appropriately
+        When: Call get_merkle_path
+        Then: Handles not found appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -256,8 +250,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_malformed_response(self, mock_services, valid_txid) -> None:
         """Given: API returns malformed response
-           When: Call get_merkle_path
-           Then: Handles malformed response appropriately
+        When: Call get_merkle_path
+        Then: Handles malformed response appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -273,8 +267,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_connection_error(self, mock_services, valid_txid) -> None:
         """Given: Connection error occurs
-           When: Call get_merkle_path
-           Then: Handles connection error appropriately
+        When: Call get_merkle_path
+        Then: Handles connection error appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -290,8 +284,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_provider_fallback(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
         """Given: Provider returns merkle path successfully
-           When: Call get_merkle_path
-           Then: Returns the merkle path data
+        When: Call get_merkle_path
+        Then: Returns the merkle path data
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -304,8 +298,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_success_response(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
         """Given: Valid txid and successful API response
-           When: Call get_merkle_path
-           Then: Returns merkle path data
+        When: Call get_merkle_path
+        Then: Returns merkle path data
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -322,8 +316,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_different_chains(self, mock_services, valid_merkle_path_response) -> None:
         """Given: Different blockchain chains
-           When: Call get_merkle_path
-           Then: Handles different chains appropriately
+        When: Call get_merkle_path
+        Then: Handles different chains appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -348,8 +342,8 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_large_response_handling(self, mock_services, valid_txid) -> None:
         """Given: Very large merkle path response
-           When: Call get_merkle_path
-           Then: Handles large response appropriately
+        When: Call get_merkle_path
+        Then: Handles large response appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
@@ -363,7 +357,7 @@ class TestGetMerklePath:
                 "nonce": 596827153,
                 "previousHash": "00000000000000000d9f6889dd6743500adee204ea25d8a57225ecd48b111769",
                 "time": 1739329877,
-                "version": 1040187392
+                "version": 1040187392,
             },
             "merklePath": {
                 "blockHeight": 883637,
@@ -376,10 +370,10 @@ class TestGetMerklePath:
                     [{"hash": "e" * 64, "offset": i} for i in range(3)],
                     [{"hash": "f" * 64, "offset": i} for i in range(2)],
                     [{"hash": "g" * 64, "offset": 0}],
-                ]
+                ],
             },
             "name": "WoCTsc",
-            "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathSuccess"}]
+            "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathSuccess"}],
         }
 
         def mock_get_merkle_path_large(txid, services_obj):
@@ -395,12 +389,12 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_unicode_txid_handling(self, mock_services, valid_merkle_path_response) -> None:
         """Given: Txid with unicode characters (though txids are hex)
-           When: Call get_merkle_path
-           Then: Handles gracefully
+        When: Call get_merkle_path
+        Then: Handles gracefully
         """
         services, mock_instance, mock_stc = mock_services
 
-       # Even though txids are hex, test unicode handling
+        # Even though txids are hex, test unicode handling
         unicode_txid = "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"
 
         def mock_get_merkle_path_unicode(txid, services_obj):
@@ -415,14 +409,14 @@ class TestGetMerklePath:
 
     def test_get_merkle_path_empty_path_response(self, mock_services, valid_txid) -> None:
         """Given: API returns empty merkle path
-           When: Call get_merkle_path
-           Then: Handles empty path appropriately
+        When: Call get_merkle_path
+        Then: Handles empty path appropriately
         """
         services, mock_instance, mock_stc = mock_services
 
         empty_response = {
             "name": "WoCTsc",
-            "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}]
+            "notes": [{"name": "WoCTsc", "status": 200, "statusText": "OK", "what": "getMerklePathNoData"}],
         }
 
         def mock_get_merkle_path_empty(txid, services_obj):
@@ -436,10 +430,12 @@ class TestGetMerklePath:
         assert "notes" in result
         assert result["notes"][0]["what"] == "getMerklePathNoData"
 
-    def test_get_merkle_path_multiple_providers_fallback(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
+    def test_get_merkle_path_multiple_providers_fallback(
+        self, mock_services, valid_txid, valid_merkle_path_response
+    ) -> None:
         """Given: Multiple providers with primary failing, secondary succeeding
-           When: Call get_merkle_path
-           Then: Successfully falls back to working provider
+        When: Call get_merkle_path
+        Then: Successfully falls back to working provider
         """
         services, mock_instance, mock_stc = mock_services
 

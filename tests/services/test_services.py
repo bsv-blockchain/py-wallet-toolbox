@@ -274,8 +274,8 @@ class TestServicesErrorHandling:
 
     def test_service_initialization_with_invalid_chain(self) -> None:
         """Given: Invalid chain parameter
-           When: Initialize services
-           Then: Raises appropriate error
+        When: Initialize services
+        Then: Raises appropriate error
         """
         # Test invalid chain handling
         invalid_chains = ["invalid", "", None, 123, []]
@@ -283,6 +283,7 @@ class TestServicesErrorHandling:
         for invalid_chain in invalid_chains:
             try:
                 from bsv_wallet_toolbox.services import Services
+
                 # This should either raise an error or handle gracefully
                 services = Services({"chain": invalid_chain})
                 # If it doesn't raise, ensure it's in a safe state
@@ -293,8 +294,8 @@ class TestServicesErrorHandling:
 
     def test_service_initialization_with_missing_config(self) -> None:
         """Given: Missing or incomplete configuration
-           When: Initialize services
-           Then: Handles gracefully or raises appropriate error
+        When: Initialize services
+        Then: Handles gracefully or raises appropriate error
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -320,8 +321,8 @@ class TestServicesErrorHandling:
 
     def test_service_initialization_with_invalid_api_keys(self) -> None:
         """Given: Invalid API key formats
-           When: Initialize services
-           Then: Handles invalid API keys appropriately
+        When: Initialize services
+        Then: Handles invalid API keys appropriately
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -355,8 +356,8 @@ class TestServicesErrorHandling:
 
     def test_service_method_calls_with_invalid_parameters(self) -> None:
         """Given: Service instance with invalid method parameters
-           When: Call service methods with invalid params
-           Then: Raises appropriate errors
+        When: Call service methods with invalid params
+        Then: Raises appropriate errors
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -407,8 +408,8 @@ class TestServicesErrorHandling:
 
     def test_service_provider_configuration_validation(self) -> None:
         """Given: Various invalid provider configurations
-           When: Validate provider configuration
-           Then: Rejects invalid configurations appropriately
+        When: Validate provider configuration
+        Then: Rejects invalid configurations appropriately
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -418,20 +419,17 @@ class TestServicesErrorHandling:
                 {"chain": "main", "arcUrl": "not-a-url", "arcApiKey": "key"},
                 {"chain": "main", "whatsonchainUrl": "", "whatsonchainApiKey": "key"},
                 {"chain": "main", "taalUrl": None, "taalApiKey": "key"},
-
                 # Invalid API keys with URLs
                 {"chain": "main", "arcUrl": "https://arc.example.com", "arcApiKey": ""},
                 {"chain": "main", "whatsonchainUrl": "https://woc.com", "whatsonchainApiKey": None},
-
                 # Invalid chain with valid URLs
                 {"chain": "invalid", "arcUrl": "https://arc.example.com", "arcApiKey": "key"},
-
                 # Conflicting configurations
                 {
                     "chain": "main",
                     "arcUrl": "https://arc1.com",
                     "arcUrlBackup": "https://arc1.com",  # Same as primary
-                    "arcApiKey": "key"
+                    "arcApiKey": "key",
                 },
             ]
 
@@ -449,8 +447,8 @@ class TestServicesErrorHandling:
 
     def test_service_network_failure_recovery(self) -> None:
         """Given: Service with simulated network failures
-           When: Service methods are called during failures
-           Then: Service handles recovery appropriately
+        When: Service methods are called during failures
+        Then: Service handles recovery appropriately
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -487,8 +485,8 @@ class TestServicesErrorHandling:
 
     def test_service_initialization_with_environment_variables(self) -> None:
         """Given: Environment variables for API keys
-           When: Initialize services
-           Then: Uses environment variables appropriately
+        When: Initialize services
+        Then: Uses environment variables appropriately
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -525,8 +523,8 @@ class TestServicesErrorHandling:
 
     def test_service_configuration_persistence(self) -> None:
         """Given: Service configuration
-           When: Service is created and used
-           Then: Configuration persists appropriately
+        When: Service is created and used
+        Then: Configuration persists appropriately
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -544,8 +542,8 @@ class TestServicesErrorHandling:
             assert services.chain.value == "main"
 
             # Configuration should be accessible
-            if hasattr(services, '_options') or hasattr(services, 'options'):
-                options = getattr(services, '_options', getattr(services, 'options', {}))
+            if hasattr(services, "_options") or hasattr(services, "options"):
+                options = getattr(services, "_options", getattr(services, "options", {}))
                 assert isinstance(options, dict)
 
         except ImportError:
@@ -554,8 +552,8 @@ class TestServicesErrorHandling:
 
     def test_service_method_timeout_handling(self) -> None:
         """Given: Service with timeout configurations
-           When: Methods are called
-           Then: Respects timeout settings appropriately
+        When: Methods are called
+        Then: Respects timeout settings appropriately
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -574,8 +572,8 @@ class TestServicesErrorHandling:
                     assert services is not None
 
                     # Service should handle timeout configuration
-                    if hasattr(services, '_options') or hasattr(services, 'options'):
-                        options = getattr(services, '_options', getattr(services, 'options', {}))
+                    if hasattr(services, "_options") or hasattr(services, "options"):
+                        options = getattr(services, "_options", getattr(services, "options", {}))
                         # Timeout should be stored appropriately
                         assert isinstance(options, dict)
                 except (ValueError, TypeError) as e:
@@ -590,8 +588,8 @@ class TestServicesErrorHandling:
 
     def test_service_error_message_formatting(self) -> None:
         """Given: Service error conditions
-           When: Errors occur
-           Then: Error messages are properly formatted
+        When: Errors occur
+        Then: Error messages are properly formatted
         """
         try:
             from bsv_wallet_toolbox.services import Services
@@ -600,7 +598,7 @@ class TestServicesErrorHandling:
             services = Services(config)
 
             # Test error handling with invalid inputs
-            if hasattr(services, 'get_raw_tx'):
+            if hasattr(services, "get_raw_tx"):
                 try:
                     result = services.get_raw_tx("invalid_txid")
                     # Should either return None or raise with clear error

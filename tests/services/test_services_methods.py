@@ -15,9 +15,11 @@ from bsv_wallet_toolbox.errors.wallet_errors import InvalidParameterError
 @pytest.fixture
 def mock_services():
     """Create mock services for testing."""
-    with patch("bsv_wallet_toolbox.services.services.ServiceCollection"), \
-         patch("bsv_wallet_toolbox.services.services.Bitails", return_value=None), \
-         patch("bsv_wallet_toolbox.services.providers.arc.ARC", return_value=None):
+    with (
+        patch("bsv_wallet_toolbox.services.services.ServiceCollection"),
+        patch("bsv_wallet_toolbox.services.services.Bitails", return_value=None),
+        patch("bsv_wallet_toolbox.services.providers.arc.ARC", return_value=None),
+    ):
         services = Services("main")
         # Set up mock chain tracker for tests that need it
         services._chain_tracker = MagicMock()
@@ -107,7 +109,7 @@ class TestServicesBlockchainMethods:
             "bits": 474103450,
             "nonce": 3894752803,
             "height": 850000,
-            "hash": "abc123"
+            "hash": "abc123",
         }
         assert header == expected_header
 
@@ -135,7 +137,7 @@ class TestServicesBlockchainMethods:
             "bits": 474103450,
             "nonce": 3894752803,
             "height": 851000,
-            "hash": "tip_hash"
+            "hash": "tip_hash",
         }
         assert header == expected_header
 
@@ -170,7 +172,7 @@ class TestServicesBlockchainMethods:
             "bits": 474103450,
             "nonce": 3894752803,
             "height": 850000,
-            "hash": "block_hash"
+            "hash": "block_hash",
         }
         assert header == expected_header
 
@@ -322,10 +324,10 @@ class TestServicesUtilityMethods:
         # For testing, we'll use a transaction with all max sequences
         from bsv.transaction import Transaction
         from bsv.transaction_input import TransactionInput
-        
+
         tx = Transaction()
         tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF))
-        
+
         result = mock_services.n_lock_time_is_final(tx)
         assert result is True
 
@@ -486,6 +488,7 @@ class TestServicesErrorHandling:
 
         # For this test, mock the method directly to simulate network failures with retry
         call_count = 0
+
         def mock_get_raw_tx(txid, use_next=False):
             nonlocal call_count
             call_count += 1
@@ -534,6 +537,7 @@ class TestServicesErrorHandling:
 
         # Mock the method directly to simulate provider failures with retry
         call_count = 0
+
         def mock_get_merkle_path(txid, use_next=False):
             nonlocal call_count
             call_count += 1
@@ -578,6 +582,7 @@ class TestServicesErrorHandling:
 
         # Mock the method directly to simulate timeout with retry
         call_count = 0
+
         def mock_get_transaction_status(txid):
             nonlocal call_count
             call_count += 1
@@ -623,6 +628,7 @@ class TestServicesErrorHandling:
 
         # Mock the method directly to simulate provider failures with retry
         call_count = 0
+
         def mock_post_beef(beef):
             nonlocal call_count
             call_count += 1
@@ -644,7 +650,9 @@ class TestServicesErrorHandling:
 
         services.post_beef = mock_post_beef_with_retry
 
-        result = services.post_beef("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac000000000")
+        result = services.post_beef(
+            "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac000000000"
+        )
         assert isinstance(result, dict)
 
     def test_post_beef_array_invalid_inputs(self, mock_services_with_providers):
@@ -667,6 +675,7 @@ class TestServicesErrorHandling:
 
         # Mock the method to simulate mixed results
         call_count = 0
+
         def mock_post_beef(beef):
             nonlocal call_count
             call_count += 1
@@ -708,6 +717,7 @@ class TestServicesErrorHandling:
 
         # Mock the method directly to simulate provider failures with retry
         call_count = 0
+
         def mock_update_bsv_exchange_rate(currencies):
             nonlocal call_count
             call_count += 1
@@ -919,6 +929,7 @@ class TestServicesErrorHandling:
         # Mock get_raw_tx to return data
         def mock_get_raw_tx(txid):
             return "raw_tx_data"
+
         services.get_raw_tx = mock_get_raw_tx
 
         # Make multiple requests (synchronous methods don't need async)

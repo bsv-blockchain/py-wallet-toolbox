@@ -74,7 +74,6 @@ ATOMIC_BEEF_HEX_PREFIX: str = "01010101"  # Hex string prefix for AtomicBEEF for
 logger = logging.getLogger(__name__)
 
 
-
 def create_default_options(chain: Chain) -> WalletServicesOptions:
     """Create default WalletServicesOptions for a given chain.
 
@@ -239,7 +238,7 @@ def _reset_async_runner_after_fork():
 
 
 # Register fork handler if available (Python 3.7+)
-if hasattr(os, 'register_at_fork'):
+if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_reset_async_runner_after_fork)
 
 
@@ -271,6 +270,7 @@ def shutdown_async_runner() -> None:
     if _async_runner is not None:
         _async_runner.shutdown()
         _async_runner = None
+
 
 # Global async runner with lazy initialization (thread-safe)
 # The async runner is created on first use to avoid issues with process forking.
@@ -424,7 +424,9 @@ class Services(WalletServices):
         self.get_merkle_path_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path})
         # ARC can sometimes provide merklePath earlier / when other indexers lag.
         if self.arc_gorillapool:
-            self.get_merkle_path_services.add({"name": "arcGorillaPool", "service": self.arc_gorillapool.get_merkle_path})
+            self.get_merkle_path_services.add(
+                {"name": "arcGorillaPool", "service": self.arc_gorillapool.get_merkle_path}
+            )
         if self.arc_taal:
             self.get_merkle_path_services.add({"name": "arcTaal", "service": self.arc_taal.get_merkle_path})
         if self.bitails:
@@ -523,7 +525,7 @@ class Services(WalletServices):
         """Get current blockchain height with provider fallback.
 
         Equivalent to TypeScript's Services.getHeight()
-        
+
         Provider priority (matching TS/Go implementation):
         1. Chaintracks (if configured) - chaintracks.currentHeight()
         2. WhatsOnChain - whatsonchain.current_height()
@@ -551,7 +553,7 @@ class Services(WalletServices):
                     return await chaintracks.get_present_height()
             except Exception:
                 pass  # Fall through to WhatsOnChain
-        
+
         # 2. Fall back to WhatsOnChain
         try:
             return await self.whatsonchain.current_height()
@@ -588,7 +590,7 @@ class Services(WalletServices):
                     return await chaintracks.current_height()
             except Exception:
                 pass  # Fall through to WhatsOnChain
-        
+
         # 2. Fall back to WhatsOnChain
         return await self.whatsonchain.get_present_height()
 
@@ -642,7 +644,7 @@ class Services(WalletServices):
         """Get block header at specified height with provider fallback.
 
         Equivalent to TypeScript's Services.getHeaderForHeight()
-        
+
         Provider priority (matching TS/Go implementation):
         1. Chaintracks (if configured) - chaintracks.findHeaderForHeight()
         2. WhatsOnChain - whatsonchain.get_header_bytes_for_height()
@@ -666,7 +668,7 @@ class Services(WalletServices):
     async def _get_header_for_height_async(self, height: int) -> bytes:
         """Async implementation of get_header_for_height with provider fallback."""
         from .chaintracker.chaintracks.util.block_header_utilities import serialize_base_block_header
-        
+
         # 1. Try Chaintracks first (if configured)
         chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
         if chaintracks:
@@ -680,7 +682,7 @@ class Services(WalletServices):
                         return serialize_base_block_header(header)
             except Exception:
                 pass  # Fall through to WhatsOnChain
-        
+
         # 2. Fall back to WhatsOnChain
         return await self.whatsonchain.get_header_bytes_for_height(height)
 
@@ -714,7 +716,7 @@ class Services(WalletServices):
                         return self._normalize_header(header, height)
             except Exception:
                 pass  # Fall through to WhatsOnChain
-        
+
         # 2. Fall back to WhatsOnChain
         h = await self.whatsonchain.find_header_for_height(height)
         if h is None:
@@ -1243,7 +1245,7 @@ class Services(WalletServices):
             bytes.fromhex(output)
         except ValueError as e:
             raise InvalidParameterError("output", f"must be valid hex: {e}") from e
-        
+
         # Validate length for hash formats (default is hashLE/hashBE which requires 64 hex chars)
         if output_format is None or output_format in ("hashLE", "hashBE"):
             if len(output) != 64:
@@ -1268,7 +1270,6 @@ class Services(WalletServices):
         services = self.get_utxo_status_services
         if use_next:
             services.next()
-
 
         # Retry loop: up to 2 attempts
         for _retry in range(2):
@@ -1529,7 +1530,7 @@ class Services(WalletServices):
                 "Services.post_beef: processing AtomicBEEF, txid=%s, beef_len=%d bytes, beef_hex (first 100 chars): %s...",
                 txid,
                 len(beef) // 2,
-                beef[:100]
+                beef[:100],
             )
             # After parsing, log the extracted raw transaction
             if tx:
@@ -1538,7 +1539,7 @@ class Services(WalletServices):
                     "Services.post_beef: extracted rawTx from AtomicBEEF, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
                     txid,
                     len(raw_tx_from_beef) // 2,
-                    raw_tx_from_beef[:100]
+                    raw_tx_from_beef[:100],
                 )
         else:
             # It's already raw transaction hex
@@ -1546,7 +1547,7 @@ class Services(WalletServices):
                 "Services.post_beef: processing rawTx, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 200 chars): %s...",
                 txid,
                 len(beef) // 2,
-                beef[:200]
+                beef[:200],
             )
 
         def _fmt_arc_error(res: Any) -> str:
@@ -1636,7 +1637,7 @@ class Services(WalletServices):
                         "Services.post_beef: Transaction.hex() result, txid=%s, hex_len=%d bytes, hex (first 100 chars): %s...",
                         txid,
                         len(tx_hex) // 2,
-                        tx_hex[:100]
+                        tx_hex[:100],
                     )
                     if tx_hex.startswith(ATOMIC_BEEF_HEX_PREFIX):
                         self.logger.error(
@@ -1694,10 +1695,7 @@ class Services(WalletServices):
 
         # Log all provider errors for debugging
         if provider_errors:
-            self.logger.warning(
-                "Services.post_beef: All providers failed. Errors: %s",
-                provider_errors
-            )
+            self.logger.warning("Services.post_beef: All providers failed. Errors: %s", provider_errors)
             # Include all provider failures in the message for better debugging
             if len(provider_errors) > 1:
                 extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
@@ -1794,11 +1792,7 @@ class Services(WalletServices):
                     results.append(self.post_beef(beef))
                 except Exception as e:
                     # For invalid beef strings (content errors), return error result
-                    results.append({
-                        "accepted": False,
-                        "txid": None,
-                        "message": str(e)
-                    })
+                    results.append({"accepted": False, "txid": None, "message": str(e)})
             return results
         return [{"accepted": True, "txid": None, "message": "mocked"} for _ in beefs]
 
@@ -1829,5 +1823,3 @@ class Services(WalletServices):
             )
         # No outpoint requirement: any unspent occurrence counts
         return any((not d.get("spent", False)) for d in details if isinstance(d, dict))
-
-

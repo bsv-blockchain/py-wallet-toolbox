@@ -55,4 +55,3 @@ class TaskCheckNoSends(TaskCheckForProofs):
             self._process_req(req, max_acceptable_height, log_lines)
 
         return "\n".join(log_lines)
-

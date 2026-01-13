@@ -81,4 +81,3 @@ class TestUniversalVectorsCreateSignature:
         # evolving. Python should wait for TS to stabilize ABI parsing before implementing.
         # See: ts-wallet-toolbox/src/abi/ and BRC-100 specification section on wire format.
         # assert wire_output == bytes.fromhex(result_data["wire"])
-

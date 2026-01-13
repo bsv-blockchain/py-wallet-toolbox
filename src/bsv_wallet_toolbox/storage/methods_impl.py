@@ -199,12 +199,15 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
             if req_record:
                 # Get raw transaction - could be stored as 'beef', 'rawTx', or 'raw_tx'
                 beef = req_record.get("beef") or req_record.get("rawTx") or req_record.get("raw_tx") or ""
-                
+
                 # If beef is empty, log a warning
                 if not beef:
                     import logging
+
                     logger = logging.getLogger(__name__)
-                    logger.warning(f"No raw transaction data found for {txid} in ProvenTxReq. Available keys: {list(req_record.keys())}")
+                    logger.warning(
+                        f"No raw transaction data found for {txid} in ProvenTxReq. Available keys: {list(req_record.keys())}"
+                    )
 
                 if args.get("isDelayed"):
                     # Mark as unsent and don't post
@@ -231,6 +234,7 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                                 # Try to detect if it's base64
                                 try:
                                     import base64
+
                                     # If it decodes as base64, convert to hex
                                     decoded = base64.b64decode(beef, validate=True)
                                     beef_hex = decoded.hex()
@@ -244,9 +248,10 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                             else:
                                 # Try to convert to string and assume hex
                                 beef_hex = str(beef)
-                            
+
                             # Broadcast the transaction
                             import logging
+
                             logger = logging.getLogger(__name__)
                             logger.debug(f"Broadcasting transaction {txid} (beef length: {len(beef_hex)} chars)")
                             # Debug: Log rawTx being broadcast
@@ -254,14 +259,14 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                                 "process_action: broadcasting rawTx for txid=%s, beef_hex_len=%d bytes, beef_hex (first 200 chars): %s...",
                                 txid,
                                 len(beef_hex) // 2,
-                                beef_hex[:200]
+                                beef_hex[:200],
                             )
                             # Log full hex for small transactions
                             if len(beef_hex) < 1000:
                                 logger.debug("process_action: rawTx hex (full): %s", beef_hex)
                             broadcast_result = services.post_beef(beef_hex)
                             logger.debug(f"Broadcast result for {txid}: {broadcast_result}")
-                            
+
                             if broadcast_result.get("accepted") or broadcast_result.get("success"):
                                 post_result["status"] = "unproven"
                                 storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "unproven"})
@@ -283,7 +288,7 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                                 post_result["status"] = "sending"
                                 post_result["error"] = error_msg
                                 storage.update("ProvenTxReq", {"txid": txid, "userId": user_id}, {"status": "sending"})
-                            
+
                             # Add message if available
                             if "message" in broadcast_result:
                                 post_result["message"] = broadcast_result["message"]
@@ -294,6 +299,7 @@ def process_action(storage: Any, auth: dict[str, Any], args: StorageProcessActio
                     except Exception as e:
                         # Broadcast failed - mark as sending for retry
                         import logging
+
                         logger = logging.getLogger(__name__)
                         logger.error(f"Failed to broadcast transaction {txid}: {e}", exc_info=True)
                         post_result["status"] = "sending"
@@ -1502,15 +1508,17 @@ def _persist_new_proven(
             mp_bytes = b""
 
         # Insert/update proven tx
-        storage.insert_proven_tx({
-            "txid": txid,
-            "rawTx": fetched.raw_tx,
-            "inputBEEF": empty_beef_bytes,
-            "height": fetched.header.get("height", 0),
-            "merklePath": mp_bytes,
-            "merkleRoot": fetched.header.get("merkleRoot", "0" * 64),
-            "blockHash": fetched.header.get("hash", "0" * 64),
-        })
+        storage.insert_proven_tx(
+            {
+                "txid": txid,
+                "rawTx": fetched.raw_tx,
+                "inputBEEF": empty_beef_bytes,
+                "height": fetched.header.get("height", 0),
+                "merklePath": mp_bytes,
+                "merkleRoot": fetched.header.get("merkleRoot", "0" * 64),
+                "blockHash": fetched.header.get("hash", "0" * 64),
+            }
+        )
     except Exception:
         # Log error but don't fail the main operation
         pass
@@ -1747,8 +1755,7 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
             pass
 
     log_msg = (
-        f"Review completed: {result['updatedCount']} transactions updated, "
-        f"{result['agedCount']} transactions aged"
+        f"Review completed: {result['updatedCount']} transactions updated, " f"{result['agedCount']} transactions aged"
     )
     result["log"] = log_msg
 
@@ -1860,9 +1867,19 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
     """
     from sqlalchemy import select, func
     from .models import (
-        User, Transaction, Output, OutputBasket, TxLabel, TxLabelMap,
-        OutputTag, OutputTagMap, Certificate, CertificateField,
-        ProvenTx, ProvenTxReq, Commission
+        User,
+        Transaction,
+        Output,
+        OutputBasket,
+        TxLabel,
+        TxLabelMap,
+        OutputTag,
+        OutputTagMap,
+        Certificate,
+        CertificateField,
+        ProvenTx,
+        ProvenTxReq,
+        Commission,
     )
 
     if not storage:
@@ -1937,9 +1954,11 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
 
         # 1. ProvenTx
         ptx_query = select(ProvenTx)
-        ptx_items = session.execute(
-            ptx_query.offset(get_offset("provenTx")).limit(min(items_left, max_items // 100))
-        ).scalars().all()
+        ptx_items = (
+            session.execute(ptx_query.offset(get_offset("provenTx")).limit(min(items_left, max_items // 100)))
+            .scalars()
+            .all()
+        )
         if ptx_items:
             result["provenTxs"] = [_proven_tx_to_dict(p) for p in ptx_items]
 
@@ -1971,7 +1990,11 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         tx_query = select(Transaction).where(Transaction.user_id == user_id)
         if since:
             tx_query = tx_query.where(Transaction.updated_at > since)
-        tx_items = session.execute(tx_query.offset(get_offset("transaction")).limit(min(items_left, max_items // 25))).scalars().all()
+        tx_items = (
+            session.execute(tx_query.offset(get_offset("transaction")).limit(min(items_left, max_items // 25)))
+            .scalars()
+            .all()
+        )
         if tx_items:
             result["transactions"] = [_transaction_to_dict(t) for t in tx_items]
 
@@ -1979,7 +2002,11 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         out_query = select(Output).where(Output.user_id == user_id)
         if since:
             out_query = out_query.where(Output.updated_at > since)
-        out_items = session.execute(out_query.offset(get_offset("output")).limit(min(items_left, max_items // 25))).scalars().all()
+        out_items = (
+            session.execute(out_query.offset(get_offset("output")).limit(min(items_left, max_items // 25)))
+            .scalars()
+            .all()
+        )
         if out_items:
             result["outputs"] = [_output_to_dict(o) for o in out_items]
 
@@ -2003,7 +2030,11 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         cert_query = select(Certificate).where(Certificate.user_id == user_id)
         if since:
             cert_query = cert_query.where(Certificate.updated_at > since)
-        cert_items = session.execute(cert_query.offset(get_offset("certificate")).limit(min(items_left, max_items // 25))).scalars().all()
+        cert_items = (
+            session.execute(cert_query.offset(get_offset("certificate")).limit(min(items_left, max_items // 25)))
+            .scalars()
+            .all()
+        )
         if cert_items:
             result["certificates"] = [_certificate_to_dict(c) for c in cert_items]
 
@@ -2011,7 +2042,11 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         cf_query = select(CertificateField).join(Certificate).where(Certificate.user_id == user_id)
         if since:
             cf_query = cf_query.where(CertificateField.updated_at > since)
-        cf_items = session.execute(cf_query.offset(get_offset("certificateField")).limit(min(items_left, max_items // 25))).scalars().all()
+        cf_items = (
+            session.execute(cf_query.offset(get_offset("certificateField")).limit(min(items_left, max_items // 25)))
+            .scalars()
+            .all()
+        )
         if cf_items:
             result["certificateFields"] = [_certificate_field_to_dict(f) for f in cf_items]
 
@@ -2019,13 +2054,21 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         comm_query = select(Commission).where(Commission.user_id == user_id)
         if since:
             comm_query = comm_query.where(Commission.updated_at > since)
-        comm_items = session.execute(comm_query.offset(get_offset("commission")).limit(min(items_left, max_items // 25))).scalars().all()
+        comm_items = (
+            session.execute(comm_query.offset(get_offset("commission")).limit(min(items_left, max_items // 25)))
+            .scalars()
+            .all()
+        )
         if comm_items:
             result["commissions"] = [_commission_to_dict(c) for c in comm_items]
 
         # 12. ProvenTxReq
         ptr_query = select(ProvenTxReq)
-        ptr_items = session.execute(ptr_query.offset(get_offset("provenTxReq")).limit(min(items_left, max_items // 100))).scalars().all()
+        ptr_items = (
+            session.execute(ptr_query.offset(get_offset("provenTxReq")).limit(min(items_left, max_items // 100)))
+            .scalars()
+            .all()
+        )
         if ptr_items:
             result["provenTxReqs"] = [_proven_tx_req_to_dict(r) for r in ptr_items]
 

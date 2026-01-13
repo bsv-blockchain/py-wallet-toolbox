@@ -10,10 +10,10 @@ try:
         parse_tx_script_offsets,
         _read_varint,
     )
+
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
-
 
 
 class TestReadVarint:
@@ -99,13 +99,13 @@ class TestReadVarint:
     def test_read_varint_at_different_offsets(self) -> None:
         """Test reading varint at various offsets."""
         data = [0x00, 0x00, 0x42, 0x00, 0x00]
-        
+
         value1, bytes_read1 = _read_varint(data, 0)
         assert value1 == 0
-        
+
         value2, bytes_read2 = _read_varint(data, 2)
         assert value2 == 0x42
-        
+
         value3, bytes_read3 = _read_varint(data, 4)
         assert value3 == 0
 
@@ -153,7 +153,6 @@ class TestParseTxScriptOffsetsEmpty:
         assert isinstance(result, dict)
 
 
-
 class TestParseTxScriptOffsetsSimple:
     """Test parse_tx_script_offsets with simple transactions."""
 
@@ -161,10 +160,16 @@ class TestParseTxScriptOffsetsSimple:
         """Test parsing transaction with no inputs or outputs."""
         # Version (4 bytes) + input count (1) + output count (1) + locktime (4)
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x00,  # Input count = 0
             0x00,  # Output count = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 0
@@ -173,17 +178,29 @@ class TestParseTxScriptOffsetsSimple:
     def test_parse_one_input_no_script(self) -> None:
         """Test parsing transaction with one input (empty script)."""
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x01,  # Input count = 1
             # Input:
             *([0x00] * 32),  # Previous tx hash
-            0x00, 0x00, 0x00, 0x00,  # Previous tx output index
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
             0x00,  # Script length = 0
             # (no script bytes)
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             # Outputs:
             0x00,  # Output count = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 1
@@ -195,15 +212,27 @@ class TestParseTxScriptOffsetsSimple:
         """Test parsing transaction with one input and a script."""
         script_bytes = [0x48, 0x30, 0x45]  # Example script
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x01,  # Input count = 1
             *([0x00] * 32),  # Previous tx hash
-            0x00, 0x00, 0x00, 0x00,  # Previous tx output index
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
             len(script_bytes),  # Script length
             *script_bytes,  # Script
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             0x00,  # Output count = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 1
@@ -213,12 +242,25 @@ class TestParseTxScriptOffsetsSimple:
     def test_parse_one_output_no_script(self) -> None:
         """Test parsing transaction with one output (empty script)."""
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x00,  # Input count = 0
             0x01,  # Output count = 1
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis
             0x00,  # Script length = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 0
@@ -230,18 +272,30 @@ class TestParseTxScriptOffsetsSimple:
         """Test parsing transaction with one output and a script."""
         script_bytes = [0x76, 0xA9, 0x14, *([0xAB] * 20), 0x88, 0xAC]  # P2PKH script
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x00,  # Input count = 0
             0x01,  # Output count = 1
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis
             len(script_bytes),  # Script length
             *script_bytes,  # Script
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["outputs"]) == 1
         assert result["outputs"][0] == 15
-
 
 
 class TestParseTxScriptOffsetsMultiple:
@@ -250,20 +304,38 @@ class TestParseTxScriptOffsetsMultiple:
     def test_parse_two_inputs(self) -> None:
         """Test parsing transaction with two inputs."""
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x02,  # Input count = 2
             # Input 1:
             *([0x00] * 32),  # Previous tx hash
-            0x00, 0x00, 0x00, 0x00,  # Previous tx output index
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
             0x00,  # Script length = 0
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             # Input 2:
             *([0x01] * 32),  # Previous tx hash
-            0x01, 0x00, 0x00, 0x00,  # Previous tx output index
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
             0x00,  # Script length = 0
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             0x00,  # Output count = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 2
@@ -275,16 +347,36 @@ class TestParseTxScriptOffsetsMultiple:
     def test_parse_two_outputs(self) -> None:
         """Test parsing transaction with two outputs."""
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x00,  # Input count = 0
             0x02,  # Output count = 2
             # Output 1:
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis
             0x00,  # Script length = 0
             # Output 2:
-            0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis
+            0x01,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis
             0x00,  # Script length = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["outputs"]) == 2
@@ -297,20 +389,39 @@ class TestParseTxScriptOffsetsMultiple:
         """Test parsing transaction with both inputs and outputs."""
         input_script = [0xAA, 0xBB]
         output_script = [0xCC, 0xDD]
-        
+
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x01,  # Input count = 1
             *([0x00] * 32),  # Previous tx hash
-            0x00, 0x00, 0x00, 0x00,  # Previous tx output index
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
             len(input_script),  # Script length
             *input_script,  # Script
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             0x01,  # Output count = 1
-            0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis (10000)
+            0x10,
+            0x27,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis (10000)
             len(output_script),  # Script length
             *output_script,  # Script
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 1
@@ -322,7 +433,6 @@ class TestParseTxScriptOffsetsMultiple:
         assert result["outputs"][0] == 58
 
 
-
 class TestParseTxScriptOffsetsVarint:
     """Test parse_tx_script_offsets with large varint values."""
 
@@ -331,14 +441,28 @@ class TestParseTxScriptOffsetsVarint:
         # This creates a tx with 253+ inputs (using 0xFD marker)
         # For simplicity, we'll just test the parsing starts correctly
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
-            0xFD, 0x01, 0x00,  # Input count = 1 (in 2-byte format)
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
+            0xFD,
+            0x01,
+            0x00,  # Input count = 1 (in 2-byte format)
             *([0x00] * 32),  # Previous tx hash
-            0x00, 0x00, 0x00, 0x00,  # Previous tx output index
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
             0x00,  # Script length = 0
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             0x00,  # Output count = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 1
@@ -348,12 +472,27 @@ class TestParseTxScriptOffsetsVarint:
     def test_parse_output_count_varint_uint16(self) -> None:
         """Test parsing transaction with large output count (0xFD format)."""
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x00,  # Input count = 0
-            0xFD, 0x01, 0x00,  # Output count = 1 (in 2-byte format)
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis
+            0xFD,
+            0x01,
+            0x00,  # Output count = 1 (in 2-byte format)
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis
             0x00,  # Script length = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["outputs"]) == 1
@@ -364,23 +503,36 @@ class TestParseTxScriptOffsetsVarint:
         """Test parsing with large script length (0xFD format)."""
         large_script_size = 253
         script_bytes = [0xAA] * large_script_size
-        
+
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x01,  # Input count = 1
             *([0x00] * 32),  # Previous tx hash
-            0x00, 0x00, 0x00, 0x00,  # Previous tx output index
-            0xFD, 0xFD, 0x00,  # Script length = 253 (in 2-byte format)
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Previous tx output index
+            0xFD,
+            0xFD,
+            0x00,  # Script length = 253 (in 2-byte format)
             *script_bytes,  # Script
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             0x00,  # Output count = 0
-            0x00, 0x00, 0x00, 0x00,  # Locktime
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Locktime
         ]
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 1
         # Script offset: 4 + 1 + 32 + 4 + 3 = 44
         assert result["inputs"][0] == 44
-
 
 
 class TestParseTxScriptOffsetsEdgeCases:
@@ -390,17 +542,17 @@ class TestParseTxScriptOffsetsEdgeCases:
         """Test with maximum single-byte input/output counts (252)."""
         # Create transaction with many empty inputs
         tx = [0x01, 0x00, 0x00, 0x00, 0xFC]  # Version + input count (252)
-        
+
         # Add 252 minimal inputs
         for _ in range(252):
             tx.extend([0x00] * 32)  # Previous tx hash
             tx.extend([0x00, 0x00, 0x00, 0x00])  # Previous tx output index
             tx.append(0x00)  # Script length = 0
             tx.extend([0xFF, 0xFF, 0xFF, 0xFF])  # Sequence
-        
+
         tx.append(0x00)  # Output count = 0
         tx.extend([0x00, 0x00, 0x00, 0x00])  # Locktime
-        
+
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 252
         assert len(result["outputs"]) == 0
@@ -419,38 +571,73 @@ class TestParseTxScriptOffsetsEdgeCases:
         # Simulating a real P2PKH transaction
         tx = [
             # Version
-            0x01, 0x00, 0x00, 0x00,
+            0x01,
+            0x00,
+            0x00,
+            0x00,
             # Input count
             0x01,
             # Input:
             *([0xAB] * 32),  # Previous txid
-            0x00, 0x00, 0x00, 0x00,  # Vout
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Vout
             0x6A,  # Script length (106 bytes - typical scriptSig)
             *([0x30] * 106),  # Script (mock signature + pubkey)
-            0xFF, 0xFF, 0xFF, 0xFF,  # Sequence
+            0xFF,
+            0xFF,
+            0xFF,
+            0xFF,  # Sequence
             # Output count
             0x02,
             # Output 1:
-            0x40, 0x42, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis (1000000)
+            0x40,
+            0x42,
+            0x0F,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis (1000000)
             0x19,  # Script length (25 bytes - P2PKH)
-            0x76, 0xA9, 0x14, *([0xCD] * 20), 0x88, 0xAC,  # P2PKH script
+            0x76,
+            0xA9,
+            0x14,
+            *([0xCD] * 20),
+            0x88,
+            0xAC,  # P2PKH script
             # Output 2 (change):
-            0x20, 0xA1, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00,  # Satoshis (500000)
+            0x20,
+            0xA1,
+            0x07,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,  # Satoshis (500000)
             0x19,  # Script length (25 bytes - P2PKH)
-            0x76, 0xA9, 0x14, *([0xEF] * 20), 0x88, 0xAC,  # P2PKH script
+            0x76,
+            0xA9,
+            0x14,
+            *([0xEF] * 20),
+            0x88,
+            0xAC,  # P2PKH script
             # Locktime
-            0x00, 0x00, 0x00, 0x00,
+            0x00,
+            0x00,
+            0x00,
+            0x00,
         ]
-        
+
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == 1
         assert len(result["outputs"]) == 2
-        
+
         # Verify offsets are sensible
         assert result["inputs"][0] == 42  # After version + count + prevtx + vout + script_len
         assert result["outputs"][0] > 100  # After inputs
         assert result["outputs"][1] > result["outputs"][0]  # Second output after first
-
 
 
 class TestParseTxScriptOffsetsStress:
@@ -460,42 +647,44 @@ class TestParseTxScriptOffsetsStress:
         """Test parsing transaction with many small inputs."""
         input_count = 100
         tx = [0x01, 0x00, 0x00, 0x00, input_count]  # Version + input count
-        
+
         for _ in range(input_count):
             tx.extend([0x00] * 32)  # Previous tx hash
             tx.extend([0x00, 0x00, 0x00, 0x00])  # Previous tx output index
             tx.append(0x00)  # Script length = 0
             tx.extend([0xFF, 0xFF, 0xFF, 0xFF])  # Sequence
-        
+
         tx.append(0x00)  # Output count = 0
         tx.extend([0x00, 0x00, 0x00, 0x00])  # Locktime
-        
+
         result = parse_tx_script_offsets(tx)
         assert len(result["inputs"]) == input_count
         # Verify offsets are sequential
         for i in range(1, input_count):
             # Each input adds 41 bytes (32 + 4 + 1 + 0 + 4)
-            assert result["inputs"][i] == result["inputs"][i-1] + 41
+            assert result["inputs"][i] == result["inputs"][i - 1] + 41
 
     def test_parse_many_small_outputs(self) -> None:
         """Test parsing transaction with many small outputs."""
         output_count = 100
         tx = [
-            0x01, 0x00, 0x00, 0x00,  # Version
+            0x01,
+            0x00,
+            0x00,
+            0x00,  # Version
             0x00,  # Input count = 0
             output_count,  # Output count
         ]
-        
+
         for _ in range(output_count):
             tx.extend([0x10, 0x27, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])  # Satoshis
             tx.append(0x00)  # Script length = 0
-        
+
         tx.extend([0x00, 0x00, 0x00, 0x00])  # Locktime
-        
+
         result = parse_tx_script_offsets(tx)
         assert len(result["outputs"]) == output_count
         # Verify offsets are sequential
         for i in range(1, output_count):
             # Each output adds 9 bytes (8 + 1 + 0)
-            assert result["outputs"][i] == result["outputs"][i-1] + 9
-
+            assert result["outputs"][i] == result["outputs"][i - 1] + 9

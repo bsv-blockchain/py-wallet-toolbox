@@ -7,10 +7,10 @@ import pytest
 
 try:
     from bsv_wallet_toolbox.utils.format_utils import Format
+
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
-
 
 
 class TestFormatAlignLeft:
@@ -41,7 +41,6 @@ class TestFormatAlignLeft:
         assert len(result) == 10
 
 
-
 class TestFormatAlignRight:
     """Test Format.align_right method."""
 
@@ -70,7 +69,6 @@ class TestFormatAlignRight:
         assert len(result) == 10
 
 
-
 class TestFormatAlignMiddle:
     """Test Format.align_middle method."""
 
@@ -96,7 +94,6 @@ class TestFormatAlignMiddle:
         result = Format.align_middle(12345, 10)
         assert isinstance(result, str)
         assert len(result) == 10
-
 
 
 class TestFormatSatoshis:
@@ -130,7 +127,6 @@ class TestFormatSatoshis:
         # Should handle negative values
 
 
-
 class TestFormatTxidBytes:
     """Test Format.txid_bytes method."""
 
@@ -138,12 +134,11 @@ class TestFormatTxidBytes:
         """Test formatting txid bytes."""
         try:
             if hasattr(Format, "txid_bytes"):
-                mock_tx = type('MockTx', (), {'txid': lambda: "0" * 64})()
+                mock_tx = type("MockTx", (), {"txid": lambda: "0" * 64})()
                 result = Format.txid_bytes(mock_tx)
                 assert isinstance(result, str)
         except (AttributeError, TypeError):
             pass
-
 
 
 class TestFormatBeefBytes:
@@ -153,12 +148,11 @@ class TestFormatBeefBytes:
         """Test formatting BEEF bytes."""
         try:
             if hasattr(Format, "beef_bytes"):
-                mock_beef = type('MockBeef', (), {'toBytes': lambda: b'\x00' * 100})()
+                mock_beef = type("MockBeef", (), {"toBytes": lambda: b"\x00" * 100})()
                 result = Format.beef_bytes(mock_beef)
                 assert isinstance(result, str)
         except (AttributeError, TypeError):
             pass
-
 
 
 class TestFormatBsvAmount:
@@ -183,7 +177,6 @@ class TestFormatBsvAmount:
             pass
 
 
-
 class TestFormatUtilsAdvanced:
     """Advanced tests for format utilities."""
 
@@ -191,11 +184,11 @@ class TestFormatUtilsAdvanced:
         """Test alignment methods are consistent."""
         text = "test"
         width = 10
-        
+
         left = Format.align_left(text, width)
         right = Format.align_right(text, width)
         middle = Format.align_middle(text, width)
-        
+
         assert len(left) == width
         assert len(right) == width
         assert len(middle) == width
@@ -229,7 +222,6 @@ class TestFormatUtilsAdvanced:
         except (ValueError, IndexError):
             # May raise for invalid width
             pass
-
 
 
 class TestEdgeCases:
@@ -277,15 +269,14 @@ class TestEdgeCases:
     def test_format_middle_odd_even_widths(self) -> None:
         """Test middle alignment with odd and even widths."""
         text = "test"
-        
+
         # Even width
         result_even = Format.align_middle(text, 10)
         assert len(result_even) == 10
-        
+
         # Odd width
         result_odd = Format.align_middle(text, 11)
         assert len(result_odd) == 11
-
 
 
 class TestFormatTransactionLogging:
@@ -437,4 +428,3 @@ class TestFormatTransactionLogging:
 
         assert "Cannot find transaction" in result
         assert "Beef processing error" in result
-

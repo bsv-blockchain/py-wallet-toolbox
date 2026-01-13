@@ -29,11 +29,7 @@ class TestSimplifiedFetchRequestOptions:
         headers = {"Authorization": "Bearer token"}
         body = b"test data"
 
-        options = SimplifiedFetchRequestOptions(
-            method="POST",
-            headers=headers,
-            body=body
-        )
+        options = SimplifiedFetchRequestOptions(method="POST", headers=headers, body=body)
 
         assert options.method == "POST"
         assert options.headers == headers
@@ -65,7 +61,7 @@ class TestAuthFetch:
         auth_fetch = AuthFetch(mock_wallet)
 
         # AuthFetch wraps _impl, verify it was created
-        assert hasattr(auth_fetch, '_impl')
+        assert hasattr(auth_fetch, "_impl")
         # Verify _impl was initialized with the wallet
         assert auth_fetch._impl is not None
 
@@ -76,7 +72,7 @@ class TestAuthFetch:
         auth_fetch = AuthFetch(mock_wallet)
 
         # Verify _impl was created
-        assert hasattr(auth_fetch, '_impl')
+        assert hasattr(auth_fetch, "_impl")
         assert auth_fetch._impl is not None
 
     def test_init_sets_user_agent(self, mock_wallet: Mock) -> None:
@@ -84,7 +80,7 @@ class TestAuthFetch:
         auth_fetch = AuthFetch(mock_wallet)
 
         # AuthFetch wraps _impl, verify it was created
-        assert hasattr(auth_fetch, '_impl')
+        assert hasattr(auth_fetch, "_impl")
         assert auth_fetch._impl is not None
 
     @pytest.mark.asyncio
@@ -96,7 +92,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -112,7 +108,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -128,7 +124,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -144,7 +140,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -160,7 +156,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -177,7 +173,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -194,7 +190,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)
@@ -206,7 +202,7 @@ class TestAuthFetch:
         url = "https://example.com/api"
         options = SimplifiedFetchRequestOptions(method="GET")
 
-        with patch.object(auth_fetch._impl, 'fetch', side_effect=Exception("HTTP request failed")):
+        with patch.object(auth_fetch._impl, "fetch", side_effect=Exception("HTTP request failed")):
             with pytest.raises(Exception, match="HTTP request failed"):
                 await auth_fetch.fetch(url, options)
 
@@ -216,7 +212,7 @@ class TestAuthFetch:
         url = "https://example.com/api"
         options = SimplifiedFetchRequestOptions(method="GET")
 
-        with patch.object(auth_fetch._impl, 'fetch', side_effect=requests.ConnectionError("Connection failed")):
+        with patch.object(auth_fetch._impl, "fetch", side_effect=requests.ConnectionError("Connection failed")):
             with pytest.raises(requests.ConnectionError, match="Connection failed"):
                 await auth_fetch.fetch(url, options)
 
@@ -226,14 +222,14 @@ class TestAuthFetch:
         # AuthFetch doesn't have a close method, it's a wrapper
         # The _impl may have close, but we don't expose it
         # This test verifies the wrapper doesn't require close
-        assert hasattr(auth_fetch, '_impl')
+        assert hasattr(auth_fetch, "_impl")
 
     @pytest.mark.asyncio
     async def test_close_with_custom_client(self, auth_fetch_with_custom_client: AuthFetch) -> None:
         """Test that AuthFetch works with custom initialization."""
         # AuthFetch doesn't expose client or close method
         # Verify it was initialized correctly
-        assert hasattr(auth_fetch_with_custom_client, '_impl')
+        assert hasattr(auth_fetch_with_custom_client, "_impl")
         assert auth_fetch_with_custom_client._impl is not None
 
     @pytest.mark.asyncio
@@ -243,7 +239,7 @@ class TestAuthFetch:
         # Just verify it can be created
         auth_fetch = AuthFetch(mock_wallet)
         assert isinstance(auth_fetch, AuthFetch)
-        assert hasattr(auth_fetch, '_impl')
+        assert hasattr(auth_fetch, "_impl")
 
     @pytest.mark.asyncio
     async def test_fetch_uses_thread_pool(self, auth_fetch: AuthFetch) -> None:
@@ -254,7 +250,7 @@ class TestAuthFetch:
         mock_response = Mock()
         mock_response.raise_for_status.return_value = None
 
-        with patch.object(auth_fetch._impl, 'fetch', new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
+        with patch.object(auth_fetch._impl, "fetch", new_callable=AsyncMock, return_value=mock_response) as mock_fetch:
             response = await auth_fetch.fetch(url, options)
 
             mock_fetch.assert_called_once_with(url, options)

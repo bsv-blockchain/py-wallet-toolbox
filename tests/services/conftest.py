@@ -17,7 +17,7 @@ class MockWalletServices(WalletServices):
         super().__init__(chain)
         self.mock_chain_tracker = AsyncMock()
         self.mock_height = 850000
-        self.mock_header = b'\x00' * 80  # Mock 80-byte header
+        self.mock_header = b"\x00" * 80  # Mock 80-byte header
 
     async def get_chain_tracker(self):
         """Return mock chain tracker."""
@@ -102,7 +102,7 @@ class MockWhatsOnChain:
 
     async def get_header(self, height):
         """Mock get_header method."""
-        return b'\x00' * 80  # Mock header
+        return b"\x00" * 80  # Mock header
 
     async def start_listening(self):
         """Mock start_listening (raises NotImplementedError in real implementation)."""

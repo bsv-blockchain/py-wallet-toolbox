@@ -120,7 +120,7 @@ def validate_list_outputs_args(args: dict[str, Any]) -> None:
     - offset: optional; can be any integer (negative = newest first)
     - knownTxids: optional; if present must be a list of hex strings
     - tagQueryMode: optional; if present must be one of {"any", "all"}
-    
+
     Reference: wallet-toolbox/src/sdk/validationHelpers.ts - validateListOutputsArgs
     """
     if not isinstance(args, dict):
@@ -340,12 +340,12 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     outputs = args["outputs"]
     if not isinstance(outputs, list):
         raise InvalidParameterError("outputs", "a list")
-    
+
     # Check if sendWith is being used - allows empty outputs
     opts = args.get("options", {})
     send_with = opts.get("sendWith", [])
     is_send_with = len(send_with) > 0 if isinstance(send_with, list) else False
-    
+
     # Require at least one output unless using sendWith (TS parity)
     if len(outputs) == 0 and not is_send_with:
         raise InvalidParameterError("outputs", "at least one output required")
@@ -477,7 +477,7 @@ def validate_internalize_action_args(args: dict[str, Any]) -> dict[str, Any]:
             tx = args["tx"]
         except (ValueError, TypeError):
             raise InvalidParameterError("tx", "valid byte array (list of integers 0-255)")
-    
+
     if not isinstance(tx, (bytes, bytearray)) or len(tx) == 0:
         raise InvalidParameterError("tx", "non-empty bytes or list of integers")
 
@@ -855,6 +855,7 @@ def validate_satoshis(value: Any, field_name: str = "satoshis") -> int:
 # Certificate validation functions
 # ----------------------------------------------------------------------------
 
+
 def validate_acquire_certificate_args(args: dict[str, Any]) -> None:
     """Validate AcquireCertificateArgs structure.
 
@@ -991,6 +992,7 @@ def validate_discover_by_attributes_args(args: dict[str, Any]) -> None:
 # ----------------------------------------------------------------------------
 # Misc validation functions
 # ----------------------------------------------------------------------------
+
 
 def validate_get_header_args(args: dict[str, Any]) -> None:
     """Validate GetHeaderArgs structure.

@@ -51,7 +51,7 @@ SIGNED_TRANSACTION_HEX = (
 
 def signed_transaction_bytes() -> bytes:
     """Get the signed transaction as bytes.
-    
+
     Returns:
         bytes: The signed transaction raw bytes
     """
@@ -60,17 +60,17 @@ def signed_transaction_bytes() -> bytes:
 
 def signed_transaction():
     """Get the signed transaction as a Transaction object.
-    
+
     Returns:
         Transaction: The signed transaction object
-        
+
     Note:
         This imports bsv lazily to avoid circular imports.
     """
     from bsv.transaction import Transaction
+
     return Transaction.from_hex(SIGNED_TRANSACTION_HEX)
 
 
 # Expected transaction ID after signing
 SIGNED_TRANSACTION_TXID = "c8d2f3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2"
-

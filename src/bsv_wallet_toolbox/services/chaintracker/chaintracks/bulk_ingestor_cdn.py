@@ -31,11 +31,11 @@ class BulkIngestorCDN(BulkIngestor):
         self.source_url = source_url or CDNReader.BABBAGE_CDN_BASE_URL
         self.reader = CDNReader(self.source_url)
 
-        logger.info("BulkIngestorCDN initialized for %s chain",
-                     chain)
+        logger.info("BulkIngestorCDN initialized for %s chain", chain)
 
-    async def synchronize(self, present_height: int, range_to_fetch: Any) \
-            -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
+    async def synchronize(
+        self, present_height: int, range_to_fetch: Any
+    ) -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
         """Synchronize bulk headers for the given height range.
 
         Args:
@@ -59,13 +59,15 @@ class BulkIngestorCDN(BulkIngestor):
             for file in files_info.files:
                 file_range = file.bulk_header_minimum_info.to_height_range()
                 if file_range.overlaps(range_to_fetch):
-                    logger.info("Found bulk header file %s (heights %d-%d)",
-                                file.file_name,
-                                file_range.min_height, file_range.max_height)
+                    logger.info(
+                        "Found bulk header file %s (heights %d-%d)",
+                        file.file_name,
+                        file_range.min_height,
+                        file_range.max_height,
+                    )
                     bulk_info.append(file.bulk_header_minimum_info)
                 else:
-                    logger.debug("Skipping bulk header file %s - no overlap",
-                                 file.file_name)
+                    logger.debug("Skipping bulk header file %s - no overlap", file.file_name)
 
             return bulk_info, self._bulk_file_downloader()
 
@@ -78,6 +80,7 @@ class BulkIngestorCDN(BulkIngestor):
         Returns:
             Function that downloads bulk files
         """
+
         def downloader(file_info: BulkHeaderMinimumInfo) -> bytes:
             logger.info(f"Downloading bulk header file {file_info.file_name}")
             return self.reader.download_bulk_header_file(file_info.file_name)

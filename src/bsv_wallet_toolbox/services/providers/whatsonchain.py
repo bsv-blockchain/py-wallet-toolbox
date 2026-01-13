@@ -129,9 +129,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return merkleroot == root
         if response.status_code == 404:
             return False
-        raise RuntimeError(
-            f"Failed to verify merkleroot for height {height} because of an error: {response.json()}"
-        )
+        raise RuntimeError(f"Failed to verify merkleroot for height {height} because of an error: {response.json()}")
 
     async def current_height(self) -> int:  # type: ignore[override]
         """Get current blockchain height from WhatsOnChain API.
@@ -150,20 +148,20 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
     def _get_http_headers(self) -> dict[str, str]:
         """Get HTTP headers for API requests.
-        
+
         Returns headers including Accept and optional Authorization (if api_key is set).
         This is a wrapper around the parent class's get_headers() method.
-        
+
         Returns:
             HTTP headers dictionary.
         """
         headers: dict[str, str] = {
             "Accept": "application/json",
         }
-        
+
         if isinstance(self.api_key, str) and self.api_key.strip():
             headers["Authorization"] = self.api_key
-        
+
         return headers
 
     async def get_info(self) -> ChaintracksInfo:
@@ -199,7 +197,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Get headers in serialized format.
 
         Implements ChaintracksClientApi.get_headers() interface.
-        
+
         Not implemented: WoC lacks bulk header endpoint required for this.
 
         Args:
@@ -225,7 +223,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Get headers in serialized format (bulk).
 
         Alias for get_headers() for backward compatibility.
-        
+
         Note: This method exists for compatibility but delegates to get_headers().
 
         Args:
@@ -286,7 +284,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._find_header_for_height(height)
 
-    async def _fetch_header(self, url: str, height: int | None = None, hash_override: str | None = None) -> BlockHeader | None:
+    async def _fetch_header(
+        self, url: str, height: int | None = None, hash_override: str | None = None
+    ) -> BlockHeader | None:
         """Fetch and parse a block header from WhatsOnChain API.
 
         Args:
@@ -502,18 +502,18 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             data = response.json().get("data", {})
             if not data:
                 raise RuntimeError(f"No header found for height {height}")
-            
+
             # WhatsOnChain returns header fields, not serialized bytes.
             # We need to serialize them into 80-byte block header format:
             # version (4) + prevHash (32) + merkleRoot (32) + time (4) + bits (4) + nonce (4) = 80 bytes
-            
+
             version = data.get("version", 0)
             prev_hash = data.get("previousblockhash", "0" * 64)
             merkle_root = data.get("merkleroot", "0" * 64)
             timestamp = data.get("time", 0)
             bits_hex = data.get("bits", "00000000")
             nonce = data.get("nonce", 0)
-            
+
             # Serialize to 80-byte header
             # version: 4 bytes little-endian
             header = struct.pack("<I", version)
@@ -526,16 +526,12 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             try:
                 header += bytes.fromhex(prev_hash)[::-1]
             except ValueError as e:
-                raise RuntimeError(
-                    f"Invalid previousblockhash hex '{prev_hash}' for height {height}: {e}"
-                ) from e
+                raise RuntimeError(f"Invalid previousblockhash hex '{prev_hash}' for height {height}: {e}") from e
             # merkleroot: 32 bytes (reversed from big-endian hex)
             try:
                 header += bytes.fromhex(merkle_root)[::-1]
             except ValueError as e:
-                raise RuntimeError(
-                    f"Invalid merkleroot hex '{merkle_root}' for height {height}: {e}"
-                ) from e
+                raise RuntimeError(f"Invalid merkleroot hex '{merkle_root}' for height {height}: {e}") from e
             # time: 4 bytes little-endian
             header += struct.pack("<I", timestamp)
             # bits: 4 bytes little-endian (from hex string like "1d00ffff")
@@ -545,7 +541,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 raise RuntimeError(f"Invalid bits hex '{bits_hex}' for height {height}: {e}") from e
             # nonce: 4 bytes little-endian
             header += struct.pack("<I", nonce)
-            
+
             return header
         elif response.status_code == 404:
             raise RuntimeError(f"No header found for height {height}")
@@ -580,11 +576,11 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Internal implementation of get_merkle_path."""
         # Initialize result dict
         result: dict[str, Any] = {"name": "WoCTsc", "notes": []}
-        
+
         # Build URL and request options
         url = f"{self.URL}/tx/{txid}/proof/tsc"
         request_options = {"method": "GET", "headers": self._get_http_headers()}
-        
+
         try:
             response = await self.http_client.fetch(url, request_options)
             status_text = getattr(response, "status_text", None)

@@ -25,20 +25,20 @@ def to_base64(data) -> str:
     """Convert data to base64 string."""
     if isinstance(data, list):
         data = bytes(data)
-    return base64.b64encode(data).decode('ascii')
+    return base64.b64encode(data).decode("ascii")
 
 
 class PrivateKeyWrapper:
     """Wrapper for SDK's PrivateKey to add publicKey() method for ProtoWallet compatibility."""
-    
+
     def __init__(self, sdk_private_key: SDKPrivateKey):
         """Initialize with SDK's PrivateKey."""
         self._private_key = sdk_private_key
-    
+
     def publicKey(self):
         """Return public key (camelCase method for ProtoWallet compatibility)."""
         return self._private_key.public_key
-    
+
     def __getattr__(self, name):
         """Delegate all other attributes to the wrapped PrivateKey."""
         return getattr(self._private_key, name)
@@ -46,10 +46,10 @@ class PrivateKeyWrapper:
 
 def to_sdk_private_key(stub_private_key: PrivateKey) -> PrivateKeyWrapper:
     """Convert stub PrivateKey to SDK's PrivateKey wrapped for ProtoWallet compatibility.
-    
+
     Args:
         stub_private_key: The stub PrivateKey from bsv_wallet_toolbox.private_key
-        
+
     Returns:
         Wrapped SDK's PrivateKey object with publicKey() method
     """
@@ -57,12 +57,13 @@ def to_sdk_private_key(stub_private_key: PrivateKey) -> PrivateKeyWrapper:
     if stub_private_key.key_hex == "random_key_hex_placeholder":
         # Generate a valid random 32-byte hex string (64 hex characters)
         import secrets
+
         random_hex = secrets.token_hex(32)
         sdk_key = SDKPrivateKey.from_hex(random_hex)
     else:
         # Use the hex string from the stub key
         sdk_key = SDKPrivateKey.from_hex(stub_private_key.key_hex)
-    
+
     return PrivateKeyWrapper(sdk_key)
 
 

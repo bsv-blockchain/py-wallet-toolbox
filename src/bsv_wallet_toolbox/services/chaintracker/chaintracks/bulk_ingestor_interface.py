@@ -47,11 +47,7 @@ class NamedBulkIngestor:
 class BulkHeaderMinimumInfo:
     """Essential metadata for a bulk block header file."""
 
-    def __init__(self,
-                 first_height: int,
-                 count: int,
-                 file_name: str,
-                 source_url: str = ""):
+    def __init__(self, first_height: int, count: int, file_name: str, source_url: str = ""):
         """Initialize bulk header file info.
 
         Args:
@@ -68,4 +64,5 @@ class BulkHeaderMinimumInfo:
     def to_height_range(self) -> Any:
         """Convert to HeightRange."""
         from .util.height_range import HeightRange
+
         return HeightRange.new_height_range(self.first_height, self.first_height + self.count - 1)

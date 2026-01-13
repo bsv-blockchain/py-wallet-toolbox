@@ -19,7 +19,7 @@ def lock_for_counterparty(
     sender_private_key: CounterpartyPrivateKey,
     key_id: KeyID,
     recipient_public_key: CounterpartyPublicKey,
-    testnet: bool = False
+    testnet: bool = False,
 ) -> Script:
     """Generate a locking script for a BRC-29 address derived from sender and recipient keys.
 
@@ -48,6 +48,7 @@ def lock_for_counterparty(
         >>> print(script.hex())  # P2PKH locking script
     """
     from .address import address_for_counterparty
+
     address_result = address_for_counterparty(sender_private_key, key_id, recipient_public_key, testnet)
 
     try:
@@ -62,7 +63,7 @@ def lock_for_self(
     sender_public_key: CounterpartyPublicKey,
     key_id: KeyID,
     recipient_private_key: CounterpartyPrivateKey,
-    testnet: bool = False
+    testnet: bool = False,
 ) -> Script:
     """Generate a locking script for a BRC-29 address derived from sender public key and recipient private key.
 
@@ -91,6 +92,7 @@ def lock_for_self(
         >>> print(script.hex())  # P2PKH locking script
     """
     from .address import address_for_self
+
     address_result = address_for_self(sender_public_key, key_id, recipient_private_key, testnet)
 
     try:
@@ -151,9 +153,7 @@ class UnlockingScriptTemplate:
 
 
 def unlock(
-    sender_public_key: CounterpartyPublicKey,
-    key_id: KeyID,
-    recipient_private_key: CounterpartyPrivateKey
+    sender_public_key: CounterpartyPublicKey, key_id: KeyID, recipient_private_key: CounterpartyPrivateKey
 ) -> UnlockingScriptTemplate:
     """Generate an unlocking script template for a BRC-29 address.
 

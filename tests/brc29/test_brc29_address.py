@@ -40,9 +40,7 @@ class TestBRC29AddressByRecipientCreation:
         """
         # Given / When
         address = address_for_self(
-            sender_public_key=SENDER_PUBLIC_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+            sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
         )
 
         # Then
@@ -60,13 +58,12 @@ class TestBRC29AddressByRecipientCreation:
         """
         # Given
         from bsv.keys import PublicKey
+
         pub = PublicKey(SENDER_PUBLIC_KEY_HEX)
 
         # When
         address = address_for_self(
-            sender_public_key=pub,
-            key_id=KEY_ID,
-            recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+            sender_public_key=pub, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
         )
 
         # Then
@@ -85,14 +82,13 @@ class TestBRC29AddressByRecipientCreation:
         # Given
         from bsv.keys import PrivateKey
         from bsv.wallet import KeyDeriver
+
         priv = PrivateKey.from_hex(SENDER_PRIVATE_KEY_HEX)
         key_deriver = KeyDeriver(priv)
 
         # When
         address = address_for_self(
-            sender_public_key=key_deriver,
-            key_id=KEY_ID,
-            recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+            sender_public_key=key_deriver, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
         )
 
         # Then
@@ -110,14 +106,11 @@ class TestBRC29AddressByRecipientCreation:
         """
         # Given
         from bsv.keys import PrivateKey
+
         priv = PrivateKey.from_hex(RECIPIENT_PRIVATE_KEY_HEX)
 
         # When
-        address = address_for_self(
-            sender_public_key=SENDER_PUBLIC_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_private_key=priv
-        )
+        address = address_for_self(sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=priv)
 
         # Then
         assert address is not None
@@ -137,7 +130,7 @@ class TestBRC29AddressByRecipientCreation:
             sender_public_key=SENDER_PUBLIC_KEY_HEX,
             key_id=KEY_ID,
             recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX,
-            testnet=True
+            testnet=True,
         )
 
         # Then
@@ -163,11 +156,7 @@ class TestBRC29AddressByRecipientErrors:
         """
         # Given / When / Then
         with pytest.raises(Exception):
-            address_for_self(
-                sender_public_key="",
-                key_id=KEY_ID,
-                recipient_private_key=INVALID_KEY_HEX
-            )
+            address_for_self(sender_public_key="", key_id=KEY_ID, recipient_private_key=INVALID_KEY_HEX)
 
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
@@ -181,9 +170,7 @@ class TestBRC29AddressByRecipientErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_self(
-                sender_public_key=INVALID_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+                sender_public_key=INVALID_KEY_HEX, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
             )
 
     def test_return_error_when_keyid_is_invalid(self) -> None:
@@ -200,7 +187,7 @@ class TestBRC29AddressByRecipientErrors:
             address_for_self(
                 sender_public_key=SENDER_PUBLIC_KEY_HEX,
                 key_id=KeyID(derivation_prefix="", derivation_suffix=""),
-                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX,
             )
 
     def test_return_error_when_recipient_key_is_empty(self) -> None:
@@ -214,11 +201,7 @@ class TestBRC29AddressByRecipientErrors:
         """
         # Given / When / Then
         with pytest.raises(Exception):
-            address_for_self(
-                sender_public_key=SENDER_PUBLIC_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=""
-            )
+            address_for_self(sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key="")
 
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
@@ -232,9 +215,7 @@ class TestBRC29AddressByRecipientErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_self(
-                sender_public_key=SENDER_PUBLIC_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=INVALID_KEY_HEX
+                sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=INVALID_KEY_HEX
             )
 
     def test_return_error_when_nil_is_passed_as_sender_public_key_deriver(self) -> None:
@@ -249,9 +230,7 @@ class TestBRC29AddressByRecipientErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_self(
-                sender_public_key=None,  # KeyDeriver
-                key_id=KEY_ID,
-                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+                sender_public_key=None, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX  # KeyDeriver
             )
 
     def test_return_error_when_nil_is_passed_as_sender_public_key(self) -> None:
@@ -266,9 +245,7 @@ class TestBRC29AddressByRecipientErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_self(
-                sender_public_key=None,  # PublicKey
-                key_id=KEY_ID,
-                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+                sender_public_key=None, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX  # PublicKey
             )
 
     def test_return_error_when_nil_is_passed_as_recipient_private_key_deriver(self) -> None:
@@ -283,9 +260,7 @@ class TestBRC29AddressByRecipientErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_self(
-                sender_public_key=SENDER_PUBLIC_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=None  # KeyDeriver
+                sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=None  # KeyDeriver
             )
 
     def test_return_error_when_nil_is_passed_as_recipient_private_key(self) -> None:
@@ -300,9 +275,7 @@ class TestBRC29AddressByRecipientErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_self(
-                sender_public_key=SENDER_PUBLIC_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=None  # PrivateKey
+                sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=None  # PrivateKey
             )
 
 
@@ -324,9 +297,7 @@ class TestBRC29AddressCreation:
         """
         # Given / When
         address = address_for_counterparty(
-            sender_private_key=SENDER_PRIVATE_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
         )
 
         # Then
@@ -344,9 +315,7 @@ class TestBRC29AddressCreation:
         """
         # Given / When
         address = address_for_counterparty(
-            sender_private_key=SENDER_WIF_STRING,
-            key_id=KEY_ID,
-            recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            sender_private_key=SENDER_WIF_STRING, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
         )
 
         # Then
@@ -364,13 +333,12 @@ class TestBRC29AddressCreation:
         """
         # Given
         from bsv.keys import PrivateKey
+
         priv = PrivateKey.from_hex(SENDER_PRIVATE_KEY_HEX)
 
         # When
         address = address_for_counterparty(
-            sender_private_key=priv,
-            key_id=KEY_ID,
-            recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            sender_private_key=priv, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
         )
 
         # Then
@@ -389,14 +357,13 @@ class TestBRC29AddressCreation:
         # Given
         from bsv.keys import PrivateKey
         from bsv.wallet import KeyDeriver
+
         priv = PrivateKey.from_hex(SENDER_PRIVATE_KEY_HEX)
         key_deriver = KeyDeriver(priv)
 
         # When
         address = address_for_counterparty(
-            sender_private_key=key_deriver,
-            key_id=KEY_ID,
-            recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            sender_private_key=key_deriver, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
         )
 
         # Then
@@ -414,13 +381,12 @@ class TestBRC29AddressCreation:
         """
         # Given
         from bsv.keys import PublicKey
+
         pub = PublicKey(RECIPIENT_PUBLIC_KEY_HEX)
 
         # When
         address = address_for_counterparty(
-            sender_private_key=SENDER_PRIVATE_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_public_key=pub
+            sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=pub
         )
 
         # Then
@@ -438,14 +404,12 @@ class TestBRC29AddressCreation:
         """
         # Given
         from bsv.keys import PublicKey
+
         pub = PublicKey(RECIPIENT_PUBLIC_KEY_HEX)
 
         # When
         address = address_for_counterparty(
-            sender_private_key=SENDER_PRIVATE_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_public_key=pub,
-            testnet=True
+            sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=pub, testnet=True
         )
 
         # Then
@@ -471,11 +435,7 @@ class TestBRC29AddressErrors:
         """
         # Given / When / Then
         with pytest.raises(Exception):
-            address_for_counterparty(
-                sender_private_key="",
-                key_id=KEY_ID,
-                recipient_public_key=INVALID_KEY_HEX
-            )
+            address_for_counterparty(sender_private_key="", key_id=KEY_ID, recipient_public_key=INVALID_KEY_HEX)
 
     def test_return_error_when_sender_key_parsing_fails(self) -> None:
         """Given: Invalid sender key
@@ -489,9 +449,7 @@ class TestBRC29AddressErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_counterparty(
-                sender_private_key=INVALID_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+                sender_private_key=INVALID_KEY_HEX, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
             )
 
     def test_return_error_when_keyid_is_invalid(self) -> None:
@@ -508,7 +466,7 @@ class TestBRC29AddressErrors:
             address_for_counterparty(
                 sender_private_key=SENDER_PRIVATE_KEY_HEX,
                 key_id=KeyID(derivation_prefix="", derivation_suffix=""),
-                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX,
             )
 
     def test_return_error_when_recipient_key_is_empty(self) -> None:
@@ -522,11 +480,7 @@ class TestBRC29AddressErrors:
         """
         # Given / When / Then
         with pytest.raises(Exception):
-            address_for_counterparty(
-                sender_private_key=SENDER_PRIVATE_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_public_key=""
-            )
+            address_for_counterparty(sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key="")
 
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
@@ -540,9 +494,7 @@ class TestBRC29AddressErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_counterparty(
-                sender_private_key=SENDER_PRIVATE_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_public_key=INVALID_KEY_HEX
+                sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=INVALID_KEY_HEX
             )
 
     def test_return_error_when_nil_is_passed_as_sender_private_key_deriver(self) -> None:
@@ -557,9 +509,7 @@ class TestBRC29AddressErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_counterparty(
-                sender_private_key=None,  # KeyDeriver
-                key_id=KEY_ID,
-                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+                sender_private_key=None, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX  # KeyDeriver
             )
 
     def test_return_error_when_nil_is_passed_as_sender_private_key(self) -> None:
@@ -574,9 +524,7 @@ class TestBRC29AddressErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_counterparty(
-                sender_private_key=None,  # PrivateKey
-                key_id=KEY_ID,
-                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+                sender_private_key=None, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX  # PrivateKey
             )
 
     def test_return_error_when_nil_is_passed_as_recipient_public_key_deriver(self) -> None:
@@ -591,9 +539,7 @@ class TestBRC29AddressErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_counterparty(
-                sender_private_key=SENDER_PRIVATE_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_public_key=None  # KeyDeriver
+                sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=None  # KeyDeriver
             )
 
     def test_return_error_when_nil_is_passed_as_recipient_public_key(self) -> None:
@@ -608,7 +554,5 @@ class TestBRC29AddressErrors:
         # Given / When / Then
         with pytest.raises(Exception):
             address_for_counterparty(
-                sender_private_key=SENDER_PRIVATE_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_public_key=None  # PublicKey
+                sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=None  # PublicKey
             )

@@ -239,10 +239,10 @@ class TestParameterValidationPatterns:
         """Test 250-byte length limit for originator."""
         max_valid = "a" * 250
         too_long = "a" * 251
-        
+
         # Should accept max length
         validate_originator(max_valid)
-        
+
         # Should reject too long
         with pytest.raises(InvalidParameterError):
             validate_originator(too_long)

@@ -3,6 +3,7 @@
 Stub implementation for certificate testing.
 """
 
+
 class PrivateKey:
     """Private key for cryptographic operations."""
 

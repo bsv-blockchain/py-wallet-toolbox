@@ -188,7 +188,7 @@ def test_get_utxo_status_numeric_script() -> None:
         services.get_utxo_status(1234567890)
 
     with pytest.raises((InvalidParameterError, ValueError, TypeError)):
-        services.get_utxo_status(0x1234567890abcdef)
+        services.get_utxo_status(0x1234567890ABCDEF)
 
 
 def test_get_utxo_status_mixed_case_script() -> None:

@@ -125,4 +125,3 @@ class TaskUnFail(WalletMonitorTask):
             # Check UTXO status
             # ... (omitted)
             pass
-

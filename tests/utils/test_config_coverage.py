@@ -13,10 +13,10 @@ try:
         set_config_value,
         validate_config,
     )
+
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
-
 
 
 class TestLoadConfig:
@@ -67,7 +67,6 @@ class TestLoadConfig:
             pass
 
 
-
 class TestGetConfigValue:
     """Test get_config_value function."""
 
@@ -105,13 +104,7 @@ class TestGetConfigValue:
     def test_get_nested_value(self) -> None:
         """Test getting nested config value."""
         try:
-            config = {
-                "level1": {
-                    "level2": {
-                        "key": "nested_value"
-                    }
-                }
-            }
+            config = {"level1": {"level2": {"key": "nested_value"}}}
             value = get_config_value(config, "level1.level2.key")
             assert value == "nested_value" or value is not None
         except (NameError, TypeError, KeyError):
@@ -120,20 +113,13 @@ class TestGetConfigValue:
     def test_get_value_various_types(self) -> None:
         """Test getting config values of various types."""
         try:
-            config = {
-                "string": "text",
-                "number": 42,
-                "boolean": True,
-                "list": [1, 2, 3],
-                "dict": {"nested": "value"}
-            }
-            
+            config = {"string": "text", "number": 42, "boolean": True, "list": [1, 2, 3], "dict": {"nested": "value"}}
+
             for key in config:
                 value = get_config_value(config, key)
                 assert value == config[key]
         except (NameError, TypeError, KeyError):
             pass
-
 
 
 class TestSetConfigValue:
@@ -172,20 +158,13 @@ class TestSetConfigValue:
         """Test setting config values of various types."""
         try:
             config = {}
-            values = {
-                "string": "text",
-                "number": 42,
-                "boolean": True,
-                "list": [1, 2, 3],
-                "none": None
-            }
-            
+            values = {"string": "text", "number": 42, "boolean": True, "list": [1, 2, 3], "none": None}
+
             for key, value in values.items():
                 set_config_value(config, key, value)
                 assert config.get(key) == value
         except (NameError, TypeError):
             pass
-
 
 
 class TestValidateConfig:
@@ -194,11 +173,7 @@ class TestValidateConfig:
     def test_validate_valid_config(self) -> None:
         """Test validating a valid config."""
         try:
-            config = {
-                "chain": "main",
-                "storage": "sqlite",
-                "port": 8332
-            }
+            config = {"chain": "main", "storage": "sqlite", "port": 8332}
             result = validate_config(config)
             assert result is True or isinstance(result, bool)
         except (NameError, TypeError):
@@ -235,7 +210,6 @@ class TestValidateConfig:
             pass
 
 
-
 class TestConfigAdvanced:
     """Advanced tests for config utilities."""
 
@@ -244,12 +218,12 @@ class TestConfigAdvanced:
         try:
             config1 = {"key1": "value1"}
             config2 = {"key2": "value2"}
-            
+
             merged = load_config(config1)
             if merged:
                 for key, val in config2.items():
                     set_config_value(merged, key, val)
-                
+
                 assert "key1" in merged or True
                 assert "key2" in merged or True
         except (NameError, TypeError):
@@ -261,7 +235,7 @@ class TestConfigAdvanced:
             config = {}
             path = ".".join([f"level{i}" for i in range(10)])
             set_config_value(config, path, "deep_value")
-            
+
             value = get_config_value(config, path)
             assert value == "deep_value" or value is not None
         except (NameError, TypeError, KeyError):
@@ -270,18 +244,13 @@ class TestConfigAdvanced:
     def test_config_special_characters(self) -> None:
         """Test config with special characters in keys."""
         try:
-            config = {
-                "key-with-dash": "value1",
-                "keyWithUnderscore": "value2",
-                "key.with.dots": "value3"
-            }
-            
+            config = {"key-with-dash": "value1", "keyWithUnderscore": "value2", "key.with.dots": "value3"}
+
             for key in config:
                 value = get_config_value(config, key)
                 assert value == config[key] or value is not None
         except (NameError, TypeError, KeyError):
             pass
-
 
 
 class TestEdgeCases:
@@ -337,7 +306,7 @@ class TestEdgeCases:
         try:
             config = {"key": "value"}
             config["self"] = config  # Circular reference
-            
+
             # Should handle without infinite recursion
             value = get_config_value(config, "key")
             assert value == "value" or value is not None
@@ -348,10 +317,9 @@ class TestEdgeCases:
         """Test config with very large dictionary."""
         try:
             config = {f"key_{i}": f"value_{i}" for i in range(10000)}
-            
+
             # Should handle large configs
             value = get_config_value(config, "key_5000")
             assert value == "value_5000" or value is not None
         except (NameError, TypeError, MemoryError):
             pass
-

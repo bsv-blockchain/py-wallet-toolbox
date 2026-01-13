@@ -19,7 +19,7 @@ class TestSyncChunkProcessor:
             # Empty entity arrays
             "outputBaskets": [],
             "transactions": [],
-            "outputs": []
+            "outputs": [],
         }
         args = {"fromStorageIdentityKey": "remote_key", "identityKey": "user123"}
 
@@ -35,7 +35,7 @@ class TestSyncChunkProcessor:
         provider = Mock()
         chunk = {
             "toStorageIdentityKey": "local_key",
-            "userIdentityKey": "user123"
+            "userIdentityKey": "user123",
             # Missing fromStorageIdentityKey
         }
         args = {"fromStorageIdentityKey": "remote_key"}
@@ -50,7 +50,7 @@ class TestSyncChunkProcessor:
         chunk = {
             "fromStorageIdentityKey": "wrong_key",
             "toStorageIdentityKey": "local_key",
-            "userIdentityKey": "user123"
+            "userIdentityKey": "user123",
         }
         args = {"fromStorageIdentityKey": "remote_key"}
 
@@ -67,10 +67,7 @@ class TestSyncChunkProcessor:
             "fromStorageIdentityKey": "remote_key",
             "toStorageIdentityKey": "local_key",
             "userIdentityKey": "user123",
-            "transactions": [
-                {"txid": "abc123", "status": "confirmed"},
-                {"txid": "def456", "status": "pending"}
-            ]
+            "transactions": [{"txid": "abc123", "status": "confirmed"}, {"txid": "def456", "status": "pending"}],
         }
         args = {"fromStorageIdentityKey": "remote_key", "identityKey": "user123"}
 
@@ -91,9 +88,7 @@ class TestSyncChunkProcessor:
             "fromStorageIdentityKey": "remote_key",
             "toStorageIdentityKey": "local_key",
             "userIdentityKey": "user123",
-            "outputBaskets": [
-                {"name": "basket1", "numberOfDesiredUTXOs": 5}
-            ]
+            "outputBaskets": [{"name": "basket1", "numberOfDesiredUTXOs": 5}],
         }
         args = {"fromStorageIdentityKey": "remote_key", "identityKey": "user123"}
 
@@ -114,7 +109,7 @@ class TestSyncChunkProcessor:
             "fromStorageIdentityKey": "remote_key",
             "toStorageIdentityKey": "local_key",
             "userIdentityKey": "user123",
-            "transactions": [{"txid": "abc123"}]
+            "transactions": [{"txid": "abc123"}],
         }
         args = {"fromStorageIdentityKey": "remote_key", "identityKey": "user123"}
 
@@ -139,7 +134,7 @@ class TestSyncChunkProcessor:
             "userIdentityKey": "user123",
             "outputBaskets": [{"name": "basket1"}],
             "transactions": [{"txid": "tx1"}],
-            "outputs": [{"txid": "tx1", "vout": 0}]
+            "outputs": [{"txid": "tx1", "vout": 0}],
         }
         args = {"fromStorageIdentityKey": "remote_key", "identityKey": "user123"}
 

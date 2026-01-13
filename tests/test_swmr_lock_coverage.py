@@ -112,10 +112,7 @@ class TestSingleWriterMultiReaderLock:
             execution_order.append("write")
 
         # Start readers first
-        read_tasks = [
-            asyncio.create_task(lock.with_read_lock(lambda i=i: read_fn(i)))
-            for i in range(2)
-        ]
+        read_tasks = [asyncio.create_task(lock.with_read_lock(lambda i=i: read_fn(i))) for i in range(2)]
         await asyncio.sleep(0.001)  # Let readers acquire locks
 
         # Now try to write
@@ -124,9 +121,7 @@ class TestSingleWriterMultiReaderLock:
         await asyncio.gather(*read_tasks, write_task)
 
         # Writer should only execute after all readers finish
-        read_end_indices = [
-            i for i, x in enumerate(execution_order) if x.startswith("read_end")
-        ]
+        read_end_indices = [i for i, x in enumerate(execution_order) if x.startswith("read_end")]
         write_idx = execution_order.index("write")
         assert write_idx > max(read_end_indices)
 
@@ -257,10 +252,7 @@ class TestSingleWriterMultiReaderLock:
         await asyncio.sleep(0.001)
 
         # Queue multiple readers while writer is active
-        read_tasks = [
-            asyncio.create_task(lock.with_read_lock(lambda i=i: read_fn(i)))
-            for i in range(3)
-        ]
+        read_tasks = [asyncio.create_task(lock.with_read_lock(lambda i=i: read_fn(i))) for i in range(3)]
 
         await asyncio.gather(write_task, *read_tasks)
 
@@ -269,4 +261,3 @@ class TestSingleWriterMultiReaderLock:
         for i in range(3):
             read_idx = execution_order.index(f"read_{i}")
             assert read_idx > write_end_idx
-

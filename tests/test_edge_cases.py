@@ -24,8 +24,8 @@ class TestCryptoUtilsEdgeCases:
 
     def test_xor_bytes_single_byte(self) -> None:
         """Test XOR with single byte."""
-        result = xor_bytes(b"\x00", b"\xFF")
-        assert result == b"\xFF"
+        result = xor_bytes(b"\x00", b"\xff")
+        assert result == b"\xff"
 
     def test_bytes_to_int_list_empty(self) -> None:
         """Test conversion of empty bytes."""
@@ -36,7 +36,7 @@ class TestCryptoUtilsEdgeCases:
         """Test int list conversion with boundary values."""
         # Valid range
         result = int_list_to_bytes([0, 255, 127])
-        assert result == b"\x00\xFF\x7F"
+        assert result == b"\x00\xff\x7f"
 
         # Invalid values
         with pytest.raises(ValueError, match="range 0-255"):
@@ -55,6 +55,7 @@ class TestCryptoUtilsEdgeCases:
         """Test random byte generation with zero length."""
         result = generate_random_bytes(0)
         assert result == b""
+
 
 class TestPermissionTokenEdgeCases:
     """Test edge cases for permission token handling."""
@@ -137,6 +138,7 @@ class TestPermissionTokenEdgeCases:
         cache_key = manager._get_cache_key_for_token(spending_token)
         assert cache_key == "dsap:test.com:1000"
 
+
 class TestIntegrationEdgeCases:
     """Test integration edge cases between components."""
 
@@ -166,25 +168,16 @@ class TestIntegrationEdgeCases:
         assert net_spent == 0
 
         # Test with inputs but no outputs (consuming UTXOs without creating new ones)
-        args = {
-            "inputs": [{"satoshis": 1000}],
-            "outputs": []
-        }
+        args = {"inputs": [{"satoshis": 1000}], "outputs": []}
         net_spent = manager._calculate_net_spent(args)
         assert net_spent == -1000  # Spending (burning satoshis)
 
         # Test with balanced inputs and outputs (no net spending)
-        args = {
-            "inputs": [{"satoshis": 1000}],
-            "outputs": [{"satoshis": 1000}]
-        }
+        args = {"inputs": [{"satoshis": 1000}], "outputs": [{"satoshis": 1000}]}
         net_spent = manager._calculate_net_spent(args)
         assert net_spent == 0  # No net spending
 
         # Test with outputs exceeding inputs (receiving, though unusual)
-        args = {
-            "inputs": [],
-            "outputs": [{"satoshis": 500}]
-        }
+        args = {"inputs": [], "outputs": [{"satoshis": 500}]}
         net_spent = manager._calculate_net_spent(args)
         assert net_spent == 500  # Receiving (though this would be invalid in practice)

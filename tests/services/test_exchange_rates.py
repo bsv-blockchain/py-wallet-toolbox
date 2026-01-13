@@ -25,21 +25,19 @@ except ImportError:
 @pytest.fixture
 def valid_services_config():
     """Fixture providing valid services configuration."""
-    return {
-        "chain": "main",
-        "exchangeratesapiKey": "test_api_key_123"
-    }
+    return {"chain": "main", "exchangeratesapiKey": "test_api_key_123"}
 
 
 @pytest.fixture
 def mock_services(valid_services_config):
     """Fixture providing mock services instance."""
-    with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
+    with patch("bsv_wallet_toolbox.services.services.ServiceCollection") as mock_service_collection:
         mock_instance = Mock()
         mock_service_collection.return_value = mock_instance
 
-        with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=Mock()):
+        with patch("bsv_wallet_toolbox.services.services.Services._get_http_client", return_value=Mock()):
             from bsv_wallet_toolbox.services import Services
+
             services = Services(valid_services_config)
             yield services, mock_instance
 
@@ -98,15 +96,11 @@ def exchange_rate_responses():
             "expect_error": None,
         },
         "zero_rates": {
-            "response": _payload(
-                {**common, "GBP": 0.0, "CAD": 0.0, "JPY": 0.0}
-            ),
+            "response": _payload({**common, "GBP": 0.0, "CAD": 0.0, "JPY": 0.0}),
             "expect_error": None,
         },
         "negative_rates": {
-            "response": _payload(
-                {**common, "GBP": -0.5, "CAD": -1.0, "JPY": -75.0}
-            ),
+            "response": _payload({**common, "GBP": -0.5, "CAD": -1.0, "JPY": -75.0}),
             "expect_error": None,
         },
         "tiny_rates": {
@@ -152,34 +146,29 @@ def network_error_responses():
     return [
         # HTTP 400 Bad Request
         {"status": 400, "text": "Bad Request", "json": {"error": "Invalid base currency"}},
-
         # HTTP 401 Unauthorized
         {"status": 401, "text": "Unauthorized", "json": {"error": "Invalid API key"}},
-
         # HTTP 403 Forbidden
         {"status": 403, "text": "Forbidden", "json": {"error": "API key quota exceeded"}},
-
         # HTTP 404 Not Found
         {"status": 404, "text": "Not Found", "json": {"error": "Endpoint not found"}},
-
         # HTTP 429 Rate Limited
-        {"status": 429, "text": "Rate limit exceeded", "json": {"error": "Too many requests"}, "headers": {"Retry-After": "60"}},
-
+        {
+            "status": 429,
+            "text": "Rate limit exceeded",
+            "json": {"error": "Too many requests"},
+            "headers": {"Retry-After": "60"},
+        },
         # HTTP 500 Internal Server Error
         {"status": 500, "text": "Internal Server Error", "json": {"error": "Server error"}},
-
         # HTTP 503 Service Unavailable
         {"status": 503, "text": "Service Unavailable", "json": {"error": "Service temporarily unavailable"}},
-
         # Timeout scenarios
         {"timeout": True, "error": "Connection timeout"},
-
         # Malformed JSON response
         {"status": 200, "text": "invalid json {{{", "malformed": True},
-
         # Empty response
         {"status": 200, "text": "", "empty": True},
-
         # Very large response (simulating memory issues)
         {"status": 200, "text": "x" * 1000000, "large": True},
     ]
@@ -220,6 +209,7 @@ class TestExchangeRates:
         """
         # Given - Requires implementation of update_exchangeratesapi
         from tests.test_utils import TestUtils
+
         if TestUtils.no_env("main"):
             pytest.skip("No 'main' environment configured")
 
@@ -229,6 +219,7 @@ class TestExchangeRates:
 
         # When
         import asyncio
+
         r = asyncio.run(update_exchangeratesapi(["EUR", "GBP", "USD"], options))
 
         # Then
@@ -236,22 +227,25 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_invalid_currencies(self, mock_services, invalid_currencies) -> None:
         """Given: Invalid currency codes
-           When: Call update_exchange_rates with invalid currencies
-           Then: Raises appropriate errors
+        When: Call update_exchange_rates with invalid currencies
+        Then: Raises appropriate errors
         """
         services, _ = mock_services
 
         for invalid_currency in invalid_currencies:
             # Should handle invalid currency codes gracefully
             import asyncio
+
             with pytest.raises((InvalidParameterError, ValueError, TypeError)):
                 asyncio.run(update_exchangeratesapi([invalid_currency], services.options))
 
     @pytest.mark.asyncio
-    async def test_update_exchange_rates_network_failures(self, mock_services, valid_currencies, network_error_responses) -> None:
+    async def test_update_exchange_rates_network_failures(
+        self, mock_services, valid_currencies, network_error_responses
+    ) -> None:
         """Given: Various network failure scenarios
-           When: Call update_exchange_rates
-           Then: Handles network failures appropriately
+        When: Call update_exchange_rates
+        Then: Handles network failures appropriately
         """
         services, mock_instance = mock_services
 
@@ -268,7 +262,10 @@ class TestExchangeRates:
         original_func = update_exchangeratesapi
         try:
             # Mock at module level
-            with patch('bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi', side_effect=mock_update_exchangeratesapi):
+            with patch(
+                "bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi",
+                side_effect=mock_update_exchangeratesapi,
+            ):
                 for error_scenario in network_error_responses:
                     try:
                         result = await update_exchangeratesapi(valid_currencies, services.options)
@@ -301,15 +298,18 @@ class TestExchangeRates:
         scenario_id,
     ) -> None:
         """Given: Successful exchange rate API responses
-           When: Call update_exchange_rates
-           Then: Returns exchange rate data
+        When: Call update_exchange_rates
+        Then: Returns exchange rate data
         """
         services, mock_instance = mock_services
         scenario = exchange_rate_responses[scenario_id]
         response_scenario = scenario["response"]
 
         # Mock the internal API call
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', return_value=response_scenario["json"]):
+        with patch(
+            "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io",
+            return_value=response_scenario["json"],
+        ):
             if scenario["expect_error"]:
                 with pytest.raises(scenario["expect_error"]):
                     await update_exchangeratesapi(valid_currencies, services.options)
@@ -338,8 +338,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_empty_currency_list(self, mock_services) -> None:
         """Given: Empty currency list
-           When: Call update_exchange_rates
-           Then: Raises InvalidParameterError appropriately
+        When: Call update_exchange_rates
+        Then: Raises InvalidParameterError appropriately
         """
         services, _ = mock_services
 
@@ -350,8 +350,8 @@ class TestExchangeRates:
     @pytest.mark.asyncio
     async def test_update_exchange_rates_single_currency(self, mock_services, valid_currencies) -> None:
         """Given: Single currency code
-           When: Call update_exchange_rates
-           Then: Returns rate for single currency
+        When: Call update_exchange_rates
+        Then: Returns rate for single currency
         """
         services, _ = mock_services
 
@@ -363,18 +363,20 @@ class TestExchangeRates:
             "timestamp": 1640995200,
             "base": "USD",
             "date": "2022-01-01",
-            "rates": {single_currency[0]: 1.0}
+            "rates": {single_currency[0]: 1.0},
         }
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', return_value=mock_response):
+        with patch(
+            "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io", return_value=mock_response
+        ):
             result = await update_exchangeratesapi(single_currency, services.options)
             assert isinstance(result, dict)
             assert single_currency[0] in result.get("rates", {})
 
     def test_update_exchange_rates_case_sensitivity(self, mock_services) -> None:
         """Given: Lowercase currency codes
-           When: Call update_exchange_rates
-           Then: Handles case sensitivity appropriately
+        When: Call update_exchange_rates
+        Then: Handles case sensitivity appropriately
         """
         services, _ = mock_services
 
@@ -390,8 +392,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_invalid_api_key(self, mock_services, valid_currencies, invalid_api_keys) -> None:
         """Given: Invalid API keys
-           When: Call update_exchange_rates
-           Then: Handles authentication errors appropriately
+        When: Call update_exchange_rates
+        Then: Handles authentication errors appropriately
         """
         services, _ = mock_services
 
@@ -410,8 +412,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_malformed_response_handling(self, mock_services, valid_currencies) -> None:
         """Given: Malformed API response
-           When: Call update_exchange_rates
-           Then: Handles malformed response appropriately
+        When: Call update_exchange_rates
+        Then: Handles malformed response appropriately
         """
         services, _ = mock_services
 
@@ -419,7 +421,10 @@ class TestExchangeRates:
         async def mock_malformed_response(currencies, options):
             raise Exception("Invalid JSON response")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=Exception("Invalid JSON response")):
+        with patch(
+            "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io",
+            side_effect=Exception("Invalid JSON response"),
+        ):
             try:
                 result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle malformed response gracefully
@@ -430,8 +435,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_timeout_handling(self, mock_services, valid_currencies) -> None:
         """Given: API request timeout
-           When: Call update_exchange_rates
-           Then: Handles timeout appropriately
+        When: Call update_exchange_rates
+        Then: Handles timeout appropriately
         """
         services, _ = mock_services
 
@@ -444,7 +449,9 @@ class TestExchangeRates:
             await asyncio.sleep(0.1)
             raise asyncio.TimeoutError("Connection timeout")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=mock_timeout_io):
+        with patch(
+            "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io", side_effect=mock_timeout_io
+        ):
             try:
                 result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle timeout gracefully
@@ -455,8 +462,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_rate_limiting_handling(self, mock_services, valid_currencies) -> None:
         """Given: API rate limiting response
-           When: Call update_exchange_rates
-           Then: Handles rate limiting appropriately
+        When: Call update_exchange_rates
+        Then: Handles rate limiting appropriately
         """
         services, _ = mock_services
 
@@ -464,7 +471,10 @@ class TestExchangeRates:
         async def mock_rate_limit_response(currencies, options):
             raise Exception("HTTP 429: Rate limit exceeded")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=Exception("HTTP 429: Rate limit exceeded")):
+        with patch(
+            "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io",
+            side_effect=Exception("HTTP 429: Rate limit exceeded"),
+        ):
             try:
                 result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle rate limiting gracefully
@@ -475,8 +485,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_connection_error_handling(self, mock_services, valid_currencies) -> None:
         """Given: Connection error occurs
-           When: Call update_exchange_rates
-           Then: Handles connection error appropriately
+        When: Call update_exchange_rates
+        Then: Handles connection error appropriately
         """
         services, _ = mock_services
 
@@ -484,7 +494,10 @@ class TestExchangeRates:
         async def mock_connection_error_response(currencies, options):
             raise ConnectionError("Network is unreachable")
 
-        with patch('bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io', side_effect=ConnectionError("Network is unreachable")):
+        with patch(
+            "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io",
+            side_effect=ConnectionError("Network is unreachable"),
+        ):
             try:
                 result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle connection error gracefully
@@ -495,8 +508,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_duplicate_currencies(self, mock_services, valid_currencies) -> None:
         """Given: Duplicate currency codes in list
-           When: Call update_exchange_rates
-           Then: Handles duplicates appropriately
+        When: Call update_exchange_rates
+        Then: Handles duplicates appropriately
         """
         services, _ = mock_services
 
@@ -513,8 +526,8 @@ class TestExchangeRates:
 
     def test_update_exchange_rates_too_many_currencies(self, mock_services) -> None:
         """Given: Very large number of currencies
-           When: Call update_exchange_rates
-           Then: Handles large requests appropriately
+        When: Call update_exchange_rates
+        Then: Handles large requests appropriately
         """
         services, _ = mock_services
 

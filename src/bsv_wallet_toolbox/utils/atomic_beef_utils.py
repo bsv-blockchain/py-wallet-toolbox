@@ -199,5 +199,3 @@ def build_atomic_beef_for_txid(services: Any, txid: str, retry: RawTxRetryConfig
     raw_hex = fetch_raw_tx_with_retry(services, txid, retry=retry)
     merkle_path = try_fetch_merkle_path(services, txid)
     return build_atomic_beef_from_raw_tx(raw_hex, txid, merkle_path=merkle_path)
-
-

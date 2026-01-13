@@ -53,7 +53,7 @@ class TestReadUint8:
         """Test reading past end raises IndexError."""
         reader = ReaderUint8Array([0x01])
         reader.read_uint8()  # Read the only byte
-        
+
         with pytest.raises(IndexError, match="past end of data"):
             reader.read_uint8()
 
@@ -77,7 +77,7 @@ class TestReadUint16LE:
     def test_read_uint16_le_insufficient_data(self) -> None:
         """Test reading uint16 with insufficient data."""
         reader = ReaderUint8Array([0x01])
-        
+
         with pytest.raises(IndexError, match="past end of data"):
             reader.read_uint16_le()
 
@@ -101,7 +101,7 @@ class TestReadUint32LE:
     def test_read_uint32_le_insufficient_data(self) -> None:
         """Test reading uint32 with insufficient data."""
         reader = ReaderUint8Array([0x01, 0x02, 0x03])
-        
+
         with pytest.raises(IndexError, match="past end of data"):
             reader.read_uint32_le()
 
@@ -125,7 +125,7 @@ class TestReadUint64LE:
     def test_read_uint64_le_insufficient_data(self) -> None:
         """Test reading uint64 with insufficient data."""
         reader = ReaderUint8Array([0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07])
-        
+
         with pytest.raises(IndexError, match="past end of data"):
             reader.read_uint64_le()
 
@@ -158,7 +158,7 @@ class TestReadBytes:
     def test_read_bytes_insufficient_data(self) -> None:
         """Test reading more bytes than available."""
         reader = ReaderUint8Array([0x01, 0x02])
-        
+
         with pytest.raises(IndexError, match="past end of data"):
             reader.read_bytes(3)
 
@@ -256,12 +256,17 @@ class TestMixedReads:
         # Create data with specific layout
         data = [
             0x01,  # uint8
-            0x02, 0x03,  # uint16_le: 0x0302
-            0x04, 0x05, 0x06, 0x07,  # uint32_le: 0x07060504
-            0xAA, 0xBB,  # 2 bytes
+            0x02,
+            0x03,  # uint16_le: 0x0302
+            0x04,
+            0x05,
+            0x06,
+            0x07,  # uint32_le: 0x07060504
+            0xAA,
+            0xBB,  # 2 bytes
         ]
         reader = ReaderUint8Array(data)
-        
+
         assert reader.read_uint8() == 0x01
         assert reader.read_uint16_le() == 0x0302
         assert reader.read_uint32_le() == 0x07060504
@@ -271,9 +276,8 @@ class TestMixedReads:
     def test_mixed_with_skip(self) -> None:
         """Test reads combined with skip."""
         reader = ReaderUint8Array([0x01, 0x02, 0x03, 0x04, 0x05])
-        
+
         assert reader.read_uint8() == 0x01
         reader.skip(2)
         assert reader.read_uint8() == 0x04
         assert reader.get_position() == 4
-

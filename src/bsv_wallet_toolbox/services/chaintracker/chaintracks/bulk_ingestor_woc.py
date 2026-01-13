@@ -34,8 +34,9 @@ class BulkIngestorWOC(BulkIngestor):
 
         logger.info(f"BulkIngestorWOC initialized for {chain} chain")
 
-    async def synchronize(self, present_height: int, range_to_fetch: Any) \
-            -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
+    async def synchronize(
+        self, present_height: int, range_to_fetch: Any
+    ) -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
         """Synchronize bulk headers for the given height range.
 
         Args:
@@ -50,9 +51,7 @@ class BulkIngestorWOC(BulkIngestor):
         """
         try:
             # Fetch available bulk files
-            all_files = await asyncio.get_event_loop().run_in_executor(
-                None, self._fetch_bulk_header_files_info
-            )
+            all_files = await asyncio.get_event_loop().run_in_executor(None, self._fetch_bulk_header_files_info)
 
             if not all_files:
                 raise Exception("No bulk header files available from WhatsOnChain")
@@ -60,19 +59,21 @@ class BulkIngestorWOC(BulkIngestor):
             # Filter files that overlap with requested range
             needed_files = []
             for file_info in all_files:
-                if file_info['heightRange'].overlaps(range_to_fetch):
+                if file_info["heightRange"].overlaps(range_to_fetch):
                     needed_files.append(file_info)
 
             # Convert to BulkHeaderMinimumInfo
             result = []
             for file_info in needed_files:
-                hr = file_info['heightRange']
-                result.append(BulkHeaderMinimumInfo(
-                    first_height=hr.min_height,
-                    count=hr.length,
-                    file_name=file_info['filename'],
-                    source_url=file_info['url']
-                ))
+                hr = file_info["heightRange"]
+                result.append(
+                    BulkHeaderMinimumInfo(
+                        first_height=hr.min_height,
+                        count=hr.length,
+                        file_name=file_info["filename"],
+                        source_url=file_info["url"],
+                    )
+                )
 
             return result, self._bulk_file_downloader()
 
@@ -96,7 +97,7 @@ class BulkIngestorWOC(BulkIngestor):
 
         result = []
         # Parse filenames like "mainNet_0.headers", "testNet_4.headers"
-        pattern = r'^(main|test)Net_(\d+)\.headers$'
+        pattern = r"^(main|test)Net_(\d+)\.headers$"
 
         for filename in files:
             if not isinstance(filename, str):
@@ -107,9 +108,9 @@ class BulkIngestorWOC(BulkIngestor):
                 file_id = int(match.group(2))
 
                 # Skip if network doesn't match our chain
-                if network == 'main' and self.chain != 'main':
+                if network == "main" and self.chain != "main":
                     continue
-                if network == 'test' and self.chain != 'test':
+                if network == "test" and self.chain != "test":
                     continue
 
                 # Calculate height range (assuming 100,000 headers per file like Go implementation)
@@ -121,14 +122,10 @@ class BulkIngestorWOC(BulkIngestor):
                 url = f"{self.woc_client._get_base_url()}/block/headers/download/{filename}"
 
                 from .util.height_range import HeightRange
+
                 height_range = HeightRange.new_height_range(first_height, first_height + count - 1)
 
-                result.append({
-                    'filename': filename,
-                    'url': url,
-                    'heightRange': height_range,
-                    'fileId': file_id
-                })
+                result.append({"filename": filename, "url": url, "heightRange": height_range, "fileId": file_id})
 
         return result
 
@@ -138,6 +135,7 @@ class BulkIngestorWOC(BulkIngestor):
         Returns:
             Function that downloads bulk files
         """
+
         def downloader(file_info: BulkHeaderMinimumInfo) -> bytes:
             if not file_info.source_url:
                 raise Exception("SourceURL is required for WhatsOnChain bulk file downloader")

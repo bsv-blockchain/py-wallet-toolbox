@@ -21,7 +21,7 @@ def test_get_chain_tracker_basic_functionality() -> None:
     tracker = services.get_chain_tracker()
     assert tracker is not None
     # Chain tracker should have expected interface
-    assert hasattr(tracker, 'get_present_height') or hasattr(tracker, 'get_chain_tip_height')
+    assert hasattr(tracker, "get_present_height") or hasattr(tracker, "get_chain_tip_height")
 
 
 def test_get_chain_tracker_multiple_calls() -> None:
@@ -71,10 +71,10 @@ def test_get_chain_tracker_error_handling() -> None:
         assert tracker is not None
 
         # Test basic functionality
-        if hasattr(tracker, 'get_height'):
+        if hasattr(tracker, "get_height"):
             height = tracker.get_height()
             assert isinstance(height, (int, type(None)))
-        elif hasattr(tracker, 'get_chain_tip_height'):
+        elif hasattr(tracker, "get_chain_tip_height"):
             height = tracker.get_chain_tip_height()
             assert isinstance(height, (int, type(None)))
 
@@ -90,8 +90,12 @@ def test_get_chain_tracker_interface_validation() -> None:
 
     # Chain tracker should have common methods
     expected_methods = [
-        'get_height', 'get_chain_tip_height', 'get_header_for_height',
-        'get_present_height', 'subscribe_reorgs', 'unsubscribe'
+        "get_height",
+        "get_chain_tip_height",
+        "get_header_for_height",
+        "get_present_height",
+        "subscribe_reorgs",
+        "unsubscribe",
     ]
 
     # At least one of the expected methods should be present
@@ -105,8 +109,8 @@ def test_get_chain_tracker_configuration_persistence() -> None:
     tracker = services.get_chain_tracker()
 
     # Tracker should be aware of the service's chain
-    assert hasattr(tracker, 'chain') or hasattr(services, 'chain')
-    if hasattr(services, 'chain'):
+    assert hasattr(tracker, "chain") or hasattr(services, "chain")
+    if hasattr(services, "chain"):
         assert services.chain.value == "main"
 
 
@@ -116,7 +120,7 @@ def test_get_chain_tracker_network_operations() -> None:
     tracker = services.get_chain_tracker()
 
     # Test that tracker can handle network calls gracefully
-    if hasattr(tracker, 'get_height'):
+    if hasattr(tracker, "get_height"):
         try:
             height = tracker.get_height()
             assert isinstance(height, (int, type(None)))
@@ -124,7 +128,7 @@ def test_get_chain_tracker_network_operations() -> None:
             # Network errors should be handled gracefully
             pass
 
-    if hasattr(tracker, 'get_chain_tip_height'):
+    if hasattr(tracker, "get_chain_tip_height"):
         try:
             height = tracker.get_chain_tip_height()
             assert isinstance(height, (int, type(None)))
@@ -140,13 +144,13 @@ async def test_get_chain_tracker_subscription_management() -> None:
     tracker = services.get_chain_tracker()
 
     # Test subscription/unsubscription if available
-    if hasattr(tracker, 'subscribe_reorgs'):
+    if hasattr(tracker, "subscribe_reorgs"):
         mock_callback = Mock()
         try:
             sub_id = await tracker.subscribe_reorgs(mock_callback)
             assert sub_id is not None
 
-            if hasattr(tracker, 'unsubscribe'):
+            if hasattr(tracker, "unsubscribe"):
                 result = await tracker.unsubscribe(sub_id)
                 assert result is True or result is None
         except Exception:
@@ -161,7 +165,7 @@ async def test_get_chain_tracker_header_operations() -> None:
     tracker = services.get_chain_tracker()
 
     # Test header operations if available
-    if hasattr(tracker, 'get_header_for_height'):
+    if hasattr(tracker, "get_header_for_height"):
         try:
             header = await tracker.get_header_for_height(1000)
             assert header is None or isinstance(header, dict)
@@ -169,7 +173,7 @@ async def test_get_chain_tracker_header_operations() -> None:
             # Header operations should handle errors gracefully
             pass
 
-    if hasattr(tracker, 'find_header_for_height'):
+    if hasattr(tracker, "find_header_for_height"):
         try:
             header = await tracker.find_header_for_height(1000)
             assert header is None or isinstance(header, dict)
@@ -184,7 +188,7 @@ def test_get_chain_tracker_service_integration() -> None:
     tracker = services.get_chain_tracker()
 
     # Tracker should integrate well with service methods
-    if hasattr(tracker, 'get_height') and hasattr(services, 'get_height'):
+    if hasattr(tracker, "get_height") and hasattr(services, "get_height"):
         try:
             tracker_height = tracker.get_height()
             service_height = services.get_height()
@@ -203,7 +207,7 @@ async def test_get_chain_tracker_reorg_handling() -> None:
     tracker = services.get_chain_tracker()
 
     # Test reorg handling if available
-    if hasattr(tracker, 'subscribe_reorgs'):
+    if hasattr(tracker, "subscribe_reorgs"):
         mock_reorg_callback = Mock()
         try:
             sub_id = await tracker.subscribe_reorgs(mock_reorg_callback)

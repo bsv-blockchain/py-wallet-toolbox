@@ -38,5 +38,3 @@ def fetch_raw_tx_with_retry(services: Any, txid: str, retry: RawTxRetryConfig | 
         wait_s = retry.initial_sleep_seconds if elapsed < retry.later_threshold_seconds else retry.later_sleep_seconds
         time.sleep(wait_s)
     raise RuntimeError(f"Unable to fetch raw transaction for {txid}")
-
-

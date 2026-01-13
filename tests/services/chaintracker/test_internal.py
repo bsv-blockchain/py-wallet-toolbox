@@ -255,4 +255,3 @@ class TestCacheableWithTTL:
         assert result == data
         assert result["key"] == "value"
         assert result["count"] == 42
-

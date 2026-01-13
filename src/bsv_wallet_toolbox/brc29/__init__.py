@@ -21,11 +21,9 @@ __all__ = [
     "KeyID",
     "PROTOCOL",
     "PROTOCOL_ID",
-
     # Address functions
     "address_for_self",
     "address_for_counterparty",
-
     # Template functions
     "lock_for_self",
     "lock_for_counterparty",

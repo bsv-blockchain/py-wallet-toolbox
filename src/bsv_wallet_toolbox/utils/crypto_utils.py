@@ -27,13 +27,7 @@ def pbkdf2_derive_key(password: bytes, salt: bytes, key_length: int = 32) -> byt
 
     Reference: wallet-toolbox/src/CWIStyleWalletManager.ts PBKDF2 usage
     """
-    return hashlib.pbkdf2_hmac(
-        'sha256',
-        password,
-        salt,
-        PBKDF2_NUM_ROUNDS,
-        dklen=key_length
-    )
+    return hashlib.pbkdf2_hmac("sha256", password, salt, PBKDF2_NUM_ROUNDS, dklen=key_length)
 
 
 def xor_bytes(a: bytes, b: bytes) -> bytes:
@@ -58,10 +52,10 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
     # Cycle the shorter sequence to match the longer one
     if len(a) > len(b):
         # Repeat b to match a's length
-        b = (b * ((len(a) // len(b)) + 1))[:len(a)]
+        b = (b * ((len(a) // len(b)) + 1))[: len(a)]
     elif len(b) > len(a):
         # Repeat a to match b's length
-        a = (a * ((len(b) // len(a)) + 1))[:len(b)]
+        a = (a * ((len(b) // len(a)) + 1))[: len(b)]
 
     return bytes(x ^ y for x, y in zip(a, b))
 
@@ -160,7 +154,7 @@ def derive_password_key(password: str, salt: bytes) -> bytes:
     Returns:
         Derived password key (32 bytes)
     """
-    password_bytes = password.encode('utf-8')
+    password_bytes = password.encode("utf-8")
     return pbkdf2_derive_key(password_bytes, salt)
 
 
@@ -197,15 +191,15 @@ def create_ump_key_derivations(
     privileged_recovery = SymmetricKey(xor_bytes(privileged_key, recovery_key))
 
     return {
-        'presentationPassword': presentation_password._key,
-        'presentationRecovery': presentation_recovery._key,
-        'recoveryPassword': recovery_password._key,
-        'primaryPassword': primary_password._key,
-        'primaryPresentation': primary_presentation._key,
-        'primaryRecovery': primary_recovery._key,
-        'privilegedPassword': privileged_password._key,
-        'privilegedPresentation': privileged_presentation._key,
-        'privilegedRecovery': privileged_recovery._key,
+        "presentationPassword": presentation_password._key,
+        "presentationRecovery": presentation_recovery._key,
+        "recoveryPassword": recovery_password._key,
+        "primaryPassword": primary_password._key,
+        "primaryPresentation": primary_presentation._key,
+        "primaryRecovery": primary_recovery._key,
+        "privilegedPassword": privileged_password._key,
+        "privilegedPresentation": privileged_presentation._key,
+        "privilegedRecovery": privileged_recovery._key,
     }
 
 
@@ -232,9 +226,7 @@ def create_ump_token_fields(
 
     Reference: wallet-toolbox/src/CWIStyleWalletManager.ts buildAndSend fields construction
     """
-    derivations = create_ump_key_derivations(
-        presentation_key, recovery_key, password_key, primary_key, privileged_key
-    )
+    derivations = create_ump_key_derivations(presentation_key, recovery_key, password_key, primary_key, privileged_key)
 
     # Create encrypted copies of keys using privileged key
     privileged_key_obj = SymmetricKey(privileged_key)
@@ -248,17 +240,17 @@ def create_ump_token_fields(
 
     # Build fields array (matching TypeScript implementation order)
     fields = [
-        bytes_to_int_list(password_salt),                                    # 0: passwordSalt
-        bytes_to_int_list(derivations['primaryPassword']),               # 1: passwordPresentationPrimary
-        bytes_to_int_list(derivations['primaryRecovery']),               # 2: passwordRecoveryPrimary
-        bytes_to_int_list(derivations['primaryPresentation']),           # 3: presentationRecoveryPrimary
-        bytes_to_int_list(derivations['privilegedPassword']),            # 4: passwordPrimaryPrivileged
-        bytes_to_int_list(derivations['privilegedPresentation']),        # 5: presentationRecoveryPrivileged
-        bytes_to_int_list(presentation_hash),                              # 6: presentationHash
-        bytes_to_int_list(recovery_hash),                                  # 7: recoveryHash
-        bytes_to_int_list(presentation_key_encrypted),                     # 8: presentationKeyEncrypted
-        bytes_to_int_list(password_key_encrypted),                         # 9: passwordKeyEncrypted
-        bytes_to_int_list(recovery_key_encrypted),                         # 10: recoveryKeyEncrypted
+        bytes_to_int_list(password_salt),  # 0: passwordSalt
+        bytes_to_int_list(derivations["primaryPassword"]),  # 1: passwordPresentationPrimary
+        bytes_to_int_list(derivations["primaryRecovery"]),  # 2: passwordRecoveryPrimary
+        bytes_to_int_list(derivations["primaryPresentation"]),  # 3: presentationRecoveryPrimary
+        bytes_to_int_list(derivations["privilegedPassword"]),  # 4: passwordPrimaryPrivileged
+        bytes_to_int_list(derivations["privilegedPresentation"]),  # 5: presentationRecoveryPrivileged
+        bytes_to_int_list(presentation_hash),  # 6: presentationHash
+        bytes_to_int_list(recovery_hash),  # 7: recoveryHash
+        bytes_to_int_list(presentation_key_encrypted),  # 8: presentationKeyEncrypted
+        bytes_to_int_list(password_key_encrypted),  # 9: passwordKeyEncrypted
+        bytes_to_int_list(recovery_key_encrypted),  # 10: recoveryKeyEncrypted
     ]
 
     return fields
@@ -289,4 +281,5 @@ def generate_random_bytes(length: int) -> bytes:
         Random bytes
     """
     import os
+
     return os.urandom(length)

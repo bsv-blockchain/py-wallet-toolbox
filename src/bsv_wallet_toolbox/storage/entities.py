@@ -1197,7 +1197,11 @@ class ProvenTxReq:
         if not storage:
             return None
         inserter = _get_callable(
-            storage, "insert_or_merge_proven_tx_req", "insertOrMergeProvenTxReq", "insert_proven_tx_req", "insertProvenTxReq"
+            storage,
+            "insert_or_merge_proven_tx_req",
+            "insertOrMergeProvenTxReq",
+            "insert_proven_tx_req",
+            "insertProvenTxReq",
         )
         if inserter:
             return inserter(self.to_api())

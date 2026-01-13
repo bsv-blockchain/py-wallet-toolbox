@@ -5,4 +5,3 @@ from .monitor_daemon import MonitorDaemon
 from .wallet_monitor_task import WalletMonitorTask
 
 __all__ = ["Monitor", "MonitorOptions", "MonitorDaemon", "WalletMonitorTask"]
-

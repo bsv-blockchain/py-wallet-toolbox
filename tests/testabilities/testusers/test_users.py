@@ -12,17 +12,17 @@ from typing import Any
 @dataclass
 class User:
     """Test user with fixed keys matching Go/TS implementations.
-    
+
     NOTE: Testabilities can modify user IDs to match database
     """
-    
+
     name: str
     id: int
     priv_key: str
-    
+
     def auth_id(self) -> dict[str, Any]:
         """Get AuthID dict for this user.
-        
+
         Returns:
             dict: AuthID with identity_key, user_id, is_active
         """
@@ -31,56 +31,59 @@ class User:
             "userId": self.id,
             "isActive": True,
         }
-    
+
     def identity_key(self) -> str:
         """Get the public key (identity key) as hex string.
-        
+
         Returns:
             str: The compressed public key hex (33 bytes)
         """
         from bsv.keys import PrivateKey
+
         private_key = PrivateKey.from_hex(self.priv_key)
         return private_key.public_key().hex()
-    
+
     def key_deriver(self):
         """Get a KeyDeriver for this user.
-        
+
         Returns:
             KeyDeriver: SDK KeyDeriver instance
         """
         from bsv.wallet import KeyDeriver
         from bsv.keys import PrivateKey
+
         private_key = PrivateKey.from_hex(self.priv_key)
         return KeyDeriver(private_key)
-    
+
     def private_key(self):
         """Get the PrivateKey object.
-        
+
         Returns:
             PrivateKey: The private key
         """
         from bsv.keys import PrivateKey
+
         return PrivateKey.from_hex(self.priv_key)
-    
+
     def public_key(self):
         """Get the PublicKey object.
-        
+
         Returns:
             PublicKey: The public key
         """
         return self.private_key().public_key()
-    
+
     def pub_key_hex(self) -> str:
         """Get the public key as hex string.
-        
+
         Returns:
             str: The compressed public key hex
         """
         return self.identity_key()
-    
+
     def address(self) -> str:
         """Get the P2PKH address for this user.
-        
+
         Returns:
             str: The base58check address
         """
@@ -107,4 +110,3 @@ ALL_USERS = [ALICE, BOB]
 # Common fixtures
 ANYONE_IDENTITY_KEY = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
 """The "anyone" identity key (generator point G on secp256k1)"""
-

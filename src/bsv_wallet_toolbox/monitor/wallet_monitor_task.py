@@ -49,4 +49,3 @@ class WalletMonitorTask(ABC):
             dict: {'run': bool} indicating if task should run.
         """
         return {"run": True}
-

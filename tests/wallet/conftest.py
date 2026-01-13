@@ -113,16 +113,14 @@ def wallet_with_mocked_create_action(test_key_deriver) -> tuple[Wallet, StorageP
             result.no_send_change_output_vouts = [1, 2]
         else:
             # signable case
-            result.signable_transaction = {
-                "reference": "ref-456",
-                "tx": [0xDE, 0xAD]
-            }
+            result.signable_transaction = {"reference": "ref-456", "tx": [0xDE, 0xAD]}
             result.no_send_change = ["mock.txid.0"]
 
         return result
 
     from unittest.mock import patch
-    patch('bsv_wallet_toolbox.wallet.signer_create_action', side_effect=mock_signer_create_action).start()
+
+    patch("bsv_wallet_toolbox.wallet.signer_create_action", side_effect=mock_signer_create_action).start()
 
     return wallet, storage, call_log, seed_user_id
 
@@ -147,28 +145,33 @@ def _wallet(test_key_deriver) -> Wallet:
 
     # Seed some data (similar to wallet_with_services but minimal)
     from datetime import datetime, timezone
+
     try:
-        user_id = storage.insert_user({
-            "identityKey": test_key_deriver._root_private_key.public_key().hex(),
-            "activeStorage": "test",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
-        })
+        user_id = storage.insert_user(
+            {
+                "identityKey": test_key_deriver._root_private_key.public_key().hex(),
+                "activeStorage": "test",
+                "createdAt": datetime.now(timezone.utc),
+                "updatedAt": datetime.now(timezone.utc),
+            }
+        )
     except Exception:
         # User might already exist, get the existing user
         user_id = storage.get_or_create_user_id(test_key_deriver._root_private_key.public_key().hex())
 
     # Create default basket
     try:
-        storage.insert_output_basket({
-            "userId": user_id,
-            "name": "default",
-            "numberOfDesiredUTXOs": 10,
-            "minimumDesiredUTXOValue": 1000,
-            "isDeleted": False,
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
-        })
+        storage.insert_output_basket(
+            {
+                "userId": user_id,
+                "name": "default",
+                "numberOfDesiredUTXOs": 10,
+                "minimumDesiredUTXOValue": 1000,
+                "isDeleted": False,
+                "createdAt": datetime.now(timezone.utc),
+                "updatedAt": datetime.now(timezone.utc),
+            }
+        )
     except Exception:
         # Basket might already exist
         pass

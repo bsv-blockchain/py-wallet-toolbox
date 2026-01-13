@@ -12,19 +12,13 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 @pytest.fixture
 def valid_sync_args():
     """Fixture providing valid sync arguments."""
-    return {
-        "writer": "mock_writer",
-        "options": {"batchSize": 100}
-    }
+    return {"writer": "mock_writer", "options": {"batchSize": 100}}
 
 
 @pytest.fixture
 def valid_set_active_args():
     """Fixture providing valid set active arguments."""
-    return {
-        "storage": "mock_storage",
-        "backupFirst": False
-    }
+    return {"storage": "mock_storage", "backupFirst": False}
 
 
 @pytest.fixture
@@ -37,17 +31,14 @@ def invalid_sync_cases():
         {"writer": 123, "options": {}},  # Wrong writer type
         {"writer": [], "options": {}},  # Wrong writer type
         {"writer": {}, "options": {}},  # Wrong writer type
-
         # Invalid options
         {"writer": "valid_writer", "options": None},  # None options
         {"writer": "valid_writer", "options": "not_dict"},  # Wrong options type
         {"writer": "valid_writer", "options": 123},  # Wrong options type
-
         # Missing keys
         {"options": {}},  # Missing writer
         {"writer": "valid_writer"},  # Missing options
         {},  # Missing both
-
         # Invalid option values
         {"writer": "valid_writer", "options": {"batchSize": 0}},  # Zero batch size
         {"writer": "valid_writer", "options": {"batchSize": -1}},  # Negative batch size
@@ -65,17 +56,14 @@ def invalid_set_active_cases():
         {"storage": 123, "backupFirst": False},  # Wrong storage type
         {"storage": [], "backupFirst": False},  # Wrong storage type
         {"storage": {}, "backupFirst": False},  # Wrong storage type
-
         # Invalid backup_first
         {"storage": "valid_storage", "backupFirst": None},  # None backup_first
         {"storage": "valid_storage", "backupFirst": "not_bool"},  # Wrong backup_first type
         {"storage": "valid_storage", "backupFirst": 123},  # Wrong backup_first type
-
         # Missing keys
         {"backupFirst": False},  # Missing storage
         {"storage": "valid_storage"},  # Missing backup_first
         {},  # Missing both
-
         # Extra keys (should be ignored)
         {"storage": "valid_storage", "backupFirst": False, "extra": "param"},
     ]
@@ -104,7 +92,6 @@ def original_storage() -> str:
 
 class TestWalletSyncToWriter:
     """Test suite for Wallet.sync_to_writer method."""
-
 
     def test_sync_initial_then_no_changes_then_one_change(self, _wallet: Wallet, destination_storage) -> None:
         """Given: Source wallet and empty destination storage
@@ -148,7 +135,6 @@ class TestWalletSyncToWriter:
 class TestWalletSetActive:
     """Test suite for Wallet.set_active method."""
 
-
     @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_to_backup_and_back_without_backup_first(
         self, _wallet: Wallet, backup_storage, original_storage
@@ -187,7 +173,6 @@ class TestWalletSetActive:
 
         # Then
         # Should complete successfully with no errors
-
 
     @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_to_backup_and_back_with_backup_first(
@@ -228,12 +213,10 @@ class TestWalletSetActive:
         # Then
         # Should complete successfully with backup-first semantics maintained
 
-    
-    
     def test_sync_to_writer_invalid_params_empty_writer_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with empty writer
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {"writer": "", "options": {}}
@@ -242,12 +225,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
-    
     def test_sync_to_writer_invalid_params_none_writer_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with None writer
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"writer": None, "options": {}}
@@ -256,12 +237,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
-    
     def test_sync_to_writer_invalid_params_wrong_writer_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with wrong writer type
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, [], {}, True, 45.67]
@@ -273,12 +252,10 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.sync_to_writer(invalid_args)
 
-    
-    
     def test_sync_to_writer_invalid_params_none_options_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with None options
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"writer": "valid_writer", "options": None}
@@ -287,12 +264,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
-    
     def test_sync_to_writer_invalid_params_wrong_options_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with wrong options type
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, "string", [], True, 45.67]
@@ -304,11 +279,10 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.sync_to_writer(invalid_args)
 
-    
     def test_sync_to_writer_invalid_params_missing_writer_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs missing writer key
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or KeyError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {"options": {}}
@@ -317,11 +291,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
     def test_sync_to_writer_invalid_params_missing_options_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs missing options key
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or KeyError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {"writer": "valid_writer"}
@@ -330,11 +303,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
     def test_sync_to_writer_invalid_params_empty_args_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty SyncToWriterArgs
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or KeyError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {}
@@ -343,11 +315,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
     def test_sync_to_writer_invalid_params_zero_batch_size_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with zero batch size
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {"writer": "valid_writer", "options": {"batchSize": 0}}
@@ -356,11 +327,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
     def test_sync_to_writer_invalid_params_negative_batch_size_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with negative batch size
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {"writer": "valid_writer", "options": {"batchSize": -1}}
@@ -369,11 +339,12 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
-    def test_sync_to_writer_invalid_params_wrong_batch_size_type_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_sync_to_writer_invalid_params_wrong_batch_size_type_raises_error(
+        self, wallet_with_storage: Wallet
+    ) -> None:
         """Given: SyncToWriterArgs with wrong batch size type
-           When: Call sync_to_writer
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sync_to_writer
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"writer": "valid_writer", "options": {"batchSize": "not_number"}}
@@ -382,21 +353,13 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.sync_to_writer(invalid_args)
 
-    
     def test_sync_to_writer_valid_params_extra_options_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: SyncToWriterArgs with extra options
-           When: Call sync_to_writer
-           Then: Extra options are ignored
+        When: Call sync_to_writer
+        Then: Extra options are ignored
         """
         # Given
-        args = {
-            "writer": "valid_writer",
-            "options": {
-                "batchSize": 100,
-                "extraOption": "ignored",
-                "anotherOption": 123
-            }
-        }
+        args = {"writer": "valid_writer", "options": {"batchSize": 100, "extraOption": "ignored", "anotherOption": 123}}
 
         # When/Then - Should not raise error (method may not be implemented but params should validate)
         # Note: Since method is not implemented, we just check that parameter validation doesn't fail
@@ -407,11 +370,10 @@ class TestWalletSetActive:
         except (InvalidParameterError, TypeError, ValueError):
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
-    
     def test_set_active_invalid_params_empty_storage_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with empty storage
-           When: Call set_active
-           Then: Raises InvalidParameterError
+        When: Call set_active
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {"storage": "", "backupFirst": False}
@@ -420,11 +382,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, ValueError)):
             wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_none_storage_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with None storage
-           When: Call set_active
-           Then: Raises InvalidParameterError or TypeError
+        When: Call set_active
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"storage": None, "backupFirst": False}
@@ -433,11 +394,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_wrong_storage_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with wrong storage type
-           When: Call set_active
-           Then: Raises InvalidParameterError or TypeError
+        When: Call set_active
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, [], {}, True, 45.67]
@@ -449,11 +409,10 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_none_backup_first_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with None backup_first
-           When: Call set_active
-           Then: Raises InvalidParameterError or TypeError
+        When: Call set_active
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"storage": "valid_storage", "backupFirst": None}
@@ -462,11 +421,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_wrong_backup_first_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with wrong backup_first type
-           When: Call set_active
-           Then: Raises InvalidParameterError or TypeError
+        When: Call set_active
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, "string", [], {}, 45.67]
@@ -478,11 +436,10 @@ class TestWalletSetActive:
             with pytest.raises((InvalidParameterError, TypeError)):
                 wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_missing_storage_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs missing storage key
-           When: Call set_active
-           Then: Raises InvalidParameterError or KeyError
+        When: Call set_active
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {"backupFirst": False}
@@ -491,11 +448,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_missing_backup_first_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs missing backup_first key
-           When: Call set_active
-           Then: Raises InvalidParameterError or KeyError
+        When: Call set_active
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {"storage": "valid_storage"}
@@ -504,11 +460,10 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    
     def test_set_active_invalid_params_empty_args_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty SetActiveArgs
-           When: Call set_active
-           Then: Raises InvalidParameterError or KeyError
+        When: Call set_active
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {}
@@ -517,12 +472,11 @@ class TestWalletSetActive:
         with pytest.raises((InvalidParameterError, KeyError, TypeError)):
             wallet_with_storage.set_active(invalid_args)
 
-    
     @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_valid_params_backup_first_true(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with backup_first=True
-           When: Call set_active
-           Then: Should handle backup_first flag correctly
+        When: Call set_active
+        Then: Should handle backup_first flag correctly
         """
         # Given
         args = {"storage": "valid_storage", "backupFirst": True}
@@ -535,12 +489,11 @@ class TestWalletSetActive:
         except (InvalidParameterError, TypeError, ValueError):
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
-    
     @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_valid_params_backup_first_false(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with backup_first=False
-           When: Call set_active
-           Then: Should handle backup_first flag correctly
+        When: Call set_active
+        Then: Should handle backup_first flag correctly
         """
         # Given
         args = {"storage": "valid_storage", "backupFirst": False}
@@ -553,20 +506,14 @@ class TestWalletSetActive:
         except (InvalidParameterError, TypeError, ValueError):
             pytest.fail("Valid parameters should not raise parameter validation errors")
 
-    
     @pytest.mark.skip(reason="Requires multiple storage providers setup")
     def test_set_active_valid_params_extra_parameters_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: SetActiveArgs with extra parameters
-           When: Call set_active
-           Then: Extra parameters are ignored
+        When: Call set_active
+        Then: Extra parameters are ignored
         """
         # Given
-        args = {
-            "storage": "valid_storage",
-            "backupFirst": False,
-            "extraParam": "ignored",
-            "anotherParam": 123
-        }
+        args = {"storage": "valid_storage", "backupFirst": False, "extraParam": "ignored", "anotherParam": 123}
 
         # When/Then - Should not raise error (method may not be implemented but params should validate)
         try:

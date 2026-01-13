@@ -18,4 +18,3 @@ class TscMerkleProofApi(TypedDict):
     """Block height."""
     nodes: list[str]
     """Merkle path nodes (hex strings)."""
-

@@ -20,7 +20,7 @@ BHSMerkleRootInvalid = "invalid"
 @dataclass
 class MerkleRootResponse:
     """Configured response for a merkle root verification request."""
-    
+
     height: int
     merkle_root: str
     status: str = BHSMerkleRootConfirmed
@@ -28,16 +28,16 @@ class MerkleRootResponse:
 
 class MockBHS:
     """Mock Block Header Service for testing.
-    
+
     This mock BHS allows configuring specific responses for merkle root
     verification requests, useful for testing BEEF validation.
     """
-    
+
     def __init__(self):
         """Initialize MockBHS."""
         self._responses: dict[tuple[int, str], MerkleRootResponse] = {}
         self._lock = Lock()
-    
+
     def on_merkle_root_verify_response(
         self,
         height: int,
@@ -45,12 +45,12 @@ class MockBHS:
         status: str = BHSMerkleRootConfirmed,
     ) -> "MockBHS":
         """Configure a response for a specific height/merkle_root query.
-        
+
         Args:
             height: Block height
             merkle_root: Merkle root hex string
             status: Status to return (BHSMerkleRootConfirmed, etc.)
-            
+
         Returns:
             self for chaining
         """
@@ -62,21 +62,21 @@ class MockBHS:
                 status=status,
             )
         return self
-    
+
     async def verify_merkle_root(self, height: int, merkle_root: str) -> dict[str, Any]:
         """Verify a merkle root at a given height.
-        
+
         Args:
             height: Block height
             merkle_root: Merkle root hex string
-            
+
         Returns:
             dict: Verification result with status
         """
         with self._lock:
             key = (height, merkle_root)
             response = self._responses.get(key)
-        
+
         if response is None:
             # Default: not found
             return {
@@ -85,20 +85,20 @@ class MockBHS:
                 "status": BHSMerkleRootNotFound,
                 "valid": False,
             }
-        
+
         return {
             "height": height,
             "merkleRoot": merkle_root,
             "status": response.status,
             "valid": response.status == BHSMerkleRootConfirmed,
         }
-    
+
     async def get_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get block header for a specific height.
-        
+
         Args:
             height: Block height
-            
+
         Returns:
             dict: Block header info or None
         """
@@ -116,10 +116,10 @@ class MockBHS:
                         "bits": "1d00ffff",
                     }
         return None
-    
+
     async def get_current_height(self) -> int:
         """Get the current chain height.
-        
+
         Returns:
             int: Current height (mock value)
         """
@@ -128,9 +128,8 @@ class MockBHS:
             if self._responses:
                 return max(h for (h, _) in self._responses.keys())
         return 800000  # Default mock height
-    
+
     def clear(self) -> None:
         """Clear all configured responses."""
         with self._lock:
             self._responses.clear()
-

@@ -143,4 +143,3 @@ def update_exchangeratesapi_sync(
         pass
 
     return asyncio.run(update_exchangeratesapi(target_currencies, options))
-

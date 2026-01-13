@@ -51,7 +51,7 @@ class TestWalletConstructor:
         storage = StorageProvider(engine=engine, chain="test", storage_identity_key="test_wallet")
         root_key = PrivateKey(bytes.fromhex("2" * 64))
         key_deriver = KeyDeriver(root_key)
-        
+
         # When - Create wallet and ensure initialized (creates default basket)
         wallet = Wallet(chain="test", storage_provider=storage, key_deriver=key_deriver)
         auth = wallet.ensure_initialized(ensure_default_basket=True)

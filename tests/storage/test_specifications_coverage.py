@@ -213,19 +213,21 @@ class TestCommissionEntity:
 
     def test_commission_equals_matching(self) -> None:
         """Test Commission equals with matching entities."""
-        commission = Commission({
-            "satoshis": 1000,
-            "isRedeemed": False,
-            "keyOffset": "offset",
-            "transactionId": 1,
-            "lockingScript": [1, 2, 3]
-        })
+        commission = Commission(
+            {
+                "satoshis": 1000,
+                "isRedeemed": False,
+                "keyOffset": "offset",
+                "transactionId": 1,
+                "lockingScript": [1, 2, 3],
+            }
+        )
         other = {
             "satoshis": 1000,
             "isRedeemed": False,
             "keyOffset": "offset",
             "transactionId": 1,
-            "lockingScript": [1, 2, 3]
+            "lockingScript": [1, 2, 3],
         }
 
         assert commission.equals(other) is True
@@ -252,13 +254,19 @@ class TestCommissionEntity:
         commission.updated_at = datetime.now()
         new_time = commission.updated_at + timedelta(hours=1)
 
-        result = commission.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "satoshis": 2000,
-            "isRedeemed": True,
-            "keyOffset": "new_offset",
-            "lockingScript": [4, 5, 6]
-        }, None, None)
+        result = commission.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "satoshis": 2000,
+                "isRedeemed": True,
+                "keyOffset": "new_offset",
+                "lockingScript": [4, 5, 6],
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert commission.satoshis == 2000
@@ -448,27 +456,33 @@ class TestOutputEntity:
         output.updated_at = datetime.now()
         new_time = output.updated_at + timedelta(hours=1)
 
-        result = output.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "satoshis": 2000,
-            "vout": 1,
-            "lockingScript": [4, 5, 6],
-            "spentBy": 10,
-            "spendable": False,
-            "change": True,
-            "outputDescription": "new desc",
-            "txid": "new_txid",
-            "type": "new_type",
-            "providedBy": "new_provider",
-            "purpose": "new_purpose",
-            "spendingDescription": "new_spend_desc",
-            "derivationPrefix": "new_prefix",
-            "derivationSuffix": "new_suffix",
-            "senderIdentityKey": "new_sender",
-            "customInstructions": "new_custom",
-            "scriptLength": 30,
-            "scriptOffset": 5,
-        }, None, None)
+        result = output.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "satoshis": 2000,
+                "vout": 1,
+                "lockingScript": [4, 5, 6],
+                "spentBy": 10,
+                "spendable": False,
+                "change": True,
+                "outputDescription": "new desc",
+                "txid": "new_txid",
+                "type": "new_type",
+                "providedBy": "new_provider",
+                "purpose": "new_purpose",
+                "spendingDescription": "new_spend_desc",
+                "derivationPrefix": "new_prefix",
+                "derivationSuffix": "new_suffix",
+                "senderIdentityKey": "new_sender",
+                "customInstructions": "new_custom",
+                "scriptLength": 30,
+                "scriptOffset": 5,
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert output.satoshis == 2000
@@ -558,14 +572,16 @@ class TestOutputBasketEntity:
 
     def test_output_basket_equals_matching(self) -> None:
         """Test OutputBasket equals with matching entities."""
-        basket = OutputBasket({
-            "basketId": 1,
-            "userId": 2,
-            "name": "test",
-            "numberOfDesiredUTXOs": 5,
-            "minimumDesiredUTXOValue": 500,
-            "isDeleted": False,
-        })
+        basket = OutputBasket(
+            {
+                "basketId": 1,
+                "userId": 2,
+                "name": "test",
+                "numberOfDesiredUTXOs": 5,
+                "minimumDesiredUTXOValue": 500,
+                "isDeleted": False,
+            }
+        )
         other = {
             "basketId": 1,
             "userId": 2,
@@ -599,13 +615,19 @@ class TestOutputBasketEntity:
         basket.updated_at = datetime.now()
         new_time = basket.updated_at + timedelta(hours=1)
 
-        result = basket.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "name": "new_name",
-            "numberOfDesiredUTXOs": 20,
-            "minimumDesiredUTXOValue": 2000,
-            "isDeleted": True,
-        }, None, None)
+        result = basket.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "name": "new_name",
+                "numberOfDesiredUTXOs": 20,
+                "minimumDesiredUTXOValue": 2000,
+                "isDeleted": True,
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert basket.name == "new_name"
@@ -705,11 +727,17 @@ class TestOutputTagEntity:
         tag.updated_at = datetime.now()
         new_time = tag.updated_at + timedelta(hours=1)
 
-        result = tag.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "tag": "new_tag",
-            "isDeleted": True,
-        }, None, None)
+        result = tag.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "tag": "new_tag",
+                "isDeleted": True,
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert tag.tag == "new_tag"
@@ -798,10 +826,16 @@ class TestOutputTagMapEntity:
         tag_map.updated_at = datetime.now()
         new_time = tag_map.updated_at + timedelta(hours=1)
 
-        result = tag_map.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "isDeleted": True,
-        }, None, None)
+        result = tag_map.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "isDeleted": True,
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert tag_map.is_deleted is True
@@ -940,17 +974,23 @@ class TestTransactionEntity:
         mock_storage = Mock()
         mock_storage.update_transaction = Mock()
 
-        result = tx.merge_existing(mock_storage, None, {
-            "updatedAt": new_time,
-            "txid": "new_txid",
-            "status": "new_status",
-            "reference": "new_ref",
-            "satoshis": 2000,
-            "description": "new_desc",
-            "isOutgoing": True,
-            "rawTx": [7, 8, 9],
-            "inputBEEF": [10, 11, 12],
-        }, None, None)
+        result = tx.merge_existing(
+            mock_storage,
+            None,
+            {
+                "updatedAt": new_time,
+                "txid": "new_txid",
+                "status": "new_status",
+                "reference": "new_ref",
+                "satoshis": 2000,
+                "description": "new_desc",
+                "isOutgoing": True,
+                "rawTx": [7, 8, 9],
+                "inputBEEF": [10, 11, 12],
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert tx.txid == "new_txid"
@@ -1040,18 +1080,8 @@ class TestProvenTxEntity:
 
     def test_proven_tx_equals_matching(self) -> None:
         """Test ProvenTx equals with matching entities."""
-        proven_tx = ProvenTx({
-            "provenTxId": 1,
-            "txid": "txid",
-            "height": 100,
-            "index": 5
-        })
-        other = {
-            "provenTxId": 1,
-            "txid": "txid",
-            "height": 100,
-            "index": 5
-        }
+        proven_tx = ProvenTx({"provenTxId": 1, "txid": "txid", "height": 100, "index": 5})
+        other = {"provenTxId": 1, "txid": "txid", "height": 100, "index": 5}
 
         assert proven_tx.equals(other) is True
 
@@ -1331,15 +1361,17 @@ class TestCertificateEntity:
 
     def test_certificate_equals_matching(self) -> None:
         """Test Certificate equals with matching entities."""
-        cert = Certificate({
-            "type": "type",
-            "subject": "subject",
-            "serialNumber": "serial",
-            "signature": "sig",
-            "revocationOutpoint": "outpoint",
-            "verifier": "verifier",
-            "isDeleted": False,
-        })
+        cert = Certificate(
+            {
+                "type": "type",
+                "subject": "subject",
+                "serialNumber": "serial",
+                "signature": "sig",
+                "revocationOutpoint": "outpoint",
+                "verifier": "verifier",
+                "isDeleted": False,
+            }
+        )
         other = {
             "type": "type",
             "subject": "subject",
@@ -1374,17 +1406,23 @@ class TestCertificateEntity:
         cert.updated_at = datetime.now()
         new_time = cert.updated_at + timedelta(hours=1)
 
-        result = cert.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "type": "new_type",
-            "serialNumber": "new_serial",
-            "subject": "new_subject",
-            "certifier": "new_certifier",
-            "signature": "new_sig",
-            "verifier": "new_verifier",
-            "isDeleted": True,
-            "revocationOutpoint": "new_outpoint",
-        }, None, None)
+        result = cert.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "type": "new_type",
+                "serialNumber": "new_serial",
+                "subject": "new_subject",
+                "certifier": "new_certifier",
+                "signature": "new_sig",
+                "verifier": "new_verifier",
+                "isDeleted": True,
+                "revocationOutpoint": "new_outpoint",
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert cert.type == "new_type"
@@ -1467,18 +1505,8 @@ class TestCertificateFieldEntity:
 
     def test_certificate_field_equals_matching(self) -> None:
         """Test CertificateField equals with matching entities."""
-        field = CertificateField({
-            "certificateId": 1,
-            "fieldName": "name",
-            "fieldValue": "value",
-            "masterKey": "key"
-        })
-        other = {
-            "certificateId": 1,
-            "fieldName": "name",
-            "fieldValue": "value",
-            "masterKey": "key"
-        }
+        field = CertificateField({"certificateId": 1, "fieldName": "name", "fieldValue": "value", "masterKey": "key"})
+        other = {"certificateId": 1, "fieldName": "name", "fieldValue": "value", "masterKey": "key"}
 
         assert field.equals(other) is True
 
@@ -1504,11 +1532,17 @@ class TestCertificateFieldEntity:
         field.updated_at = datetime.now()
         new_time = field.updated_at + timedelta(hours=1)
 
-        result = field.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "fieldValue": "new_value",
-            "masterKey": "new_key",
-        }, None, None)
+        result = field.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "fieldValue": "new_value",
+                "masterKey": "new_key",
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert field.field_value == "new_value"
@@ -1619,12 +1653,18 @@ class TestSyncStateEntity:
         sync_state.updated_at = datetime.now()
         new_time = sync_state.updated_at + timedelta(hours=1)
 
-        result = sync_state.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "status": "new_status",
-            "refNum": 456,
-            "syncMap": "new_map",
-        }, None, None)
+        result = sync_state.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "status": "new_status",
+                "refNum": 456,
+                "syncMap": "new_map",
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert sync_state.status == "new_status"
@@ -1716,10 +1756,16 @@ class TestTxLabelEntity:
         label.updated_at = datetime.now()
         new_time = label.updated_at + timedelta(hours=1)
 
-        result = label.merge_existing(None, None, {
-            "updatedAt": new_time,
-            "isDeleted": True,
-        }, None, None)
+        result = label.merge_existing(
+            None,
+            None,
+            {
+                "updatedAt": new_time,
+                "isDeleted": True,
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert label.is_deleted is True
@@ -1798,10 +1844,7 @@ class TestTxLabelMapEntity:
         label_map = TxLabelMap({"transactionId": 1, "txLabelId": 2})
         other = {"transactionId": 1, "txLabelId": 2}
 
-        sync_map = {
-            "transaction": {"idMap": {10: 1}},
-            "txLabel": {"idMap": {20: 2}}
-        }
+        sync_map = {"transaction": {"idMap": {10: 1}}, "txLabel": {"idMap": {20: 2}}}
 
         # Test that the method runs and returns a boolean
         result = label_map.equals(other, sync_map)
@@ -1822,16 +1865,23 @@ class TestTxLabelMapEntity:
         label_map.updated_at = datetime.now()
         new_time = label_map.updated_at + timedelta(hours=1)
 
-        result = label_map.merge_existing("mock_storage", None, {
-            "updatedAt": new_time,
-            "isDeleted": True,
-        }, None, None)
+        result = label_map.merge_existing(
+            "mock_storage",
+            None,
+            {
+                "updatedAt": new_time,
+                "isDeleted": True,
+            },
+            None,
+            None,
+        )
 
         assert result is True
         assert label_map.is_deleted is True
 
     def test_tx_label_map_merge_find_found(self) -> None:
         """Test TxLabelMap merge_find when entity is found."""
+
         # Mock storage with findTxLabelMaps method
         class MockStorage:
             def findTxLabelMaps(self, criteria):
@@ -1843,6 +1893,7 @@ class TestTxLabelMapEntity:
 
     def test_tx_label_map_merge_find_not_found(self) -> None:
         """Test TxLabelMap merge_find when entity is not found."""
+
         # Mock storage with findTxLabelMaps method that returns empty
         class MockStorage:
             def findTxLabelMaps(self, criteria):
@@ -1889,9 +1940,7 @@ class TestSpecificationClasses:
     def test_user_read_specification(self) -> None:
         """Test UserReadSpecification dataclass."""
         spec = UserReadSpecification(
-            id=Comparable("=", 1),
-            identity_key=Comparable("=", "key"),
-            active_storage=Comparable("=", "storage")
+            id=Comparable("=", 1), identity_key=Comparable("=", "key"), active_storage=Comparable("=", "storage")
         )
 
         assert spec.id.value == 1
@@ -1908,9 +1957,7 @@ class TestSpecificationClasses:
     def test_transaction_read_specification(self) -> None:
         """Test TransactionReadSpecification dataclass."""
         spec = TransactionReadSpecification(
-            user_id=Comparable("=", 1),
-            txid=Comparable("=", "txid"),
-            status=Comparable("=", "status")
+            user_id=Comparable("=", 1), txid=Comparable("=", "txid"), status=Comparable("=", "status")
         )
 
         assert spec.user_id.value == 1
@@ -1919,10 +1966,7 @@ class TestSpecificationClasses:
 
     def test_output_basket_read_specification(self) -> None:
         """Test OutputBasketReadSpecification dataclass."""
-        spec = OutputBasketReadSpecification(
-            user_id=Comparable("=", 1),
-            name=Comparable("=", "basket")
-        )
+        spec = OutputBasketReadSpecification(user_id=Comparable("=", 1), name=Comparable("=", "basket"))
 
         assert spec.user_id.value == 1
         assert spec.name.value == "basket"
@@ -1930,9 +1974,7 @@ class TestSpecificationClasses:
     def test_output_read_specification(self) -> None:
         """Test OutputReadSpecification dataclass."""
         spec = OutputReadSpecification(
-            user_id=Comparable("=", 1),
-            transaction_id=Comparable("=", 2),
-            spendable=Comparable("=", True)
+            user_id=Comparable("=", 1), transaction_id=Comparable("=", 2), spendable=Comparable("=", True)
         )
 
         assert spec.user_id.value == 1
@@ -1941,10 +1983,7 @@ class TestSpecificationClasses:
 
     def test_commission_read_specification(self) -> None:
         """Test CommissionReadSpecification dataclass."""
-        spec = CommissionReadSpecification(
-            user_id=Comparable("=", 1),
-            amount=Comparable("=", 1000)
-        )
+        spec = CommissionReadSpecification(user_id=Comparable("=", 1), amount=Comparable("=", 1000))
 
         assert spec.user_id.value == 1
         assert spec.amount.value == 1000
@@ -1955,7 +1994,7 @@ class TestSpecificationClasses:
             user_id=Comparable("=", 1),
             type=Comparable("=", "identity"),
             certifier=Comparable("=", "certifier"),
-            subject=Comparable("=", "subject")
+            subject=Comparable("=", "subject"),
         )
 
         assert spec.user_id.value == 1
@@ -1965,10 +2004,7 @@ class TestSpecificationClasses:
 
     def test_tx_note_read_specification(self) -> None:
         """Test TxNoteReadSpecification dataclass."""
-        spec = TxNoteReadSpecification(
-            transaction_id=Comparable("=", 1),
-            note=Comparable("=", "note")
-        )
+        spec = TxNoteReadSpecification(transaction_id=Comparable("=", 1), note=Comparable("=", "note"))
 
         assert spec.transaction_id.value == 1
         assert spec.note.value == "note"

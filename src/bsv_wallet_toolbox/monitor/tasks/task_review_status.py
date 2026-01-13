@@ -56,4 +56,3 @@ class TaskReviewStatus(WalletMonitorTask):
             log += f"Error running reviewStatus: {e!s}"
 
         return log
-

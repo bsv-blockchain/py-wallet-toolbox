@@ -65,7 +65,7 @@ class TestFormat:
         # Only test methods that exist
         left_result = Format.align_left("test", 10)
         assert len(left_result) == 10
-        
+
         right_result = Format.align_right("test", 10)
         assert len(right_result) == 10
 

@@ -120,11 +120,11 @@ class TestBulkIngestorCDNBabbage:
         reader = await BulkFilesReaderStorage.from_storage(storage, fetch, range_obj)
 
         # Cleanup: destroy storage connection (handles None knex from stub)
-        if storage.knex is not None and hasattr(storage.knex, 'destroy'):
+        if storage.knex is not None and hasattr(storage.knex, "destroy"):
             destroy_method = storage.knex.destroy
             if callable(destroy_method):
                 result = destroy_method()
-                if hasattr(result, '__await__'):
+                if hasattr(result, "__await__"):
                     await result
         else:
             # Fallback to storage.destroy() if knex is None or doesn't have destroy

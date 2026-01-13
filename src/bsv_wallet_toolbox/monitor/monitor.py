@@ -298,9 +298,11 @@ class Monitor:
         if callback:
             try:
                 import inspect
+
                 if inspect.iscoroutinefunction(callback):
                     # If callback is async, create a task to run it
                     import asyncio
+
                     asyncio.create_task(callback(broadcast_result))
                 else:
                     callback(broadcast_result)
@@ -318,6 +320,7 @@ class Monitor:
             try:
                 import asyncio
                 import inspect
+
                 if inspect.iscoroutinefunction(callback):
                     # If callback is async, create a task to run it
                     asyncio.create_task(callback(tx_status))

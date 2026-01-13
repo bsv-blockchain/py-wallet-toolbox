@@ -26,10 +26,7 @@ except ImportError:
 @pytest.fixture
 def valid_woc_config():
     """Fixture providing valid WhatsOnChain configuration."""
-    return {
-        "apiKey": "test_api_key_123",
-        "chain": "main"
-    }
+    return {"apiKey": "test_api_key_123", "chain": "main"}
 
 
 @pytest.fixture
@@ -78,31 +75,22 @@ def network_error_responses():
     return [
         # HTTP 500 Internal Server Error
         {"status": 500, "text": "Internal Server Error"},
-
         # HTTP 503 Service Unavailable
         {"status": 503, "text": "Service Unavailable"},
-
         # HTTP 429 Rate Limited
         {"status": 429, "text": "Rate limit exceeded", "headers": {"Retry-After": "60"}},
-
         # HTTP 401 Unauthorized
         {"status": 401, "text": "Unauthorized"},
-
         # HTTP 403 Forbidden
         {"status": 403, "text": "Forbidden"},
-
         # HTTP 404 Not Found
         {"status": 404, "text": "Not Found"},
-
         # Timeout scenarios
         {"timeout": True, "error": "Connection timeout"},
-
         # Malformed JSON response
         {"status": 200, "text": "invalid json {{{", "malformed": True},
-
         # Empty response
         {"status": 200, "text": "", "empty": True},
-
         # Very large response (simulating memory issues)
         {"status": 200, "text": "x" * 1000000, "large": True},
     ]
@@ -113,44 +101,17 @@ def exchange_rate_responses():
     """Fixture providing various exchange rate response scenarios."""
     return [
         # Valid response
-        {
-            "status": 200,
-            "json": {"base": "USD", "rate": 45.67, "timestamp": 1640995200}
-        },
-
+        {"status": 200, "json": {"base": "USD", "rate": 45.67, "timestamp": 1640995200}},
         # Invalid base currency
-        {
-            "status": 200,
-            "json": {"base": "EUR", "rate": 45.67, "timestamp": 1640995200}
-        },
-
+        {"status": 200, "json": {"base": "EUR", "rate": 45.67, "timestamp": 1640995200}},
         # Negative rate
-        {
-            "status": 200,
-            "json": {"base": "USD", "rate": -45.67, "timestamp": 1640995200}
-        },
-
+        {"status": 200, "json": {"base": "USD", "rate": -45.67, "timestamp": 1640995200}},
         # Zero rate
-        {
-            "status": 200,
-            "json": {"base": "USD", "rate": 0, "timestamp": 1640995200}
-        },
-
+        {"status": 200, "json": {"base": "USD", "rate": 0, "timestamp": 1640995200}},
         # Missing fields
-        {
-            "status": 200,
-            "json": {"rate": 45.67, "timestamp": 1640995200}  # missing base
-        },
-
-        {
-            "status": 200,
-            "json": {"base": "USD", "timestamp": 1640995200}  # missing rate
-        },
-
-        {
-            "status": 200,
-            "json": {"base": "USD", "rate": 45.67}  # missing timestamp
-        },
+        {"status": 200, "json": {"rate": 45.67, "timestamp": 1640995200}},  # missing base
+        {"status": 200, "json": {"base": "USD", "timestamp": 1640995200}},  # missing rate
+        {"status": 200, "json": {"base": "USD", "rate": 45.67}},  # missing timestamp
     ]
 
 
@@ -241,6 +202,7 @@ class TestWhatsOnChain:
 
         # When - valid txid
         r = await woc_test.get_merkle_path("7e5b797b86abd31a654bf296900d6cb14d04ef0811568ff4675494af2d92166b", services)
+
         # Remove hash_str fields for comparison (py-sdk includes both hash and hash_str)
         def remove_hash_str(obj):
             if isinstance(obj, dict):
@@ -248,6 +210,7 @@ class TestWhatsOnChain:
             elif isinstance(obj, list):
                 return [remove_hash_str(item) for item in obj]
             return obj
+
         r_normalized = remove_hash_str(r)
         s = json.dumps(r_normalized, sort_keys=True, separators=(",", ":"))
 
@@ -284,6 +247,7 @@ class TestWhatsOnChain:
 
         # When - valid txid
         r = await woc_main.get_merkle_path("d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805", services)
+
         # Remove hash_str fields for comparison (py-sdk includes both hash and hash_str)
         def remove_hash_str(obj):
             if isinstance(obj, dict):
@@ -291,6 +255,7 @@ class TestWhatsOnChain:
             elif isinstance(obj, list):
                 return [remove_hash_str(item) for item in obj]
             return obj
+
         r_normalized = remove_hash_str(r)
         s = json.dumps(r_normalized, sort_keys=True, separators=(",", ":"))
 
@@ -357,8 +322,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_invalid_txid_formats(self, mock_woc_provider, invalid_txids) -> None:
         """Given: WhatsOnChain provider and invalid txid formats
-           When: Call get_raw_tx with invalid txids
-           Then: Handles invalid formats appropriately
+        When: Call get_raw_tx with invalid txids
+        Then: Handles invalid formats appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -370,8 +335,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_network_failure_500(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and network returns HTTP 500
-           When: Call get_raw_tx
-           Then: Handles server error appropriately
+        When: Call get_raw_tx
+        Then: Handles server error appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -388,8 +353,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_network_timeout(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and network request times out
-           When: Call get_raw_tx
-           Then: Handles timeout appropriately
+        When: Call get_raw_tx
+        Then: Handles timeout appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -402,8 +367,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_rate_limiting_429(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and API returns 429 rate limit exceeded
-           When: Call get_raw_tx
-           Then: Handles rate limiting appropriately
+        When: Call get_raw_tx
+        Then: Handles rate limiting appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -422,8 +387,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_malformed_json_response(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and API returns malformed JSON
-           When: Call get_raw_tx
-           Then: Handles malformed response appropriately
+        When: Call get_raw_tx
+        Then: Handles malformed response appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -441,8 +406,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_empty_response(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and API returns empty response
-           When: Call get_raw_tx
-           Then: Handles empty response appropriately
+        When: Call get_raw_tx
+        Then: Handles empty response appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -460,8 +425,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_unauthorized_401(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and API returns 401 Unauthorized
-           When: Call get_raw_tx
-           Then: Handles authentication error appropriately
+        When: Call get_raw_tx
+        Then: Handles authentication error appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -479,8 +444,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_forbidden_403(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and API returns 403 Forbidden
-           When: Call get_raw_tx
-           Then: Handles forbidden error appropriately
+        When: Call get_raw_tx
+        Then: Handles forbidden error appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -498,8 +463,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_not_found_404(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and API returns 404 Not Found
-           When: Call get_raw_tx
-           Then: Handles not found appropriately
+        When: Call get_raw_tx
+        Then: Handles not found appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -517,8 +482,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_success_response(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and successful API response
-           When: Call get_raw_tx
-           Then: Returns raw transaction data
+        When: Call get_raw_tx
+        Then: Returns raw transaction data
         """
         provider, mock_client = mock_woc_provider
 
@@ -537,8 +502,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_merkle_path_invalid_txid(self, mock_woc_provider, invalid_txids) -> None:
         """Given: WhatsOnChain provider and invalid txid
-           When: Call get_merkle_path
-           Then: Handles invalid txid appropriately
+        When: Call get_merkle_path
+        Then: Handles invalid txid appropriately
         """
         provider, mock_client = mock_woc_provider
         services = Mock()  # Mock services instance
@@ -556,10 +521,12 @@ class TestWhatsOnChain:
             # Should return error result or empty merkle path
 
     @pytest.mark.asyncio
-    async def test_get_merkle_path_network_failures(self, mock_woc_provider, valid_txid, network_error_responses) -> None:
+    async def test_get_merkle_path_network_failures(
+        self, mock_woc_provider, valid_txid, network_error_responses
+    ) -> None:
         """Given: WhatsOnChain provider and various network failures
-           When: Call get_merkle_path
-           Then: Handles network failures appropriately
+        When: Call get_merkle_path
+        Then: Handles network failures appropriately
         """
         provider, mock_client = mock_woc_provider
         services = Mock()
@@ -588,8 +555,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_update_bsv_exchange_rate_network_failures(self, mock_woc_provider, network_error_responses) -> None:
         """Given: WhatsOnChain provider and various network failures
-           When: Call update_bsv_exchange_rate
-           Then: Handles network failures appropriately
+        When: Call update_bsv_exchange_rate
+        Then: Handles network failures appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -637,16 +604,12 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_update_bsv_exchange_rate_success(self, mock_woc_provider) -> None:
         """Given: WhatsOnChain provider and successful API response
-           When: Call update_bsv_exchange_rate
-           Then: Returns exchange rate data
+        When: Call update_bsv_exchange_rate
+        Then: Returns exchange rate data
         """
         provider, mock_client = mock_woc_provider
 
-        expected_rate_data = {
-            "base": "USD",
-            "rate": 45.67,
-            "timestamp": 1640995200
-        }
+        expected_rate_data = {"base": "USD", "rate": 45.67, "timestamp": 1640995200}
 
         # Mock successful response
         mock_response = Mock()
@@ -661,8 +624,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_update_bsv_exchange_rate_invalid_responses(self, mock_woc_provider, exchange_rate_responses) -> None:
         """Given: WhatsOnChain provider and various invalid exchange rate responses
-           When: Call update_bsv_exchange_rate
-           Then: Handles invalid responses appropriately
+        When: Call update_bsv_exchange_rate
+        Then: Handles invalid responses appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -693,8 +656,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_provider_initialization_invalid_chain(self) -> None:
         """Given: Invalid chain parameter
-           When: Initialize WhatsOnChain provider
-           Then: Raises InvalidParameterError
+        When: Initialize WhatsOnChain provider
+        Then: Raises InvalidParameterError
         """
         with pytest.raises((InvalidParameterError, ValueError)):
             WhatsOnChain("invalid_chain", {"apiKey": "test"})
@@ -702,8 +665,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_provider_initialization_empty_api_key(self) -> None:
         """Given: Empty API key
-           When: Initialize WhatsOnChain provider
-           Then: Handles empty API key appropriately
+        When: Initialize WhatsOnChain provider
+        Then: Handles empty API key appropriately
         """
         # Should not raise error for empty API key
         provider = WhatsOnChain("main", {"apiKey": ""})
@@ -712,8 +675,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_provider_initialization_none_api_key(self) -> None:
         """Given: None API key
-           When: Initialize WhatsOnChain provider
-           Then: Handles None API key appropriately
+        When: Initialize WhatsOnChain provider
+        Then: Handles None API key appropriately
         """
         # Should not raise error for None API key
         provider = WhatsOnChain("main", {"apiKey": None})
@@ -722,8 +685,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_raw_tx_connection_error(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and connection error occurs
-           When: Call get_raw_tx
-           Then: Handles connection error appropriately
+        When: Call get_raw_tx
+        Then: Handles connection error appropriately
         """
         provider, mock_client = mock_woc_provider
 
@@ -736,8 +699,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_get_merkle_path_connection_error(self, mock_woc_provider, valid_txid) -> None:
         """Given: WhatsOnChain provider and connection error occurs
-           When: Call get_merkle_path
-           Then: Handles connection error appropriately
+        When: Call get_merkle_path
+        Then: Handles connection error appropriately
         """
         provider, mock_client = mock_woc_provider
         services = Mock()
@@ -751,8 +714,8 @@ class TestWhatsOnChain:
     @pytest.mark.asyncio
     async def test_update_bsv_exchange_rate_connection_error(self, mock_woc_provider) -> None:
         """Given: WhatsOnChain provider and connection error occurs
-           When: Call update_bsv_exchange_rate
-           Then: Handles connection error appropriately
+        When: Call update_bsv_exchange_rate
+        Then: Handles connection error appropriately
         """
         provider, mock_client = mock_woc_provider
 

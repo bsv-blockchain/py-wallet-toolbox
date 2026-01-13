@@ -25,7 +25,7 @@ def create_test_output(
     output_type: str = "standard",
 ) -> dict[str, Any]:
     """Create a test output dict for insertion into storage.
-    
+
     Args:
         transaction_id: Database transaction ID
         user_id: User ID
@@ -39,26 +39,30 @@ def create_test_output(
         provided_by: Provider identifier
         purpose: Output purpose
         output_type: Output type
-    
+
     Returns:
         Dictionary ready for storage.insert_output()
     """
     if txid is None:
         txid = "c" * 64
-    
+
     if locking_script is None:
         # Default to a simple P2PKH script
-        locking_script = bytes([
-            0x76,  # OP_DUP
-            0xa9,  # OP_HASH160
-            0x14,  # Push 20 bytes
-        ] + [0xaa] * 20 + [  # 20-byte pubkey hash
-            0x88,  # OP_EQUALVERIFY
-            0xac,  # OP_CHECKSIG
-        ])
-    
+        locking_script = bytes(
+            [
+                0x76,  # OP_DUP
+                0xA9,  # OP_HASH160
+                0x14,  # Push 20 bytes
+            ]
+            + [0xAA] * 20
+            + [  # 20-byte pubkey hash
+                0x88,  # OP_EQUALVERIFY
+                0xAC,  # OP_CHECKSIG
+            ]
+        )
+
     now = datetime.now(UTC)
-    
+
     return {
         "transactionId": transaction_id,
         "userId": user_id,
@@ -86,14 +90,14 @@ def create_spendable_utxo(
     vout: int = 0,
 ) -> dict[str, Any]:
     """Create a spendable UTXO for testing transaction creation.
-    
+
     Args:
         transaction_id: Database transaction ID
         user_id: User ID
         basket_id: Basket ID
         satoshis: Amount (should be enough to cover test outputs)
         vout: Output index
-    
+
     Returns:
         Output dict with spendable=True
     """
@@ -117,14 +121,14 @@ def create_relinquishable_output(
     vout: int = 0,
 ) -> dict[str, Any]:
     """Create an output that can be relinquished.
-    
+
     Args:
         transaction_id: Database transaction ID
         user_id: User ID
         basket_id: Basket ID
         satoshis: Amount
         vout: Output index
-    
+
     Returns:
         Output dict suitable for relinquish tests
     """
@@ -140,11 +144,11 @@ def create_relinquishable_output(
 
 def seed_output(storage: Any, output_data: dict[str, Any]) -> int:
     """Seed an output into storage safely.
-    
+
     Args:
         storage: StorageProvider instance
         output_data: Output data dict from create_test_output()
-    
+
     Returns:
         Output ID from database
     """
@@ -158,20 +162,20 @@ def seed_utxo_for_spending(
     satoshis: int = 2000,
 ) -> tuple[int, int]:
     """Seed a complete transaction with spendable UTXO.
-    
+
     Creates both the transaction and output in one call.
-    
+
     Args:
         storage: StorageProvider instance
         user_id: User ID
-        basket_id: Basket ID  
+        basket_id: Basket ID
         satoshis: UTXO amount
-    
+
     Returns:
         Tuple of (transaction_id, output_id)
     """
     from .transaction_fixtures import create_test_transaction, seed_transaction
-    
+
     # Create source transaction
     tx_data = create_test_transaction(
         user_id=user_id,
@@ -181,7 +185,7 @@ def seed_utxo_for_spending(
         description="UTXO source transaction",
     )
     tx_id = seed_transaction(storage, tx_data)
-    
+
     # Create spendable output
     output_data = create_spendable_utxo(
         transaction_id=tx_id,
@@ -190,6 +194,5 @@ def seed_utxo_for_spending(
         satoshis=satoshis,
     )
     output_id = seed_output(storage, output_data)
-    
-    return tx_id, output_id
 
+    return tx_id, output_id

@@ -43,7 +43,7 @@ class ChaintracksServiceConfig:
         if self.bulk_ingestors is None:
             self.bulk_ingestors = [
                 {"type": "chaintracks_cdn", "cdnConfig": {"sourceUrl": "https://cdn.projectbabbage.com/blockheaders"}},
-                {"type": "whats_on_chain_cdn"}
+                {"type": "whats_on_chain_cdn"},
             ]
 
 
@@ -60,6 +60,7 @@ class PubSubEvents:
         Returns:
             Tuple of (send_function, unsubscribe_function)
         """
+
         def send_callback(data: Any) -> None:
             callback(data)
 
@@ -78,6 +79,7 @@ class PubSubEvents:
                             subscriber(data)
                         except Exception as e:
                             logger.error(f"Error in event subscriber: {e}")
+
             return cb
 
         callback = create_callback()
@@ -219,6 +221,7 @@ class ChaintracksCoreService:
                                 logger.warning(f"No event loop running for {ingestor_name} callback")
                             except Exception as e:
                                 logger.error(f"Failed to queue header from {ingestor_name}: {e}")
+
                     return callback
 
                 try:
@@ -294,7 +297,7 @@ class ChaintracksCoreService:
             height_live=height_ranges.live.max_height if height_ranges.live else 0,
             storage="memory",
             bulk_ingestors=[],  # TODO: Get from bulk manager
-            live_ingestors=[ingestor.name for ingestor in self.live_ingestors]
+            live_ingestors=[ingestor.name for ingestor in self.live_ingestors],
         )
 
     async def find_chain_tip_header(self) -> Optional[BlockHeader]:
@@ -389,7 +392,7 @@ class ChaintracksCoreService:
                 chain_block_header=header,
                 chain_work=chain_work.to_64_pad_hex(),
                 is_chain_tip=True,  # TODO: Proper chain tip detection
-                is_active=True
+                is_active=True,
             )
 
             # Store header

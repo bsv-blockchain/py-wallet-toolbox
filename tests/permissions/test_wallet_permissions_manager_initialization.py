@@ -229,9 +229,9 @@ class TestWalletPermissionsManagerInitialization:
 
         # When - non-admin origin tries createSignature
         result = manager.create_signature(
-                {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
-                "nonadmin.com",
-            )
+            {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
+            "nonadmin.com",
+        )
 
         # Then - callback was triggered and signature was created
         assert len(callback_called) == 1

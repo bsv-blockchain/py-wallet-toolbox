@@ -121,10 +121,7 @@ def _normalize_requested_certificates(requested: Any) -> dict[str, Any]:
     if isinstance(requested, dict):
         certifiers = requested.get("certifiers") or []
         certificate_types = (
-            requested.get("certificateTypes")
-            or requested.get("certificateTypes")
-            or requested.get("types")
-            or {}
+            requested.get("certificateTypes") or requested.get("certificateTypes") or requested.get("types") or {}
         )
         return {"certifiers": certifiers, "certificateTypes": certificate_types}
 
@@ -162,7 +159,11 @@ def _patch_requests_for_auth_interop(debug: bool) -> Any:
                     method,
                     url,
                     len(headers),
-                    len(data or b"") if isinstance(data, (bytes, bytearray)) else (len(str(data)) if data is not None else 0),
+                    (
+                        len(data or b"")
+                        if isinstance(data, (bytes, bytearray))
+                        else (len(str(data)) if data is not None else 0)
+                    ),
                 )
             _auth_trace("http.auth.request", method=method, url=url, headers=headers, body=data)
 
@@ -305,24 +306,24 @@ def _patch_requests_for_auth_interop(debug: bool) -> Any:
 
 class WalletAdapter:
     """Adapter to convert py-wallet-toolbox Wallet to py-sdk compatible interface.
-    
+
     py-sdk's Peer expects wallet methods to return objects with specific attributes,
     while py-wallet-toolbox's Wallet returns dictionaries.
-    
+
     This adapter converts:
     - get_public_key: dict -> object with public_key attribute
     - create_signature: dict -> object with signature attribute
     """
-    
+
     def __init__(self, wallet: Any):
         self._wallet = wallet
-    
+
     def get_public_key(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Convert dict response to object with public_key attribute."""
         _auth_trace("wallet.get_public_key.call", originator=originator, args=args)
         result = self._wallet.get_public_key(args, originator)
         _auth_trace("wallet.get_public_key.result", originator=originator, result=result)
-        
+
         if isinstance(result, dict):
             pub_key_hex = result.get("publicKey")
             if pub_key_hex:
@@ -332,243 +333,246 @@ class WalletAdapter:
                         self.publicKey = hex_key
                         self.public_key = PublicKey(hex_key)
                         self.hex = hex_key
-                
+
                 return PublicKeyResult(pub_key_hex)
-        
+
         return result
-    
+
     def create_signature(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Convert dict response to object with signature attribute.
-        
+
         Also transforms py-sdk's encryption_args format to py-wallet-toolbox's flat format.
         """
         _auth_trace("wallet.create_signature.call", originator=originator, args=args)
         # Transform encryption_args to flat format
-        enc_args = args.get('encryptionArgs', {})
+        enc_args = args.get("encryptionArgs", {})
         if enc_args:
             # Extract protocolID using standardized key
-            protocol_id = enc_args.get('protocolID', {})
+            protocol_id = enc_args.get("protocolID", {})
             if isinstance(protocol_id, dict):
-                security_level = protocol_id.get('securityLevel', 2)
-                protocol = protocol_id.get('protocol', 'auth')
+                security_level = protocol_id.get("securityLevel", 2)
+                protocol = protocol_id.get("protocol", "auth")
                 protocol_id_list = [security_level, protocol]
             else:
                 protocol_id_list = protocol_id
-            
+
             # Extract counterparty
-            counterparty_arg = enc_args.get('counterparty')
+            counterparty_arg = enc_args.get("counterparty")
             counterparty_hex = None
             if isinstance(counterparty_arg, dict):
-                cp_value = counterparty_arg.get('counterparty')
+                cp_value = counterparty_arg.get("counterparty")
                 if cp_value:
-                    if hasattr(cp_value, 'hex'):
+                    if hasattr(cp_value, "hex"):
                         counterparty_hex = cp_value.hex()
                     elif isinstance(cp_value, str):
                         counterparty_hex = cp_value
             elif counterparty_arg:
-                if hasattr(counterparty_arg, 'hex'):
+                if hasattr(counterparty_arg, "hex"):
                     counterparty_hex = counterparty_arg.hex()
                 else:
                     counterparty_hex = str(counterparty_arg)
-            
+
             # Build flat args for py-wallet-toolbox
             args = {
-                'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyID', '1'),
-                'counterparty': counterparty_hex,
-                'data': args.get('data'),
+                "protocolID": protocol_id_list,
+                "keyID": enc_args.get("keyID", "1"),
+                "counterparty": counterparty_hex,
+                "data": args.get("data"),
             }
-        
+
         result = self._wallet.create_signature(args, originator)
         _auth_trace("wallet.create_signature.result", originator=originator, result=result)
-        
+
         if isinstance(result, dict):
-            signature = result.get('signature')
+            signature = result.get("signature")
             if signature:
+
                 class SignatureResult:
                     def __init__(self, sig: bytes):
                         self.signature = sig
-                
+
                 return SignatureResult(signature)
-        
+
         return result
-    
+
     def create_action(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Pass through to wallet's create_action."""
         return self._wallet.create_action(args, originator)
-    
+
     def create_hmac(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for create_hmac.
-        
+
         py-sdk uses:
             encryption_args.protocol_id OR encryption_args.protocolID
               = {securityLevel: 1, protocol: 'server hmac'}
             encryption_args.key_id OR encryption_args.keyID = string
             encryption_args.counterparty = {type: 1}  (ANYONE)  etc.
-        
+
         py-wallet-toolbox expects:
             protocolID = [securityLevel, protocol]
             keyID = string
             counterparty = 'anyone' or hex_string
         """
         _auth_trace("wallet.create_hmac.call", originator=originator, args=args)
-        enc_args = args.get('encryptionArgs', {})
-        data = args.get('data')
-        
+        enc_args = args.get("encryptionArgs", {})
+        data = args.get("data")
+
         if enc_args:
             # Extract protocolID
-            protocol_id = enc_args.get('protocolID', {})
+            protocol_id = enc_args.get("protocolID", {})
             if isinstance(protocol_id, dict):
-                security_level = protocol_id.get('securityLevel', 1)
-                protocol = protocol_id.get('protocol', 'server hmac')
+                security_level = protocol_id.get("securityLevel", 1)
+                protocol = protocol_id.get("protocol", "server hmac")
                 protocol_id_list = [security_level, protocol]
             else:
                 protocol_id_list = protocol_id
-            
+
             # Extract counterparty - for create_nonce it's {type: 1} which means ANYONE
-            counterparty_arg = enc_args.get('counterparty')
+            counterparty_arg = enc_args.get("counterparty")
             if isinstance(counterparty_arg, dict):
-                cp_type = counterparty_arg.get('type', 1)
+                cp_type = counterparty_arg.get("type", 1)
                 if cp_type == 1:  # ANYONE
-                    counterparty = 'anyone'
+                    counterparty = "anyone"
                 else:
-                    cp_value = counterparty_arg.get('counterparty')
-                    if hasattr(cp_value, 'hex'):
+                    cp_value = counterparty_arg.get("counterparty")
+                    if hasattr(cp_value, "hex"):
                         counterparty = cp_value.hex()
                     else:
                         counterparty = cp_value
             else:
                 counterparty = counterparty_arg
-            
+
             # Build flat args for py-wallet-toolbox Wallet (BRC-100)
             args = {
-                'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyID', ''),
-                'counterparty': counterparty,
+                "protocolID": protocol_id_list,
+                "keyID": enc_args.get("keyID", ""),
+                "counterparty": counterparty,
                 # Wallet.create_hmac accepts bytes/bytearray; keep bytes as-is.
-                'data': data,
+                "data": data,
             }
-        
+
         result = self._wallet.create_hmac(args, originator)
         _auth_trace("wallet.create_hmac.result", originator=originator, result=result)
-        
+
         # Convert hmac list back to bytes for py-sdk compatibility
-        if isinstance(result, dict) and 'hmac' in result:
-            hmac_value = result['hmac']
+        if isinstance(result, dict) and "hmac" in result:
+            hmac_value = result["hmac"]
             if isinstance(hmac_value, list):
-                result['hmac'] = bytes(hmac_value)
-        
+                result["hmac"] = bytes(hmac_value)
+
         return result
-    
+
     def verify_hmac(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for verify_hmac."""
         _auth_trace("wallet.verify_hmac.call", originator=originator, args=args)
-        enc_args = args.get('encryptionArgs', {})
-        data = args.get('data')
-        hmac_value = args.get('hmac')
-        
+        enc_args = args.get("encryptionArgs", {})
+        data = args.get("data")
+        hmac_value = args.get("hmac")
+
         if enc_args:
-            protocol_id = enc_args.get('protocolID', {})
+            protocol_id = enc_args.get("protocolID", {})
             if isinstance(protocol_id, dict):
-                security_level = protocol_id.get('securityLevel', 1)
-                protocol = protocol_id.get('protocol', 'server hmac')
+                security_level = protocol_id.get("securityLevel", 1)
+                protocol = protocol_id.get("protocol", "server hmac")
                 protocol_id_list = [security_level, protocol]
             else:
                 protocol_id_list = protocol_id
-            
-            counterparty_arg = enc_args.get('counterparty')
+
+            counterparty_arg = enc_args.get("counterparty")
             if isinstance(counterparty_arg, dict):
-                cp_type = counterparty_arg.get('type', 1)
+                cp_type = counterparty_arg.get("type", 1)
                 if cp_type == 1:
-                    counterparty = 'anyone'
+                    counterparty = "anyone"
                 else:
-                    cp_value = counterparty_arg.get('counterparty')
-                    if hasattr(cp_value, 'hex'):
+                    cp_value = counterparty_arg.get("counterparty")
+                    if hasattr(cp_value, "hex"):
                         counterparty = cp_value.hex()
                     else:
                         counterparty = cp_value
             else:
                 counterparty = counterparty_arg
-            
+
             args = {
-                'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyID', ''),
-                'counterparty': counterparty,
+                "protocolID": protocol_id_list,
+                "keyID": enc_args.get("keyID", ""),
+                "counterparty": counterparty,
                 # Wallet.verify_hmac accepts bytes/bytearray; keep bytes as-is.
-                'data': data,
-                'hmac': hmac_value,
+                "data": data,
+                "hmac": hmac_value,
             }
-        
+
         result = self._wallet.verify_hmac(args, originator)
         _auth_trace("wallet.verify_hmac.result", originator=originator, result=result)
         return result
-    
+
     def verify_signature(self, args: Dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for verify_signature.
-        
+
         py-sdk uses:
             encryption_args.protocol_id = {securityLevel: 2, protocol: 'auth'}
             encryption_args.key_id = 'nonce1 nonce2'
             encryption_args.counterparty = {type: 3, counterparty: PublicKey}
-        
+
         py-wallet-toolbox expects:
             protocolID = [securityLevel, protocol]
             keyID = 'nonce1 nonce2'
             counterparty = hex_string
         """
         _auth_trace("wallet.verify_signature.call", originator=originator, args=args)
-        enc_args = args.get('encryptionArgs', {})
-        data = args.get('data')
-        signature = args.get('signature')
-        
+        enc_args = args.get("encryptionArgs", {})
+        data = args.get("data")
+        signature = args.get("signature")
+
         if enc_args:
-            protocol_id = enc_args.get('protocolID', {})
+            protocol_id = enc_args.get("protocolID", {})
             if isinstance(protocol_id, dict):
-                security_level = protocol_id.get('securityLevel', 2)
-                protocol = protocol_id.get('protocol', 'auth')
+                security_level = protocol_id.get("securityLevel", 2)
+                protocol = protocol_id.get("protocol", "auth")
                 protocol_id_list = [security_level, protocol]
             else:
                 protocol_id_list = protocol_id
-            
-            counterparty_arg = enc_args.get('counterparty')
+
+            counterparty_arg = enc_args.get("counterparty")
             counterparty_hex = None
             if isinstance(counterparty_arg, dict):
-                cp_value = counterparty_arg.get('counterparty')
+                cp_value = counterparty_arg.get("counterparty")
                 if cp_value:
-                    if hasattr(cp_value, 'hex'):
+                    if hasattr(cp_value, "hex"):
                         counterparty_hex = cp_value.hex()
                     elif isinstance(cp_value, str):
                         counterparty_hex = cp_value
             elif counterparty_arg:
-                if hasattr(counterparty_arg, 'hex'):
+                if hasattr(counterparty_arg, "hex"):
                     counterparty_hex = counterparty_arg.hex()
                 else:
                     counterparty_hex = str(counterparty_arg)
-            
+
             # Convert signature to list if needed
             if isinstance(signature, bytes):
                 signature = list(signature)
-            
+
             args = {
-                'protocolID': protocol_id_list,
-                'keyID': enc_args.get('keyID', '1'),
-                'counterparty': counterparty_hex,
-                'data': list(data) if isinstance(data, bytes) else data,
-                'signature': signature,
+                "protocolID": protocol_id_list,
+                "keyID": enc_args.get("keyID", "1"),
+                "counterparty": counterparty_hex,
+                "data": list(data) if isinstance(data, bytes) else data,
+                "signature": signature,
             }
-        
+
         result = self._wallet.verify_signature(args, originator)
         _auth_trace("wallet.verify_signature.result", originator=originator, result=result)
-        
+
         # Convert result to object with valid attribute
         if isinstance(result, dict):
+
             class VerifyResult:
                 def __init__(self, valid: bool):
                     self.valid = valid
-            return VerifyResult(result.get('valid', False))
-        
+
+            return VerifyResult(result.get("valid", False))
+
         return result
-    
+
     def __getattr__(self, name: str) -> Any:
         """Forward any other attribute access to the underlying wallet."""
         return getattr(self._wallet, name)

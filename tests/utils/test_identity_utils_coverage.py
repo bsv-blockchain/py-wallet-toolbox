@@ -14,6 +14,7 @@ try:
         query_overlay_certificates,
         transform_verifiable_certificates_with_trust,
     )
+
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
@@ -35,19 +36,10 @@ class TestTransformVerifiableCertificatesWithTrust:
         """Test transforming single certificate that meets trust threshold."""
         trust_settings = {
             "trustLevel": 50,
-            "trustedCertifiers": [
-                {"identityKey": "certifier1", "name": "Test Certifier", "trust": 100}
-            ]
+            "trustedCertifiers": [{"identityKey": "certifier1", "name": "Test Certifier", "trust": 100}],
         }
 
-        certificates = [
-            {
-                "type": "identity",
-                "subject": "subject1",
-                "certifier": "certifier1",
-                "serialNumber": "123"
-            }
-        ]
+        certificates = [{"type": "identity", "subject": "subject1", "certifier": "certifier1", "serialNumber": "123"}]
 
         result = transform_verifiable_certificates_with_trust(trust_settings, certificates)
 
@@ -59,19 +51,10 @@ class TestTransformVerifiableCertificatesWithTrust:
         """Test filtering out certificates below trust threshold."""
         trust_settings = {
             "trustLevel": 100,
-            "trustedCertifiers": [
-                {"identityKey": "certifier1", "name": "Test Certifier", "trust": 50}
-            ]
+            "trustedCertifiers": [{"identityKey": "certifier1", "name": "Test Certifier", "trust": 50}],
         }
 
-        certificates = [
-            {
-                "type": "identity",
-                "subject": "subject1",
-                "certifier": "certifier1",
-                "serialNumber": "123"
-            }
-        ]
+        certificates = [{"type": "identity", "subject": "subject1", "certifier": "certifier1", "serialNumber": "123"}]
 
         result = transform_verifiable_certificates_with_trust(trust_settings, certificates)
 
@@ -82,9 +65,7 @@ class TestTransformVerifiableCertificatesWithTrust:
         """Test filtering out certificates from untrusted certifiers."""
         trust_settings = {
             "trustLevel": 50,
-            "trustedCertifiers": [
-                {"identityKey": "trusted_certifier", "name": "Trusted", "trust": 100}
-            ]
+            "trustedCertifiers": [{"identityKey": "trusted_certifier", "name": "Trusted", "trust": 100}],
         }
 
         certificates = [
@@ -92,7 +73,7 @@ class TestTransformVerifiableCertificatesWithTrust:
                 "type": "identity",
                 "subject": "subject1",
                 "certifier": "untrusted_certifier",  # Not in trusted list
-                "serialNumber": "123"
+                "serialNumber": "123",
             }
         ]
 
@@ -107,23 +88,13 @@ class TestTransformVerifiableCertificatesWithTrust:
             "trustLevel": 100,
             "trustedCertifiers": [
                 {"identityKey": "certifier1", "name": "Certifier 1", "trust": 60},
-                {"identityKey": "certifier2", "name": "Certifier 2", "trust": 70}
-            ]
+                {"identityKey": "certifier2", "name": "Certifier 2", "trust": 70},
+            ],
         }
 
         certificates = [
-            {
-                "type": "identity",
-                "subject": "subject1",
-                "certifier": "certifier1",
-                "serialNumber": "123"
-            },
-            {
-                "type": "identity",
-                "subject": "subject1",
-                "certifier": "certifier2",
-                "serialNumber": "456"
-            }
+            {"type": "identity", "subject": "subject1", "certifier": "certifier1", "serialNumber": "123"},
+            {"type": "identity", "subject": "subject1", "certifier": "certifier2", "serialNumber": "456"},
         ]
 
         result = transform_verifiable_certificates_with_trust(trust_settings, certificates)
@@ -138,18 +109,10 @@ class TestTransformVerifiableCertificatesWithTrust:
         """Test skipping certificates without subject."""
         trust_settings = {
             "trustLevel": 50,
-            "trustedCertifiers": [
-                {"identityKey": "certifier1", "name": "Test Certifier", "trust": 100}
-            ]
+            "trustedCertifiers": [{"identityKey": "certifier1", "name": "Test Certifier", "trust": 100}],
         }
 
-        certificates = [
-            {
-                "type": "identity",
-                "certifier": "certifier1",  # Missing subject
-                "serialNumber": "123"
-            }
-        ]
+        certificates = [{"type": "identity", "certifier": "certifier1", "serialNumber": "123"}]  # Missing subject
 
         result = transform_verifiable_certificates_with_trust(trust_settings, certificates)
 
@@ -160,18 +123,10 @@ class TestTransformVerifiableCertificatesWithTrust:
         """Test skipping certificates without certifier."""
         trust_settings = {
             "trustLevel": 50,
-            "trustedCertifiers": [
-                {"identityKey": "certifier1", "name": "Test Certifier", "trust": 100}
-            ]
+            "trustedCertifiers": [{"identityKey": "certifier1", "name": "Test Certifier", "trust": 100}],
         }
 
-        certificates = [
-            {
-                "type": "identity",
-                "subject": "subject1",  # Missing certifier
-                "serialNumber": "123"
-            }
-        ]
+        certificates = [{"type": "identity", "subject": "subject1", "serialNumber": "123"}]  # Missing certifier
 
         result = transform_verifiable_certificates_with_trust(trust_settings, certificates)
 
@@ -199,7 +154,7 @@ class TestQueryOverlayCertificates:
                 "revocationOutpoint": "outpoint1",
                 "signature": "signature1",
                 "keyring": {"key1": "value1"},
-                "decryptedFields": {"field1": "value1"}
+                "decryptedFields": {"field1": "value1"},
             }
         ]
 
@@ -214,11 +169,7 @@ class TestQueryOverlayCertificates:
         """Test handling invalid result entries."""
         lookup_results = [
             "not_a_dict",  # Invalid entry
-            {
-                "type": "identity",
-                "subject": "subject1",
-                "certifier": "certifier1"
-            }
+            {"type": "identity", "subject": "subject1", "certifier": "certifier1"},
         ]
 
         result = query_overlay_certificates({}, lookup_results)
@@ -264,10 +215,7 @@ class TestParseResults:
     @pytest.mark.asyncio
     async def test_parse_results_missing_beef(self) -> None:
         """Test parse_results with missing beef data."""
-        lookup_result = {
-            "type": "output-list",
-            "outputs": [{"outputIndex": 0}]  # Missing beef
-        }
+        lookup_result = {"type": "output-list", "outputs": [{"outputIndex": 0}]}  # Missing beef
 
         result = await parse_results(lookup_result)
 
@@ -281,10 +229,7 @@ class TestParseResults:
         mock_tx.outputs = []
 
         # We can't easily mock Transaction.from_beef, so we'll test the exception handling
-        lookup_result = {
-            "type": "output-list",
-            "outputs": [{"beef": "mock_beef", "outputIndex": 0}]
-        }
+        lookup_result = {"type": "output-list", "outputs": [{"beef": "mock_beef", "outputIndex": 0}]}
 
         result = await parse_results(lookup_result)
 
@@ -294,10 +239,7 @@ class TestParseResults:
     @pytest.mark.asyncio
     async def test_parse_results_exception_handling(self) -> None:
         """Test parse_results exception handling."""
-        lookup_result = {
-            "type": "output-list",
-            "outputs": [{"beef": "invalid"}]  # Will cause exception
-        }
+        lookup_result = {"type": "output-list", "outputs": [{"beef": "invalid"}]}  # Will cause exception
 
         result = await parse_results(lookup_result)
 
@@ -315,10 +257,7 @@ class TestQueryOverlay:
         resolver = Mock()
 
         # Mock the resolver.query method
-        mock_lookup_result = {
-            "type": "output-list",
-            "outputs": []
-        }
+        mock_lookup_result = {"type": "output-list", "outputs": []}
         resolver.query = AsyncMock(return_value=mock_lookup_result)
 
         result = await query_overlay(query, resolver)
@@ -342,4 +281,3 @@ class TestQueryOverlay:
         # Should propagate exceptions (no internal exception handling)
         with pytest.raises(Exception, match="Query failed"):
             await query_overlay(query, resolver)
-

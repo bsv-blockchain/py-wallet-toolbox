@@ -11,8 +11,7 @@ from .live_ingestor_woc_poll import LiveIngestorWocPoll
 from ...wallet_services import Chain
 
 
-def create_live_ingestors(chain: Chain,
-                          api_key: Optional[str] = None) -> List[NamedLiveIngestor]:
+def create_live_ingestors(chain: Chain, api_key: Optional[str] = None) -> List[NamedLiveIngestor]:
     """Create configured live ingestors.
 
     Args:
@@ -25,15 +24,8 @@ def create_live_ingestors(chain: Chain,
     ingestors = []
 
     # Create WhatsOnChain polling ingestor
-    woc_ingestor = LiveIngestorWocPoll(
-        chain=chain,
-        sync_period=60.0,  # 60 seconds like Go default
-        api_key=api_key
-    )
+    woc_ingestor = LiveIngestorWocPoll(chain=chain, sync_period=60.0, api_key=api_key)  # 60 seconds like Go default
 
-    ingestors.append(NamedLiveIngestor(
-        name="woc_poll",
-        ingestor=woc_ingestor
-    ))
+    ingestors.append(NamedLiveIngestor(name="woc_poll", ingestor=woc_ingestor))
 
     return ingestors

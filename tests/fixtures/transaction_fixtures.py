@@ -22,7 +22,7 @@ def create_test_transaction(
     raw_tx: bytes | None = None,
 ) -> dict[str, Any]:
     """Create a test transaction dict for insertion into storage.
-    
+
     Args:
         user_id: User ID for the transaction
         txid: Transaction ID (64 hex chars), defaults to 'a' * 64
@@ -32,29 +32,37 @@ def create_test_transaction(
         satoshis: Transaction amount in satoshis
         description: Transaction description
         raw_tx: Raw transaction bytes, defaults to minimal valid tx
-    
+
     Returns:
         Dictionary ready for storage.insert_transaction()
-    
+
     Note: This returns a dict, not a model instance, to avoid session attachment issues.
     """
     if txid is None:
         txid = "a" * 64
-    
+
     if reference is None:
         reference = "VGVzdFJlZg=="  # Base64 encoded "TestRef"
-    
+
     if raw_tx is None:
         # Minimal valid transaction bytes
-        raw_tx = bytes([
-            1, 0, 0, 0,  # version
-            0,           # input count
-            0,           # output count
-            0, 0, 0, 0,  # locktime
-        ])
-    
+        raw_tx = bytes(
+            [
+                1,
+                0,
+                0,
+                0,  # version
+                0,  # input count
+                0,  # output count
+                0,
+                0,
+                0,
+                0,  # locktime
+            ]
+        )
+
     now = datetime.now(UTC)
-    
+
     return {
         "userId": user_id,
         "txid": txid,
@@ -78,12 +86,12 @@ def create_pending_transaction(
     raw_tx: bytes | None = None,
 ) -> dict[str, Any]:
     """Create a pending/unsigned transaction for sign_action tests.
-    
+
     Args:
         user_id: User ID
         reference: Transaction reference (required for sign_action)
         raw_tx: Raw transaction bytes
-    
+
     Returns:
         Transaction dict with status='unsigned' and isOutgoing=True
     """
@@ -103,11 +111,11 @@ def create_abortable_transaction(
     reference: str,
 ) -> dict[str, Any]:
     """Create a transaction that can be aborted.
-    
+
     Args:
         user_id: User ID
         reference: Transaction reference
-    
+
     Returns:
         Transaction dict with abortable status
     """
@@ -115,20 +123,20 @@ def create_abortable_transaction(
         user_id=user_id,
         reference=reference,
         status="unsigned",  # Abortable status
-        is_outgoing=True,   # Must be outgoing to abort
+        is_outgoing=True,  # Must be outgoing to abort
     )
 
 
 def seed_transaction(storage: Any, tx_data: dict[str, Any]) -> int:
     """Seed a transaction into storage safely.
-    
+
     Args:
         storage: StorageProvider instance
         tx_data: Transaction data dict from create_test_transaction()
-    
+
     Returns:
         Transaction ID from database
-    
+
     Note: This uses storage.insert_transaction() which handles sessions properly.
           The returned ID is safe to use; any model instances are detached.
     """
@@ -136,4 +144,3 @@ def seed_transaction(storage: Any, tx_data: dict[str, Any]) -> int:
     # Ensure any internal session state is cleared
     # This helps avoid cross-session conflicts in tests
     return tx_id
-

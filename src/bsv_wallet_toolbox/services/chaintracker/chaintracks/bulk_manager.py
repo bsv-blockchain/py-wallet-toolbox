@@ -42,8 +42,7 @@ class BulkManager:
         # For now, return a placeholder range
         return None
 
-    async def sync_bulk_storage(self, present_height: int, ranges: HeightRanges,
-                               live_height_threshold: int) -> None:
+    async def sync_bulk_storage(self, present_height: int, ranges: HeightRanges, live_height_threshold: int) -> None:
         """Synchronize bulk storage with current blockchain state.
 
         Args:
@@ -73,12 +72,7 @@ class BulkManager:
             Dictionary with bulk file information
         """
         # TODO: Implement bulk files info
-        return {
-            "rootFolder": "",
-            "jsonFilename": "",
-            "headersPerFile": 100000,
-            "files": []
-        }
+        return {"rootFolder": "", "jsonFilename": "", "headersPerFile": 100000, "files": []}
 
     def get_file_data_by_index(self, index: int) -> Optional[Any]:
         """Get bulk file data by index.
@@ -110,8 +104,9 @@ class BulkManager:
         # TODO: Implement last header lookup
         return None, None
 
-    async def get_gap_headers_as_live(self, present_height: int, live_range: Any,
-                                     recursion_limit: int) -> List[Dict[str, Any]]:
+    async def get_gap_headers_as_live(
+        self, present_height: int, live_range: Any, recursion_limit: int
+    ) -> List[Dict[str, Any]]:
         """Get gap headers that need to be filled between bulk and live.
 
         Args:

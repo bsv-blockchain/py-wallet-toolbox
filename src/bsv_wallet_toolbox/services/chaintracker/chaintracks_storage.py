@@ -471,10 +471,10 @@ class ChaintracksStorage:
                         sync_state.last_synced_hash = block_hash
                     else:
                         sync_state = SyncStateModel(
-                        chain=self.chain,
-                        last_synced_height=height,
-                        last_synced_hash=block_hash,
-                    )
+                            chain=self.chain,
+                            last_synced_height=height,
+                            last_synced_hash=block_hash,
+                        )
                     session.add(sync_state)
 
                 session.commit()
@@ -509,6 +509,7 @@ class ChaintracksStorage:
         Reference: go-wallet-toolbox/pkg/services/chaintracks/gormstorage/provider.go
         """
         from .chaintracks.storage.sqlalchemy_storage import SQLAlchemyStorageQueries
+
         session = self.session_factory()
         return SQLAlchemyStorageQueries(session)
 
@@ -563,12 +564,12 @@ class ChaintracksStorageMemory(ChaintracksStorage):
 
     def _run_migrations(self) -> None:
         """Run database migrations to update schema.
-        
+
         Handles schema upgrades and data migrations.
         """
         # Check current schema version and migrate as needed
         # For now, this is a basic implementation
-        
+
         session = self.session_factory()
         try:
             # Check if we have a migrations table
@@ -576,20 +577,24 @@ class ChaintracksStorageMemory(ChaintracksStorage):
             result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"))
             if not result.fetchone():
                 # Create migrations table
-                session.execute(text("""
+                session.execute(
+                    text(
+                        """
                     CREATE TABLE migrations (
                         id INTEGER PRIMARY KEY,
                         version TEXT NOT NULL,
                         applied_at INTEGER NOT NULL
                     )
-                """))
+                """
+                    )
+                )
                 session.commit()
-            
+
             # TODO: Implement specific migration logic
             # For example:
             # - Add new columns
             # - Transform data
             # - Update indexes
-            
+
         finally:
             session.close()

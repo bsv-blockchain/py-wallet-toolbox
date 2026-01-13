@@ -139,18 +139,18 @@ class JsonRpcInternalError(JsonRpcError):
 
 def wallet_error_to_json(error: Exception) -> dict[str, Any]:
     """Convert a WalletError instance to JSON format compatible with TypeScript WalletErrorFromJson.
-    
+
     This function mirrors the behavior of TypeScript WalletError.unknownToJson() to ensure
     proper error serialization across the Python/TypeScript boundary.
-    
-    Reference: 
+
+    Reference:
         - TypeScript: ts-sdk/src/wallet/WalletError.ts (unknownToJson)
         - TypeScript: wallet-toolbox/src/sdk/WalletError.ts (unknownToJson)
         - TypeScript: wallet-toolbox/src/sdk/WalletErrorFromJson.ts
-    
+
     Args:
         error: Exception instance to convert
-        
+
     Returns:
         Dictionary with error details in format expected by TypeScript client
     """
@@ -166,12 +166,12 @@ def wallet_error_to_json(error: Exception) -> dict[str, Any]:
             "totalSatoshisNeeded": error.required,
             "moreSatoshisNeeded": error.short,
         }
-    
+
     # Check if it's a WalletError base class
     if isinstance(error, WalletError):
         # Get error class name
         error_name = error.__class__.__name__
-        
+
         # Map common error names to WERR_ format
         if error_name == "InsufficientFundsError":
             # This is the one from errors/wallet_errors.py
@@ -184,7 +184,7 @@ def wallet_error_to_json(error: Exception) -> dict[str, Any]:
                     "totalSatoshisNeeded": error.total_satoshis_needed,
                     "moreSatoshisNeeded": error.more_satoshis_needed,
                 }
-        
+
         # For other WalletError subclasses, use the class name
         # Convert Python class names to WERR_ format if needed
         if not error_name.startswith("WERR_"):
@@ -196,20 +196,20 @@ def wallet_error_to_json(error: Exception) -> dict[str, Any]:
                 "StateError": "WERR_INVALID_OPERATION",
             }
             error_name = name_mapping.get(error_name, f"WERR_{error_name.upper()}")
-        
+
         result = {
             "name": error_name,
             "message": str(error),
             "isError": True,
         }
-        
+
         # Add InvalidParameterError parameter if available
         if error_name == "WERR_INVALID_PARAMETER" and hasattr(error, "parameter"):
             result["parameter"] = error.parameter
             result["code"] = 6
-        
+
         return result
-    
+
     # For regular Exception instances
     if isinstance(error, Exception):
         # Log a generic internal error message server-side while returning a generic message to the client.
@@ -418,7 +418,7 @@ class StorageServer:
         for json_rpc_method, python_method in json_rpc_to_python_methods.items():
             # Debug: Check if method exists
             has_method = hasattr(storage_provider, python_method)
-            
+
             if has_method:
                 method = getattr(storage_provider, python_method)
                 if callable(method):
@@ -691,6 +691,3 @@ class StorageServer:
 # Backward compatibility alias
 # Deprecated: Use StorageServer instead
 JsonRpcServer = StorageServer
-
-
-

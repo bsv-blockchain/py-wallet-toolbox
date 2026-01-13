@@ -83,7 +83,9 @@ def convert_proof_to_merkle_path(txid: str, proof: TscMerkleProofApi) -> dict[st
     return {"blockHeight": block_height, "path": path}
 
 
-def normalize_merkle_path_value(txid: str, merkle_path_value: Any, *, block_height: int | None = None) -> dict[str, Any] | None:
+def normalize_merkle_path_value(
+    txid: str, merkle_path_value: Any, *, block_height: int | None = None
+) -> dict[str, Any] | None:
     """Normalize various merklePath representations into wallet-toolbox MerklePath dict.
 
     Supported inputs:

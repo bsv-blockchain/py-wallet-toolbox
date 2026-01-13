@@ -13,7 +13,7 @@ class TestTransactionModels:
         """Test TransactionInput model."""
         try:
             from bsv_wallet_toolbox.models import TransactionInput
-            
+
             tx_input = TransactionInput(
                 txid="abc123",
                 vout=0,
@@ -29,7 +29,7 @@ class TestTransactionModels:
         """Test TransactionOutput model."""
         try:
             from bsv_wallet_toolbox.models import TransactionOutput
-            
+
             tx_output = TransactionOutput(
                 satoshis=1000,
                 script=b"script",
@@ -42,7 +42,7 @@ class TestTransactionModels:
         """Test UTXO model."""
         try:
             from bsv_wallet_toolbox.models import UTXO
-            
+
             utxo = UTXO(
                 txid="abc123",
                 vout=0,
@@ -61,7 +61,7 @@ class TestActionModels:
         """Test Action model."""
         try:
             from bsv_wallet_toolbox.models import Action
-            
+
             action = Action(
                 action_id="action123",
                 status="pending",
@@ -75,7 +75,7 @@ class TestActionModels:
         """Test ActionResult model."""
         try:
             from bsv_wallet_toolbox.models import ActionResult
-            
+
             result = ActionResult(
                 action_id="action123",
                 txid="tx123",
@@ -93,7 +93,7 @@ class TestCertificateModels:
         """Test Certificate model."""
         try:
             from bsv_wallet_toolbox.models import Certificate
-            
+
             cert = Certificate(
                 certificate_id="cert123",
                 certificate_type="identity",
@@ -107,7 +107,7 @@ class TestCertificateModels:
         """Test CertificateField model."""
         try:
             from bsv_wallet_toolbox.models import CertificateField
-            
+
             field = CertificateField(
                 name="email",
                 value="test@example.com",
@@ -124,7 +124,7 @@ class TestMerkleProofModels:
         """Test MerklePath model."""
         try:
             from bsv_wallet_toolbox.models import MerklePath
-            
+
             path = MerklePath(
                 txid="tx123",
                 path=[],
@@ -138,7 +138,7 @@ class TestMerkleProofModels:
         """Test MerkleProof model."""
         try:
             from bsv_wallet_toolbox.models import MerkleProof
-            
+
             proof = MerkleProof(
                 index=0,
                 tx_or_id="tx123",
@@ -157,7 +157,7 @@ class TestModelValidation:
         """Test that models validate required fields."""
         try:
             from bsv_wallet_toolbox.models import TransactionInput
-            
+
             # Missing required fields should raise
             with pytest.raises((TypeError, ValueError)):
                 TransactionInput()
@@ -168,7 +168,7 @@ class TestModelValidation:
         """Test that models validate field types."""
         try:
             from bsv_wallet_toolbox.models import TransactionOutput
-            
+
             # Invalid type for satoshis
             with pytest.raises((TypeError, ValueError)):
                 TransactionOutput(satoshis="invalid", script=b"script")
@@ -183,7 +183,7 @@ class TestModelSerialization:
         """Test converting model to dict."""
         try:
             from bsv_wallet_toolbox.models import TransactionOutput
-            
+
             output = TransactionOutput(satoshis=1000, script=b"script")
             if hasattr(output, "to_dict"):
                 d = output.to_dict()
@@ -196,7 +196,7 @@ class TestModelSerialization:
         """Test creating model from dict."""
         try:
             from bsv_wallet_toolbox.models import TransactionOutput
-            
+
             data = {"satoshis": 1000, "script": b"script"}
             if hasattr(TransactionOutput, "from_dict"):
                 output = TransactionOutput.from_dict(data)
@@ -208,7 +208,7 @@ class TestModelSerialization:
         """Test converting model to JSON."""
         try:
             from bsv_wallet_toolbox.models import Action
-            
+
             action = Action(action_id="action123", status="pending")
             if hasattr(action, "to_json"):
                 json_str = action.to_json()
@@ -216,4 +216,3 @@ class TestModelSerialization:
                 assert "action123" in json_str
         except (ImportError, AttributeError, TypeError):
             pass
-

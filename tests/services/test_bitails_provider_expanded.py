@@ -51,10 +51,7 @@ class TestBitailsInitialization:
 
         headers = bitails.get_http_headers()
 
-        expected = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
+        expected = {"Content-Type": "application/json", "Accept": "application/json"}
         assert headers == expected
 
     def test_get_http_headers_with_api_key(self) -> None:
@@ -64,19 +61,12 @@ class TestBitailsInitialization:
 
         headers = bitails.get_http_headers()
 
-        expected = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": "test_key_123"
-        }
+        expected = {"Content-Type": "application/json", "Accept": "application/json", "Authorization": "test_key_123"}
         assert headers == expected
 
     def test_get_http_headers_with_custom_headers(self) -> None:
         """Test get_http_headers with custom headers."""
-        config = BitailsConfig(
-            api_key="key123",
-            headers={"X-Custom": "value", "User-Agent": "test"}
-        )
+        config = BitailsConfig(api_key="key123", headers={"X-Custom": "value", "User-Agent": "test"})
         bitails = Bitails(config=config)
 
         headers = bitails.get_http_headers()
@@ -86,7 +76,7 @@ class TestBitailsInitialization:
             "Accept": "application/json",
             "Authorization": "key123",
             "X-Custom": "value",
-            "User-Agent": "test"
+            "User-Agent": "test",
         }
         assert headers == expected
 
@@ -116,10 +106,7 @@ class TestBitailsPostBeef:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "txids": ["txid1", "txid2"]
-        }
+        mock_response.json.return_value = {"success": True, "txids": ["txid1", "txid2"]}
 
         with patch("requests.post", return_value=mock_response) as mock_post:
             result = bitails.post_beef(mock_beef, txids)
@@ -223,10 +210,7 @@ class TestBitailsPostRaws:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"txid": "txid1", "success": True},
-            {"txid": "txid2", "success": True}
-        ]
+        mock_response.json.return_value = [{"txid": "txid1", "success": True}, {"txid": "txid2", "success": True}]
 
         with patch("requests.post", return_value=mock_response) as mock_post:
             results = bitails.post_raws(raws, txids)
@@ -246,7 +230,7 @@ class TestBitailsPostRaws:
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {"txid": "txid1", "success": True},
-            {"error": "Invalid transaction", "success": False}
+            {"error": "Invalid transaction", "success": False},
         ]
 
         with patch("requests.post", return_value=mock_response) as mock_post:
@@ -263,9 +247,7 @@ class TestBitailsPostRaws:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"txid": "inferred_txid", "success": True}
-        ]
+        mock_response.json.return_value = [{"txid": "inferred_txid", "success": True}]
 
         with patch("requests.post", return_value=mock_response) as mock_post:
             results = bitails.post_raws(raws)
@@ -348,10 +330,7 @@ class TestBitailsGetMerklePath:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "merklePath": {"some": "path_data"},
-            "header": {"hash": "block_hash"}
-        }
+        mock_response.json.return_value = {"merklePath": {"some": "path_data"}, "header": {"hash": "block_hash"}}
 
         with patch("requests.get", return_value=mock_response) as mock_get:
             result = bitails.get_merkle_path(txid, mock_services)
@@ -433,11 +412,7 @@ class TestBitailsGetTransactionStatus:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "txid": "test_txid",
-            "confirmations": 6,
-            "blockHeight": 800000
-        }
+        mock_response.json.return_value = {"txid": "test_txid", "confirmations": 6, "blockHeight": 800000}
 
         with patch("requests.get", return_value=mock_response) as mock_get:
             result = bitails.get_transaction_status(txid)
@@ -546,11 +521,7 @@ class TestBitailsDataClasses:
 
     def test_bitails_post_raws_result_custom_values(self) -> None:
         """Test BitailsPostRawsResult with custom values."""
-        result = BitailsPostRawsResult(
-            txid="test_txid",
-            success=True,
-            error_message="some error"
-        )
+        result = BitailsPostRawsResult(txid="test_txid", success=True, error_message="some error")
 
         assert result.txid == "test_txid"
         assert result.success is True
@@ -566,11 +537,7 @@ class TestBitailsDataClasses:
 
     def test_post_beef_result_custom_values(self) -> None:
         """Test PostBeefResult with custom values."""
-        result = PostBeefResult(
-            success=True,
-            txids=["tx1", "tx2"],
-            error_message="partial success"
-        )
+        result = PostBeefResult(success=True, txids=["tx1", "tx2"], error_message="partial success")
 
         assert result.success is True
         assert result.txids == ["tx1", "tx2"]
@@ -588,10 +555,7 @@ class TestBitailsDataClasses:
     def test_get_merkle_path_result_custom_values(self) -> None:
         """Test GetMerklePathResult with custom values."""
         result = GetMerklePathResult(
-            success=True,
-            merkle_path={"path": "data"},
-            header={"hash": "block_hash"},
-            error_message="some error"
+            success=True, merkle_path={"path": "data"}, header={"hash": "block_hash"}, error_message="some error"
         )
 
         assert result.success is True

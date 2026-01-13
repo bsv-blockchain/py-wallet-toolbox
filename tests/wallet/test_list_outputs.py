@@ -22,30 +22,20 @@ def valid_list_outputs_args():
         "includeCustomInstructions": False,
         "includeTags": True,
         "includeLabels": True,
-        "seekPermission": True
+        "seekPermission": True,
     }
 
 
 @pytest.fixture
 def list_outputs_with_tags():
     """Fixture providing list outputs arguments with specific tags."""
-    return {
-        "basket": "default",
-        "tags": ["tag1", "tag2"],
-        "tagQueryMode": "all",
-        "includeTags": True
-    }
+    return {"basket": "default", "tags": ["tag1", "tag2"], "tagQueryMode": "all", "includeTags": True}
 
 
 @pytest.fixture
 def list_outputs_pagination():
     """Fixture providing list outputs arguments with pagination."""
-    return {
-        "basket": "default",
-        "tags": [],
-        "limit": 5,
-        "offset": 10
-    }
+    return {"basket": "default", "tags": [], "limit": 5, "offset": 10}
 
 
 @pytest.fixture
@@ -234,8 +224,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_none_basket_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with None basket
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"basket": None, "tags": []}
@@ -246,8 +236,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_basket_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong basket type
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, [], {}, True, 45.67]
@@ -261,8 +251,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_whitespace_basket_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with whitespace-only basket
-           When: Call list_outputs
-           Then: Raises InvalidParameterError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError
         """
         # Given - Various whitespace baskets
         whitespace_baskets = ["   ", "\t", "\n", " \t \n "]
@@ -276,8 +266,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_basket_too_long_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with basket exceeding 300 characters
-           When: Call list_outputs
-           Then: Raises InvalidParameterError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError
         """
         # Given - Basket too long (TypeScript reference shows 300 char limit)
         too_long_basket = "basket_name_" * 31  # Exceeds 300 chars
@@ -289,8 +279,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_none_tags_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with None tags
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"basket": "default", "tags": None}
@@ -301,8 +291,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_tags_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong tags type
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, "string", {}, True, 45.67]
@@ -316,8 +306,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_tag_types_in_list_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong types in tags list
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid tag types in list
         invalid_tag_types = [
@@ -337,8 +327,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_whitespace_tags_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with whitespace-only tags
-           When: Call list_outputs
-           Then: Raises InvalidParameterError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError
         """
         # Given - Various whitespace tags
         whitespace_tags = ["   ", "\t", "\n", " \t \n "]
@@ -352,8 +342,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_tag_too_long_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with tag exceeding 300 characters
-           When: Call list_outputs
-           Then: Raises InvalidParameterError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError
         """
         # Given - Tag too long (TypeScript reference shows 300 char limit)
         too_long_tag = "a" * 301  # Exceeds 300 chars
@@ -365,8 +355,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_limit_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong limit type
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = ["string", [], {}, True, 45.67]
@@ -380,8 +370,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_offset_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong offset type
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = ["string", [], {}, True, 45.67]
@@ -395,18 +385,14 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_tag_query_mode_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with invalid tagQueryMode
-           When: Call list_outputs
-           Then: Raises InvalidParameterError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError
         """
         # Given - Test invalid query modes
         invalid_modes = ["invalid", "ALL", "ANY", "and", "or", ""]
 
         for mode in invalid_modes:
-            invalid_args = {
-                "basket": "default",
-                "tags": ["test"],
-                "tagQueryMode": mode
-            }
+            invalid_args = {"basket": "default", "tags": ["test"], "tagQueryMode": mode}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError)):
@@ -414,18 +400,14 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_include_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong include type
-           When: Call list_outputs
-           Then: Returns result (include field is not strictly validated)
+        When: Call list_outputs
+        Then: Returns result (include field is not strictly validated)
         """
         # Given - Test various invalid types - include is not strictly validated
         invalid_types = [123, [], {}, True, 45.67]
 
         for invalid_include in invalid_types:
-            invalid_args = {
-                "basket": "default",
-                "tags": [],
-                "include": invalid_include
-            }
+            invalid_args = {"basket": "default", "tags": [], "include": invalid_include}
 
             # When - include field is not strictly validated
             result = wallet_with_storage.list_outputs(invalid_args)
@@ -435,18 +417,14 @@ class TestWalletListOutputs:
 
     def test_invalid_params_invalid_include_value_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with invalid include value
-           When: Call list_outputs
-           Then: Returns result (include field is not strictly validated)
+        When: Call list_outputs
+        Then: Returns result (include field is not strictly validated)
         """
         # Given - Test invalid include values - include is not strictly validated
         invalid_values = ["invalid", "", "   ", "locking_scripts", "LOCKING SCRIPTS"]
 
         for invalid_value in invalid_values:
-            invalid_args = {
-                "basket": "default",
-                "tags": [],
-                "include": invalid_value
-            }
+            invalid_args = {"basket": "default", "tags": [], "include": invalid_value}
 
             # When - include field is not strictly validated
             result = wallet_with_storage.list_outputs(invalid_args)
@@ -456,8 +434,8 @@ class TestWalletListOutputs:
 
     def test_invalid_params_wrong_boolean_types_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with wrong types for boolean fields
-           When: Call list_outputs
-           Then: Returns result (boolean fields are not strictly validated)
+        When: Call list_outputs
+        Then: Returns result (boolean fields are not strictly validated)
         """
         # Given - Test various invalid types for boolean fields
         # Note: Python is lenient with boolean coercion, so these don't raise errors
@@ -471,11 +449,7 @@ class TestWalletListOutputs:
 
         for field in boolean_fields:
             for invalid_type in invalid_types:
-                invalid_args = {
-                    "basket": "default",
-                    "tags": [],
-                    field: invalid_type
-                }
+                invalid_args = {"basket": "default", "tags": [], field: invalid_type}
 
                 # When - boolean fields are not strictly validated
                 result = wallet_with_storage.list_outputs(invalid_args)
@@ -485,8 +459,8 @@ class TestWalletListOutputs:
 
     def test_invalid_originator_empty_raises_error(self, wallet_with_storage: Wallet, valid_list_outputs_args) -> None:
         """Given: Empty originator
-           When: Call list_outputs
-           Then: Returns result (empty originator is allowed)
+        When: Call list_outputs
+        Then: Returns result (empty originator is allowed)
         """
         # When - empty originator is allowed (it's a valid string under 250 bytes)
         result = wallet_with_storage.list_outputs(valid_list_outputs_args, originator="")
@@ -494,10 +468,12 @@ class TestWalletListOutputs:
         # Then
         assert "outputs" in result
 
-    def test_invalid_originator_whitespace_raises_error(self, wallet_with_storage: Wallet, valid_list_outputs_args) -> None:
+    def test_invalid_originator_whitespace_raises_error(
+        self, wallet_with_storage: Wallet, valid_list_outputs_args
+    ) -> None:
         """Given: Whitespace-only originator
-           When: Call list_outputs
-           Then: Returns result (whitespace originator is allowed)
+        When: Call list_outputs
+        Then: Returns result (whitespace originator is allowed)
         """
         # Given - Various whitespace originators
         whitespace_originators = ["   ", "\t", "\n", " \t \n "]
@@ -509,10 +485,12 @@ class TestWalletListOutputs:
             # Then
             assert "outputs" in result
 
-    def test_invalid_originator_wrong_type_raises_error(self, wallet_with_storage: Wallet, valid_list_outputs_args) -> None:
+    def test_invalid_originator_wrong_type_raises_error(
+        self, wallet_with_storage: Wallet, valid_list_outputs_args
+    ) -> None:
         """Given: Wrong type originator
-           When: Call list_outputs
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_outputs
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, [], {}, True, 45.67]
@@ -524,8 +502,8 @@ class TestWalletListOutputs:
 
     def test_valid_params_minimal_args(self, wallet_with_storage: Wallet) -> None:
         """Given: Minimal valid ListOutputsArgs
-           When: Call list_outputs
-           Then: Returns results successfully
+        When: Call list_outputs
+        Then: Returns results successfully
         """
         # Given - Minimal required args
         minimal_args = {"basket": "default"}
@@ -541,8 +519,8 @@ class TestWalletListOutputs:
 
     def test_valid_params_with_pagination(self, wallet_with_storage: Wallet, list_outputs_pagination) -> None:
         """Given: ListOutputsArgs with pagination parameters
-           When: Call list_outputs
-           Then: Returns paginated results
+        When: Call list_outputs
+        Then: Returns paginated results
         """
         # When
         result = wallet_with_storage.list_outputs(list_outputs_pagination)
@@ -556,15 +534,11 @@ class TestWalletListOutputs:
 
     def test_valid_params_tag_query_mode_all(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with tagQueryMode='all'
-           When: Call list_outputs
-           Then: Returns outputs that have ALL specified tags
+        When: Call list_outputs
+        Then: Returns outputs that have ALL specified tags
         """
         # Given
-        args = {
-            "basket": "default",
-            "tags": ["test1", "test2"],
-            "tagQueryMode": "all"
-        }
+        args = {"basket": "default", "tags": ["test1", "test2"], "tagQueryMode": "all"}
 
         # When
         result = wallet_with_storage.list_outputs(args)
@@ -583,15 +557,11 @@ class TestWalletListOutputs:
 
     def test_valid_params_tag_query_mode_any(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with tagQueryMode='any'
-           When: Call list_outputs
-           Then: Returns outputs that have ANY of the specified tags
+        When: Call list_outputs
+        Then: Returns outputs that have ANY of the specified tags
         """
         # Given
-        args = {
-            "basket": "default",
-            "tags": ["test1", "test2", "nonexistent"],
-            "tagQueryMode": "any"
-        }
+        args = {"basket": "default", "tags": ["test1", "test2", "nonexistent"], "tagQueryMode": "any"}
 
         # When
         result = wallet_with_storage.list_outputs(args)
@@ -610,8 +580,8 @@ class TestWalletListOutputs:
 
     def test_valid_params_include_options(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with various include options
-           When: Call list_outputs
-           Then: Respects include settings
+        When: Call list_outputs
+        Then: Respects include settings
         """
         # Given - Test different include options
         test_cases = [
@@ -634,15 +604,11 @@ class TestWalletListOutputs:
 
     def test_valid_params_large_offset_returns_empty(self, wallet_with_storage: Wallet) -> None:
         """Given: ListOutputsArgs with offset larger than total outputs
-           When: Call list_outputs
-           Then: Returns empty results
+        When: Call list_outputs
+        Then: Returns empty results
         """
         # Given - Use a very large offset
-        args = {
-            "basket": "default",
-            "tags": [],
-            "offset": 10000  # Much larger than any reasonable number of outputs
-        }
+        args = {"basket": "default", "tags": [], "offset": 10000}  # Much larger than any reasonable number of outputs
 
         # When
         result = wallet_with_storage.list_outputs(args)

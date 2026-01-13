@@ -55,7 +55,9 @@ def to_identity_key(key_source: CounterpartyPublicKey) -> PublicKey:
             raise ValueError("public key cannot be None")
         return key_source
     else:
-        raise ValueError(f"unexpected key source type: {type(key_source)}, ensure that all subtypes of key source are handled")
+        raise ValueError(
+            f"unexpected key source type: {type(key_source)}, ensure that all subtypes of key source are handled"
+        )
 
 
 def to_key_deriver(key_source: CounterpartyPrivateKey) -> KeyDeriver:
@@ -79,7 +81,7 @@ def to_key_deriver(key_source: CounterpartyPrivateKey) -> KeyDeriver:
     """
     if isinstance(key_source, str):
         # Check if it's WIF (starts with specific prefixes) or hex
-        if key_source.startswith(('5', '9', 'c', 'K', 'L')):
+        if key_source.startswith(("5", "9", "c", "K", "L")):
             # WIF format
             try:
                 priv_key = PrivateKey(key_source)
@@ -111,13 +113,13 @@ def to_key_deriver(key_source: CounterpartyPrivateKey) -> KeyDeriver:
             raise ValueError("key deriver cannot be None")
         return key_source
     else:
-        raise ValueError(f"unexpected key source type: {type(key_source)}, ensure that all subtypes of key source are handled")
+        raise ValueError(
+            f"unexpected key source type: {type(key_source)}, ensure that all subtypes of key source are handled"
+        )
 
 
 def derive_recipient_private_key(
-    sender_public_key_source: CounterpartyPublicKey,
-    key_id: KeyID,
-    recipient_private_key_source: CounterpartyPrivateKey
+    sender_public_key_source: CounterpartyPublicKey, key_id: KeyID, recipient_private_key_source: CounterpartyPrivateKey
 ) -> PrivateKey:
     """Derive the recipient's private key using BRC-42 derivation.
 
@@ -149,10 +151,7 @@ def derive_recipient_private_key(
         derived_private_key = recipient_key_deriver.derive_private_key(
             protocol=PROTOCOL,
             key_id=str(key_id),
-            counterparty=Counterparty(
-                type=CounterpartyType.OTHER,
-                counterparty=sender_identity_key
-            )
+            counterparty=Counterparty(type=CounterpartyType.OTHER, counterparty=sender_identity_key),
         )
         return derived_private_key
     except Exception as e:

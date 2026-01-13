@@ -47,7 +47,7 @@ def valid_originators():
         "localhost",
         "app.test.co.uk",
         "api.domain.org",
-        "service.provider.net"
+        "service.provider.net",
     ]
 
 
@@ -78,10 +78,7 @@ def valid_wallet_params():
     """Fixture providing valid wallet constructor parameters."""
     root_key = PrivateKey(bytes.fromhex("a" * 64))  # Valid hex private key
     key_deriver = KeyDeriver(root_key)
-    return {
-        "chain": "main",
-        "keyDeriver": key_deriver
-    }
+    return {"chain": "main", "keyDeriver": key_deriver}
 
 
 @pytest.fixture
@@ -146,8 +143,8 @@ class TestWalletGetHeader:
 
     def test_get_header_invalid_params_none_height(self, wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with None height
-           When: Call get_header
-           Then: Raises InvalidParameterError or TypeError
+        When: Call get_header
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"height": None}
@@ -158,8 +155,8 @@ class TestWalletGetHeader:
 
     def test_get_header_invalid_params_wrong_height_type(self, wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with wrong height type
-           When: Call get_header
-           Then: Raises InvalidParameterError, TypeError or RuntimeError
+        When: Call get_header
+        Then: Raises InvalidParameterError, TypeError or RuntimeError
         """
         # Given - Test various invalid types (note: True is coerced to 1)
         invalid_types = ["string", [], {}, 45.67]
@@ -173,8 +170,8 @@ class TestWalletGetHeader:
 
     def test_get_header_invalid_params_missing_height_key(self, wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs missing height key
-           When: Call get_header
-           Then: Raises InvalidParameterError or KeyError
+        When: Call get_header
+        Then: Raises InvalidParameterError or KeyError
         """
         # Given
         invalid_args = {}
@@ -185,8 +182,8 @@ class TestWalletGetHeader:
 
     def test_get_header_invalid_params_zero_height(self, wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with zero height
-           When: Call get_header
-           Then: Raises InvalidParameterError (height must be > 0) or RuntimeError (services not configured)
+        When: Call get_header
+        Then: Raises InvalidParameterError (height must be > 0) or RuntimeError (services not configured)
         """
         # Given
         args = {"height": 0}
@@ -197,8 +194,8 @@ class TestWalletGetHeader:
 
     def test_get_header_invalid_params_very_large_height(self, wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with very large height
-           When: Call get_header
-           Then: Raises RuntimeError (services not configured)
+        When: Call get_header
+        Then: Raises RuntimeError (services not configured)
         """
         # Given - Use a height far in the future
         future_height = 10000000  # Much larger than current block height
@@ -210,8 +207,8 @@ class TestWalletGetHeader:
 
     def test_get_header_invalid_params_float_height(self, wallet_with_storage: Wallet) -> None:
         """Given: GetHeaderArgs with float height
-           When: Call get_header
-           Then: Raises InvalidParameterError or TypeError
+        When: Call get_header
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"height": 850000.5}
@@ -222,8 +219,8 @@ class TestWalletGetHeader:
 
     def test_get_header_valid_params_different_heights(self, wallet_with_services: Wallet) -> None:
         """Given: GetHeaderArgs with different valid heights
-           When: Call get_header
-           Then: Returns valid headers
+        When: Call get_header
+        Then: Returns valid headers
         """
         # Given - Test multiple known block heights
         test_heights = [1, 100, 1000, 10000, 100000]
@@ -241,8 +238,8 @@ class TestWalletGetHeader:
 
     def test_get_header_valid_params_extra_parameters_ignored(self, wallet_with_services: Wallet) -> None:
         """Given: GetHeaderArgs with extra parameters
-           When: Call get_header
-           Then: Extra parameters are ignored
+        When: Call get_header
+        Then: Extra parameters are ignored
         """
         # Given - Add extra parameters
         args = {"height": 850000, "extraParam": "ignored", "another": 123}
@@ -305,8 +302,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_empty_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty originator string
-           When: Call get_version
-           Then: Returns version (empty string is accepted as a valid string)
+        When: Call get_version
+        Then: Returns version (empty string is accepted as a valid string)
         """
         # Given
         empty_originator = ""
@@ -320,8 +317,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_whitespace_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: Whitespace-only originator string
-           When: Call get_version
-           Then: Returns version (whitespace is accepted as a valid string)
+        When: Call get_version
+        Then: Returns version (whitespace is accepted as a valid string)
         """
         # Given - Various whitespace originators
         whitespace_originators = ["   ", "\t", "\n", " \t \n "]
@@ -336,8 +333,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_none_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: None originator
-           When: Call get_version
-           Then: Returns version (None originator is allowed)
+        When: Call get_version
+        Then: Returns version (None originator is allowed)
         """
         # Given
         none_originator = None
@@ -351,8 +348,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_wrong_originator_type(self, wallet_with_storage: Wallet) -> None:
         """Given: Wrong type originator
-           When: Call get_version
-           Then: Raises InvalidParameterError or TypeError
+        When: Call get_version
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, [], {}, True, 45.67]
@@ -364,8 +361,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_invalid_domain_format(self, wallet_with_storage: Wallet) -> None:
         """Given: Invalid domain format originator
-           When: Call get_version
-           Then: Raises InvalidParameterError
+        When: Call get_version
+        Then: Raises InvalidParameterError
         """
         # Given - Invalid domain formats
         invalid_domains = [
@@ -389,8 +386,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_unicode_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: Unicode originator string
-           When: Call get_version
-           Then: Handles unicode correctly
+        When: Call get_version
+        Then: Handles unicode correctly
         """
         # Given - Test unicode in domain names (though uncommon)
         unicode_originator = "test.例え.com"
@@ -404,8 +401,8 @@ class TestWalletGetVersion:
 
     def test_get_version_without_originator(self, wallet_with_storage: Wallet) -> None:
         """Given: No originator provided
-           When: Call get_version
-           Then: Returns version successfully
+        When: Call get_version
+        Then: Returns version successfully
         """
         # Given/When
         result = wallet_with_storage.get_version({})
@@ -417,8 +414,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_args_dict_none(self, wallet_with_storage: Wallet) -> None:
         """Given: None args dict
-           When: Call get_version
-           Then: Raises InvalidParameterError
+        When: Call get_version
+        Then: Raises InvalidParameterError
         """
         # Given/When/Then
         with pytest.raises(InvalidParameterError):
@@ -426,8 +423,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_empty_args_dict(self, wallet_with_storage: Wallet) -> None:
         """Given: Empty args dict
-           When: Call get_version
-           Then: Returns version successfully
+        When: Call get_version
+        Then: Returns version successfully
         """
         # Given/When
         result = wallet_with_storage.get_version({})
@@ -438,8 +435,8 @@ class TestWalletGetVersion:
 
     def test_get_version_with_extra_args_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: Args dict with extra parameters
-           When: Call get_version
-           Then: Extra parameters are ignored
+        When: Call get_version
+        Then: Extra parameters are ignored
         """
         # Given
         args_with_extra = {"extra": "param", "another": 123, "nested": {"key": "value"}}
@@ -546,8 +543,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_none_chain(self) -> None:
         """Given: None chain value
-           When: Create Wallet instance
-           Then: Raises ValueError or TypeError
+        When: Create Wallet instance
+        Then: Raises ValueError or TypeError
         """
         # Given / When / Then
         with pytest.raises((ValueError, TypeError)):
@@ -557,8 +554,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_wrong_chain_type(self) -> None:
         """Given: Wrong chain type (not string)
-           When: Create Wallet instance
-           Then: Raises ValueError or TypeError
+        When: Create Wallet instance
+        Then: Raises ValueError or TypeError
         """
         # Given - Test various invalid chain types
         invalid_types = [123, [], {}, True, 45.67]
@@ -571,8 +568,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_empty_chain(self) -> None:
         """Given: Empty chain string
-           When: Create Wallet instance
-           Then: Raises ValueError
+        When: Create Wallet instance
+        Then: Raises ValueError
         """
         # Given / When / Then
         with pytest.raises(ValueError):
@@ -582,8 +579,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_whitespace_chain(self) -> None:
         """Given: Whitespace-only chain string
-           When: Create Wallet instance
-           Then: Raises ValueError
+        When: Create Wallet instance
+        Then: Raises ValueError
         """
         # Given - Various whitespace chains
         whitespace_chains = ["   ", "\t", "\n", " \t \n "]
@@ -596,8 +593,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_none_key_deriver(self) -> None:
         """Given: None key_deriver
-           When: Create Wallet instance
-           Then: Raises ValueError or TypeError
+        When: Create Wallet instance
+        Then: Raises ValueError or TypeError
         """
         # Given / When / Then
         with pytest.raises((ValueError, TypeError)):
@@ -605,8 +602,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_wrong_key_deriver_type(self) -> None:
         """Given: Wrong key_deriver type
-           When: Create Wallet instance
-           Then: Raises ValueError or TypeError
+        When: Create Wallet instance
+        Then: Raises ValueError or TypeError
         """
         # Given - Test various invalid key_deriver types
         invalid_types = [123, "string", [], {}, True, 45.67]
@@ -617,8 +614,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_invalid_private_key(self) -> None:
         """Given: Invalid private key (not 32 bytes)
-           When: Create Wallet instance
-           Then: Raises ValueError
+        When: Create Wallet instance
+        Then: Raises ValueError
         """
         # Given - Invalid private key lengths
         # Note: 31 bytes (a*62 hex) is still valid for PrivateKey (just small number)
@@ -636,8 +633,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_valid_test_chain(self) -> None:
         """Given: Valid 'test' chain
-           When: Create Wallet instance
-           Then: Wallet is successfully initialized
+        When: Create Wallet instance
+        Then: Wallet is successfully initialized
         """
         # Given / When
         root_key = PrivateKey(bytes.fromhex("a" * 64))
@@ -650,8 +647,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_case_insensitive_chain(self) -> None:
         """Given: Different case chain values
-           When: Create Wallet instance
-           Then: Chain values are case-sensitive
+        When: Create Wallet instance
+        Then: Chain values are case-sensitive
         """
         # Given - Test different case variations
         invalid_cases = ["MAIN", "Main", "TEST", "Test", "mainnet", "testnet"]
@@ -664,8 +661,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_unicode_chain(self) -> None:
         """Given: Unicode chain value
-           When: Create Wallet instance
-           Then: Raises ValueError (chain must be 'main' or 'test')
+        When: Create Wallet instance
+        Then: Raises ValueError (chain must be 'main' or 'test')
         """
         # Given / When / Then
         with pytest.raises(ValueError):
@@ -675,8 +672,8 @@ class TestWalletLookupResolver:
 
     def test_wallet_constructor_with_extra_params_ignored(self) -> None:
         """Given: Extra constructor parameters
-           When: Create Wallet instance
-           Then: Extra parameters are ignored
+        When: Create Wallet instance
+        Then: Extra parameters are ignored
         """
         # Given / When - This should work normally despite extra params
         root_key = PrivateKey(bytes.fromhex("a" * 64))

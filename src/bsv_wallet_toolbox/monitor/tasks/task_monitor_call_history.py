@@ -32,4 +32,3 @@ class TaskMonitorCallHistory(WalletMonitorTask):
         # Pass reset=True as in TS implementation (TaskMonitorCallHistory.ts calls getServicesCallHistory(true))
         history = self.monitor.services.get_services_call_history(reset=True)
         return json.dumps(history)
-

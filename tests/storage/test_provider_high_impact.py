@@ -147,28 +147,32 @@ class TestListOutputsSpecOps:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first (outputs require transactionId)
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_balance_test",
-            "txid": "a" * 64,
-            "status": "completed",
-            "satoshis": 6000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_balance_test",
+                "txid": "a" * 64,
+                "status": "completed",
+                "satoshis": 6000,
+            }
+        )
 
         # Create some outputs with change=True and type=P2PKH for specOpWalletBalance
         for i in range(3):
-            storage_provider.insert_output({
-                "userId": user_id,
-                "basketId": basket_id,
-                "transactionId": tx_id,
-                "vout": i,
-                "satoshis": 1000 * (i + 1),  # 1000, 2000, 3000
-                "spendable": True,
-                "change": True,  # Required for specOpWalletBalance
-                "type": "P2PKH",  # Required for specOpWalletBalance
-                "txid": f"{'a' * 60}{i:04d}",
-                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-            })
+            storage_provider.insert_output(
+                {
+                    "userId": user_id,
+                    "basketId": basket_id,
+                    "transactionId": tx_id,
+                    "vout": i,
+                    "satoshis": 1000 * (i + 1),  # 1000, 2000, 3000
+                    "spendable": True,
+                    "change": True,  # Required for specOpWalletBalance
+                    "type": "P2PKH",  # Required for specOpWalletBalance
+                    "txid": f"{'a' * 60}{i:04d}",
+                    "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+                }
+            )
 
         auth = {"userId": user_id}
         # Use SpecOp ID format
@@ -189,25 +193,29 @@ class TestListOutputsSpecOps:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_basic_test",
-            "txid": "b" * 64,
-            "status": "completed",
-            "satoshis": 5000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_basic_test",
+                "txid": "b" * 64,
+                "status": "completed",
+                "satoshis": 5000,
+            }
+        )
 
         # Create output
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 5000,
-            "spendable": True,
-            "txid": "b" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 5000,
+                "spendable": True,
+                "txid": "b" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -227,29 +235,33 @@ class TestListOutputsSpecOps:
         basket_id = user_with_basket["basketId"]
 
         # Create a transaction with labels
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_labels_test",
-            "txid": "e" * 64,
-            "status": "completed",
-            "satoshis": 5000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_labels_test",
+                "txid": "e" * 64,
+                "status": "completed",
+                "satoshis": 5000,
+            }
+        )
 
         # Add label to transaction
         label_data = storage_provider.find_or_insert_tx_label(user_id, "test_label")
         storage_provider.find_or_insert_tx_label_map(tx_id, label_data["txLabelId"])
 
         # Create output linked to transaction
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 5000,
-            "spendable": True,
-            "txid": "e" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 5000,
+                "spendable": True,
+                "txid": "e" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -271,25 +283,29 @@ class TestListOutputsSpecOps:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_tags_test",
-            "txid": "f" * 64,
-            "status": "completed",
-            "satoshis": 3000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_tags_test",
+                "txid": "f" * 64,
+                "status": "completed",
+                "satoshis": 3000,
+            }
+        )
 
         # Create output
-        output_id = storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 3000,
-            "spendable": True,
-            "txid": "f" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        output_id = storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 3000,
+                "spendable": True,
+                "txid": "f" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         # Add tag to output
         tag_data = storage_provider.find_or_insert_output_tag(user_id, "my_tag")
@@ -317,26 +333,30 @@ class TestListOutputsSpecOps:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_custom_test",
-            "txid": "g" * 64,
-            "status": "completed",
-            "satoshis": 2500,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_custom_test",
+                "txid": "g" * 64,
+                "status": "completed",
+                "satoshis": 2500,
+            }
+        )
 
         # Create output with custom instructions
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 2500,
-            "spendable": True,
-            "txid": "g" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-            "customInstructions": "custom instruction data",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 2500,
+                "spendable": True,
+                "txid": "g" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+                "customInstructions": "custom instruction data",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -360,24 +380,28 @@ class TestListOutputsSpecOps:
 
         # Create multiple transactions with outputs
         for i in range(5):
-            tx_id = storage_provider.insert_transaction({
-                "userId": user_id,
-                "reference": f"tx_page_{i}",
-                "txid": f"{'h' * 60}{i:04d}",
-                "status": "completed",
-                "satoshis": 1000 * (i + 1),
-            })
+            tx_id = storage_provider.insert_transaction(
+                {
+                    "userId": user_id,
+                    "reference": f"tx_page_{i}",
+                    "txid": f"{'h' * 60}{i:04d}",
+                    "status": "completed",
+                    "satoshis": 1000 * (i + 1),
+                }
+            )
 
-            storage_provider.insert_output({
-                "userId": user_id,
-                "basketId": basket_id,
-                "transactionId": tx_id,
-                "vout": 0,
-                "satoshis": 1000 * (i + 1),
-                "spendable": True,
-                "txid": f"{'h' * 60}{i:04d}",
-                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-            })
+            storage_provider.insert_output(
+                {
+                    "userId": user_id,
+                    "basketId": basket_id,
+                    "transactionId": tx_id,
+                    "vout": 0,
+                    "satoshis": 1000 * (i + 1),
+                    "spendable": True,
+                    "txid": f"{'h' * 60}{i:04d}",
+                    "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+                }
+            )
 
         auth = {"userId": user_id}
         args = {
@@ -402,25 +426,29 @@ class TestListOutputsTagFilters:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_all_test",
-            "txid": "i" * 64,
-            "status": "completed",
-            "satoshis": 1000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_all_test",
+                "txid": "i" * 64,
+                "status": "completed",
+                "satoshis": 1000,
+            }
+        )
 
         # Create outputs
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 1000,
-            "spendable": True,
-            "txid": "i" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 1000,
+                "spendable": True,
+                "txid": "i" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -440,25 +468,29 @@ class TestListOutputsTagFilters:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_unspent_test",
-            "txid": "j" * 64,
-            "status": "completed",
-            "satoshis": 1500,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_unspent_test",
+                "txid": "j" * 64,
+                "status": "completed",
+                "satoshis": 1500,
+            }
+        )
 
         # Create spendable output
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 1500,
-            "spendable": True,
-            "txid": "j" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 1500,
+                "spendable": True,
+                "txid": "j" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -480,26 +512,30 @@ class TestListOutputsTagFilters:
         basket_id = user_with_basket["basketId"]
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_change_test",
-            "txid": "k" * 64,
-            "status": "completed",
-            "satoshis": 2000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_change_test",
+                "txid": "k" * 64,
+                "status": "completed",
+                "satoshis": 2000,
+            }
+        )
 
         # Create change output
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 2000,
-            "spendable": True,
-            "change": True,
-            "txid": "k" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 2000,
+                "spendable": True,
+                "change": True,
+                "txid": "k" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -521,13 +557,15 @@ class TestListActionsEnhancements:
         """Test list_actions with status filtering."""
         # Create transactions with different statuses
         for status in ["completed", "pending", "failed"]:
-            storage_provider.insert_transaction({
-                "userId": test_user,
-                "reference": f"tx_status_{status}",
-                "txid": f"{status[0]}" * 64,
-                "status": status,
-                "satoshis": 1000,
-            })
+            storage_provider.insert_transaction(
+                {
+                    "userId": test_user,
+                    "reference": f"tx_status_{status}",
+                    "txid": f"{status[0]}" * 64,
+                    "status": status,
+                    "satoshis": 1000,
+                }
+            )
 
         auth = {"userId": test_user}
         args = {
@@ -546,13 +584,15 @@ class TestListActionsEnhancements:
     def test_list_actions_with_txid_filter(self, storage_provider, test_user):
         """Test list_actions with txid filtering."""
         target_txid = "t" * 64
-        storage_provider.insert_transaction({
-            "userId": test_user,
-            "reference": "tx_txid_filter",
-            "txid": target_txid,
-            "status": "completed",
-            "satoshis": 5000,
-        })
+        storage_provider.insert_transaction(
+            {
+                "userId": test_user,
+                "reference": "tx_txid_filter",
+                "txid": target_txid,
+                "status": "completed",
+                "satoshis": 5000,
+            }
+        )
 
         auth = {"userId": test_user}
         args = {
@@ -623,15 +663,17 @@ class TestProviderMethodsMiscellaneous:
         txid = "p" * 64
 
         # Insert a proven tx
-        storage_provider.insert_proven_tx({
-            "txid": txid,
-            "height": 100,
-            "index": 0,
-            "merklePath": b"\x00\x01",
-            "rawTx": b"\x02\x03",
-            "blockHash": "d" * 64,
-            "merkleRoot": "e" * 64,
-        })
+        storage_provider.insert_proven_tx(
+            {
+                "txid": txid,
+                "height": 100,
+                "index": 0,
+                "merklePath": b"\x00\x01",
+                "rawTx": b"\x02\x03",
+                "blockHash": "d" * 64,
+                "merkleRoot": "e" * 64,
+            }
+        )
 
         result = storage_provider.get_proven_or_raw_tx(txid)
 
@@ -641,20 +683,24 @@ class TestProviderMethodsMiscellaneous:
     def test_list_certificates_with_filters(self, storage_provider, test_user):
         """Test list_certificates with type and certifier filters."""
         # Create certificates
-        for i, (cert_type, certifier) in enumerate([
-            ("identity", "certifier_a"),
-            ("identity", "certifier_b"),
-            ("employment", "certifier_a"),
-        ]):
-            storage_provider.insert_certificate({
-                "userId": test_user,
-                "type": cert_type,
-                "serialNumber": f"SN-{i:03d}",
-                "certifier": certifier,
-                "subject": "test_subject",
-                "revocationOutpoint": f"{'r' * 60}{i:04d}.0",
-                "signature": "sig",
-            })
+        for i, (cert_type, certifier) in enumerate(
+            [
+                ("identity", "certifier_a"),
+                ("identity", "certifier_b"),
+                ("employment", "certifier_a"),
+            ]
+        ):
+            storage_provider.insert_certificate(
+                {
+                    "userId": test_user,
+                    "type": cert_type,
+                    "serialNumber": f"SN-{i:03d}",
+                    "certifier": certifier,
+                    "subject": "test_subject",
+                    "revocationOutpoint": f"{'r' * 60}{i:04d}.0",
+                    "signature": "sig",
+                }
+            )
 
         auth = {"userId": test_user}
         args = {
@@ -705,13 +751,15 @@ class TestProcessActionOperations:
         user_id = user_with_basket["userId"]
 
         # Create an unsigned transaction
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "process_action_test",
-            "txid": "u" * 64,
-            "status": "unsigned",
-            "satoshis": 1000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "process_action_test",
+                "txid": "u" * 64,
+                "status": "unsigned",
+                "satoshis": 1000,
+            }
+        )
 
         auth = {"userId": user_id, "identityKey": "test_identity_key_high_impact_123"}
         args = {
@@ -738,35 +786,41 @@ class TestBeefBuilding:
 
         # Create outputs with proven transactions
         proven_txid = "q" * 64
-        storage_provider.insert_proven_tx({
-            "txid": proven_txid,
-            "height": 500,
-            "index": 1,
-            "merklePath": b"\x00\x01\x02",
-            "rawTx": b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-            "blockHash": "b" * 64,
-            "merkleRoot": "m" * 64,
-        })
+        storage_provider.insert_proven_tx(
+            {
+                "txid": proven_txid,
+                "height": 500,
+                "index": 1,
+                "merklePath": b"\x00\x01\x02",
+                "rawTx": b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+                "blockHash": "b" * 64,
+                "merkleRoot": "m" * 64,
+            }
+        )
 
         # Create transaction first
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_beef_test",
-            "txid": proven_txid,
-            "status": "completed",
-            "satoshis": 10000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_beef_test",
+                "txid": proven_txid,
+                "status": "completed",
+                "satoshis": 10000,
+            }
+        )
 
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 10000,
-            "spendable": True,
-            "txid": proven_txid,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 10000,
+                "spendable": True,
+                "txid": proven_txid,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id}
         args = {
@@ -790,26 +844,30 @@ class TestCreateActionOperations:
         basket_id = user_with_basket["basketId"]
 
         # First create a transaction and ensure we have spendable outputs
-        tx_id = storage_provider.insert_transaction({
-            "userId": user_id,
-            "reference": "tx_funding",
-            "txid": "s" * 64,
-            "status": "completed",
-            "satoshis": 100000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "tx_funding",
+                "txid": "s" * 64,
+                "status": "completed",
+                "satoshis": 100000,
+            }
+        )
 
-        storage_provider.insert_output({
-            "userId": user_id,
-            "basketId": basket_id,
-            "transactionId": tx_id,
-            "vout": 0,
-            "satoshis": 100000,
-            "spendable": True,
-            "change": True,  # Must be True for allocate_funding_input
-            "type": "P2PKH",  # Must be "P2PKH" for allocate_funding_input
-            "txid": "s" * 64,
-            "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-        })
+        storage_provider.insert_output(
+            {
+                "userId": user_id,
+                "basketId": basket_id,
+                "transactionId": tx_id,
+                "vout": 0,
+                "satoshis": 100000,
+                "spendable": True,
+                "change": True,  # Must be True for allocate_funding_input
+                "type": "P2PKH",  # Must be "P2PKH" for allocate_funding_input
+                "txid": "s" * 64,
+                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
+            }
+        )
 
         auth = {"userId": user_id, "identityKey": "test_identity_key_high_impact_123"}
         args = {
@@ -841,13 +899,15 @@ class TestTransactionOperations:
         """Test finding transactions with various filters."""
         # Create transactions with different statuses
         for status in ["completed", "pending", "failed"]:
-            storage_provider.insert_transaction({
-                "userId": test_user,
-                "reference": f"tx_filter_{status}",
-                "txid": f"{status[0] * 64}",
-                "status": status,
-                "satoshis": 1000,
-            })
+            storage_provider.insert_transaction(
+                {
+                    "userId": test_user,
+                    "reference": f"tx_filter_{status}",
+                    "txid": f"{status[0] * 64}",
+                    "status": status,
+                    "satoshis": 1000,
+                }
+            )
 
         # Find by status
         results = storage_provider.find_transactions({"partial": {"status": "completed"}})
@@ -859,13 +919,15 @@ class TestTransactionOperations:
     def test_update_transaction_status(self, storage_provider, test_user):
         """Test updating transaction status."""
         # Create a transaction
-        tx_id = storage_provider.insert_transaction({
-            "userId": test_user,
-            "reference": "tx_update_status",
-            "txid": "u" * 64,
-            "status": "pending",
-            "satoshis": 2000,
-        })
+        tx_id = storage_provider.insert_transaction(
+            {
+                "userId": test_user,
+                "reference": "tx_update_status",
+                "txid": "u" * 64,
+                "status": "pending",
+                "satoshis": 2000,
+            }
+        )
 
         # Update status
         rows = storage_provider.update_transaction_status("completed", tx_id)
@@ -876,4 +938,3 @@ class TestTransactionOperations:
         txs = storage_provider.find_transactions({"partial": {"transactionId": tx_id}})
         assert len(txs) == 1
         assert txs[0]["status"] == "completed"
-

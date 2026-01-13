@@ -15,6 +15,7 @@ from dataclasses import dataclass
 @dataclass
 class CacheItem:
     """Cache item with value and expiration time."""
+
     value: Any
     expires_at: float
 
@@ -112,10 +113,7 @@ class TTLCache:
         removed = 0
 
         with self.lock:
-            expired_keys = [
-                key for key, item in self.cache.items()
-                if current_time > item.expires_at
-            ]
+            expired_keys = [key for key, item in self.cache.items() if current_time > item.expires_at]
 
             for key in expired_keys:
                 del self.cache[key]
