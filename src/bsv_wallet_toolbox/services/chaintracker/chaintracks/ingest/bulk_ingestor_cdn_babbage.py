@@ -5,6 +5,7 @@ Provides bulk ingestion of blockchain headers from Project Babbage CDN.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/BulkIngestorCDNBabbage.test.ts
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -116,7 +117,7 @@ class BulkIngestorCDNBabbage:
                 )
             self._available_bulk_files = BulkHeaderFilesInfo(files=files)
 
-    async def set_storage(self, storage: Any, print_func: callable | None = None) -> None:
+    async def set_storage(self, storage: Any, print_func: Callable | None = None) -> None:
         """Set storage provider for this ingestor.
 
         Args:
