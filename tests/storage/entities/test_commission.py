@@ -24,8 +24,8 @@ class TestCommissionEntity:
         now = datetime.now()
         initial_data = {
             "commissionId": 801,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "transactionId": 192,
             "userId": 1,
             "isRedeemed": False,
@@ -56,8 +56,8 @@ class TestCommissionEntity:
         now = datetime.now()
         initial_data = {
             "commissionId": 802,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "transactionId": 200,
             "userId": 1,
             "isRedeemed": False,
@@ -100,8 +100,8 @@ class TestCommissionEntity:
         now = datetime.now()
         initial_data = {
             "commissionId": 803,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "transactionId": 203,
             "userId": 1,
             "isRedeemed": False,
@@ -113,7 +113,7 @@ class TestCommissionEntity:
         entity = Commission(initial_data)
 
         # Updated data with later timestamp
-        updated_data = {**initial_data, "updated_at": datetime.fromtimestamp(now.timestamp() + 1), "isRedeemed": True}
+        updated_data = {**initial_data, "updatedAt": datetime.fromtimestamp(now.timestamp() + 1), "isRedeemed": True}
 
         sync_map = {"transaction": {"idMap": {203: 203}}}
 
@@ -139,8 +139,8 @@ class TestCommissionEntity:
         now = datetime.now()
         initial_data = {
             "commissionId": 804,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "transactionId": 193,
             "userId": 1,
             "isRedeemed": False,
@@ -152,7 +152,7 @@ class TestCommissionEntity:
         entity = Commission(initial_data)
 
         # Same timestamp
-        older_or_equal_data = {**initial_data, "updated_at": now, "isRedeemed": True}
+        older_or_equal_data = {**initial_data, "updatedAt": now, "isRedeemed": True}
 
         sync_map = {"transaction": {"idMap": {193: 193}}}
 
@@ -178,8 +178,8 @@ class TestCommissionEntity:
         now = datetime.now()
         initial_data = {
             "commissionId": 801,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "transactionId": 101,
             "userId": 1,
             "isRedeemed": False,

@@ -138,7 +138,7 @@ class TestSyncState:
             "status": "new_status",
             "refNum": 200,
             "syncMap": "new_map",
-            "updated_at": datetime(2023, 1, 1, 12, 0, 0),  # newer
+            "updatedAt": datetime(2023, 1, 1, 12, 0, 0),  # newer
         }
 
         result = entity.merge_existing(None, None, ei)
@@ -156,7 +156,7 @@ class TestSyncState:
 
         ei = {
             "status": "old_status",
-            "updated_at": datetime(2023, 1, 1, 10, 0, 0),  # older
+            "updatedAt": datetime(2023, 1, 1, 10, 0, 0),  # older
         }
 
         result = entity.merge_existing(None, None, ei)

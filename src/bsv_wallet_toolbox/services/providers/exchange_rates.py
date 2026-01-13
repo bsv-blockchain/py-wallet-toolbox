@@ -47,7 +47,7 @@ async def update_exchangeratesapi(
 
     Args:
         target_currencies: List of currency codes to fetch (e.g., ['EUR', 'GBP', 'USD'])
-        options: Services options dict containing exchangeratesapi_key
+        options: Services options dict containing exchangeratesapiKey
 
     Returns:
         dict with keys:
@@ -62,10 +62,10 @@ async def update_exchangeratesapi(
     Reference:
         - toolbox/ts-wallet-toolbox/src/services/providers/exchangeRates.ts
     """
-    if not options.get("exchangeratesapi_key") and not options.get("exchangeratesapiKey"):
-        raise InvalidParameterError("options.exchangeratesapi_key is required")
+    if not options.get("exchangeratesapiKey"):
+        raise InvalidParameterError("exchangeratesapiKey is required")
 
-    api_key = options.get("exchangeratesapi_key") or options.get("exchangeratesapiKey")
+    api_key = options.get("exchangeratesapiKey")
 
     # Validate currencies
     if not target_currencies or not isinstance(target_currencies, list):

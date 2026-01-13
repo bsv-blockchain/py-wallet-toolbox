@@ -141,6 +141,7 @@ class TestBulkFileDataManager:
         assert range_result.min_height == 0
         assert range_result.max_height > 800000
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_default_options_cdn_files(self) -> None:
         """Given: BulkFileDataManager with default options
@@ -157,6 +158,7 @@ class TestBulkFileDataManager:
         # When/Then
         await self._test0_body(manager)
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_default_options_cdn_files_nodropall(self) -> None:
         """Given: BulkFileDataManager with storage (noDropAll)
@@ -196,7 +198,7 @@ class TestBulkFileDataManager:
                 pass
 
         # SQLite configuration (Python equivalent of Knex config)
-        local_sqlite_config = {"client": "sqlite3", "connection": {"filename": path}, "use_null_as_default": True}
+        local_sqlite_config = {"client": "sqlite3", "connection": {"filename": path}, "useNullAsDefault": True}
 
         knex_options = ChaintracksStorageKnex.create_storage_knex_options(self.chain, local_sqlite_config)
         knex_options.bulk_file_data_manager = manager

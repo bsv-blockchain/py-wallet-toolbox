@@ -392,6 +392,26 @@ class ChaintracksServiceClient(ChaintracksClientApi):
         """
         self.post_json("/addHeaderHex", header)
 
+    async def find_chain_tip_header(self) -> dict[str, Any]:
+        """Get the active chain tip header.
+
+        Returns:
+            BlockHeader object of the current chain tip
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        return self.get_json("/findChainTipHeaderHex")
+
+    async def find_chain_tip_hash(self) -> str:
+        """Get the block hash of the active chain tip.
+
+        Returns:
+            Block hash (hex string) of the chain tip
+
+        Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksServiceClient.ts
+        """
+        return self.get_json("/findChainTipHashHex")
+
     def destroy(self) -> None:
         """Close all resources.
 

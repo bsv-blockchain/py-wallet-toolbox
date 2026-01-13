@@ -22,7 +22,7 @@ class TestChaintracksServiceClient:
                describe('ChaintracksServiceClient tests')
     """
 
-    @pytest.mark.skip(reason="Requires running Chaintracks service")
+    @pytest.mark.integration
     def test_mainnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for mainnet
            When: Find header for height 877595 and invalid height 999999999
@@ -30,9 +30,10 @@ class TestChaintracksServiceClient:
 
         Reference: wallet-toolbox/src/services/chaintracker/__tests/ChaintracksServiceClient.test.ts
                    test('0 mainNet findHeaderForHeight')
-        
+
         Note: Requires a running ChaintracksService instance to query
         """
+        pytest.skip("ChaintracksServiceClient requires full abstract method implementations for integration testing")
         # Given
         client = self._make_client("main")
 
@@ -49,7 +50,7 @@ class TestChaintracksServiceClient:
         # Then
         assert r_invalid is None
 
-    @pytest.mark.skip(reason="Requires running Chaintracks service")
+    @pytest.mark.integration
     def test_testnet_findheaderforheight(self) -> None:
         """Given: ChaintracksServiceClient for testnet
            When: Find header for height 1651723 and invalid height 999999999
@@ -57,9 +58,10 @@ class TestChaintracksServiceClient:
 
         Reference: wallet-toolbox/src/services/chaintracker/__tests/ChaintracksServiceClient.test.ts
                    test('1 testNet findHeaderForHeight')
-        
+
         Note: Requires a running ChaintracksService instance to query
         """
+        pytest.skip("ChaintracksServiceClient requires full abstract method implementations for integration testing")
         # Note: TypeScript has `if (!includeTestChaintracks) return` here, which always skips this test.
         #       We removed this constant to make the test actually run when the API is implemented.
 

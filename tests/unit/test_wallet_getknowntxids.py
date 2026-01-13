@@ -46,6 +46,8 @@ class TestGetKnownTxids:
         """
         # Given
         wallet = Wallet(chain="test", key_deriver=test_key_deriver)
+        # Force fallback to _known_txids by disabling beef
+        wallet.beef = None
         txids = ["txid1"]
 
         # When
@@ -71,6 +73,8 @@ class TestGetKnownTxids:
         """
         # Given
         wallet = Wallet(chain="test", key_deriver=test_key_deriver)
+        # Force fallback to _known_txids by disabling beef
+        wallet.beef = None
         txids = ["txid1", "txid2"]
         wallet.get_known_txids(txids)
 
@@ -97,6 +101,8 @@ class TestGetKnownTxids:
         """
         # Given
         wallet = Wallet(chain="test", key_deriver=test_key_deriver)
+        # Force fallback to _known_txids by disabling beef
+        wallet.beef = None
         unsorted_txids = ["txid3", "txid1", "txid2"]
         wallet.get_known_txids(unsorted_txids)
 
@@ -119,6 +125,8 @@ class TestGetKnownTxids:
         """
         # Given
         wallet = Wallet(chain="test", key_deriver=test_key_deriver)
+        # Force fallback to _known_txids by disabling beef
+        wallet.beef = None
         invalid_txids = ["invalid_txid"]
         valid_txids = ["txid1", "txid2", "txid3"]
         input_txids = valid_txids + invalid_txids

@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from bsv_wallet_toolbox.services.services import Services
+from bsv_wallet_toolbox.services.wallet_services import Chain
 
 
 class TestServicesInitialization:
@@ -17,7 +18,7 @@ class TestServicesInitialization:
         """Test creating Services with minimal config."""
         try:
             services = Services(chain="main")
-            assert services.chain == "main"
+            assert services.chain.value == "main"
         except (AttributeError, TypeError):
             # May require more parameters
             pass
@@ -30,7 +31,7 @@ class TestServicesInitialization:
                 arc_config={"url": "https://arc.example.com"},
                 whatsonchain_config={"url": "https://woc.example.com"},
             )
-            assert services.chain == "main"
+            assert services.chain.value == "main"
         except (AttributeError, TypeError):
             pass
 
@@ -79,7 +80,7 @@ class TestServicesErrorHandling:
         try:
             services = Services(chain="invalid_chain")
             # Might accept it or validate
-            assert services.chain == "invalid_chain"
+            assert services.chain.value == "invalid_chain"
         except (ValueError, TypeError):
             # Expected if chain is validated
             pass

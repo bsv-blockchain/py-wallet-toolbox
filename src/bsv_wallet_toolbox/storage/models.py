@@ -644,3 +644,85 @@ class MonitorEvent(TimestampMixin, Base):
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_monitor_events_event", "event"),)
+
+
+# 17 UserUTXO
+class UserUTXO(Base):
+    __tablename__ = "user_utxos"
+
+    """User UTXO table mapping.
+
+    Summary:
+        Tracks which outputs are available as UTXOs for spending.
+        This is the index used by the wallet to find spendable outputs when funding transactions.
+    Go parity:
+        Mirrors Go UserUTXO model from go-wallet-toolbox/pkg/internal/storage/database/models/user_utxo.go
+    Fields:
+        user_id: User ID (part of composite primary key)
+        output_id: Output ID (part of composite primary key)
+        basket_name: Name of the output basket this UTXO belongs to
+        satoshis: Value of the UTXO in satoshis
+        estimated_input_size: Estimated size in bytes when used as input
+        status: UTXO status (e.g., 'unproven', 'proven', 'sending')
+        reserved_by_id: Transaction ID that has reserved this UTXO (nullable)
+        created_at: When this UTXO record was created
+    Reference:
+        go-wallet-toolbox/pkg/internal/storage/database/models/user_utxo.go:10-25
+        go-wallet-toolbox/pkg/entity/user_utxo.go:10-19
+    """
+
+    user_id: Mapped[int] = mapped_column(
+        "userId",
+        Integer,
+        ForeignKey("users.userId", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    output_id: Mapped[int] = mapped_column(
+        "outputId",
+        Integer,
+        ForeignKey("outputs.outputId", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    basket_name: Mapped[str] = mapped_column(
+        "basketName",
+        String(300),
+        nullable=False,
+    )
+    satoshis: Mapped[int] = mapped_column(
+        BigInteger,
+        CheckConstraint("satoshis >= 0", name="ck_user_utxos_satoshis_unsigned"),
+        nullable=False,
+    )
+    estimated_input_size: Mapped[int] = mapped_column(
+        "estimatedInputSize",
+        BigInteger,
+        CheckConstraint("estimatedInputSize >= 0", name="ck_user_utxos_estimated_input_size_unsigned"),
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+    )
+    reserved_by_id: Mapped[int | None] = mapped_column(
+        "reservedById",
+        Integer,
+        ForeignKey("transactions.transactionId", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        "createdAt",
+        DateTime(timezone=False)
+        .with_variant(mysql.DATETIME(fsp=3), "mysql")
+        .with_variant(postgresql.TIMESTAMP(precision=3), "postgresql"),
+        server_default=text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    output = relationship("Output", foreign_keys=[output_id])
+
+    __table_args__ = (
+        Index("ix_user_utxos_status", "status"),
+        Index("ix_user_utxos_basket_name", "basketName"),
+    )

@@ -25,8 +25,8 @@ def valid_services_config():
     """Fixture providing valid services configuration."""
     return {
         "chain": "main",
-        "whatsonchain_api_key": "test_woc_key",
-        "taal_api_key": "test_taal_key"
+        "whatsonchainApiKey": "test_woc_key",
+        "taalApiKey": "test_taal_key"
     }
 
 
@@ -114,7 +114,7 @@ class TestVerifyBeef:
                describe('verifyBeef tests')
     """
 
-    @pytest.mark.skip(reason="Integration test: requires working chaintracker with network access for merkle path verification")
+    @pytest.mark.integration
     async def test_verify_beef_from_hex(self) -> None:
         """Given: BEEF hex string and mainnet services
            When: Parse BEEF and verify with chaintracker
@@ -122,10 +122,11 @@ class TestVerifyBeef:
 
         Reference: wallet-toolbox/src/services/__tests/verifyBeef.test.ts
                    test('0_')
-        
+
         Note: Using parse_beef from bsv.transaction.beef module.
         This test requires a functioning chaintracker with network access to verify merkle paths.
         """
+        pytest.skip("BEEF verification requires external network access and may fail due to network/mock setup")
         # Given
         from bsv.transaction.beef import parse_beef
         beef = parse_beef(bytes.fromhex(BEEF_HEX))

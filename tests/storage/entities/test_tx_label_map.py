@@ -47,7 +47,7 @@ class TestTxLabelMapEntity:
         # Given
 
         now = datetime.now()
-        api_object = {"transactionId": 123, "txLabelId": 456, "created_at": now, "updated_at": now, "isDeleted": True}
+        api_object = {"transactionId": 123, "txLabelId": 456, "createdAt": now, "updatedAt": now, "isDeleted": True}
 
         # When
         tx_label_map = TxLabelMap(api_object)
@@ -134,8 +134,8 @@ class TestTxLabelMapEntity:
                 "transactionId": 123,
                 "txLabelId": 456,
                 "isDeleted": False,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now(),
             }
         )
 
@@ -198,8 +198,8 @@ class TestTxLabelMapEntity:
             {
                 "transactionId": 123,
                 "txLabelId": 456,
-                "created_at": datetime(2022, 2, 1),
-                "updated_at": datetime(2022, 2, 1),
+                "createdAt": datetime(2022, 2, 1),
+                "updatedAt": datetime(2022, 2, 1),
                 "isDeleted": False,
             }
         )
@@ -234,8 +234,8 @@ class TestTxLabelMapEntity:
             {
                 "transactionId": 123,
                 "txLabelId": 456,
-                "created_at": datetime(2022, 2, 1),
-                "updated_at": datetime(2022, 2, 1),
+                "createdAt": datetime(2022, 2, 1),
+                "updatedAt": datetime(2022, 2, 1),
                 "isDeleted": False,
             }
         )
@@ -244,8 +244,8 @@ class TestTxLabelMapEntity:
             "transactionId": 123,
             "txLabelId": 456,
             "isDeleted": True,
-            "created_at": datetime.now(),
-            "updated_at": datetime(2023, 2, 1),
+            "createdAt": datetime.now(),
+            "updatedAt": datetime(2023, 2, 1),
         }
 
         sync_map = {"transaction": {"idMap": {123: 999}}, "txLabel": {"idMap": {456: 888}}}
@@ -303,8 +303,8 @@ class TestTxLabelMapEntity:
                 "transactionId": 405,
                 "txLabelId": 306,
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 
@@ -313,8 +313,8 @@ class TestTxLabelMapEntity:
                 "transactionId": 406,
                 "txLabelId": 307,
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 
@@ -338,8 +338,8 @@ class TestTxLabelMapEntity:
                 "transactionId": 103,
                 "txLabelId": 1,
                 "isDeleted": False,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 
@@ -348,8 +348,8 @@ class TestTxLabelMapEntity:
                 "transactionId": 104,
                 "txLabelId": 1,
                 "isDeleted": True,
-                "created_at": datetime(2023, 1, 1),
-                "updated_at": datetime(2023, 1, 2),
+                "createdAt": datetime(2023, 1, 1),
+                "updatedAt": datetime(2023, 1, 2),
             }
         )
 

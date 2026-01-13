@@ -105,7 +105,7 @@ class ChaintracksService:
         """
         options: ChaintracksServiceOptions = {
             "chain": chain,
-            "routing_prefix": "",
+            "routingPrefix": "",
         }
         return options
 
@@ -130,7 +130,7 @@ class ChaintracksService:
         self.options: ChaintracksServiceOptions = {**options}
         self.chain: Chain = options.get("chain", "main")
         self.port: int | None = options.get("port")
-        self.routing_prefix: str = options.get("routing_prefix", "")
+        self.routing_prefix: str = options.get("routingPrefix", "")
 
         # TODO: Phase 4 - Implement Chaintracks instance creation
         # TODO: Phase 4 - Implement default NoDb storage

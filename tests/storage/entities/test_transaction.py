@@ -66,8 +66,8 @@ class TestTransactionEntity:
             "isOutgoing": True,
             "rawTx": [1, 2, 3],
             "inputBEEF": [4, 5, 6],
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
         }
 
         # When
@@ -211,7 +211,7 @@ class TestTransactionEntity:
         def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return mock_outputs
 
-        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
+        mock_storage = type("MockStorage", (), {"findOutputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)
@@ -237,7 +237,7 @@ class TestTransactionEntity:
                 "userId": 456,
                 "txid": "oldTxId",
                 "status": "unprocessed",
-                "updated_at": datetime(2022, 1, 1),
+                "updatedAt": datetime(2022, 1, 1),
             }
         )
 
@@ -246,7 +246,7 @@ class TestTransactionEntity:
             "userId": 456,
             "txid": "newTxId",
             "status": "completed",
-            "updated_at": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 1),
         }
 
         sync_map = {"transaction": {"idMap": {456: 123}, "count": 1}}
@@ -313,7 +313,7 @@ class TestTransactionEntity:
         def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [{"vout": 0, "satoshis": 100, "txid": "abc123"}, {"vout": 1, "satoshis": 200, "txid": "def456"}]
 
-        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
+        mock_storage = type("MockStorage", (), {"findOutputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)
@@ -342,7 +342,7 @@ class TestTransactionEntity:
                 return mock_proven_tx
             return None
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
+        mock_storage = type("MockStorage", (), {"findProvenTx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
@@ -388,7 +388,7 @@ class TestTransactionEntity:
         def mock_find_proven_tx(proven_tx_id: int) -> dict[str, Any] | None:
             return None  # No matching ProvenTx
 
-        mock_storage = type("MockStorage", (), {"find_proven_tx": staticmethod(mock_find_proven_tx)})()
+        mock_storage = type("MockStorage", (), {"findProvenTx": staticmethod(mock_find_proven_tx)})()
 
         # When
         retrieved_proven_tx = tx.get_proven_tx(mock_storage)
@@ -415,7 +415,7 @@ class TestTransactionEntity:
                 {"outputId": 2, "vout": 1, "satoshis": 200, "txid": "input2"},
             ]
 
-        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
+        mock_storage = type("MockStorage", (), {"findOutputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)
@@ -544,7 +544,7 @@ class TestTransactionEntity:
         def mock_find_outputs(query: dict[str, Any]) -> list[dict[str, Any]]:
             return [{"outputId": 1, "txid": "known1", "vout": 0, "satoshis": 100}]
 
-        mock_storage = type("MockStorage", (), {"find_outputs": staticmethod(mock_find_outputs)})()
+        mock_storage = type("MockStorage", (), {"findOutputs": staticmethod(mock_find_outputs)})()
 
         # When
         inputs = tx.get_inputs(mock_storage)

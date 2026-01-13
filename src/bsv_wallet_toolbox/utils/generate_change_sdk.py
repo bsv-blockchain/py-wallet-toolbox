@@ -57,7 +57,7 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
         c["spendable"] = False
         return {"satoshis": c["satoshis"], "outputId": c["outputId"], "spendable": False}
 
-    def allocate_change_input(target_satoshis: int, exact_satoshis: int | None = None) -> dict[str, Any] | None:
+    def allocate_funding_input(target_satoshis: int, exact_satoshis: int | None = None) -> dict[str, Any] | None:
         if exact_satoshis is not None:
             exact = next((c for c in change_store if c["spendable"] and c["satoshis"] == exact_satoshis), None)
             if exact:
@@ -71,13 +71,13 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
                 return allocate(c)
         return None
 
-    def release_change_input(output_id: int) -> None:
+    def release_funding_input(output_id: int) -> None:
         c = next((x for x in change_store if x["outputId"] == output_id), None)
         if c and not c["spendable"]:
             c["spendable"] = True
 
     result: dict[str, Any] = {
-        "allocatedChangeInputs": [],
+        "allocatedFundingInputs": [],
         "changeOutputs": [],
         "size": 0,
         "fee": 0,
@@ -86,7 +86,7 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
 
     def funding() -> int:
         return sum(int(e["satoshis"]) for e in fixed_inputs) + sum(
-            int(e["satoshis"]) for e in result["allocatedChangeInputs"]
+            int(e["satoshis"]) for e in result["allocatedFundingInputs"]
         )
 
     def spending() -> int:
@@ -98,37 +98,37 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
     def fee_now() -> int:
         return funding() - spending() - total_change()
 
-    def size(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
+    def size(added_funding_inputs: int = 0, added_change_outputs: int = 0) -> int:
         input_script_lengths = [int(x.get("unlockingScriptLength", 0)) for x in fixed_inputs]
-        input_script_lengths += [change_unlock_len] * (len(result["allocatedChangeInputs"]) + added_change_inputs)
+        input_script_lengths += [change_unlock_len] * (len(result["allocatedFundingInputs"]) + added_funding_inputs)
         output_script_lengths = [int(x.get("lockingScriptLength", 0)) for x in fixed_outputs]
         output_script_lengths += [change_lock_len] * (len(result["changeOutputs"]) + added_change_outputs)
         return transaction_size(input_script_lengths, output_script_lengths)
 
-    def fee_target(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
-        return (size(added_change_inputs, added_change_outputs) * sats_per_kb + 999) // 1000
+    def fee_target(added_funding_inputs: int = 0, added_change_outputs: int = 0) -> int:
+        return (size(added_funding_inputs, added_change_outputs) * sats_per_kb + 999) // 1000
 
     fee_excess_now = 0
 
-    def fee_excess(added_change_inputs: int = 0, added_change_outputs: int = 0) -> int:
+    def fee_excess(added_funding_inputs: int = 0, added_change_outputs: int = 0) -> int:
         nonlocal fee_excess_now
-        fe = funding() - spending() - total_change() - fee_target(added_change_inputs, added_change_outputs)
-        if added_change_inputs == 0 and added_change_outputs == 0:
+        fe = funding() - spending() - total_change() - fee_target(added_funding_inputs, added_change_outputs)
+        if added_funding_inputs == 0 and added_change_outputs == 0:
             fee_excess_now = fe
         return fe
 
     def net_change_count() -> int:
-        return len(result["changeOutputs"]) - len(result["allocatedChangeInputs"])
+        return len(result["changeOutputs"]) - len(result["allocatedFundingInputs"])
 
     def add_output_to_balance_new_input() -> bool:
         if not has_target_net:
             return False
         return net_change_count() - 1 < target_net
 
-    def release_allocated_change_inputs() -> None:
-        while result["allocatedChangeInputs"]:
-            i = result["allocatedChangeInputs"].pop()
-            release_change_input(int(i["outputId"]))
+    def release_allocated_funding_inputs() -> None:
+        while result["allocatedFundingInputs"]:
+            i = result["allocatedFundingInputs"].pop()
+            release_funding_input(int(i["outputId"]))
         fee_excess()
 
     fee_excess()
@@ -155,10 +155,10 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
                 exact_satoshis = -fee_excess(1, 0)
             ao = 1 if add_output_to_balance_new_input() else 0
             target_satoshis = -fee_excess(1, ao) + (2 * change_initial if ao == 1 else 0)
-            allocated = allocate_change_input(target_satoshis, exact_satoshis)
+            allocated = allocate_funding_input(target_satoshis, exact_satoshis)
             if not allocated:
                 return False
-            result["allocatedChangeInputs"].append(allocated)
+            result["allocatedFundingInputs"].append(allocated)
             if not removing_outputs and fee_excess() > 0:
                 if ao == 1 or len(result["changeOutputs"]) == 0:
                     result["changeOutputs"].append(
@@ -173,7 +173,7 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
             return True
 
         while True:
-            release_allocated_change_inputs()
+            release_allocated_funding_inputs()
             while fee_excess() < 0:
                 ok = attempt_to_fund_transaction()
                 if not ok:
@@ -185,21 +185,21 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
                 result["changeOutputs"].pop()
             if fee_excess() < 0:
                 break
-            change_inputs_copy = list(result["allocatedChangeInputs"])  # type: ignore[var-annotated]
-            while len(change_inputs_copy) > 1 and len(result["changeOutputs"]) > 1:
+            funding_inputs_copy = list(result["allocatedFundingInputs"])  # type: ignore[var-annotated]
+            while len(funding_inputs_copy) > 1 and len(result["changeOutputs"]) > 1:
                 last_output = result["changeOutputs"][-1]
                 idx = next(
                     (
                         i
-                        for i, ci in enumerate(change_inputs_copy)
-                        if int(ci["satoshis"]) <= int(last_output["satoshis"])
+                        for i, fi in enumerate(funding_inputs_copy)
+                        if int(fi["satoshis"]) <= int(last_output["satoshis"])
                     ),
                     -1,
                 )
                 if idx < 0:
                     break
                 result["changeOutputs"].pop()
-                change_inputs_copy.pop(idx)
+                funding_inputs_copy.pop(idx)
 
     fund_transaction()
 
@@ -214,11 +214,11 @@ def generate_change_sdk(params: dict[str, Any], available_change: list[dict[str,
         )
 
     if fee_excess() < 0:
-        release_allocated_change_inputs()
+        release_allocated_funding_inputs()
         raise InsufficientFundsError(spending() + fee_target(), -fee_excess_now)
 
     if len(result["changeOutputs"]) == 0 and fee_excess_now > 0:
-        release_allocated_change_inputs()
+        release_allocated_funding_inputs()
         raise InsufficientFundsError(spending() + fee_target(), change_first)
 
     # Prepare TS-like random sequence

@@ -7,6 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, Mock
 
 try:
+    from bsv.overlay_tools.lookup_resolver import LookupQuestion
     from bsv_wallet_toolbox.utils.identity_utils import (
         parse_results,
         query_overlay,
@@ -16,6 +17,7 @@ try:
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
+    LookupQuestion = None
 
 
 class TestTransformVerifiableCertificatesWithTrust:
@@ -322,10 +324,12 @@ class TestQueryOverlay:
         result = await query_overlay(query, resolver)
 
         assert isinstance(result, list)
-        resolver.query.assert_called_once_with({
-            "service": "ls_identity",
-            "query": query
-        })
+        # Implementation uses LookupQuestion object, not dict
+        resolver.query.assert_called_once()
+        call_args = resolver.query.call_args[0][0]
+        assert isinstance(call_args, LookupQuestion)
+        assert call_args.service == "ls_identity"
+        assert call_args.query == query
 
     @pytest.mark.asyncio
     async def test_query_overlay_exception(self) -> None:

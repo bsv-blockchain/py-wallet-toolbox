@@ -4,7 +4,7 @@ Tests the core signing logic without requiring full wallet infrastructure.
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 from bsv_wallet_toolbox.signer.methods import (
     create_action,
@@ -36,6 +36,12 @@ class TestCreateAction:
         mock_tx = MagicMock()
         mock_tx.txid.return_value = "a" * 64
         mock_tx.serialize.return_value = b"mock_tx_bytes"
+        # Mock verify as async method that returns True
+        mock_tx.verify = AsyncMock(return_value=True)
+        # Mock inputs with at least one input that has unlocking_script
+        mock_input = MagicMock()
+        mock_input.unlocking_script = MagicMock()  # Has unlocking script
+        mock_tx.inputs = [mock_input]
 
         mock_pending = PendingSignAction(
             reference="test_ref",
@@ -83,6 +89,12 @@ class TestCreateAction:
             mock_tx = MagicMock()
             mock_tx.txid.return_value = "b" * 64
             mock_tx.serialize.return_value = b"mock_tx_bytes"
+            # Mock verify as async method that returns True
+            mock_tx.verify = AsyncMock(return_value=True)
+            # Mock inputs with at least one input that has unlocking_script
+            mock_input = MagicMock()
+            mock_input.unlocking_script = MagicMock()  # Has unlocking script
+            mock_tx.inputs = [mock_input]
 
             mock_pending = PendingSignAction(
                 reference="test_ref",
@@ -114,26 +126,62 @@ class TestCreateAction:
 class TestSignAction:
     """Test sign_action function."""
 
-    @pytest.mark.skip(reason="Requires complex BEEF parsing and transaction signing that cannot be properly mocked")
     def test_sign_action_success(self):
         """Test successful sign_action."""
+        from bsv_wallet_toolbox.signer.methods import PendingSignAction
+        from bsv.transaction import Transaction
+
         mock_wallet = MagicMock()
         mock_auth = MagicMock()
 
-        args = {
-            "reference": "test_ref_123",
-            "rawTx": "01000000" + "00" * 8,  # Minimal tx hex
-            "spends": {},
-        }
+        # Create a proper mock PendingSignAction
+        mock_tx = MagicMock()
+        mock_tx.txid.return_value = "a" * 64
 
-        result = sign_action(mock_wallet, mock_auth, args)
+        mock_pending = PendingSignAction(
+            reference="test_ref_123",
+            dcr={
+                "reference": "test_ref_123",
+                "inputBeef": b"",  # Empty BEEF bytes
+                "noSendChangeOutputVouts": [],
+            },
+            args={
+                "isNewTx": True,
+                "description": "Test transaction",
+                "outputs": [{"satoshis": 1000, "lockingScript": "76a914" + "00" * 20 + "88ac"}],
+            },
+            amount=1000,
+            tx=mock_tx,
+            pdi=[]
+        )
 
-        assert result is not None
-        assert "txid" in result
+        # Mock pending_sign_actions as a TTL cache that returns our mock
+        mock_wallet.pending_sign_actions.get.return_value = mock_pending
 
-    @pytest.mark.skip(reason="Complex validation and recovery logic cannot be properly tested with mocks")
+        # Mock the complete_signed_transaction function
+        with patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete, \
+             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process, \
+             patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify:
+
+            mock_complete.return_value = mock_tx
+            mock_process.return_value = {"sendWithResults": [], "notDelayedResults": []}
+            mock_verify.return_value = None  # Skip verification for this test
+
+            args = {
+                "reference": "test_ref_123",
+                "spends": {},
+            }
+
+            result = sign_action(mock_wallet, mock_auth, args)
+
+            assert result is not None
+            assert "txid" in result
+
+    # @pytest.mark.skip(reason="Complex validation and recovery logic cannot be properly tested with mocks")
     def test_sign_action_invalid_reference(self):
         """Test sign_action with invalid reference."""
+        from bsv_wallet_toolbox.errors import WalletError
+
         mock_wallet = MagicMock()
         mock_auth = MagicMock()
 
@@ -143,7 +191,7 @@ class TestSignAction:
             "spends": {},
         }
 
-        with pytest.raises(ValueError):
+        with pytest.raises(WalletError):
             sign_action(mock_wallet, mock_auth, args)
 
 
@@ -218,7 +266,7 @@ class TestProcessAction:
 class TestInternalizeAction:
     """Test internalize_action function."""
 
-    @pytest.mark.skip(reason="Requires complex validation setup with paymentRemittance fields that cannot be easily mocked")
+    @pytest.mark.skip(reason="Requires complex paymentRemittance mocking for wallet payment protocol")
     def test_internalize_action_success(self):
         """Test successful internalize_action."""
         mock_wallet = MagicMock()
@@ -230,10 +278,8 @@ class TestInternalizeAction:
         tx_bytes = tx.serialize()
 
         args = {
-            "txid": tx.txid(),
             "tx": tx_bytes,  # Use actual transaction bytes
-            "outputIndex": 0,
-            "outputs": [{"satoshis": 1000, "lockingScript": b"script", "protocol": "wallet payment"}],  # Required outputs parameter with protocol
+            "outputs": [{"satoshis": 1000, "lockingScript": b"script", "protocol": "wallet payment", "outputIndex": 0}],  # Required outputs parameter with protocol and outputIndex
             "description": "Test description",  # Required description parameter
         }
 
@@ -268,7 +314,7 @@ class TestInternalizeAction:
 class TestAcquireDirectCertificate:
     """Test acquire_direct_certificate function."""
 
-    @pytest.mark.skip(reason="Requires complex storage and subject mocking that cannot be properly mocked")
+    @pytest.mark.skip(reason="Requires extensive certificate field mocking")
     def test_acquire_direct_certificate_success(self):
         """Test successful certificate acquisition."""
         mock_wallet = MagicMock()
@@ -277,6 +323,7 @@ class TestAcquireDirectCertificate:
 
         args = {
             "type": "identity",
+            "subject": "02" + "00" * 32,  # Mock subject public key
             "fields": {"name": "Test User"},
         }
 
@@ -309,14 +356,14 @@ class TestAcquireDirectCertificate:
 class TestProveCertificate:
     """Test prove_certificate function."""
 
-    @pytest.mark.skip(reason="Requires complex certificate storage mocking that cannot be properly set up")
+    @pytest.mark.skip(reason="Requires extensive certificate storage mocking")
     def test_prove_certificate_success(self):
         """Test successful certificate proving."""
         mock_wallet = MagicMock()
         mock_auth = MagicMock()
 
         args = {
-            "certificate": "cert_data",
+            "certificate": {"type": "identity", "subject": "02" + "00" * 32},  # Mock certificate dict
             "fields": ["field1", "field2"],
         }
 
@@ -331,7 +378,7 @@ class TestProveCertificate:
         mock_auth = MagicMock()
 
         args = {
-            "certificate": "",  # Invalid certificate
+            "certificate": {},  # Invalid certificate (empty dict instead of empty string)
             "fields": [],
         }
 
@@ -384,12 +431,20 @@ class TestSignerHelperFunctions:
         # Result should be the Transaction object
         assert hasattr(result, "txid")  # Assuming Transaction has txid attribute
 
-    @pytest.mark.skip(reason="Library has CounterpartyType.self_ bug that cannot be fixed in tests")
+    @pytest.mark.skip(reason="Requires key_deriver counterparty setup")
     def test_make_change_lock(self):
         """Test _make_change_lock function."""
         from bsv_wallet_toolbox.signer.methods import _make_change_lock
+        from bsv_wallet_toolbox.brc29.types import Protocol, Counterparty, CounterpartyType
 
         mock_wallet = MagicMock()
+        # Add mock key_deriver with derive_public_key method
+        mock_key_deriver = MagicMock()
+        mock_public_key = MagicMock()
+        mock_public_key.hex.return_value = "02" + "00" * 32
+        mock_key_deriver.derive_public_key.return_value = mock_public_key
+        mock_wallet.key_deriver = mock_key_deriver
+
         out = {"satoshis": 1000}
         dctr = {}
         args = {}
@@ -437,8 +492,8 @@ class TestSignerHelperFunctions:
 
         args = {
             "inputs": [
-                {"unlocking_script": "script1", "other": "value1"},
-                {"unlocking_script": "script2", "other": "value2"},
+                {"unlockingScript": "script1", "other": "value1"},
+                {"unlockingScript": "script2", "other": "value2"},
             ]
         }
 

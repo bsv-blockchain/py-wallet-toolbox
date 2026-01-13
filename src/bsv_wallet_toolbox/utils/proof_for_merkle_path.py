@@ -45,4 +45,4 @@ def convert_tsc_proof_to_merkle_path(
     path[0].append({"offset": int(index), "hash_str": _ensure_hex32_lower(txid), "txid": True})
 
     mp = MerklePath(block_height=height, path=path)
-    return {"block_height": mp.block_height, "path": mp.path}
+    return {"blockHeight": mp.block_height, "path": mp.path}

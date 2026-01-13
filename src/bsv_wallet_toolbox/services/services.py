@@ -12,7 +12,7 @@ Phase 4 Implementation Status:
 
 ✅ Phase 4 Completed:
   ✅ Multi-provider strategy: Implemented for all service methods
-     - post_beef(): GorillaPool → TAAL → Bitails fallback
+     - post_beef(): ARC multi-provider failover (TAAL → GorillaPool → Bitails)
      - getMerklePath(): WhatsOnChain → Bitails with notes aggregation
      - getRawTx(): Multi-provider with txid validation
      - getUtxoStatus(): Multi-provider with 2-retry strategy
@@ -22,8 +22,16 @@ Phase 4 Implementation Status:
   ✅ Retry logic: Implemented for getUtxoStatus (2 retries)
   ✅ ServiceCallHistory tracking: get_services_call_history() method
   ✅ Provider failover and error handling
+  ✅ Process forking compatibility: Lazy initialization with automatic fork detection
 
 ⏳ Phase 5 TODO (Future Enhancement):
+Background: These features are NOT implemented in TypeScript (ts-wallet-toolbox) Services
+layer either. In TS, transaction monitoring and health checking are delegated to the
+Monitor layer (src/Monitor.ts) and Chaintracks layer (src/Chaintracks/). Python should
+implement these in the corresponding layers (monitor/, services/chaintracker/) once TS
+implementation is complete and stable. Current TS Services only handles basic provider
+queries with simple retry logic.
+See: ts-wallet-toolbox/src/Services.ts (no monitoring), ts-wallet-toolbox/src/Monitor.ts
 # TODO: Phase 5 - Transaction monitoring/tracking with real-time updates
 # TODO: Phase 5 - Exponential backoff retry strategy
 # TODO: Phase 5 - Provider health checking with automatic recovery
@@ -33,19 +41,23 @@ Phase 4 Implementation Status:
 
 import asyncio
 import inspect
+import logging
+import os
+import threading
 from collections.abc import Callable
 from time import time
 from typing import Any
 from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
-from bsv.http_client import default_http_client
 from bsv.transaction import Transaction
-from bsv.transaction.beef import parse_beef
+from bsv.transaction.beef import parse_beef, parse_beef_ex
 
 from ..errors import InvalidParameterError
+from ..utils.random_utils import double_sha256_be
 from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
+from .http_client import ToolboxHttpClient
 from .providers.arc import ARC, ArcConfig
 from .providers.bitails import Bitails, BitailsConfig
 from .providers.whatsonchain import WhatsOnChain
@@ -57,6 +69,9 @@ from .wallet_services_options import WalletServicesOptions
 MAXINT: int = 0xFFFFFFFF
 BLOCK_LIMIT: int = 500_000_000
 CACHE_TTL_MSECS: int = 120000  # 2-minute TTL for service caches
+ATOMIC_BEEF_HEX_PREFIX: str = "01010101"  # Hex string prefix for AtomicBEEF format detection
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -94,11 +109,13 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
     # Chaintracks URL for fiat exchange rates (empty as per TS implementation)
     chaintracks_fiat_exchange_rates_url = ""
 
-    # ARC TAAL default URL
+    # ARC TAAL default URL (fallback/alternative)
     arc_url = "https://arc.taal.com" if chain == "main" else "https://arc-test.taal.com"
 
-    # ARC GorillaPool default URL
-    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else None
+    # ARC GorillaPool default URL (primary ARC provider)
+    # For testnet: https://testnet.arc.gorillapool.io
+    # For mainnet: https://arc.gorillapool.io
+    arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else "https://testnet.arc.gorillapool.io"
 
     return WalletServicesOptions(
         chain=chain,
@@ -116,6 +133,148 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
         arcUrl=arc_url,
         arcGorillaPoolUrl=arc_gorillapool_url,
     )
+
+
+class _AsyncRunner:
+    """Background event loop runner for executing coroutines synchronously."""
+
+    def __init__(self) -> None:
+        self._loop = asyncio.new_event_loop()
+        self._loop_thread = threading.Thread(target=self._run_loop, daemon=True)
+        self._loop_thread.start()
+        self._shutdown_event = threading.Event()
+
+    def _run_loop(self) -> None:
+        asyncio.set_event_loop(self._loop)
+        try:
+            self._loop.run_forever()
+        finally:
+            # Cleanup when loop stops
+            try:
+                _cancel_all_tasks(self._loop)
+                self._loop.run_until_complete(self._loop.shutdown_asyncgens())
+                self._loop.run_until_complete(self._loop.shutdown_default_executor())
+            except Exception as e:
+                logger.debug(f"Non-fatal error during async runner cleanup: {e}")
+
+    def run(self, coro: Any) -> Any:
+        if self._shutdown_event.is_set():
+            raise RuntimeError("AsyncRunner has been shut down")
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result()
+
+    def shutdown(self) -> None:
+        """Shutdown the background event loop and thread.
+
+        This method should be called when the application is shutting down
+        to ensure proper cleanup of the background thread and event loop.
+        """
+        if self._shutdown_event.is_set():
+            return  # Already shut down
+
+        self._shutdown_event.set()
+
+        # Stop the event loop
+        if self._loop.is_running():
+            self._loop.call_soon_threadsafe(self._loop.stop)
+
+        # Wait for thread to finish
+        if self._loop_thread.is_alive():
+            self._loop_thread.join(timeout=5.0)
+
+        # Final cleanup
+        try:
+            if not self._loop.is_closed():
+                self._loop.close()
+        except Exception:
+            pass  # Best effort cleanup
+
+
+def _cancel_all_tasks(loop: asyncio.AbstractEventLoop) -> None:
+    """Cancel all pending tasks in the event loop."""
+    try:
+        pending_tasks = [t for t in asyncio.all_tasks(loop) if not t.done()]
+        for task in pending_tasks:
+            task.cancel()
+        if pending_tasks:
+            loop.run_until_complete(asyncio.gather(*pending_tasks, return_exceptions=True))
+    except Exception:
+        pass  # Best effort cleanup
+
+
+def compute_txid_from_hex(raw_tx_hex: str) -> str:
+    """Compute transaction ID from raw transaction hex string.
+
+    Args:
+        raw_tx_hex: Raw transaction as hexadecimal string.
+
+    Returns:
+        Transaction ID as hexadecimal string.
+
+    Raises:
+        ValueError: If raw_tx_hex is not valid hex.
+    """
+    raw_tx_bytes = bytes.fromhex(raw_tx_hex)
+    return bytes(double_sha256_be(raw_tx_bytes)).hex()
+
+
+# Global async runner with lazy initialization (thread-safe)
+_async_runner_lock = threading.Lock()
+_async_runner: _AsyncRunner | None = None
+_parent_pid = os.getpid()
+
+
+def _reset_async_runner_after_fork():
+    """Reset async runner in child process after fork."""
+    global _async_runner, _parent_pid
+    current_pid = os.getpid()
+    if current_pid != _parent_pid:
+        if _async_runner is not None:
+            try:
+                _async_runner.shutdown()
+            except Exception:
+                pass
+        _async_runner = None
+        _parent_pid = current_pid
+
+
+# Register fork handler if available (Python 3.7+)
+if hasattr(os, 'register_at_fork'):
+    os.register_at_fork(after_in_child=_reset_async_runner_after_fork)
+
+
+def _get_async_runner() -> _AsyncRunner:
+    """Get or create the global async runner (lazy initialization).
+
+    Thread-safe singleton pattern. The runner is created on first access,
+    avoiding issues with process forking since it won't exist at import time.
+    """
+    global _async_runner
+    if _async_runner is None:
+        with _async_runner_lock:
+            # Double-check pattern for thread safety
+            if _async_runner is None:
+                _async_runner = _AsyncRunner()
+    return _async_runner
+
+
+def shutdown_async_runner() -> None:
+    """Shutdown the global async runner.
+
+    This function should be called when the application is shutting down
+    to ensure proper cleanup of the background thread and event loop.
+
+    The async runner is created lazily on first use, so this function is safe
+    to call even if the runner hasn't been created yet.
+    """
+    global _async_runner
+    if _async_runner is not None:
+        _async_runner.shutdown()
+        _async_runner = None
+
+# Global async runner with lazy initialization (thread-safe)
+# The async runner is created on first use to avoid issues with process forking.
+# Fork detection is registered to automatically reset the runner in child processes.
 
 
 class Services(WalletServices):
@@ -218,6 +377,7 @@ class Services(WalletServices):
 
         # Call parent constructor
         super().__init__(chain)
+        self.logger = logging.getLogger(f"{__name__}.Services")
 
         # Initialize WhatsOnChain provider
         woc_api_key = self.options.get("whatsOnChainApiKey")
@@ -262,6 +422,11 @@ class Services(WalletServices):
         # getMerklePath collection
         self.get_merkle_path_services = ServiceCollection("getMerklePath")
         self.get_merkle_path_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path})
+        # ARC can sometimes provide merklePath earlier / when other indexers lag.
+        if self.arc_gorillapool:
+            self.get_merkle_path_services.add({"name": "arcGorillaPool", "service": self.arc_gorillapool.get_merkle_path})
+        if self.arc_taal:
+            self.get_merkle_path_services.add({"name": "arcTaal", "service": self.arc_taal.get_merkle_path})
         if self.bitails:
             self.get_merkle_path_services.add({"name": "Bitails", "service": self.bitails.get_merkle_path})
 
@@ -304,7 +469,7 @@ class Services(WalletServices):
         Returns:
             HTTP client instance with fetch method for making HTTP requests.
         """
-        return default_http_client()
+        return ToolboxHttpClient()
 
     def get_services_call_history(self, reset: bool = False) -> dict[str, Any]:
         """Get complete call history across all services with optional reset.
@@ -341,8 +506,7 @@ class Services(WalletServices):
             The result, running the coroutine if needed
         """
         if inspect.iscoroutine(coro_or_result):
-            # Run the coroutine using asyncio.run (creates new event loop)
-            return asyncio.run(coro_or_result)
+            return _get_async_runner().run(coro_or_result)
         return coro_or_result
 
     def get_chain_tracker(self) -> ChainTracker:
@@ -355,28 +519,54 @@ class Services(WalletServices):
         """
         return self.whatsonchain
 
-    async def get_height(self) -> int | None:
-        """Get current blockchain height from WhatsOnChain.
+    def get_height(self) -> int | None:
+        """Get current blockchain height with provider fallback.
 
         Equivalent to TypeScript's Services.getHeight()
-        Uses py-sdk's WhatsOnChainTracker.current_height() (SDK method)
+        
+        Provider priority (matching TS/Go implementation):
+        1. Chaintracks (if configured) - chaintracks.currentHeight()
+        2. WhatsOnChain - whatsonchain.current_height()
 
         Returns:
-            Current blockchain height or None if network failure occurs
+            Current blockchain height or None if all providers fail
 
-        Raises:
-            RuntimeError: If unable to retrieve height due to other errors
+        Reference:
+            - ts-wallet-toolbox/src/services/Services.ts#getHeight
+            - go-wallet-toolbox/pkg/services/services.go#CurrentHeight
         """
+        return self._run_async(self._get_height_async())
+
+    async def _get_height_async(self) -> int | None:
+        """Async implementation of get_height with provider fallback."""
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                # TS: chaintracks.currentHeight()
+                # Go: chaintracks.GetPresentHeight()
+                if hasattr(chaintracks, "current_height"):
+                    return await chaintracks.current_height()
+                elif hasattr(chaintracks, "get_present_height"):
+                    return await chaintracks.get_present_height()
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
         try:
             return await self.whatsonchain.current_height()
         except (ConnectionError, TimeoutError):
             return None
 
-    async def get_present_height(self) -> int:
-        """Get latest chain height (provider's present height).
+    def get_present_height(self) -> int:
+        """Get latest chain height with provider fallback.
 
         TS parity:
-            Mirrors Services.getPresentHeight by delegating to provider.
+            Mirrors Services.getPresentHeight with Chaintracks priority.
+
+        Provider priority:
+        1. Chaintracks (if configured)
+        2. WhatsOnChain
 
         Returns:
             int: Latest chain height
@@ -384,13 +574,78 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getPresentHeight
         """
+        return self._run_async(self._get_present_height_async())
+
+    async def _get_present_height_async(self) -> int:
+        """Async implementation of get_present_height with provider fallback."""
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                if hasattr(chaintracks, "get_present_height"):
+                    return await chaintracks.get_present_height()
+                elif hasattr(chaintracks, "current_height"):
+                    return await chaintracks.current_height()
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
         return await self.whatsonchain.get_present_height()
 
+    async def hash_to_header_async(self, block_hash: str) -> dict[str, Any]:
+        """Async helper to resolve a block header for the given block hash."""
+        if not isinstance(block_hash, str):
+            raise InvalidParameterError("hash", "a string")
+        if len(block_hash) != 64:
+            raise InvalidParameterError("hash", "64 hex characters")
+        try:
+            int(block_hash, 16)
+        except ValueError as exc:
+            raise InvalidParameterError("hash", "a valid hexadecimal string") from exc
+
+        header: Any | None = None
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                header = await chaintracks.find_header_for_block_hash(block_hash)
+            except Exception:  # noqa: PERF203
+                header = None
+
+        if not header:
+            try:
+                header = await self.whatsonchain.find_header_for_block_hash(block_hash)
+            except Exception:  # noqa: PERF203
+                header = None
+
+        if not header:
+            raise InvalidParameterError("hash", f"blockhash '{block_hash}' not found on chain {self.chain}")
+
+        if isinstance(header, dict):
+            return header
+
+        return {
+            "version": getattr(header, "version", None),
+            "previousHash": getattr(header, "previousHash", None),
+            "merkleRoot": getattr(header, "merkleRoot", None),
+            "time": getattr(header, "time", None),
+            "bits": getattr(header, "bits", None),
+            "nonce": getattr(header, "nonce", None),
+            "height": getattr(header, "height", None),
+            "hash": getattr(header, "hash", block_hash),
+        }
+
+    def hash_to_header(self, block_hash: str) -> dict[str, Any]:
+        """Resolve a block header for the given block hash (synchronous wrapper)."""
+        return self._run_async(self.hash_to_header_async(block_hash))
+
     def get_header_for_height(self, height: int) -> bytes:
-        """Get block header at specified height from WhatsOnChain.
+        """Get block header at specified height with provider fallback.
 
         Equivalent to TypeScript's Services.getHeaderForHeight()
-        Uses WhatsOnChain.get_header_bytes_for_height() helper method
+        
+        Provider priority (matching TS/Go implementation):
+        1. Chaintracks (if configured) - chaintracks.findHeaderForHeight()
+        2. WhatsOnChain - whatsonchain.get_header_bytes_for_height()
 
         Args:
             height: Block height (must be non-negative)
@@ -400,12 +655,41 @@ class Services(WalletServices):
 
         Raises:
             ValueError: If height is negative
-            RuntimeError: If unable to retrieve header
-        """
-        return self._run_async(self.whatsonchain.get_header_bytes_for_height(height))
+            RuntimeError: If unable to retrieve header from any provider
 
-    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
-        """Get a structured block header at a given height.
+        Reference:
+            - ts-wallet-toolbox/src/services/Services.ts#getHeaderForHeight
+            - go-wallet-toolbox/pkg/services/services.go#ChainHeaderByHeight
+        """
+        return self._run_async(self._get_header_for_height_async(height))
+
+    async def _get_header_for_height_async(self, height: int) -> bytes:
+        """Async implementation of get_header_for_height with provider fallback."""
+        from .chaintracker.chaintracks.util.block_header_utilities import serialize_base_block_header
+        
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                # TS: chaintracks.findHeaderForHeight(height)
+                # Go: services.ChainHeaderByHeight(ctx, height)
+                if hasattr(chaintracks, "find_header_for_height"):
+                    header = await chaintracks.find_header_for_height(height)
+                    if header:
+                        # Convert BlockHeader dict to 80-byte serialized format
+                        return serialize_base_block_header(header)
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
+        return await self.whatsonchain.get_header_bytes_for_height(height)
+
+    def find_header_for_height(self, height: int) -> dict[str, Any] | None:
+        """Get a structured block header at a given height with provider fallback.
+
+        Provider priority:
+        1. Chaintracks (if configured)
+        2. WhatsOnChain
 
         Args:
             height: Block height (non-negative)
@@ -416,27 +700,59 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#findHeaderForHeight
         """
+        return self._run_async(self._find_header_for_height_async(height))
+
+    async def _find_header_for_height_async(self, height: int) -> dict[str, Any] | None:
+        """Async implementation of find_header_for_height with provider fallback."""
+        # 1. Try Chaintracks first (if configured)
+        chaintracks = self.options.get("chaintracks") if isinstance(self.options, dict) else None
+        if chaintracks:
+            try:
+                if hasattr(chaintracks, "find_header_for_height"):
+                    header = await chaintracks.find_header_for_height(height)
+                    if header:
+                        return self._normalize_header(header, height)
+            except Exception:
+                pass  # Fall through to WhatsOnChain
+        
+        # 2. Fall back to WhatsOnChain
         h = await self.whatsonchain.find_header_for_height(height)
         if h is None:
             return None
+        return self._normalize_header(h, height)
+
+    def _normalize_header(self, header: Any, height: int) -> dict[str, Any]:
+        """Normalize header response to consistent dict format."""
+        if isinstance(header, dict):
+            return {
+                "version": header.get("version"),
+                "previousHash": header.get("previousHash"),
+                "merkleRoot": header.get("merkleRoot"),
+                "time": header.get("time"),
+                "bits": header.get("bits"),
+                "nonce": header.get("nonce"),
+                "height": header.get("height", height),
+                "hash": header.get("hash"),
+            }
+        # Object with attributes (BlockHeader class instance)
         return {
-            "version": h.version,
-            "previousHash": h.previousHash,
-            "merkleRoot": h.merkleRoot,
-            "time": h.time,
-            "bits": h.bits,
-            "nonce": h.nonce,
-            "height": h.height,
-            "hash": h.hash,
+            "version": getattr(header, "version", None),
+            "previousHash": getattr(header, "previousHash", None),
+            "merkleRoot": getattr(header, "merkleRoot", None),
+            "time": getattr(header, "time", None),
+            "bits": getattr(header, "bits", None),
+            "nonce": getattr(header, "nonce", None),
+            "height": getattr(header, "height", height),
+            "hash": getattr(header, "hash", None),
         }
 
-    async def get_chain(self) -> str:
+    def get_chain(self) -> str:
         """Return configured chain identifier ('main' | 'test').
 
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getChain
         """
-        return await self.whatsonchain.get_chain()
+        return self._run_async(self.whatsonchain.get_chain())
 
     def get_info(self) -> dict[str, Any]:
         """Get provider configuration/state summary (if available).
@@ -444,7 +760,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getInfo
         """
-        return self.whatsonchain.get_info()  # may raise NotImplementedError
+        return self._run_async(self.whatsonchain.get_info())  # may raise NotImplementedError
 
     def get_headers(self, height: int, count: int) -> str:
         """Get serialized headers starting at height (provider-dependent).
@@ -455,39 +771,39 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts#getHeaders
         """
-        return self.whatsonchain.get_headers(height, count)
+        return self._run_async(self.whatsonchain.get_bulk_headers(height, count))
 
     def add_header(self, header: Any) -> None:
         """Submit a possibly new header (if provider supports it)."""
-        return self.whatsonchain.add_header(header)
+        return self._run_async(self.whatsonchain.add_header(header))
 
     def start_listening(self) -> None:
         """Start listening for new headers (if provider supports it)."""
-        return self.whatsonchain.start_listening()
+        return self._run_async(self.whatsonchain.start_listening())
 
     def listening(self) -> None:
         """Wait for listening state (if provider supports it)."""
-        return self.whatsonchain.listening()
+        return self._run_async(self.whatsonchain.listening())
 
     def is_listening(self) -> bool:
         """Whether provider is actively listening (event stream)."""
-        return self.whatsonchain.is_listening()
+        return self._run_async(self.whatsonchain.is_listening())
 
     def is_synchronized(self) -> bool:
         """Whether provider is synchronized (no local lag)."""
-        return self.whatsonchain.is_synchronized()
+        return self._run_async(self.whatsonchain.is_synchronized())
 
     def subscribe_headers(self, listener: Any) -> str:
         """Subscribe to header events (if supported)."""
-        return self.whatsonchain.subscribe_headers(listener)
+        return self._run_async(self.whatsonchain.subscribe_headers(listener))
 
-    async def subscribe_reorgs(self, listener: Any) -> str:
+    def subscribe_reorgs(self, listener: Any) -> str:
         """Subscribe to reorg events (if supported)."""
-        return await self.whatsonchain.subscribe_reorgs(listener)
+        return self._run_async(self.whatsonchain.subscribe_reorgs(listener))
 
     def unsubscribe(self, subscription_id: str) -> bool:
         """Cancel a subscription (if supported)."""
-        return self.whatsonchain.unsubscribe(subscription_id)
+        return self._run_async(self.whatsonchain.unsubscribe(subscription_id))
 
     #
     # WalletServices local-calculation methods (no external API calls)
@@ -507,7 +823,7 @@ class Services(WalletServices):
         """
         return utils_hash_output_script(script_hex)
 
-    async def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
+    def n_lock_time_is_final(self, tx_or_locktime: Any) -> bool:
         """Determine if an nLockTime value (or transaction) is final.
 
         Logic matches TypeScript Services.nLockTimeIsFinal:
@@ -556,8 +872,8 @@ class Services(WalletServices):
             return n_lock_time < now_sec
 
         try:
-            height = await self.get_height()
-            return n_lock_time < int(height)
+            height = self.get_height()
+            return height is not None and n_lock_time < int(height)
         except Exception:
             # If height check fails, consider not final
             return False
@@ -604,36 +920,78 @@ class Services(WalletServices):
         result: dict[str, Any] = {"txid": txid}
 
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                r = self._run_async(stc.service(txid, self.chain))
+                # Note: get_raw_tx takes only txid, unlike get_merkle_path which also takes services
+                r = self._run_async(service_to_call.service(txid))
 
-                if isinstance(r, dict) and r.get("rawTx"):
-                    # Validate transaction hash matches
-                    computed_txid = r.get("computedTxid")
-                    if computed_txid and computed_txid.lower() == txid.lower():
-                        # Match found
-                        result["rawTx"] = r["rawTx"]
-                        result["name"] = r.get("name")
-                        result.pop("error", None)
-                        services.add_service_call_success(stc)
-                        return r["rawTx"]
+                # Provider contract:
+                # - Preferred (TS-style): dict with "rawTx" and optional "error"
+                # - Legacy/py-sdk: raw hex string or None
+                if isinstance(r, dict):
+                    raw_tx_hex = r.get("rawTx")
+                    if raw_tx_hex:
+                        try:
+                            computed_txid = compute_txid_from_hex(raw_tx_hex)
+                        except (ValueError, TypeError):
+                            r["error"] = {"message": "provider returned invalid rawTx data", "code": "INVALID_DATA"}
+                            r.pop("rawTx", None)
+                        else:
+                            # Validate transaction hash matches
+                            if computed_txid.lower() == txid.lower():
+                                # Match found
+                                result["rawTx"] = raw_tx_hex
+                                result["name"] = r.get("name")
+                                result.pop("error", None)
+                                services.add_service_call_success(service_to_call)
+                                return raw_tx_hex
+
+                            # Hash mismatch - mark as error
+                            r["error"] = {
+                                "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
+                                "code": "TXID_MISMATCH",
+                            }
+                            r.pop("rawTx", None)
+
+                    if r.get("error"):
+                        services.add_service_call_error(service_to_call, r["error"])
+                        if "error" not in result:
+                            result["error"] = r["error"]
+                    elif not r.get("rawTx"):
+                        services.add_service_call_success(service_to_call, "not found")
                     else:
+                        services.add_service_call_failure(service_to_call)
+                elif isinstance(r, str):
+                    # Backwards-compatible path for providers that return raw hex directly.
+                    try:
+                        computed_txid = compute_txid_from_hex(r)
+                    except (ValueError, TypeError):
+                        # Treat invalid hex as provider failure.
+                        services.add_service_call_failure(service_to_call, "invalid data")
+                    else:
+                        if computed_txid.lower() == txid.lower():
+                            # Match found
+                            result["rawTx"] = r
+                            result["name"] = getattr(service_to_call, "provider_name", None)
+                            result.pop("error", None)
+                            services.add_service_call_success(service_to_call)
+                            return r
+
                         # Hash mismatch - mark as error
-                        error_msg = f"computed txid {computed_txid} doesn't match requested value {txid}"
-                        result["error"] = {"message": error_msg, "code": "TXID_MISMATCH"}
-                        services.add_service_call_error(stc, error_msg)
-                # No rawTx found
-                elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
-                    if "error" not in result:
-                        result["error"] = r["error"]
+                        error = {
+                            "message": f"computed txid {computed_txid} doesn't match requested value {txid}",
+                            "code": "TXID_MISMATCH",
+                        }
+                        services.add_service_call_error(service_to_call, error)
+                        if "error" not in result:
+                            result["error"] = error
                 else:
-                    services.add_service_call_success(stc, "not found")
+                    # None or unsupported type -> treat as not found
+                    services.add_service_call_success(service_to_call, "not found")
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
                 if "error" not in result:
                     result["error"] = {"message": str(e), "code": "PROVIDER_ERROR"}
 
@@ -655,13 +1013,13 @@ class Services(WalletServices):
         Returns:
             True if the Merkle root matches the header's merkleRoot at the height
         """
-        return self.whatsonchain.is_valid_root_for_height(root, height)
+        return self._run_async(self.whatsonchain.is_valid_root_for_height(root, height))
 
-    async def get_merkle_path(self, txid: str, use_next: bool = False) -> dict[str, Any]:
+    def get_merkle_path(self, txid: str, use_next: bool = False) -> dict[str, Any]:
         """Alias for get_merkle_path_for_transaction for test compatibility."""
-        return await self.get_merkle_path_for_transaction(txid, use_next)
+        return self.get_merkle_path_for_transaction(txid, use_next)
 
-    async def get_merkle_path_for_transaction(self, txid: str, use_next: bool = False) -> dict[str, Any]:
+    def get_merkle_path_for_transaction(self, txid: str, use_next: bool = False) -> dict[str, Any]:
         """Get the Merkle path for a transaction with multi-provider failover and caching.
 
         Uses ServiceCollection-based multi-provider failover strategy:
@@ -695,7 +1053,7 @@ class Services(WalletServices):
             raise InvalidParameterError("txid", "a valid hexadecimal string")
 
         # Generate cache key
-        cache_key = f"merkle_path:{txid}"
+        cache_key = f"merklePath:{txid}"
 
         # Check cache first
         cached = self.merkle_path_cache.get(cache_key)
@@ -711,10 +1069,10 @@ class Services(WalletServices):
         last_error: dict[str, Any] | None = None
 
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
-                # Call service
-                r = stc.service(txid, self)
+                # Call service (handle async if needed)
+                r = self._run_async(service_to_call.service(txid, self))
 
                 # Collect notes from all providers
                 if isinstance(r, dict) and r.get("notes"):
@@ -730,19 +1088,19 @@ class Services(WalletServices):
                     result["header"] = r.get("header")
                     result["name"] = r.get("name")
                     result.pop("error", None)
-                    services.add_service_call_success(stc)
+                    services.add_service_call_success(service_to_call)
                     break
 
                 # Record errors/failures
                 if isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
+                    services.add_service_call_error(service_to_call, r["error"])
                     if "error" not in result:
                         result["error"] = r["error"]
                 else:
-                    services.add_service_call_failure(stc)
+                    services.add_service_call_failure(service_to_call)
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
                 last_error = {"message": str(e), "code": "PROVIDER_ERROR"}
                 if "error" not in result:
                     result["error"] = last_error
@@ -769,7 +1127,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findChainTipHeader)
         """
-        h = self.whatsonchain.find_chain_tip_header()
+        h = self._run_async(self.whatsonchain.find_chain_tip_header())
         return {
             "version": h.version,
             "previousHash": h.previousHash,
@@ -783,7 +1141,7 @@ class Services(WalletServices):
 
     def find_chain_tip_hash(self) -> str:
         """Return the active chain tip hash (hex string)."""
-        return self.whatsonchain.find_chain_tip_hash()
+        return self._run_async(self.whatsonchain.find_chain_tip_hash())
 
     def find_header_for_block_hash(self, block_hash: str) -> dict[str, Any] | None:
         """Get a structured block header by its block hash.
@@ -797,7 +1155,7 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findHeaderForBlockHash)
         """
-        h = self.whatsonchain.find_header_for_block_hash(block_hash)
+        h = self._run_async(self.whatsonchain.find_header_for_block_hash(block_hash))
         if h is None:
             return None
         return {
@@ -915,28 +1273,28 @@ class Services(WalletServices):
         # Retry loop: up to 2 attempts
         for _retry in range(2):
             for _tries in range(services.count):
-                stc = services.service_to_call
+                service_to_call = services.service_to_call
                 try:
                     # Call service (handle async if needed)
-                    if asyncio.iscoroutinefunction(stc.service):
-                        r = self._run_async(stc.service(output, output_format, outpoint))
+                    if asyncio.iscoroutinefunction(service_to_call.service):
+                        r = self._run_async(service_to_call.service(output, output_format, outpoint))
                     else:
-                        r = stc.service(output, output_format, outpoint)
+                        r = service_to_call.service(output, output_format, outpoint)
 
                     if isinstance(r, dict) and r.get("status") == "success":
                         # Success - cache and return
-                        services.add_service_call_success(stc)
+                        services.add_service_call_success(service_to_call)
                         result = r
                         self.utxo_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
                         return result
                     # Failure or not found
                     elif isinstance(r, dict) and r.get("error"):
-                        services.add_service_call_error(stc, r["error"])
+                        services.add_service_call_error(service_to_call, r["error"])
                     else:
-                        services.add_service_call_failure(stc)
+                        services.add_service_call_failure(service_to_call)
 
                 except Exception as e:
-                    services.add_service_call_error(stc, e)
+                    services.add_service_call_error(service_to_call, e)
 
                 services.next()
 
@@ -980,7 +1338,7 @@ class Services(WalletServices):
         except ValueError:
             raise InvalidParameterError("script_hash", "a valid hexadecimal string")
         # Generate cache key
-        cache_key = f"script_history:{script_hash}"
+        cache_key = f"scriptHistory:{script_hash}"
 
         # Check cache first
         cached = self.script_history_cache.get(cache_key)
@@ -1004,28 +1362,28 @@ class Services(WalletServices):
 
         # Failover loop
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                if asyncio.iscoroutinefunction(stc.service):
-                    r = self._run_async(stc.service(script_hash))
+                if asyncio.iscoroutinefunction(service_to_call.service):
+                    r = self._run_async(service_to_call.service(script_hash))
                 else:
-                    r = stc.service(script_hash)
+                    r = service_to_call.service(script_hash)
 
                 if isinstance(r, dict) and r.get("status") == "success":
                     # Success - cache and return
                     result = r
-                    services.add_service_call_success(stc)
+                    services.add_service_call_success(service_to_call)
                     self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
                     return result
                 # Failure or not found
                 elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
+                    services.add_service_call_error(service_to_call, r["error"])
                 else:
-                    services.add_service_call_failure(stc)
+                    services.add_service_call_failure(service_to_call)
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
 
             services.next()
 
@@ -1033,7 +1391,7 @@ class Services(WalletServices):
         self.script_history_cache.set(cache_key, result, CACHE_TTL_MSECS)
         return result
 
-    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status via provider with multi-provider failover and 2-minute caching.
 
         Uses ServiceCollection-based multi-provider failover strategy:
@@ -1062,7 +1420,7 @@ class Services(WalletServices):
             raise InvalidParameterError("txid", "a valid hexadecimal string")
 
         # Generate cache key
-        cache_key = f"tx_status:{txid}"
+        cache_key = f"txStatus:{txid}"
 
         # Check cache first
         cached = self.transaction_status_cache.get(cache_key)
@@ -1085,29 +1443,26 @@ class Services(WalletServices):
 
         # Failover loop
         for _tries in range(services.count):
-            stc = services.service_to_call
+            service_to_call = services.service_to_call
             try:
                 # Call service (handle async if needed)
-                if asyncio.iscoroutinefunction(stc.service):
-                    r = await stc.service(txid, use_next)
-                else:
-                    r = stc.service(txid, use_next)
+                r = self._run_async(service_to_call.service(txid, use_next))
 
                 # For transaction status, any response with transaction data or valid status is success
                 if isinstance(r, dict) and ("status" in r or "txid" in r) and not r.get("error"):
                     # Valid transaction status - cache and return
                     result = r
-                    services.add_service_call_success(stc)
+                    services.add_service_call_success(service_to_call)
                     self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
                     return result
                 # Failure or error
                 elif isinstance(r, dict) and r.get("error"):
-                    services.add_service_call_error(stc, r["error"])
+                    services.add_service_call_error(service_to_call, r["error"])
                 else:
-                    services.add_service_call_failure(stc)
+                    services.add_service_call_failure(service_to_call)
 
             except Exception as e:
-                services.add_service_call_error(stc, e)
+                services.add_service_call_error(service_to_call, e)
 
             services.next()
 
@@ -1115,8 +1470,8 @@ class Services(WalletServices):
         self.transaction_status_cache.set(cache_key, result, CACHE_TTL_MSECS)
         return result
 
-    async def get_tx_propagation(self, txid: str) -> dict[str, Any]:
-        return await self.whatsonchain.get_tx_propagation(txid)
+    def get_tx_propagation(self, txid: str) -> dict[str, Any]:
+        return self._run_async(self.whatsonchain.get_tx_propagation(txid))
 
     def post_beef(self, beef: str) -> dict[str, Any]:
         # Validate beef input
@@ -1133,69 +1488,110 @@ class Services(WalletServices):
         except ValueError as e:
             raise InvalidParameterError("beef", f"must be valid hex: {e}") from e
 
-        # Parse BEEF data
         beef_obj = None
-        tx = None
-        txid = None
-        txids = []
-        # Parse BEEF data - try BEEF format first, fallback to raw transaction
+        tx: Transaction | None = None
+        txid: str | None = None
+        txids: list[str] = []
         beef_bytes = bytes.fromhex(beef)
+
+        parse_error: Exception | None = None
         try:
-            # Try to parse as BEEF format
-            beef_obj = parse_beef(beef_bytes)
-            # Get transaction IDs from BEEF
-            if hasattr(beef_obj, 'txs'):
-                txids = [tx.txid() if hasattr(tx, 'txid') else str(i) for i, tx in enumerate(beef_obj.txs)]
-                txid = txids[0] if txids else None
+            beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
+        except Exception as exc:
+            parse_error = exc
+        else:
+            tx = subject_tx
+            txid = subject_txid
+            if beef_obj is not None:
+                if hasattr(beef_obj, "txs"):
+                    txids = [t.txid() for t in beef_obj.txs if hasattr(t, "txid")]
+            if txid:
+                if txid not in txids:
+                    txids.append(txid)
             else:
-                txid = "unknown_txid"
-                txids = [txid]
-        except Exception:
-            # Fallback: try to parse as raw transaction hex
+                txids = [t.txid() for t in beef_obj.txs if hasattr(t, "txid")] if beef_obj else []
+
+        if tx is None:
             try:
                 tx = Transaction.from_hex(beef)
-                if tx is None:
-                    raise InvalidParameterError("beef", "invalid transaction hex")
                 txid = tx.txid()
                 txids = [txid]
-            except Exception as e:
-                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {e!s}") from e
+            except Exception as exc:
+                detail = f"{parse_error!s}; {exc!s}" if parse_error else str(exc)
+                raise InvalidParameterError("beef", f"failed to parse as BEEF or transaction: {detail}") from exc
 
-        # Try each provider in priority order
-        last_error: str | None = None
+        # Debug: Log rawTx being processed
+        # Check if it's AtomicBEEF format (starts with ATOMIC_BEEF_HEX_PREFIX) or raw transaction
+        # Both beef and ATOMIC_BEEF_HEX_PREFIX are hex strings, so direct string comparison works
+        is_atomic_beef = beef.startswith(ATOMIC_BEEF_HEX_PREFIX)
+        if is_atomic_beef:
+            self.logger.debug(
+                "Services.post_beef: processing AtomicBEEF, txid=%s, beef_len=%d bytes, beef_hex (first 100 chars): %s...",
+                txid,
+                len(beef) // 2,
+                beef[:100]
+            )
+            # After parsing, log the extracted raw transaction
+            if tx:
+                raw_tx_from_beef = tx.hex()
+                self.logger.debug(
+                    "Services.post_beef: extracted rawTx from AtomicBEEF, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
+                    txid,
+                    len(raw_tx_from_beef) // 2,
+                    raw_tx_from_beef[:100]
+                )
+        else:
+            # It's already raw transaction hex
+            self.logger.debug(
+                "Services.post_beef: processing rawTx, txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 200 chars): %s...",
+                txid,
+                len(beef) // 2,
+                beef[:200]
+            )
 
-        # 1. Try ARC GorillaPool (if configured)
-        if self.arc_gorillapool:
-            try:
-                # Handle async broadcast - ARC expects Transaction object
-                res = self._run_async(self.arc_gorillapool.broadcast(tx))
+        def _fmt_arc_error(res: Any) -> str:
+            # ARC.broadcast returns PostTxResultForTxid.
+            # When it fails, res.data is typically PostTxResultForTxidError with:
+            #   - status: HTTP status code as string
+            #   - detail: ARC "detail" message
+            data = getattr(res, "data", None)
+            status = getattr(res, "status", None)
+            txid_local = getattr(res, "txid", None)
+            if data is None:
+                return f"ARC error (status={status}, txid={txid_local})"
+            detail = getattr(data, "detail", None)
+            http_status = getattr(data, "status", None)
+            more = getattr(data, "more", None)
+            parts: list[str] = []
+            if http_status:
+                parts.append(f"HTTP {http_status}")
+            if detail:
+                parts.append(str(detail))
+            elif more:
+                parts.append(str(more))
+            else:
+                parts.append(str(data))
+            return "ARC: " + " - ".join(parts)
 
-                if getattr(res, "status", "") == "success":
-                    return {
-                        "accepted": True,
-                        "txid": txid,
-                        "message": getattr(res, "message", "Broadcast successful"),
-                    }
-                elif getattr(res, "status", "") == "rate_limited":
-                    return {
-                        "accepted": False,
-                        "rate_limited": True,
-                        "message": getattr(res, "description", "Rate limited"),
-                    }
-                elif getattr(res, "double_spend", False):
-                    return {
-                        "accepted": False,
-                        "doubleSpend": True,
-                        "message": getattr(res, "description", "Double spend detected"),
-                    }
-                last_error = getattr(res, "description", "GorillaPool broadcast failed")
-            except Exception as e:
-                last_error = str(e)
+        provider_errors: dict[str, str] = {}
 
-        # 2. Try ARC TAAL (if configured)
+        # Debug: high-level broadcast context
+        self.logger.debug(
+            "Services.post_beef: txid=%s, txids=%s, providers={'taal': %s, 'gorillapool': %s, 'bitails': %s}",
+            txid,
+            txids,
+            bool(self.arc_taal),
+            bool(self.arc_gorillapool),
+            bool(self.bitails),
+        )
+
+        # 1. Try ARC TAAL first (if configured)
         if self.arc_taal:
+            self.logger.debug("Services.post_beef: Attempting TAAL broadcast (first priority)")
             try:
                 # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
                 res = self._run_async(self.arc_taal.broadcast(tx))
 
                 if getattr(res, "status", "") == "success":
@@ -1216,11 +1612,68 @@ class Services(WalletServices):
                         "doubleSpend": True,
                         "message": getattr(res, "description", "Double spend detected"),
                     }
-                last_error = getattr(res, "description", "TAAL broadcast failed")
+                provider_errors["arcTaal"] = _fmt_arc_error(res)
+                self.logger.debug(
+                    "Services.post_beef: TAAL broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
+                )
             except Exception as e:
-                last_error = str(e)
+                provider_errors["arcTaal"] = str(e)
+                self.logger.debug("Services.post_beef: TAAL broadcast exception: %s", e)
 
-        # 3. Try Bitails (if configured)
+        # 2. Try ARC GorillaPool (if configured) - fallback after TAAL
+        if self.arc_gorillapool:
+            self.logger.debug("Services.post_beef: Attempting GorillaPool broadcast (TAAL failed)")
+            try:
+                # Handle async broadcast - ARC expects Transaction object
+                if tx is None:
+                    raise ValueError("ARC broadcast requires transaction object")
+                # Debug: Verify transaction hex is raw transaction, not AtomicBEEF
+                tx_hex = tx.hex() if hasattr(tx, "hex") else None
+                if tx_hex:
+                    self.logger.debug(
+                        "Services.post_beef: Transaction.hex() result, txid=%s, hex_len=%d bytes, hex (first 100 chars): %s...",
+                        txid,
+                        len(tx_hex) // 2,
+                        tx_hex[:100]
+                    )
+                    if tx_hex.startswith(ATOMIC_BEEF_HEX_PREFIX):
+                        self.logger.error(
+                            "Services.post_beef: ERROR - Transaction.hex() returns AtomicBEEF format! "
+                            "This should be raw transaction hex. Transaction object may be corrupted."
+                        )
+                res = self._run_async(self.arc_gorillapool.broadcast(tx))
+
+                if getattr(res, "status", "") == "success":
+                    return {
+                        "accepted": True,
+                        "txid": txid,
+                        "message": getattr(res, "message", "Broadcast successful"),
+                    }
+                elif getattr(res, "status", "") == "rate_limited":
+                    return {
+                        "accepted": False,
+                        "rate_limited": True,
+                        "message": getattr(res, "description", "Rate limited"),
+                    }
+                elif getattr(res, "double_spend", False):
+                    return {
+                        "accepted": False,
+                        "doubleSpend": True,
+                        "message": getattr(res, "description", "Double spend detected"),
+                    }
+                provider_errors["arcGorillaPool"] = _fmt_arc_error(res)
+                self.logger.debug(
+                    "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
+                    getattr(res, "status", None),
+                    getattr(res, "double_spend", None),
+                )
+            except Exception as e:
+                provider_errors["arcGorillaPool"] = str(e)
+                self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
+
+        # 3. Try Bitails (if configured) - final fallback
         if self.bitails:
             try:
                 # Bitails expects a Beef object, pass beef_obj if available, otherwise tx
@@ -1229,20 +1682,46 @@ class Services(WalletServices):
                 if isinstance(res, dict) and res.get("accepted"):
                     return res
                 if isinstance(res, dict):
-                    last_error = res.get("message", "Bitails broadcast failed")
+                    provider_errors["bitails"] = res.get("message", "Bitails broadcast failed")
                 else:
-                    last_error = "Bitails broadcast failed"
+                    provider_errors["bitails"] = "Bitails broadcast failed"
             except Exception as e:
-                last_error = str(e)
+                provider_errors["bitails"] = str(e)
+                self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
 
-        # Fallback: If no providers configured, return mocked success for test compatibility
-        if not self.arc_gorillapool and not self.arc_taal and not self.bitails:
-            return {"accepted": True, "txid": txid, "message": "mocked"}
+        # Return failure - all configured providers were attempted
+        message = provider_errors.get("arcTaal", "TAAL broadcast failed")
 
-        # Otherwise return failure
-        return {"accepted": False, "txid": None, "message": last_error or "No broadcast providers available"}
+        # Log all provider errors for debugging
+        if provider_errors:
+            self.logger.warning(
+                "Services.post_beef: All providers failed. Errors: %s",
+                provider_errors
+            )
+            # Include all provider failures in the message for better debugging
+            if len(provider_errors) > 1:
+                extras = "; ".join(f"{k}={v}" for k, v in provider_errors.items() if v and v != message)
+                if extras:
+                    message = f"{message}; other_failures: {extras}"
+            # Also include which providers were tried
+            tried_providers = []
+            if self.arc_gorillapool:
+                tried_providers.append("GorillaPool")
+            if self.arc_taal:
+                tried_providers.append("TAAL")
+            if self.bitails:
+                tried_providers.append("Bitails")
+            if tried_providers:
+                message = f"{message} (tried: {', '.join(tried_providers)})"
 
-    async def verify_beef(self, beef: str | bytes) -> bool:
+        self.logger.debug(
+            "Services.post_beef: all providers failed, last_error=%r, txids=%s",
+            message,
+            txids,
+        )
+        return {"accepted": False, "txid": None, "message": message, "providerErrors": provider_errors}
+
+    def verify_beef(self, beef: str | bytes) -> bool:
         """Verify BEEF data using the chaintracker.
 
         Parses the BEEF data and verifies it against the blockchain using
@@ -1279,7 +1758,7 @@ class Services(WalletServices):
 
         # Verify using chaintracker
         chaintracker = self.get_chain_tracker()
-        return await beef_obj.verify(chaintracker, True)
+        return self._run_async(beef_obj.verify(chaintracker, True))
 
     def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).

@@ -9,6 +9,7 @@ import pytest
 from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.services import Services
+from bsv_wallet_toolbox.services.wallet_services import Chain
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
@@ -50,7 +51,7 @@ def test_get_chain_tracker_with_custom_options() -> None:
     # Test with various configurations
     configs = [
         Services.create_default_options("main"),
-        {"chain": "main", "custom_setting": True},
+        {"chain": "main", "customSetting": True},
         {"chain": "test", "timeout": 30},
     ]
 
@@ -106,7 +107,7 @@ def test_get_chain_tracker_configuration_persistence() -> None:
     # Tracker should be aware of the service's chain
     assert hasattr(tracker, 'chain') or hasattr(services, 'chain')
     if hasattr(services, 'chain'):
-        assert services.chain == "main"
+        assert services.chain.value == "main"
 
 
 def test_get_chain_tracker_network_operations() -> None:
@@ -226,8 +227,8 @@ def test_get_chain_tracker_initialization_edge_cases() -> None:
 
     # Test with full config
     options_full = Services.create_default_options("main")
-    options_full["enable_chain_tracking"] = True
-    options_full["chain_tracker_timeout"] = 30
+    options_full["enableChainTracking"] = True
+    options_full["chainTrackerTimeout"] = 30
     services_full = Services(options_full)
     tracker_full = services_full.get_chain_tracker()
     assert tracker_full is not None

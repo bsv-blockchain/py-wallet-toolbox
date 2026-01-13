@@ -151,8 +151,8 @@ def _wallet(test_key_deriver) -> Wallet:
         user_id = storage.insert_user({
             "identityKey": test_key_deriver._root_private_key.public_key().hex(),
             "activeStorage": "test",
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         })
     except Exception:
         # User might already exist, get the existing user
@@ -166,8 +166,8 @@ def _wallet(test_key_deriver) -> Wallet:
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 1000,
             "isDeleted": False,
-            "created_at": datetime.now(timezone.utc),
-            "updated_at": datetime.now(timezone.utc),
+            "createdAt": datetime.now(timezone.utc),
+            "updatedAt": datetime.now(timezone.utc),
         })
     except Exception:
         # Basket might already exist

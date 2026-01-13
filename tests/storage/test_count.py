@@ -3,7 +3,26 @@
 Reference: wallet-toolbox/test/storage/count.test.ts
 """
 
+from collections.abc import Callable
 from datetime import datetime
+import re
+from typing import Any
+
+
+def _camel_to_snake(name: str) -> str:
+    step_one = re.sub("([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", step_one).lower()
+
+
+def _build_mock_storage(methods: dict[str, Callable[..., Any]]) -> Any:
+    """Create a mock storage object exposing both camelCase and snake_case names."""
+    cls = type("MockStorage", (), {})
+    for attr, func in methods.items():
+        setattr(cls, attr, func)
+        snake = _camel_to_snake(attr)
+        if snake != attr:
+            setattr(cls, snake, func)
+    return cls()
 
 
 class Testcount:
@@ -19,7 +38,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_proven_txs": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countProvenTxs": lambda self, query: 0})
 
         # When
         count = mock_storage.count_proven_txs({"partial": {}})
@@ -37,7 +56,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_proven_tx_reqs": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countProvenTxReqs": lambda self, query: 0})
 
         # When
         count = mock_storage.count_proven_tx_reqs({"partial": {}})
@@ -55,7 +74,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_users": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countUsers": lambda self, query: 0})
 
         # When
         count = mock_storage.count_users({"partial": {}})
@@ -73,7 +92,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_certificates": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countCertificates": lambda self, query: 0})
 
         # When - empty filter
         count_all = mock_storage.count_certificates({"partial": {}})
@@ -99,7 +118,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_certificate_fields": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countCertificateFields": lambda self, query: 0})
 
         # When - empty filter
         count_all = mock_storage.count_certificate_fields({"partial": {}})
@@ -125,7 +144,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_output_baskets": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countOutputBaskets": lambda self, query: 0})
 
         # When - empty filter
         count_all = mock_storage.count_output_baskets({"partial": {}})
@@ -147,7 +166,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_transactions": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countTransactions": lambda self, query: 0})
 
         # When
         count = mock_storage.count_transactions({"partial": {}})
@@ -165,7 +184,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_commissions": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countCommissions": lambda self, query: 0})
 
         # When
         count = mock_storage.count_commissions({"partial": {}})
@@ -183,7 +202,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_outputs": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countOutputs": lambda self, query: 0})
 
         # When
         count = mock_storage.count_outputs({"partial": {}})
@@ -201,7 +220,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_output_tags": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countOutputTags": lambda self, query: 0})
 
         # When
         count = mock_storage.count_output_tags({"partial": {}})
@@ -219,7 +238,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_output_tag_maps": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countOutputTagMaps": lambda self, query: 0})
 
         # When
         count = mock_storage.count_output_tag_maps({"partial": {}})
@@ -237,7 +256,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_tx_labels": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countTxLabels": lambda self, query: 0})
 
         # When
         count = mock_storage.count_tx_labels({"partial": {}})
@@ -255,7 +274,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_tx_label_maps": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countTxLabelMaps": lambda self, query: 0})
 
         # When
         count = mock_storage.count_tx_label_maps({"partial": {}})
@@ -275,7 +294,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_monitor_events": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countMonitorEvents": lambda self, query: 0})
 
         # When
         count = mock_storage.count_monitor_events({"partial": {}})
@@ -295,7 +314,7 @@ class Testcount:
         """
         # Given
 
-        mock_storage = type("MockStorage", (), {"count_sync_states": lambda self, query: 0})()
+        mock_storage = _build_mock_storage({"countSyncStates": lambda self, query: 0})
 
         # When
         count = mock_storage.count_sync_states({"partial": {}})

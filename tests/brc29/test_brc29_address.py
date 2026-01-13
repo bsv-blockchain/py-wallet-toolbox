@@ -9,15 +9,16 @@ import pytest
 
 from bsv_wallet_toolbox.brc29 import KeyID, address_for_counterparty, address_for_self
 
-# Test data (matches Go implementation fixtures)
+# Test data (matches Go implementation fixtures from go-wallet-toolbox/pkg/brc29/fixtures_test.go)
 SENDER_PUBLIC_KEY_HEX = "0320bbfb879bbd6761ecd2962badbb41ba9d60ca88327d78b07ae7141af6b6c810"
 SENDER_PRIVATE_KEY_HEX = "143ab18a84d3b25e1a13cefa90038411e5d2014590a2a4a57263d1593c8dee1c"
 SENDER_WIF_STRING = "Kwu2vS6fqkd5WnRgB9VXd4vYpL9mwkXePZWtG9Nr5s6JmfHcLsQr"
 RECIPIENT_PUBLIC_KEY_HEX = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
 RECIPIENT_PRIVATE_KEY_HEX = "0000000000000000000000000000000000000000000000000000000000000001"
 KEY_ID = KeyID(derivation_prefix="Pr==", derivation_suffix="Su==")
-EXPECTED_ADDRESS = "18HqET2ViSHNj9nvFiTSp1LXbgBpLCsi1r"
-EXPECTED_TESTNET_ADDRESS = "mnonXW7UXTidWGGXyHRpdvYrTfnXHjuf4E"
+# Updated to match Go-SDK test vectors (go-wallet-toolbox/pkg/brc29/fixtures_test.go)
+EXPECTED_ADDRESS = "19bxE1pRYYtjZeQm7P8e2Ws5zMkm8NNuxx"
+EXPECTED_TESTNET_ADDRESS = "mp7uX4uQMaKzLktNpx71rS5QrMMTzDP12u"
 INVALID_KEY_HEX = "invalid"
 
 
@@ -46,7 +47,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_with_ec_publickey_as_sender_public_key_source(self) -> None:
         """Given: Sender public key as ec.PublicKey object, key ID, recipient private key
@@ -70,7 +71,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_with_sender_key_deriver_as_sender_public_key_source(self) -> None:
         """Given: Sender key deriver, key ID, recipient private key
@@ -96,7 +97,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_with_ec_privatekey_as_recipient_private_key_source(self) -> None:
         """Given: Sender public key, key ID, recipient private key as ec.PrivateKey object
@@ -120,7 +121,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_testnet_address_created_with_brc29_by_recipient(self) -> None:
         """Given: Sender public key, key ID, recipient private key, testnet option
@@ -141,7 +142,7 @@ class TestBRC29AddressByRecipientCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_TESTNET_ADDRESS
+        assert address["addressString"] == EXPECTED_TESTNET_ADDRESS
 
 
 class TestBRC29AddressByRecipientErrors:
@@ -330,7 +331,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_wif_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as WIF string, key ID, recipient public key
@@ -350,7 +351,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_ec_privatekey_as_sender_private_key_source(self) -> None:
         """Given: Sender private key as ec.PrivateKey object, key ID, recipient public key
@@ -374,7 +375,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_key_deriver_as_sender_private_key_source(self) -> None:
         """Given: Sender key deriver, key ID, recipient public key
@@ -400,7 +401,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_valid_address_created_with_brc28_with_ec_publickey_as_receiver_public_key_source(self) -> None:
         """Given: Sender private key, key ID, recipient public key as ec.PublicKey object
@@ -424,7 +425,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_ADDRESS
+        assert address["addressString"] == EXPECTED_ADDRESS
 
     def test_return_testnet_address_created_with_brc29(self) -> None:
         """Given: Sender private key, key ID, recipient public key, testnet option
@@ -449,7 +450,7 @@ class TestBRC29AddressCreation:
 
         # Then
         assert address is not None
-        assert address["address_string"] == EXPECTED_TESTNET_ADDRESS
+        assert address["addressString"] == EXPECTED_TESTNET_ADDRESS
 
 
 class TestBRC29AddressErrors:

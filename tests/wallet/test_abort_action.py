@@ -208,8 +208,8 @@ class TestWalletAbortAction:
         # Given - Extra keys that should be ignored
         invalid_args = {
             "reference": "",  # Invalid reference
-            "extra_key": "ignored",
-            "another_key": 123,
+            "extraKey": "ignored",
+            "anotherKey": 123,
             "nested": {"key": "value"}
         }
 

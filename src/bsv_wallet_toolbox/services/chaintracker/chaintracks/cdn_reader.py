@@ -1,208 +1,149 @@
-"""CDN reader for downloading bulk header files.
+"""CDN reader for bulk block header files.
 
-Downloads bulk header files from CDN endpoints with retry logic and
-progress tracking.
+Provides HTTP client for fetching bulk block header metadata and files from CDN.
 
 Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/cdn_reader.go
 """
 
-import asyncio
 import logging
-from typing import Any, Dict, List, Optional
-import aiohttp
+from typing import Dict, Any
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+from ...wallet_services import Chain
+
 
 logger = logging.getLogger(__name__)
 
 
-class CDNReaderOptions:
-    """Options for CDN reader configuration."""
+class BulkHeaderFilesInfo:
+    """Metadata about bulk block header files collection."""
 
-    def __init__(
-        self,
-        base_url: str = "https://headers.chaintracks.io",
-        timeout_seconds: int = 30,
-        max_retries: int = 3,
-        retry_delay_seconds: float = 1.0,
-        user_agent: str = "Python-ChainTracks/1.0",
-    ):
-        self.base_url = base_url
-        self.timeout_seconds = timeout_seconds
-        self.max_retries = max_retries
-        self.retry_delay_seconds = retry_delay_seconds
-        self.user_agent = user_agent
+    def __init__(self, data: Dict[str, Any]):
+        """Initialize from JSON data.
+
+        Args:
+            data: JSON response from CDN
+        """
+        self.root_folder = data.get("rootFolder", "")
+        self.json_filename = data.get("jsonFilename", "")
+        self.headers_per_file = data.get("headersPerFile", 0)
+        self.files = [BulkHeaderFileInfo(file_data) for file_data in data.get("files", [])]
 
 
-class BulkFileInfo:
-    """Information about a bulk header file."""
+class BulkHeaderFileInfo:
+    """Metadata for a single bulk block header file."""
 
-    def __init__(
-        self,
-        filename: str,
-        url: str,
-        start_height: int,
-        end_height: int,
-        size_bytes: Optional[int] = None,
-        checksum: Optional[str] = None,
-    ):
-        self.filename = filename
-        self.url = url
-        self.start_height = start_height
-        self.end_height = end_height
-        self.size_bytes = size_bytes
-        self.checksum = checksum
+    def __init__(self, data: Dict[str, Any]):
+        """Initialize from JSON data.
 
-    def __repr__(self) -> str:
-        return f"BulkFileInfo(filename='{self.filename}', range={self.start_height}-{self.end_height})"
+        Args:
+            data: File metadata from JSON
+        """
+        self.first_height = data.get("firstHeight", 0)
+        self.count = data.get("count", 0)
+        self.file_name = data.get("fileName", "")
+        self.source_url = data.get("sourceUrl", "")
+        self.prev_chain_work = data.get("prevChainWork", "")
+        self.last_chain_work = data.get("lastChainWork", "")
+        self.prev_hash = data.get("prevHash", "")
+        self.last_hash = data.get("lastHash")
+        self.file_hash = data.get("fileHash", b"")
+        self.chain = data.get("chain", "")
+
+    @property
+    def bulk_header_minimum_info(self) -> Any:
+        """Get the minimum info for bulk operations."""
+        from .bulk_ingestor_interface import BulkHeaderMinimumInfo
+        return BulkHeaderMinimumInfo(
+            first_height=self.first_height,
+            count=self.count,
+            file_name=self.file_name,
+            source_url=self.source_url
+        )
 
 
 class CDNReader:
-    """CDN reader for downloading bulk header files.
+    """HTTP client for fetching bulk header data from CDN."""
 
-    Provides methods to discover available bulk files and download them
-    with retry logic and progress tracking.
+    # Base URL for Project Babbage CDN
+    BABBAGE_CDN_BASE_URL = "https://cdn.projectbabbage.com/blockheaders"
 
-    Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/cdn_reader.go
-    """
-
-    def __init__(self, options: Optional[CDNReaderOptions] = None):
+    def __init__(self, base_url: str = BABBAGE_CDN_BASE_URL, timeout: int = 30):
         """Initialize CDN reader.
 
         Args:
-            options: Configuration options for CDN access
+            base_url: Base URL for CDN
+            timeout: Request timeout in seconds
         """
-        self.options = options or CDNReaderOptions()
-        self.logger = logging.getLogger(f"{__name__}.CDNReader")
-        self._session: Optional[aiohttp.ClientSession] = None
+        self.base_url = base_url
+        self.timeout = timeout
 
-    async def __aenter__(self):
-        """Async context manager entry."""
-        timeout = aiohttp.ClientTimeout(total=self.options.timeout_seconds)
-        self._session = aiohttp.ClientSession(
-            timeout=timeout,
-            headers={"User-Agent": self.options.user_agent}
+        # Setup requests session with retry strategy
+        self.session = requests.Session()
+
+        retry_strategy = Retry(
+            total=3,
+            status_forcelist=[429, 500, 502, 503, 504],
+            backoff_factor=1
         )
-        return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """Async context manager exit."""
-        if self._session:
-            await self._session.close()
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
-    async def fetch_bulk_header_files_info(self) -> List[BulkFileInfo]:
-        """Fetch information about available bulk header files.
+        # Set headers
+        self.session.headers.update({
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "py-wallet-toolbox"
+        })
 
-        Queries the CDN for available bulk files and their metadata.
-
-        Returns:
-            List of BulkFileInfo objects describing available files
-
-        Raises:
-            Exception: If CDN query fails
-        """
-        url = f"{self.options.base_url}/bulk-files/index.json"
-
-        self.logger.debug(f"Fetching bulk files index from {url}")
-
-        # TODO: Implement actual CDN index fetching
-        # For now, return mock data based on typical bulk file structure
-        bulk_files = []
-
-        # Generate mock bulk files for heights 0-800,000 in 10,000 header chunks
-        chunk_size = 10000
-        max_height = 800000  # Approximate current BSV height
-
-        for start_height in range(0, max_height, chunk_size):
-            end_height = min(start_height + chunk_size - 1, max_height)
-            filename = "06d"
-            url = f"{self.options.base_url}/bulk-files/{filename}"
-
-            bulk_files.append(BulkFileInfo(
-                filename=filename,
-                url=url,
-                start_height=start_height,
-                end_height=end_height,
-                size_bytes=None,  # Unknown size
-                checksum=None     # No checksum validation yet
-            ))
-
-        self.logger.info(f"Found {len(bulk_files)} bulk files available")
-        return bulk_files
-
-    async def fetch_bulk_header_file(self, file_info: BulkFileInfo) -> bytes:
-        """Fetch a specific bulk header file.
-
-        Downloads the bulk header file with retry logic.
+    def fetch_bulk_header_files_info(self, chain: Chain) -> BulkHeaderFilesInfo:
+        """Fetch metadata about available bulk header files.
 
         Args:
-            file_info: Information about the file to download
+            chain: Blockchain network
 
         Returns:
-            Raw file content as bytes
+            Bulk header files information
 
         Raises:
-            Exception: If download fails after all retries
+            Exception: If request fails
         """
-        if not self._session:
-            raise RuntimeError("CDNReader must be used as async context manager")
+        url = f"{self.base_url}/{chain}NetBlockHeaders.json"
 
-        for attempt in range(self.options.max_retries):
-            try:
-                self.logger.debug(f"Downloading {file_info.filename} (attempt {attempt + 1})")
+        try:
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
 
-                async with self._session.get(file_info.url) as response:
-                    if response.status != 200:
-                        raise aiohttp.ClientResponseError(
-                            request_info=response.request_info,
-                            history=response.history,
-                            status=response.status,
-                            message=f"HTTP {response.status}: {response.reason}",
-                            headers=response.headers
-                        )
+            data = response.json()
+            return BulkHeaderFilesInfo(data)
 
-                    content = await response.read()
-                    self.logger.debug(f"Downloaded {file_info.filename} ({len(content)} bytes)")
-                    return content
+        except Exception as e:
+            raise Exception(f"Failed to fetch bulk header files info: {e}") from e
 
-            except Exception as e:
-                if attempt == self.options.max_retries - 1:
-                    # Last attempt failed
-                    self.logger.error(f"Failed to download {file_info.filename} after {self.options.max_retries} attempts: {e}")
-                    raise
-
-                # Wait before retry
-                self.logger.warning(f"Download attempt {attempt + 1} failed for {file_info.filename}: {e}")
-                await asyncio.sleep(self.options.retry_delay_seconds * (2 ** attempt))  # Exponential backoff
-
-        # Should not reach here
-        raise RuntimeError(f"Unexpected error downloading {file_info.filename}")
-
-    async def fetch_bulk_header_files_info_parallel(
-        self,
-        files: List[BulkFileInfo],
-        max_concurrent: int = 3
-    ) -> Dict[str, bytes]:
-        """Fetch multiple bulk header files in parallel.
+    def download_bulk_header_file(self, filename: str) -> bytes:
+        """Download a bulk header file.
 
         Args:
-            files: List of files to download
-            max_concurrent: Maximum number of concurrent downloads
+            filename: Name of the file to download
 
         Returns:
-            Dict mapping filename to file content
+            File contents as bytes
+
+        Raises:
+            Exception: If download fails
         """
-        if not self._session:
-            raise RuntimeError("CDNReader must be used as async context manager")
+        url = f"{self.base_url}/{filename}"
 
-        semaphore = asyncio.Semaphore(max_concurrent)
-        results = {}
+        try:
+            # Disable debug logging for large binary downloads
+            response = self.session.get(url, timeout=self.timeout)
+            response.raise_for_status()
 
-        async def download_file(file_info: BulkFileInfo) -> None:
-            async with semaphore:
-                content = await self.fetch_bulk_header_file(file_info)
-                results[file_info.filename] = content
+            return response.content
 
-        tasks = [download_file(file_info) for file_info in files]
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-        self.logger.info(f"Downloaded {len(results)} bulk files")
-        return results
+        except Exception as e:
+            raise Exception(f"Failed to download bulk header file {filename}: {e}") from e

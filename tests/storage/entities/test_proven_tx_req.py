@@ -26,8 +26,8 @@ class TestProvenTxReqEntity:
         proven_tx_req = ProvenTxReq(
             {
                 "provenTxReqId": 0,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now(),
                 "txid": "",
                 "rawTx": [],
                 "history": "{}",
@@ -75,8 +75,8 @@ class TestProvenTxReqEntity:
         ProvenTxReq(
             {
                 "provenTxReqId": 0,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now(),
                 "txid": "",
                 "rawTx": [],
                 "history": "{}",
@@ -103,8 +103,8 @@ class TestProvenTxReqEntity:
         proven_tx_req = ProvenTxReq(
             {
                 "provenTxReqId": 0,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now(),
                 "txid": "test-txid",
                 "rawTx": [1, 2, 3],
                 "history": "{}",
@@ -128,8 +128,8 @@ class TestProvenTxReqEntity:
             "MockStorage",
             (),
             {
-                "update_proven_tx_req": staticmethod(mock_update_proven_tx_req),
-                "find_proven_tx_reqs": staticmethod(mock_find_proven_tx_reqs),
+                "updateProvenTxReq": staticmethod(mock_update_proven_tx_req),
+                "findProvenTxReqs": staticmethod(mock_find_proven_tx_reqs),
             },
         )()
 
@@ -137,7 +137,7 @@ class TestProvenTxReqEntity:
         proven_tx_req.update_storage(mock_storage)
 
         # Then
-        fetched = mock_storage.find_proven_tx_reqs({"partial": {"txid": "test-txid"}})
+        fetched = mock_storage.findProvenTxReqs({"partial": {"txid": "test-txid"}})
         assert len(fetched) == 1
         assert fetched[0]["txid"] == "test-txid"
 
@@ -154,8 +154,8 @@ class TestProvenTxReqEntity:
         proven_tx_req = ProvenTxReq(
             {
                 "provenTxReqId": 0,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
+                "createdAt": datetime.now(),
+                "updatedAt": datetime.now(),
                 "txid": "test-txid-merge",
                 "rawTx": [1, 2, 3],
                 "history": "{}",
@@ -170,7 +170,11 @@ class TestProvenTxReqEntity:
         def mock_insert_or_merge(data: dict[str, Any]) -> dict[str, Any]:
             return data
 
-        mock_storage = type("MockStorage", (), {"insert_or_merge_proven_tx_req": staticmethod(mock_insert_or_merge)})()
+        mock_storage = type(
+            "MockStorage",
+            (),
+            {"insertOrMergeProvenTxReq": staticmethod(mock_insert_or_merge)},
+        )()
 
         # When
         result = proven_tx_req.insert_or_merge(mock_storage)
@@ -193,8 +197,8 @@ class TestProvenTxReqEntity:
         proven_tx_req1 = ProvenTxReq(
             {
                 "provenTxReqId": 405,
-                "created_at": current_time,
-                "updated_at": current_time,
+                "createdAt": current_time,
+                "updatedAt": current_time,
                 "txid": "test-equals",
                 "rawTx": [1, 2, 3],
                 "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-1"}}),
@@ -207,8 +211,8 @@ class TestProvenTxReqEntity:
 
         proven_tx_req2_api = {
             "provenTxReqId": 406,
-            "created_at": current_time,
-            "updated_at": current_time,
+            "createdAt": current_time,
+            "updatedAt": current_time,
             "txid": "test-equals",
             "rawTx": [1, 2, 3],
             "history": json.dumps({"notes": {"2025-01-01T00:00:00.000Z": "test-note-1"}}),
@@ -295,8 +299,8 @@ class TestProvenTxReqEntity:
         proven_tx_req = ProvenTxReq(
             {
                 "provenTxReqId": 1,
-                "created_at": now,
-                "updated_at": now,
+                "createdAt": now,
+                "updatedAt": now,
                 "txid": "test-txid",
                 "rawTx": [1, 2, 3],
                 "history": "{}",

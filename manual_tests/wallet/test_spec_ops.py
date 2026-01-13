@@ -462,6 +462,12 @@ class TestSpecOps:
         """
         # Given
         # TODO: Create WalletClient setup instead of Wallet
+        # Background: WalletClient is the client-side interface for remote wallet
+        # communication (JSON-RPC over HTTPS). TypeScript has WalletClient in
+        # ts-wallet-toolbox/src/WalletClient.ts which connects to StorageServer.
+        # Python's JsonRpcClient (planned) will serve a similar purpose but is not
+        # yet implemented. For now, use direct Wallet instance for testing.
+        # See memory ID 11080878 for Python JSON-RPC implementation plan.
         setup = await create_setup("test")
 
         try:

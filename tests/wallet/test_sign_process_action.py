@@ -95,7 +95,7 @@ class TestWalletSignAction:
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
             wallet_with_storage.sign_action(invalid_args)
 
-    @pytest.mark.skip(reason="Requires transaction building infrastructure (input selection, BEEF generation)")
+    @pytest.mark.skip(reason="Complex transaction funding logic requires extensive fixture setup")
     def test_sign_action_with_valid_reference(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with valid reference from createAction
            When: Call sign_action
@@ -133,7 +133,8 @@ class TestWalletSignAction:
         assert result["txid"] is not None
         assert result["tx"] is not None
 
-    @pytest.mark.skip(reason="Requires proper pending sign action setup with inputBeef")
+    # @pytest.mark.skip(reason="Requires proper pending sign action setup with inputBeef")
+    @pytest.mark.skip(reason="Requires real createAction flow and proper transaction references")
     def test_sign_action_with_spend_authorizations(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with specific spend authorizations
            When: Call sign_action
@@ -248,8 +249,8 @@ class TestWalletSignAction:
         invalid_args = {
             "reference": "",  # Invalid reference
             "spends": {},
-            "extra_key": "ignored",
-            "another_key": 123,
+            "extraKey": "ignored",
+            "anotherKey": 123,
             "nested": {"key": "value"}
         }
 
@@ -306,7 +307,7 @@ class TestWalletProcessAction:
     including broadcasting to the network and updating wallet state.
     """
 
-    @pytest.mark.skip(reason="Requires proper transaction state setup")
+    # @pytest.mark.skip(reason="Requires proper transaction state setup")
     def test_process_action_invalid_params_missing_txid(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs without required txid
            When: Call process_action
@@ -345,7 +346,8 @@ class TestWalletProcessAction:
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
             wallet_with_storage.process_action(invalid_args)
 
-    @pytest.mark.skip(reason="Requires proper transaction state setup")
+    # @pytest.mark.skip(reason="Requires proper transaction state setup")
+    @pytest.mark.skip(reason="Requires real createAction flow and proper transaction references")
     def test_process_action_new_transaction(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs for a new signed transaction
            When: Call process_action
@@ -372,7 +374,8 @@ class TestWalletProcessAction:
         assert "txid" in result
         assert result["txid"] == process_args["txid"]
 
-    @pytest.mark.skip(reason="Requires proper transaction state setup")
+    # @pytest.mark.skip(reason="Requires proper transaction state setup")
+    @pytest.mark.skip(reason="Requires real createAction flow and proper transaction references")
     def test_process_action_with_send_with(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with isSendWith=True and sendWith data
            When: Call process_action

@@ -199,8 +199,8 @@ MOCK_MERKLE_PATH_RESULTS = [
 class TestMonitor:
     """Test suite for Monitor tasks."""
 
+    @pytest.mark.skip(reason="Test takes over 1 minute to run")
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Takes too long to run")
     async def test_taskclock(self) -> None:
         """Given: Monitor with clock task running for >1 minute
            When: Check nextMinute value
@@ -575,7 +575,7 @@ class TestMonitor:
         
         if reqs:
             # Access dict key, not attribute
-            req_id = reqs[0].get("provenTxReqId") or reqs[0].get("proven_tx_req_id")
+            req_id = reqs[0].get("provenTxReqId") or reqs[0].get("provenTxReqId")
             if req_id:
                 storage.update_proven_tx_req(req_id, {"status": "invalid"})
             # Try to update transaction if it exists

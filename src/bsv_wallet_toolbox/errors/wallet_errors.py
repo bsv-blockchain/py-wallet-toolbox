@@ -116,9 +116,9 @@ class StateError(WalletError):
         """Initialize StateError."""
         context = {}
         if current_state is not None:
-            context["current_state"] = current_state
+            context["currentState"] = current_state
         if expected_state is not None:
-            context["expected_state"] = expected_state
+            context["expectedState"] = expected_state
         super().__init__(message, context)
 
 
@@ -164,9 +164,9 @@ class FormatError(WalletError):
         """Initialize FormatError."""
         context = {}
         if data_type is not None:
-            context["data_type"] = data_type
+            context["dataType"] = data_type
         if expected_format is not None:
-            context["expected_format"] = expected_format
+            context["expectedFormat"] = expected_format
         super().__init__(message, context)
 
 

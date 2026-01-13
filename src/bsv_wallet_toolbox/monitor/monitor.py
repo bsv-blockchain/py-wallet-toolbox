@@ -237,8 +237,8 @@ class Monitor:
                     {
                         "event": event,
                         "details": details or "",
-                        "created_at": now,
-                        "updated_at": now,
+                        "createdAt": now,
+                        "updatedAt": now,
                     }
                 )
             except Exception as e:
@@ -282,7 +282,7 @@ class Monitor:
             for header in deactivated_headers:
                 self.deactivated_headers.append(
                     {
-                        "when_msecs": now,
+                        "whenMsecs": now,
                         "tries": 0,
                         "header": header,
                     }

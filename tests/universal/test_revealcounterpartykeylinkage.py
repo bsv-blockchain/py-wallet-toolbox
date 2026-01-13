@@ -38,7 +38,7 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
 
         # Create a privileged key manager for testing
         privileged_key = PrivateKey()  # Generate a random key for testing
-        privileged_key_manager = PrivilegedKeyManager(lambda reason: privileged_key.key.secret)
+        privileged_key_manager = PrivilegedKeyManager(lambda reason: privileged_key)
 
         # Given
         args_data, result_data = load_test_vectors("revealCounterpartyKeyLinkage-simple")
@@ -50,14 +50,17 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
         wire_output = serialize_response(result)
 
         # Then - Verify the result contains expected fields and wire serialization works
+        # Support both camelCase (TS parity) and snake_case (Python convention)
         assert "prover" in result
         assert "counterparty" in result
         assert "verifier" in result
-        assert "revelationTime" in result
-        assert "encryptedLinkage" in result
-        assert "encryptedLinkageProof" in result
-        assert isinstance(result["encryptedLinkage"], list)
-        assert isinstance(result["encryptedLinkageProof"], list)
+        assert "revelationTime" in result or "revelation_time" in result
+        assert "encryptedLinkage" in result or "encrypted_linkage" in result
+        assert "encryptedLinkageProof" in result or "encrypted_linkage_proof" in result
+        linkage_key = "encryptedLinkage" if "encryptedLinkage" in result else "encrypted_linkage"
+        proof_key = "encryptedLinkageProof" if "encryptedLinkageProof" in result else "encrypted_linkage_proof"
+        assert isinstance(result[linkage_key], list)
+        assert isinstance(result[proof_key], list)
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
         from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response

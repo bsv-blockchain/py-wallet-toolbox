@@ -4,27 +4,62 @@ This module implements secure handling of private keys from external secure envi
 (HSM, secure enclaves, etc.) with memory protection and automatic cleanup.
 
 Design Philosophy:
-- Mimics TypeScript PrivilegedKeyManager from ts-sdk
-- Integrates with KeyDeriver for cryptographic operations
+- Mimics TypeScript PrivilegedKeyManager from ts-wallet-toolbox
+- Delegates all cryptographic operations to py-sdk's ProtoWallet
 - Provides key_getter callback for secure key retrieval
 - Implements retention period-based automatic key destruction
 
 Reference:
     - ts-wallet-toolbox/src/sdk/PrivilegedKeyManager.ts
-    - ts-sdk implementation: ProtoWallet interface
+    - ts-sdk: ProtoWallet
 """
 
-import hashlib
-import hmac
-import math
 import os
 import random
 import threading
 from collections.abc import Callable
 from typing import Any
 
-from bsv.keys import PrivateKey, PublicKey
-from bsv.wallet import KeyDeriver, Protocol, Counterparty, CounterpartyType
+from bsv.keys import PrivateKey
+from bsv.wallet import ProtoWallet
+
+from bsv_wallet_toolbox.errors import InvalidParameterError
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _validate_protocol_args(args: dict[str, Any]) -> dict[str, Any]:
+    """Validate protocol-related arguments to enforce standardized protocol key names.
+
+    The privileged key manager only accepts the specific protocol-related keys ``protocolID`` and ``keyID``.
+    Any snake_case variants (``protocol_id``/``key_id``) or other casing variants (``protocolId``/``keyId``)
+    are treated as configuration errors.
+
+    Args:
+        args: Arguments dictionary that may contain protocol parameters
+
+    Returns:
+        The original args dict (validation is performed in-place)
+    """
+    if "protocol_id" in args:
+        raise InvalidParameterError(
+            "protocol_id",
+            "invalid protocol identifier key 'protocol_id'; use 'protocolID' instead",
+        )
+    if "protocolId" in args:
+        raise InvalidParameterError(
+            "protocolId",
+            "invalid protocol identifier key 'protocolId'; use 'protocolID' instead",
+        )
+
+    if "key_id" in args:
+        raise InvalidParameterError("key_id", "invalid key identifier key 'key_id'; use 'keyID' instead")
+    if "keyId" in args:
+        raise InvalidParameterError("keyId", "invalid key identifier key 'keyId'; use 'keyID' instead")
+
+    return args
 
 
 class PrivilegedKeyManager:
@@ -33,6 +68,9 @@ class PrivilegedKeyManager:
     This class provides cryptographic operations (getPublicKey, createSignature, etc.)
     backed by a privileged key from a secure environment (HSM, enclave, etc.).
     The key is retained in memory for a limited duration and automatically destroyed.
+    
+    All cryptographic operations are delegated to py-sdk's ProtoWallet, matching
+    the TypeScript implementation.
 
     Attributes:
         key_getter: Callable that retrieves the private key from secure storage.
@@ -42,14 +80,14 @@ class PrivilegedKeyManager:
 
     def __init__(
         self,
-        key_getter: Callable[[str], bytes] | PrivateKey | bytes,
+        key_getter: Callable[[str], PrivateKey] | PrivateKey | bytes,
         retention_period_ms: int | None = None,
         retention_period: int | None = None,
     ) -> None:
         """Initialize PrivilegedKeyManager.
 
         Args:
-            key_getter: Function that retrieves private key bytes, or PrivateKey/bytes directly.
+            key_getter: Function that retrieves PrivateKey, or PrivateKey/bytes directly.
                        If function, should accept a 'reason' string parameter.
             retention_period_ms: Time (ms) before automatic key destruction.
             retention_period: Alternative name for retention_period_ms (for compatibility).
@@ -63,19 +101,14 @@ class PrivilegedKeyManager:
             actual_retention_period = retention_period
         else:
             actual_retention_period = 120_000
+            
         if isinstance(key_getter, PrivateKey):
-            self.key_getter = lambda reason: bytes.fromhex(key_getter.hex())
-            self._direct_private_key = key_getter
-            self._privileged_key_deriver = KeyDeriver(key_getter)
+            self._key_getter = lambda reason: key_getter
         elif isinstance(key_getter, bytes):
             private_key = PrivateKey(key_getter.hex())
-            self.key_getter = lambda reason: key_getter
-            self._direct_private_key = private_key
-            self._privileged_key_deriver = KeyDeriver(private_key)
+            self._key_getter = lambda reason: private_key
         elif callable(key_getter):
-            self.key_getter = key_getter
-            self._direct_private_key = None
-            self._privileged_key_deriver = None
+            self._key_getter = key_getter
         else:
             raise ValueError("key_getter must be PrivateKey, bytes, or callable")
 
@@ -105,20 +138,26 @@ class PrivilegedKeyManager:
 
             self._destroy_timer = threading.Timer(
                 self.retention_period_ms / 1000.0,
-                self._destroy_key,
+                self.destroy_key,
             )
             self._destroy_timer.daemon = True
             self._destroy_timer.start()
 
-    def _destroy_key(self) -> None:
-        """Destroy the privileged key from memory."""
+    async def destroy_key(self) -> None:
+        """Destroy the privileged key from memory.
+        
+        Async method for TS parity.
+        """
+        self._destroy_key_sync()
+
+    def _destroy_key_sync(self) -> None:
+        """Synchronously destroy the privileged key from memory."""
         with self._lock:
             try:
                 # Zero out real chunk data
                 for name in self._chunk_prop_names:
                     chunk_data = getattr(self, name, None)
                     if chunk_data and isinstance(chunk_data, list):
-                        # Zero out the data
                         for i in range(len(chunk_data)):
                             chunk_data[i] = 0
                     if hasattr(self, name):
@@ -127,7 +166,6 @@ class PrivilegedKeyManager:
                 for name in self._chunk_pad_prop_names:
                     pad_data = getattr(self, name, None)
                     if pad_data and isinstance(pad_data, list):
-                        # Zero out the data
                         for i in range(len(pad_data)):
                             pad_data[i] = 0
                     if hasattr(self, name):
@@ -137,7 +175,6 @@ class PrivilegedKeyManager:
                 for name in self._decoy_prop_names_destroy:
                     decoy_data = getattr(self, name, None)
                     if decoy_data and isinstance(decoy_data, list):
-                        # Zero out the data
                         for i in range(len(decoy_data)):
                             decoy_data[i] = 0
                     if hasattr(self, name):
@@ -148,99 +185,245 @@ class PrivilegedKeyManager:
                 self._chunk_pad_prop_names = []
                 self._decoy_prop_names_destroy = []
 
-            except Exception:
-                # Swallow any errors in the destruction process
-                pass
+            except Exception as e:
+                logger.warning(f"Error during privileged key destruction (non-fatal): {e}")
             finally:
-                self._privileged_key_deriver = None
                 if self._destroy_timer is not None:
                     self._destroy_timer.cancel()
                     self._destroy_timer = None
 
-    def _get_privileged_key(self, reason: str) -> PrivateKey:
-        """Retrieve or create privileged private key.
+    def _generate_random_property_name(self) -> str:
+        """Generate a random property name for obfuscation."""
+        random_hex = os.urandom(4).hex()
+        return f"_{random_hex}_{random.randint(0, 1000000)}"
 
+    def _xor_bytes(self, a: bytes, b: bytes) -> bytes:
+        """XOR two byte sequences."""
+        return bytes(x ^ y for x, y in zip(a, b))
+
+    def _split_key_into_chunks(self, key_bytes: bytes) -> list[bytes]:
+        """Split the 32-byte key into chunks."""
+        chunk_size = len(key_bytes) // self._chunk_count
+        chunks = []
+        offset = 0
+
+        for i in range(self._chunk_count):
+            size = len(key_bytes) - offset if i == self._chunk_count - 1 else chunk_size
+            chunks.append(key_bytes[offset:offset + size])
+            offset += size
+
+        return chunks
+
+    def _reassemble_key_from_chunks(self) -> bytes | None:
+        """Reassemble the key from obfuscated chunks."""
+        try:
+            chunk_arrays = []
+            for i in range(len(self._chunk_prop_names)):
+                chunk_enc = getattr(self, self._chunk_prop_names[i], None)
+                chunk_pad = getattr(self, self._chunk_pad_prop_names[i], None)
+                
+                if chunk_enc is None or chunk_pad is None:
+                    return None
+                    
+                chunk_enc_bytes = bytes(chunk_enc)
+                chunk_pad_bytes = bytes(chunk_pad)
+                
+                if len(chunk_enc_bytes) != len(chunk_pad_bytes):
+                    return None
+                    
+                raw_chunk = self._xor_bytes(chunk_enc_bytes, chunk_pad_bytes)
+                chunk_arrays.append(raw_chunk)
+
+            # Concat them back
+            raw_key = b"".join(chunk_arrays)
+            if len(raw_key) != 32:
+                return None
+                
+            return raw_key
+        except Exception:
+            return None
+
+    async def get_privileged_key(self, reason: str = "") -> PrivateKey:
+        """Get the privileged private key, using obfuscation if already cached.
+        
+        Public async method for TS parity.
+        
         Args:
-            reason: Reason for key retrieval (for auditing).
-
+            reason: The reason for accessing the key (for auditing)
+            
         Returns:
-            PrivateKey instance.
+            The PrivateKey object
+        """
+        return self._get_privileged_key(reason)
 
-        Raises:
-            Exception: If key_getter fails or returns invalid data.
+    def _get_privileged_key(self, reason: str) -> PrivateKey:
+        """Get the privileged private key, using obfuscation if already cached.
+        
+        Synchronous internal method.
+        
+        Args:
+            reason: The reason for accessing the key (for auditing)
+            
+        Returns:
+            The PrivateKey object
         """
         with self._lock:
-            # First try to reassemble from obfuscated chunks
-            reassembled_key_bytes = self._reassemble_key_from_chunks()
-            if reassembled_key_bytes and len(reassembled_key_bytes) == 32:
-                # We have a valid obfuscated key, return it
-                self._schedule_destruction()
-                return PrivateKey.from_hex(reassembled_key_bytes.hex())
+            # If we already have chunk properties, try reassemble
+            if self._chunk_prop_names and self._chunk_pad_prop_names:
+                raw_key_bytes = self._reassemble_key_from_chunks()
+                if raw_key_bytes and len(raw_key_bytes) == 32:
+                    self._schedule_destruction()
+                    return PrivateKey.from_hex(raw_key_bytes.hex())
 
-            if self._direct_private_key is not None:
-                # Create KeyDeriver if not already created
-                if self._privileged_key_deriver is None:
-                    self._privileged_key_deriver = KeyDeriver(self._direct_private_key)
-                return self._direct_private_key
+            # Otherwise, fetch a fresh key from the secure environment
+            fetched_key = self._key_getter(reason)
 
-            # Fetch new key from secure environment
-            try:
-                private_key_bytes = self.key_getter(reason)
-            except TypeError:
-                # Fallback for lambdas that don't accept reason parameter
-                private_key_bytes = self.key_getter()
+            # Get 32-byte representation (left-pad if necessary)
+            key_bytes = bytes.fromhex(fetched_key.hex())
+            if len(key_bytes) < 32:
+                key_bytes = b'\x00' * (32 - len(key_bytes)) + key_bytes
+            elif len(key_bytes) > 32:
+                raise ValueError("PrivilegedKeyManager: Expected a 32-byte key, but got more.")
 
-            # Convert PrivateKey objects to bytes if needed
-            if isinstance(private_key_bytes, PrivateKey):
-                private_key_bytes = bytes.fromhex(private_key_bytes.hex())
+            # Clean up any old data first
+            self._destroy_key_sync()
 
-            if not private_key_bytes or len(private_key_bytes) != 32:
-                raise ValueError(
-                    f"Invalid private key: expected 32 bytes, got {len(private_key_bytes) if private_key_bytes else 0}"
-                )
+            # Split the key
+            chunks = self._split_key_into_chunks(key_bytes)
 
-            # Obfuscate the key by splitting into chunks
-            self._obfuscate_key(private_key_bytes)
+            # Store new chunk data under random property names
+            for chunk in chunks:
+                chunk_prop = self._generate_random_property_name()
+                pad_prop = self._generate_random_property_name()
+                self._chunk_prop_names.append(chunk_prop)
+                self._chunk_pad_prop_names.append(pad_prop)
 
-            # Create PrivateKey from bytes
-            private_key_hex = private_key_bytes.hex()
-            private_key = PrivateKey.from_hex(private_key_hex)
+                # Generate random pad of the same length as the chunk
+                pad = os.urandom(len(chunk))
+                # XOR the chunk to obfuscate
+                obf = self._xor_bytes(chunk, pad)
 
-            # Create KeyDeriver for cryptographic operations (only for callable key_getters)
-            if self._privileged_key_deriver is None:
-                self._privileged_key_deriver = KeyDeriver(private_key)
+                # Store them in dynamic properties
+                setattr(self, chunk_prop, list(obf))
+                setattr(self, pad_prop, list(pad))
 
-            return private_key
+            # Generate some decoy properties that will be destroyed with the key
+            for _ in range(2):
+                decoy_prop = self._generate_random_property_name()
+                setattr(self, decoy_prop, list(os.urandom(32)))
+                self._decoy_prop_names_destroy.append(decoy_prop)
 
-    def _obfuscate_key(self, key_bytes: bytes) -> None:
-        """Obfuscate the key by splitting into XORed chunks."""
-        chunks = self._split_key_into_chunks(key_bytes)
+            # Schedule destruction
+            self._schedule_destruction()
 
-        # Clear any existing chunks
-        self._destroy_key()
+            return fetched_key
 
-        # Create new obfuscated chunks
-        for i, chunk in enumerate(chunks):
-            # Generate random pad
-            pad = list(os.urandom(len(chunk)))
+    def _create_proto_wallet(self, reason: str) -> ProtoWallet:
+        """Create a ProtoWallet with the privileged key.
+        
+        Args:
+            reason: The reason for accessing the key (for auditing)
+            
+        Returns:
+            A ProtoWallet instance backed by the privileged key
+        """
+        private_key = self._get_privileged_key(reason)
+        return ProtoWallet(private_key, permission_callback=lambda _: True)
 
-            # XOR the chunk with the pad
-            obfuscated_chunk = self._xor_bytes(chunk, pad)
+    def _convert_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Convert args to ProtoWallet format (camelCase).
+        
+        Args:
+            args: Arguments in camelCase format (validation is enforced)
+            
+        Returns:
+            Arguments in camelCase format for ProtoWallet (py-sdk expects camelCase)
+        """
+        # Validate protocol parameters first (camelCase enforcement)
+        args = _validate_protocol_args(args)
+        
+        proto_args = {}
+        
+        # Convert standardized protocolID to py-sdk expectation
+        if "protocolID" in args and args["protocolID"] is not None:
+            protocol_id = args["protocolID"]
+            if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
+                proto_args["protocolID"] = {
+                    "securityLevel": protocol_id[0],
+                    "protocol": protocol_id[1]
+                }
+            else:
+                proto_args["protocolID"] = protocol_id
 
-            # Generate property names
-            chunk_prop_name = self._generate_random_property_name()
-            pad_prop_name = self._generate_random_property_name()
-            decoy_prop_name = self._generate_random_property_name()
+        # Convert standardized keyID to py-sdk expectation
+        if "keyID" in args and args["keyID"] is not None:
+            proto_args["keyID"] = args["keyID"]
+            
+        # counterparty - default to 'self' if not provided (TS parity)
+        counterparty = args.get("counterparty")
+        if counterparty is not None:
+            proto_args["counterparty"] = counterparty
+        elif "protocolID" in args:
+            # If protocolID is specified, default counterparty to 'self'
+            proto_args["counterparty"] = "self"
+            
+        # forSelf stays the same
+        if "forSelf" in args:
+            proto_args["forSelf"] = args["forSelf"]
+            
+        # identityKey stays the same
+        if "identityKey" in args:
+            proto_args["identityKey"] = args["identityKey"]
+            
+        # data - convert to bytes if it's a list
+        if "data" in args:
+            data = args["data"]
+            if isinstance(data, list):
+                proto_args["data"] = bytes(data)
+            else:
+                proto_args["data"] = data
+            
+        # hashToDirectlySign -> hash_to_directly_sign
+        if "hashToDirectlySign" in args:
+            hash_val = args["hashToDirectlySign"]
+            direct_hash = bytes(hash_val) if isinstance(hash_val, list) else hash_val
+            proto_args["hashToDirectlySign"] = direct_hash
 
-            # Store obfuscated data
-            setattr(self, chunk_prop_name, obfuscated_chunk)
-            setattr(self, pad_prop_name, pad)
-            setattr(self, decoy_prop_name, list(os.urandom(16)))
-
-            # Track property names
-            self._chunk_prop_names.append(chunk_prop_name)
-            self._chunk_pad_prop_names.append(pad_prop_name)
-            self._decoy_prop_names_destroy.append(decoy_prop_name)
+        # hashToDirectlyVerify -> hash_to_directly_verify
+        if "hashToDirectlyVerify" in args:
+            hash_val = args["hashToDirectlyVerify"]
+            direct_verify_hash = bytes(hash_val) if isinstance(hash_val, list) else hash_val
+            proto_args["hashToDirectlyVerify"] = direct_verify_hash
+            
+        # signature - convert to bytes if it's a list
+        if "signature" in args:
+            sig = args["signature"]
+            if isinstance(sig, list):
+                proto_args["signature"] = bytes(sig)
+            else:
+                proto_args["signature"] = sig
+            
+        # plaintext - convert to bytes if it's a list
+        if "plaintext" in args:
+            pt = args["plaintext"]
+            if isinstance(pt, list):
+                proto_args["plaintext"] = bytes(pt)
+            else:
+                proto_args["plaintext"] = pt
+            
+        # ciphertext - keep as list (ProtoWallet handles both)
+        if "ciphertext" in args:
+            proto_args["ciphertext"] = args["ciphertext"]
+            
+        # hmac - keep as list
+        if "hmac" in args:
+            proto_args["hmac"] = args["hmac"]
+            
+        # verifier stays the same
+        if "verifier" in args:
+            proto_args["verifier"] = args["verifier"]
+            
+        return proto_args
 
     async def get_public_key(
         self,
@@ -248,7 +431,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, str]:
         """Get public key derived from privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.getPublicKey
+        Delegates to ProtoWallet.get_public_key (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -261,48 +444,18 @@ class PrivilegedKeyManager:
 
         Returns:
             Dict with 'publicKey' field (hex string)
-
-        Raises:
-            InvalidParameterError: If arguments are invalid
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-
-        # If identityKey is requested, return the identity public key
-        if args.get("identityKey"):
-            private_key = self._get_privileged_key(reason)
-            return {"publicKey": private_key.public_key().hex()}
-
-        # Otherwise, derive the public key
-        reason = args.get("privilegedReason", "")
-
-        # Ensure private key is available (creates KeyDeriver if needed)
-        private_key = self._get_privileged_key(reason)
-
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_hex = args.get("counterparty", "self")
-        for_self = args.get("forSelf", False)
-
-        if not protocol_id or not key_id:
-            raise ValueError("protocolID and keyID are required for key derivation")
-
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-
-        if counterparty_hex == "self":
-            counterparty = Counterparty(type=CounterpartyType.SELF)
-        elif counterparty_hex == "anyone":
-            counterparty = Counterparty(type=CounterpartyType.ANYONE)
-        else:
-            pub_key = PublicKey(counterparty_hex)
-            counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-        derived_pub = self._privileged_key_deriver.derive_public_key(
-            protocol=protocol,
-            key_id=key_id,
-            counterparty=counterparty,
-            for_self=for_self,
-        )
-        return {"publicKey": derived_pub.hex()}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.get_public_key(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"get_public_key failed: {result['error']}")
+            
+        return {"publicKey": result.get("publicKey", "")}
 
     async def create_signature(
         self,
@@ -310,7 +463,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, list[int]]:
         """Create signature using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.createSignature
+        Delegates to ProtoWallet.create_signature (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -323,54 +476,21 @@ class PrivilegedKeyManager:
 
         Returns:
             Dict with 'signature' field (list of int)
-
-        Raises:
-            InvalidParameterError: If arguments are invalid
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-        data = args.get("data", [])
-        hash_to_sign = args.get("hashToDirectlySign")
-
-        # Determine what to sign
-        if hash_to_sign is not None:
-            # Handle both bytes and hash objects
-            if hasattr(hash_to_sign, 'digest'):
-                to_sign = hash_to_sign.digest()
-            else:
-                to_sign = bytes(hash_to_sign)
-        else:
-            buf = bytes(data)
-            to_sign = hashlib.sha256(buf).digest()
-
-        # Check if we need key derivation
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_hex = args.get("counterparty")
-
-        if protocol_id and key_id and counterparty_hex:
-            # Use derived key - ensure private key is available first
-            private_key_temp = self._get_privileged_key(reason)
-            protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-
-            if counterparty_hex == "self":
-                counterparty = Counterparty(type=CounterpartyType.SELF)
-            elif counterparty_hex == "anyone":
-                counterparty = Counterparty(type=CounterpartyType.ANYONE)
-            else:
-                pub_key = PublicKey(counterparty_hex)
-                counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-            private_key = self._privileged_key_deriver.derive_private_key(
-                protocol=protocol,
-                key_id=key_id,
-                counterparty=counterparty,
-            )
-        else:
-            # Use identity key
-            private_key = self._get_privileged_key(reason)
-
-        signature = private_key.sign(to_sign, hasher=lambda m: m)
-        return {"signature": list(signature)}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.create_signature(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"create_signature failed: {result['error']}")
+            
+        signature = result.get("signature", [])
+        if isinstance(signature, bytes):
+            return {"signature": list(signature)}
+        return {"signature": list(signature) if signature else []}
 
     async def verify_signature(
         self,
@@ -378,7 +498,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, bool]:
         """Verify signature using privileged key's public key.
 
-        Reference: ts-sdk PrivilegedKeyManager.verifySignature
+        Delegates to ProtoWallet.verify_signature (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -393,57 +513,17 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'valid' field (bool)
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-        data = args.get("data", [])
-        hash_to_verify = args.get("hashToDirectlyVerify")
-        signature_bytes = bytes(args.get("signature", []))
-
-        # Determine what digest to verify
-        if hash_to_verify is not None:
-            # Handle both bytes and hash objects
-            if hasattr(hash_to_verify, 'digest'):
-                digest = hash_to_verify.digest()
-            else:
-                digest = bytes(hash_to_verify)
-        else:
-            buf = bytes(data)
-            digest = hashlib.sha256(buf).digest()
-
-        # Check if we need key derivation
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_hex = args.get("counterparty")
-
-        if protocol_id and key_id and counterparty_hex:
-            # Use derived key - ensure private key is available first
-            private_key_temp = self._get_privileged_key(reason)
-            protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-            for_self = args.get("forSelf", False)
-
-            if counterparty_hex == "self":
-                counterparty = Counterparty(type=CounterpartyType.SELF)
-            elif counterparty_hex == "anyone":
-                counterparty = Counterparty(type=CounterpartyType.ANYONE)
-            else:
-                pub_key = PublicKey(counterparty_hex)
-                counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-            public_key = self._privileged_key_deriver.derive_public_key(
-                protocol=protocol,
-                key_id=key_id,
-                counterparty=counterparty,
-                for_self=for_self,
-            )
-        else:
-            # Use identity key
-            private_key = self._get_privileged_key(reason)
-            public_key = private_key.public_key()
-
-        try:
-            valid = public_key.verify(signature_bytes, digest, hasher=lambda m: m)
-            return {"valid": bool(valid)}
-        except:
-            return {"valid": False}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.verify_signature(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"verify_signature failed: {result['error']}")
+            
+        return {"valid": bool(result.get("valid", False))}
 
     async def encrypt(
         self,
@@ -451,7 +531,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, list[int]]:
         """Encrypt data using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.encrypt
+        Delegates to ProtoWallet.encrypt (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -464,42 +544,22 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'ciphertext' field (list of int)
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-
-        # Ensure private key is available (creates KeyDeriver if needed)
-        private_key = self._get_privileged_key(reason)
-
-        # Get encryption parameters
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_hex = args.get("counterparty")
-
-        if protocol_id and key_id and counterparty_hex:
-            # Use derived key
-            protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-
-            if counterparty_hex == "self":
-                counterparty = Counterparty(type=CounterpartyType.SELF)
-            elif counterparty_hex == "anyone":
-                counterparty = Counterparty(type=CounterpartyType.ANYONE)
-            else:
-                pub_key = PublicKey(counterparty_hex)
-                counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-            derived_public_key = self._privileged_key_deriver.derive_public_key(
-                protocol=protocol,
-                key_id=key_id,
-                counterparty=counterparty,
-            )
-            plaintext = bytes(args.get("plaintext", []))
-            ciphertext = derived_public_key.encrypt(plaintext)
-        else:
-            # Use identity key
-            public_key = private_key.public_key()
-            plaintext = bytes(args.get("plaintext", []))
-            ciphertext = public_key.encrypt(plaintext)
-
-        return {"ciphertext": list(ciphertext)}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        # Also pass plaintext at top level for ProtoWallet
+        if "plaintext" in args:
+            proto_args["plaintext"] = args["plaintext"]
+        
+        result = proto.encrypt(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"encrypt failed: {result['error']}")
+            
+        ciphertext = result.get("ciphertext", [])
+        return {"ciphertext": list(ciphertext) if ciphertext else []}
 
     async def decrypt(
         self,
@@ -507,7 +567,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, list[int]]:
         """Decrypt data using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.decrypt
+        Delegates to ProtoWallet.decrypt (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -520,41 +580,22 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'plaintext' field (list of int)
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-
-        # Ensure private key is available (creates KeyDeriver if needed)
-        private_key = self._get_privileged_key(reason)
-
-        # Get decryption parameters
-        protocol_id = args.get("protocolID")
-        key_id = args.get("keyID")
-        counterparty_hex = args.get("counterparty")
-
-        if protocol_id and key_id and counterparty_hex:
-            # Use derived key
-            protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-
-            if counterparty_hex == "self":
-                counterparty = Counterparty(type=CounterpartyType.SELF)
-            elif counterparty_hex == "anyone":
-                counterparty = Counterparty(type=CounterpartyType.ANYONE)
-            else:
-                pub_key = PublicKey(counterparty_hex)
-                counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-            derived_private_key = self._privileged_key_deriver.derive_private_key(
-                protocol=protocol,
-                key_id=key_id,
-                counterparty=counterparty,
-            )
-            ciphertext = bytes(args.get("ciphertext", []))
-            plaintext = derived_private_key.decrypt(ciphertext)
-        else:
-            # Use identity key
-            ciphertext = bytes(args.get("ciphertext", []))
-            plaintext = private_key.decrypt(ciphertext)
-
-        return {"plaintext": list(plaintext)}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        # Also pass ciphertext at top level for ProtoWallet
+        if "ciphertext" in args:
+            proto_args["ciphertext"] = args["ciphertext"]
+        
+        result = proto.decrypt(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"decrypt failed: {result['error']}")
+            
+        plaintext = result.get("plaintext", [])
+        return {"plaintext": list(plaintext) if plaintext else []}
 
     async def create_hmac(
         self,
@@ -562,7 +603,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, list[int]]:
         """Create HMAC using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.createHmac
+        Delegates to ProtoWallet.create_hmac (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -576,28 +617,15 @@ class PrivilegedKeyManager:
             Dict with 'hmac' field (list of int)
         """
         reason = args.get("privilegedReason", "")
-        private_key = self._get_privileged_key(reason)
-        data = bytes(args.get("data", []))
-
-        # Parse protocol and counterparty for key derivation
-        protocol_id = args.get("protocolID", [2, "default"])
-        key_id = args.get("keyID", "default")
-        counterparty_hex = args.get("counterparty", "self")
-
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-
-        if counterparty_hex == "self":
-            counterparty = Counterparty(type=CounterpartyType.SELF)
-        elif counterparty_hex == "anyone":
-            counterparty = Counterparty(type=CounterpartyType.ANYONE)
-        else:
-            pub_key = PublicKey(counterparty_hex)
-            counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-        # Derive symmetric key for HMAC
-        sym_key = self._privileged_key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
-        hmac_digest = hmac.new(sym_key, data, hashlib.sha256).digest()
-        return {"hmac": list(hmac_digest)}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.create_hmac(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"create_hmac failed: {result['error']}")
+            
+        hmac_val = result.get("hmac", [])
+        return {"hmac": list(hmac_val) if hmac_val else []}
 
     async def verify_hmac(
         self,
@@ -605,7 +633,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, bool]:
         """Verify HMAC using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.verifyHmac
+        Delegates to ProtoWallet.verify_hmac (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -619,31 +647,17 @@ class PrivilegedKeyManager:
         Returns:
             Dict with 'valid' field (bool)
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-        private_key = self._get_privileged_key(reason)
-        data = bytes(args.get("data", []))
-        expected_hmac = bytes(args.get("hmac", []))
-
-        # Parse protocol and counterparty for key derivation
-        protocol_id = args.get("protocolID", [2, "default"])
-        key_id = args.get("keyID", "default")
-        counterparty_hex = args.get("counterparty", "self")
-
-        protocol = Protocol(security_level=protocol_id[0], protocol=protocol_id[1])
-
-        if counterparty_hex == "self":
-            counterparty = Counterparty(type=CounterpartyType.SELF)
-        elif counterparty_hex == "anyone":
-            counterparty = Counterparty(type=CounterpartyType.ANYONE)
-        else:
-            pub_key = PublicKey(counterparty_hex)
-            counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
-
-        # Derive symmetric key for HMAC verification
-        sym_key = self._privileged_key_deriver.derive_symmetric_key(protocol, key_id, counterparty)
-        computed_hmac = hmac.new(sym_key, data, hashlib.sha256).digest()
-        valid = hmac.compare_digest(computed_hmac, expected_hmac)
-        return {"valid": valid}
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.verify_hmac(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"verify_hmac failed: {result['error']}")
+            
+        return {"valid": bool(result.get("valid", False))}
 
     def reveal_counterparty_key_linkage(
         self,
@@ -651,7 +665,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, Any]:
         """Reveal counterparty key linkage using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.revealCounterpartyKeyLinkage
+        Delegates to ProtoWallet.reveal_counterparty_key_linkage (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -660,29 +674,17 @@ class PrivilegedKeyManager:
                 - verifier (str): Verifier public key
 
         Returns:
-            Dict with encrypted linkage information
+            Dict containing key linkage revelation
         """
         reason = args.get("privilegedReason", "")
-        private_key = self._get_privileged_key(reason)
-
-        # Get the prover (our identity key)
-        prover = private_key.public_key().hex()
-
-        # Get counterparty and verifier from args
-        counterparty = args.get("counterparty", "")
-        verifier = args.get("verifier", "")
-
-        # For testing purposes, return dummy linkage data
-        # In a real implementation, this would compute cryptographic proofs
-        return {
-            "prover": prover,
-            "counterparty": counterparty,
-            "verifier": verifier,
-            "revealedBy": prover,  # The prover reveals their own linkage
-            "revelationTime": "2023-01-01T00:00:00Z",
-            "encryptedLinkage": [1, 2, 3, 4],
-            "encryptedLinkageProof": [5, 6, 7, 8]
-        }
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.reveal_counterparty_key_linkage(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"reveal_counterparty_key_linkage failed: {result['error']}")
+            
+        return result
 
     def reveal_specific_key_linkage(
         self,
@@ -690,7 +692,7 @@ class PrivilegedKeyManager:
     ) -> dict[str, Any]:
         """Reveal specific key linkage using privileged key.
 
-        Reference: ts-sdk PrivilegedKeyManager.revealSpecificKeyLinkage
+        Delegates to ProtoWallet.reveal_specific_key_linkage (TS parity).
 
         Args:
             args: Arguments dict containing:
@@ -701,141 +703,16 @@ class PrivilegedKeyManager:
                 - keyID (str): Key identifier
 
         Returns:
-            Dict with encrypted linkage information
+            Dict containing specific key linkage revelation
         """
+        # Validate protocol parameters (camelCase enforcement)
+        args = _validate_protocol_args(args)
         reason = args.get("privilegedReason", "")
-        private_key = self._get_privileged_key(reason)
-
-        # Get the prover (our identity key)
-        prover = private_key.public_key().hex()
-
-        # Get counterparty and verifier from args
-        counterparty = args.get("counterparty", "")
-        verifier = args.get("verifier", "")
-
-        # For testing purposes, return dummy linkage data
-        # In a real implementation, this would compute cryptographic proofs
-        return {
-            "prover": prover,
-            "counterparty": counterparty,
-            "verifier": verifier,
-            "revealedBy": prover,  # The prover reveals their own linkage
-            "revelationTime": "2023-01-01T00:00:00Z",
-            "encryptedLinkage": [1, 2, 3, 4],
-            "encryptedLinkageProof": [5, 6, 7, 8]
-        }
-
-    async def destroy_key(self) -> None:
-        """Manually destroy the privileged key."""
-        with self._lock:
-            try:
-                # Zero out real chunk data
-                for name in self._chunk_prop_names:
-                    chunk_data = getattr(self, name, None)
-                    if chunk_data and isinstance(chunk_data, list):
-                        # Zero out the data
-                        for i in range(len(chunk_data)):
-                            chunk_data[i] = 0
-                    if hasattr(self, name):
-                        delattr(self, name)
-
-                for name in self._chunk_pad_prop_names:
-                    pad_data = getattr(self, name, None)
-                    if pad_data and isinstance(pad_data, list):
-                        # Zero out the data
-                        for i in range(len(pad_data)):
-                            pad_data[i] = 0
-                    if hasattr(self, name):
-                        delattr(self, name)
-
-                # Destroy some decoys
-                for name in self._decoy_prop_names_destroy:
-                    decoy_data = getattr(self, name, None)
-                    if decoy_data and isinstance(decoy_data, list):
-                        # Zero out the data
-                        for i in range(len(decoy_data)):
-                            decoy_data[i] = 0
-                    if hasattr(self, name):
-                        delattr(self, name)
-
-                # Clear arrays of property names
-                self._chunk_prop_names = []
-                self._chunk_pad_prop_names = []
-                self._decoy_prop_names_destroy = []
-
-            except Exception:
-                # Swallow any errors in the destruction process
-                pass
-            finally:
-                if self._destroy_timer is not None:
-                    self._destroy_timer.cancel()
-                    self._destroy_timer = None
-
-    def _generate_random_property_name(self) -> str:
-        """Generate a random property name to store key chunks or decoy data."""
-        # Generate 8 random hex characters for the property name
-        random_hex = os.urandom(4).hex()
-        random_suffix = str(math.floor(random.random() * 1e6))
-        return f"_{random_hex}_{random_suffix}"
-
-    def _xor_bytes(self, a: list[int], b: list[int]) -> list[int]:
-        """XOR-based obfuscation on a per-chunk basis."""
-        if len(a) != len(b):
-            raise ValueError("Byte arrays must be equal length")
-        return [x ^ y for x, y in zip(a, b)]
-
-    def _split_key_into_chunks(self, key_bytes: bytes) -> list[list[int]]:
-        """Split the 32-byte key into chunks."""
-        if len(key_bytes) != 32:
-            raise ValueError("Key must be exactly 32 bytes")
-
-        chunk_size = math.floor(len(key_bytes) / self._chunk_count)
-        chunks: list[list[int]] = []
-        offset = 0
-
-        for i in range(self._chunk_count):
-            size = len(key_bytes) - offset if i == self._chunk_count - 1 else chunk_size
-            chunk = list(key_bytes[offset:offset + size])
-            chunks.append(chunk)
-            offset += size
-
-        return chunks
-
-    def _reassemble_key_from_chunks(self) -> bytes | None:
-        """Reassemble the chunks from the dynamic properties."""
-        try:
-            chunk_arrays: list[list[int]] = []
-            for i in range(len(self._chunk_prop_names)):
-                chunk_enc = getattr(self, self._chunk_prop_names[i], None)
-                chunk_pad = getattr(self, self._chunk_pad_prop_names[i], None)
-
-                if not chunk_enc or not chunk_pad or len(chunk_enc) != len(chunk_pad):
-                    return None
-
-                raw_chunk = self._xor_bytes(chunk_enc, chunk_pad)
-                chunk_arrays.append(raw_chunk)
-
-            # Concat them back to a single 32-byte array
-            total_length = sum(len(chunk) for chunk in chunk_arrays)
-            if total_length != 32:
-                return None
-
-            raw_key = bytearray()
-            for chunk in chunk_arrays:
-                raw_key.extend(chunk)
-
-            return bytes(raw_key)
-
-        except Exception:
-            return None
-
-    async def get_privileged_key(self, reason: str = "") -> PrivateKey:
-        """Public method to retrieve the privileged key.
-
-        Args:
-            reason: Reason for key retrieval (for auditing).
-
-        Returns:
-            PrivateKey instance.
-        """
-        return self._get_privileged_key(reason)
+        proto = self._create_proto_wallet(reason)
+        proto_args = self._convert_args_to_proto_format(args)
+        
+        result = proto.reveal_specific_key_linkage(proto_args)
+        if "error" in result:
+            raise RuntimeError(f"reveal_specific_key_linkage failed: {result['error']}")
+            
+        return result

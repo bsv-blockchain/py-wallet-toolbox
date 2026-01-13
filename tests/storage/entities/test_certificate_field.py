@@ -27,8 +27,8 @@ class TestCertificateFieldEntity:
         certificate_id = 300
         initial_data = {
             "certificateId": certificate_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "fieldName": "field1",
             "fieldValue": "value1",
@@ -60,8 +60,8 @@ class TestCertificateFieldEntity:
 
         initial_data = {
             "certificateId": certificate_id1,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "fieldName": "field1",
             "fieldValue": "value1",
@@ -104,8 +104,8 @@ class TestCertificateFieldEntity:
         certificate_id = 400
         initial_data = {
             "certificateId": certificate_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "fieldName": "field1",
             "fieldValue": "value1",
@@ -117,7 +117,7 @@ class TestCertificateFieldEntity:
         # Updated data with later timestamp
         updated_data = {
             **initial_data,
-            "updated_at": datetime.fromtimestamp(now.timestamp() + 1),
+            "updatedAt": datetime.fromtimestamp(now.timestamp() + 1),
             "fieldValue": "updatedValue",
             "masterKey": "updatedMasterKey",
         }
@@ -149,8 +149,8 @@ class TestCertificateFieldEntity:
         certificate_id = 401
         initial_data = {
             "certificateId": certificate_id,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "fieldName": "field1",
             "fieldValue": "value1",
@@ -162,7 +162,7 @@ class TestCertificateFieldEntity:
         # Same updated_at
         same_updated_data = {
             **initial_data,
-            "updated_at": now,
+            "updatedAt": now,
             "fieldValue": "unchangedValue",
             "masterKey": "unchangedMasterKey",
         }
@@ -192,8 +192,8 @@ class TestCertificateFieldEntity:
         initial_data = {
             "userId": 1,
             "certificateId": 500,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "fieldName": "fieldName1",
             "fieldValue": "fieldValue1",
             "masterKey": "masterKey1",

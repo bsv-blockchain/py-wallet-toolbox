@@ -6,7 +6,6 @@ Reference: wallet-toolbox/src/services/Services.ts#getTransactionStatus
 """
 
 import pytest
-import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 
 try:
@@ -23,8 +22,8 @@ def valid_services_config():
     """Fixture providing valid services configuration."""
     return {
         "chain": "main",
-        "whatsonchain_api_key": "test_woc_key",
-        "taal_api_key": "test_taal_key"
+        "whatsonchainApiKey": "test_woc_key",
+        "taalApiKey": "test_taal_key"
     }
 
 
@@ -171,8 +170,7 @@ def test_get_transaction_status_placeholder() -> None:
     """Placeholder for `getTransactionStatus` until TS/So test is available."""
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txids) -> None:
+def test_get_transaction_status_invalid_txid_formats(mock_services, invalid_txids) -> None:
     """Given: Invalid txid formats
        When: Call get_transaction_status with invalid txids
        Then: Raises appropriate errors
@@ -181,11 +179,10 @@ async def test_get_transaction_status_invalid_txid_formats(mock_services, invali
 
     for invalid_txid in invalid_txids:
         with pytest.raises((InvalidParameterError, ValueError, TypeError)):
-            await services.get_transaction_status(invalid_txid)
+            services.get_transaction_status(invalid_txid)
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_network_failure_500(mock_services, valid_txid) -> None:
+def test_get_transaction_status_network_failure_500(mock_services, valid_txid) -> None:
     """Given: Network returns HTTP 500 error
        When: Call get_transaction_status
        Then: Handles server error appropriately
@@ -193,20 +190,20 @@ async def test_get_transaction_status_network_failure_500(mock_services, valid_t
     services, mock_instance = mock_services
 
     # Mock service to return error
-    async def mock_get_transaction_status_error(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_error(txid, use_next=None):
         raise Exception("HTTP 500: Internal Server Error")
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_error
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     # Should return error result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_network_timeout(mock_services, valid_txid) -> None:
+def test_get_transaction_status_network_timeout(mock_services, valid_txid) -> None:
     """Given: Network request times out
        When: Call get_transaction_status
        Then: Handles timeout appropriately
@@ -214,21 +211,20 @@ async def test_get_transaction_status_network_timeout(mock_services, valid_txid)
     services, mock_instance = mock_services
 
     # Mock service to timeout
-    async def mock_get_transaction_status_timeout(txid, chain=None):
-        await asyncio.sleep(0.1)  # Simulate timeout
-        raise asyncio.TimeoutError("Connection timeout")
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_timeout(txid, use_next=None):
+        raise TimeoutError("Connection timeout")
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_timeout
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     # Should return error result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_rate_limiting_429(mock_services, valid_txid) -> None:
+def test_get_transaction_status_rate_limiting_429(mock_services, valid_txid) -> None:
     """Given: API returns 429 rate limit exceeded
        When: Call get_transaction_status
        Then: Handles rate limiting appropriately
@@ -236,20 +232,20 @@ async def test_get_transaction_status_rate_limiting_429(mock_services, valid_txi
     services, mock_instance = mock_services
 
     # Mock service to return rate limit error
-    async def mock_get_transaction_status_rate_limit(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_rate_limit(txid, use_next=None):
         raise Exception("HTTP 429: Rate limit exceeded")
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_rate_limit
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     # Should return error result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_transaction_not_found_404(mock_services, valid_txid) -> None:
+def test_get_transaction_status_transaction_not_found_404(mock_services, valid_txid) -> None:
     """Given: Transaction not found (404)
        When: Call get_transaction_status
        Then: Returns appropriate not found result
@@ -257,20 +253,20 @@ async def test_get_transaction_status_transaction_not_found_404(mock_services, v
     services, mock_instance = mock_services
 
     # Mock service to return 404
-    async def mock_get_transaction_status_not_found(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_not_found(txid, use_next=None):
         raise Exception("HTTP 404: Transaction not found")
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_not_found
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     # Should return not found result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_malformed_response(mock_services, valid_txid) -> None:
+def test_get_transaction_status_malformed_response(mock_services, valid_txid) -> None:
     """Given: API returns malformed response
        When: Call get_transaction_status
        Then: Handles malformed response appropriately
@@ -278,20 +274,20 @@ async def test_get_transaction_status_malformed_response(mock_services, valid_tx
     services, mock_instance = mock_services
 
     # Mock service to return malformed data
-    async def mock_get_transaction_status_malformed(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_malformed(txid, use_next=None):
         raise Exception("Invalid JSON response")
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_malformed
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     # Should return error result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_connection_error(mock_services, valid_txid) -> None:
+def test_get_transaction_status_connection_error(mock_services, valid_txid) -> None:
     """Given: Connection error occurs
        When: Call get_transaction_status
        Then: Handles connection error appropriately
@@ -299,20 +295,20 @@ async def test_get_transaction_status_connection_error(mock_services, valid_txid
     services, mock_instance = mock_services
 
     # Mock service to raise connection error
-    async def mock_get_transaction_status_connection_error(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_connection_error(txid, use_next=None):
         raise ConnectionError("Network is unreachable")
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_connection_error
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     # Should return error result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_provider_fallback(mock_services, valid_txid) -> None:
+def test_get_transaction_status_provider_fallback(mock_services, valid_txid) -> None:
     """Given: Primary provider fails, fallback provider succeeds
        When: Call get_transaction_status
        Then: Uses fallback provider successfully
@@ -321,8 +317,9 @@ async def test_get_transaction_status_provider_fallback(mock_services, valid_txi
     mock_instance.count = 2  # Allow 2 tries for fallback
 
     # Mock primary provider failure, fallback success
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
     call_count = 0
-    async def mock_get_transaction_status_with_fallback(txid, chain=None):
+    def mock_get_transaction_status_with_fallback(txid, use_next=None):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
@@ -340,14 +337,13 @@ async def test_get_transaction_status_provider_fallback(mock_services, valid_txi
     mock_stc.service = mock_get_transaction_status_with_fallback
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 6
     assert call_count == 2  # Tried primary, then fallback
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_confirmed_transaction(mock_services, valid_txid) -> None:
+def test_get_transaction_status_confirmed_transaction(mock_services, valid_txid) -> None:
     """Given: Confirmed transaction
        When: Call get_transaction_status
        Then: Returns confirmed status with block details
@@ -362,14 +358,15 @@ async def test_get_transaction_status_confirmed_transaction(mock_services, valid
         "blockTime": 1739329877
     }
 
-    async def mock_get_transaction_status_confirmed(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_confirmed(txid, use_next=None):
         return confirmed_response
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_confirmed
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 6
     assert result["blockHeight"] == 883637
@@ -377,8 +374,7 @@ async def test_get_transaction_status_confirmed_transaction(mock_services, valid
     assert "blockTime" in result
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_unconfirmed_transaction(mock_services, valid_txid) -> None:
+def test_get_transaction_status_unconfirmed_transaction(mock_services, valid_txid) -> None:
     """Given: Unconfirmed transaction
        When: Call get_transaction_status
        Then: Returns unconfirmed status
@@ -393,14 +389,15 @@ async def test_get_transaction_status_unconfirmed_transaction(mock_services, val
         "blockTime": None
     }
 
-    async def mock_get_transaction_status_unconfirmed(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_unconfirmed(txid, use_next=None):
         return unconfirmed_response
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_unconfirmed
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 0
     assert result["blockHeight"] is None
@@ -408,8 +405,7 @@ async def test_get_transaction_status_unconfirmed_transaction(mock_services, val
     assert result["blockTime"] is None
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_mempool_transaction(mock_services, valid_txid) -> None:
+def test_get_transaction_status_mempool_transaction(mock_services, valid_txid) -> None:
     """Given: Transaction in mempool
        When: Call get_transaction_status
        Then: Returns mempool status
@@ -425,21 +421,21 @@ async def test_get_transaction_status_mempool_transaction(mock_services, valid_t
         "inMempool": True
     }
 
-    async def mock_get_transaction_status_mempool(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_mempool(txid, use_next=None):
         return mempool_response
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_mempool
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == -1
     assert result.get("inMempool") is True
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_different_chains(mock_services) -> None:
+def test_get_transaction_status_different_chains(mock_services) -> None:
     """Given: Different blockchain chains
        When: Call get_transaction_status
        Then: Handles different chains appropriately
@@ -452,7 +448,8 @@ async def test_get_transaction_status_different_chains(mock_services) -> None:
     ]
 
     for chain, txid in test_cases:
-        async def mock_get_transaction_status_chain(txid_param, chain_param=None):
+        # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+        def mock_get_transaction_status_chain(txid_param, use_next=None):
             return {
                 "txid": txid_param,
                 "confirmations": 3,
@@ -465,14 +462,13 @@ async def test_get_transaction_status_different_chains(mock_services) -> None:
         mock_stc.service = mock_get_transaction_status_chain
         mock_instance.service_to_call = mock_stc
 
-        result = await services.get_transaction_status(txid)
+        result = services.get_transaction_status(txid)
         assert isinstance(result, dict)
         assert result["confirmations"] == 3
         assert result["txid"] == txid
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_multiple_providers_fallback(mock_services, valid_txid) -> None:
+def test_get_transaction_status_multiple_providers_fallback(mock_services, valid_txid) -> None:
     """Given: Multiple providers with primary failing, secondary succeeding
        When: Call get_transaction_status
        Then: Successfully falls back to working provider
@@ -481,8 +477,9 @@ async def test_get_transaction_status_multiple_providers_fallback(mock_services,
     mock_instance.count = 3  # Allow 3 tries for multiple provider fallback
 
     # Simulate provider list with fallback
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
     provider_call_count = 0
-    async def mock_multi_provider_fallback(txid, chain=None):
+    def mock_multi_provider_fallback(txid, use_next=None):
         nonlocal provider_call_count
         provider_call_count += 1
         if provider_call_count == 1:
@@ -502,14 +499,13 @@ async def test_get_transaction_status_multiple_providers_fallback(mock_services,
     mock_stc.service = mock_multi_provider_fallback
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 12
     assert provider_call_count == 3  # Tried 3 providers before success
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_recently_confirmed(mock_services, valid_txid) -> None:
+def test_get_transaction_status_recently_confirmed(mock_services, valid_txid) -> None:
     """Given: Recently confirmed transaction (1 confirmation)
        When: Call get_transaction_status
        Then: Returns single confirmation status
@@ -524,21 +520,21 @@ async def test_get_transaction_status_recently_confirmed(mock_services, valid_tx
         "blockTime": 1739330000
     }
 
-    async def mock_get_transaction_status_recent(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_recent(txid, use_next=None):
         return recent_response
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_recent
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 1
     assert result["blockHeight"] == 883640
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_well_confirmed(mock_services, valid_txid) -> None:
+def test_get_transaction_status_well_confirmed(mock_services, valid_txid) -> None:
     """Given: Well confirmed transaction (100+ confirmations)
        When: Call get_transaction_status
        Then: Returns high confirmation count
@@ -553,21 +549,21 @@ async def test_get_transaction_status_well_confirmed(mock_services, valid_txid) 
         "blockTime": 1739200000
     }
 
-    async def mock_get_transaction_status_well_confirmed(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_well_confirmed(txid, use_next=None):
         return well_confirmed_response
 
     mock_stc = Mock()
     mock_stc.service = mock_get_transaction_status_well_confirmed
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(valid_txid)
+    result = services.get_transaction_status(valid_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 150
     assert result["blockHeight"] == 883490
 
 
-@pytest.mark.asyncio
-async def test_get_transaction_status_unicode_txid_handling(mock_services) -> None:
+def test_get_transaction_status_unicode_txid_handling(mock_services) -> None:
     """Given: Txid with unicode characters (though txids are hex)
        When: Call get_transaction_status
        Then: Handles gracefully
@@ -577,7 +573,8 @@ async def test_get_transaction_status_unicode_txid_handling(mock_services) -> No
     # Even though txids are hex, test unicode handling
     unicode_txid = "a1b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcd"
 
-    async def mock_get_transaction_status_unicode(txid, chain=None):
+    # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
+    def mock_get_transaction_status_unicode(txid, use_next=None):
         return {
             "txid": txid,
             "confirmations": 2,
@@ -588,6 +585,6 @@ async def test_get_transaction_status_unicode_txid_handling(mock_services) -> No
     mock_stc.service = mock_get_transaction_status_unicode
     mock_instance.service_to_call = mock_stc
 
-    result = await services.get_transaction_status(unicode_txid)
+    result = services.get_transaction_status(unicode_txid)
     assert isinstance(result, dict)
     assert result["confirmations"] == 2

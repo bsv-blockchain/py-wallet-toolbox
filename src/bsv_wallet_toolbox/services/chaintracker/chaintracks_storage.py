@@ -35,13 +35,14 @@ from __future__ import annotations
 
 from typing import Any, TypedDict
 
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from bsv_wallet_toolbox.errors import WalletError
 
 from ..wallet_services import Chain
+from .chaintracks.models import StorageQueries
 
 # SQLAlchemy Base for ChaintracksStorage models
 Base = declarative_base()
@@ -177,7 +178,7 @@ class ChaintracksStorage:
         """
         options: ChaintracksStorageOptions = {
             "chain": chain,
-            "database_url": database_url,
+            "databaseUrl": database_url,
             "readonly": False,
         }
         return options
@@ -204,7 +205,7 @@ class ChaintracksStorage:
             self.engine = engine
         else:
             # Create default SQLite database
-            database_url = options.get("database_url")
+            database_url = options.get("databaseUrl")
             if not database_url:
                 db_file = f"chaintracks_{self.chain}.db"
                 database_url = f"sqlite:///{db_file}"
@@ -496,6 +497,21 @@ class ChaintracksStorage:
         except Exception:
             pass  # Best-effort cleanup
 
+    def query(self, context=None) -> "StorageQueries":
+        """Get StorageQueries interface for database operations.
+
+        Args:
+            context: Optional context (for future use)
+
+        Returns:
+            StorageQueries implementation
+
+        Reference: go-wallet-toolbox/pkg/services/chaintracks/gormstorage/provider.go
+        """
+        from .chaintracks.storage.sqlalchemy_storage import SQLAlchemyStorageQueries
+        session = self.session_factory()
+        return SQLAlchemyStorageQueries(session)
+
 
 class ChaintracksStorageMemory(ChaintracksStorage):
     """In-memory block header storage using SQLite in-memory database.
@@ -521,7 +537,7 @@ class ChaintracksStorageMemory(ChaintracksStorage):
         """
         # Force in-memory SQLite URL
         memory_options = {**options}
-        memory_options["database_url"] = "sqlite:///:memory:"
+        memory_options["databaseUrl"] = "sqlite:///:memory:"
 
         # Create in-memory engine
         memory_engine = create_engine("sqlite:///:memory:", echo=False)
@@ -556,16 +572,17 @@ class ChaintracksStorageMemory(ChaintracksStorage):
         session = self.session_factory()
         try:
             # Check if we have a migrations table
-            result = session.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'")
+            # Using text() to execute a hardcoded raw SQL query via SQLAlchemy (no user input involved)
+            result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"))
             if not result.fetchone():
                 # Create migrations table
-                session.execute("""
+                session.execute(text("""
                     CREATE TABLE migrations (
                         id INTEGER PRIMARY KEY,
                         version TEXT NOT NULL,
                         applied_at INTEGER NOT NULL
                     )
-                """)
+                """))
                 session.commit()
             
             # TODO: Implement specific migration logic

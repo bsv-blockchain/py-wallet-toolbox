@@ -60,7 +60,7 @@ class TestLoadConfig:
     def test_load_config_with_defaults(self) -> None:
         """Test loading config with default values."""
         try:
-            defaults = {"default_key": "default_value"}
+            defaults = {"defaultKey": "default_value"}
             config = load_config(defaults=defaults)
             assert isinstance(config, dict)
         except (NameError, TypeError):
@@ -74,6 +74,7 @@ class TestGetConfigValue:
     def test_get_existing_value(self) -> None:
         """Test getting existing config value."""
         try:
+            # Use matching key format (no automatic case conversion)
             config = {"test_key": "test_value"}
             value = get_config_value(config, "test_key")
             assert value == "test_value"
@@ -143,6 +144,7 @@ class TestSetConfigValue:
         try:
             config = {}
             set_config_value(config, "new_key", "new_value")
+            # No automatic case conversion - key stays as provided
             assert config.get("new_key") == "new_value"
         except (NameError, TypeError):
             pass
@@ -270,7 +272,7 @@ class TestConfigAdvanced:
         try:
             config = {
                 "key-with-dash": "value1",
-                "key_with_underscore": "value2",
+                "keyWithUnderscore": "value2",
                 "key.with.dots": "value3"
             }
             
@@ -317,6 +319,16 @@ class TestEdgeCases:
         try:
             result = validate_config(None)
             assert result is False or isinstance(result, bool)
+        except (NameError, TypeError):
+            pass
+
+    def test_validate_non_dict_config(self) -> None:
+        """Test validating non-dict config types."""
+        try:
+            invalid_configs = ["string", 123, [], True]
+            for config in invalid_configs:
+                result = validate_config(config)
+                assert result is False, f"Expected False for {type(config).__name__} config"
         except (NameError, TypeError):
             pass
 

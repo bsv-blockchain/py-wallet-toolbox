@@ -252,6 +252,11 @@ def validate_list_certificates_args(args: dict[str, Any]) -> None:
         if not isinstance(limit, int) or limit < 0 or limit > MAX_PAGINATION_LIMIT:
             raise InvalidParameterError("limit", f"must be 0..{MAX_PAGINATION_LIMIT}")
 
+    if "offset" in args:
+        offset = args["offset"]
+        if not isinstance(offset, int):
+            raise InvalidParameterError("offset", "must be an integer")
+
     if "certifiers" in args:
         certifiers = args["certifiers"]
         if not isinstance(certifiers, list):
@@ -329,11 +334,20 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     if len(desc_bytes) < 5 or len(desc_bytes) > 2000:
         raise InvalidParameterError("description", "5-2000 bytes UTF-8")
 
-    # Validate outputs: non-empty list
-    outputs = args.get("outputs", [])
+    # Validate outputs: list (can be empty when using sendWith)
+    if "outputs" not in args:
+        raise InvalidParameterError("outputs", "required field")
+    outputs = args["outputs"]
     if not isinstance(outputs, list):
         raise InvalidParameterError("outputs", "a list")
-    if len(outputs) == 0:
+    
+    # Check if sendWith is being used - allows empty outputs
+    opts = args.get("options", {})
+    send_with = opts.get("sendWith", [])
+    is_send_with = len(send_with) > 0 if isinstance(send_with, list) else False
+    
+    # Require at least one output unless using sendWith (TS parity)
+    if len(outputs) == 0 and not is_send_with:
         raise InvalidParameterError("outputs", "at least one output required")
 
     for o in outputs:
@@ -363,6 +377,19 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
         raise InvalidParameterError("inputs", "a list")
 
     # Normalize and compute flags
+    # --- Validate options (TS parity) ---
+    if "options" in args and args["options"] is not None:
+        if not isinstance(args["options"], dict):
+            raise InvalidParameterError("options", "a dict")
+        trust_self = args["options"].get("trustSelf")
+        # TS: type TrustSelf = "known"; unset means undefined/absent.
+        if trust_self is not None:
+            if isinstance(trust_self, bool):
+                raise InvalidParameterError("trustSelf", 'TrustSelf type ("known") (not boolean)')
+            if not isinstance(trust_self, str):
+                raise InvalidParameterError("trustSelf", 'TrustSelf type ("known")')
+            if trust_self != "known":
+                raise InvalidParameterError("trustSelf", 'TrustSelf must be "known" when provided')
     vargs = {
         "description": desc,
         "inputBEEF": args.get("inputBEEF"),
@@ -388,8 +415,10 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     vargs["isNewTx"] = vargs["isRemixChange"] or len(inputs) > 0 or len(outputs) > 0
     vargs["isDelayed"] = opts.get("acceptDelayedBroadcast", True)
     vargs["isNoSend"] = opts.get("noSend", False)
-    # isSignAction is True when signAndProcess is explicitly False
-    vargs["isSignAction"] = opts.get("signAndProcess") is False
+    # isSignAction matches TypeScript: vargs.isNewTx && (!vargs.options.signAndProcess || vargs.inputs.some(i => i.unlockingScript === undefined))
+    sign_and_process = opts.get("signAndProcess", True)  # Default is True in TypeScript
+    has_undefined_unlocking_script = any(inp.get("unlockingScript") is None for inp in inputs)
+    vargs["isSignAction"] = vargs["isNewTx"] and (not sign_and_process or has_undefined_unlocking_script)
 
     return vargs
 
@@ -481,6 +510,15 @@ def validate_internalize_action_args(args: dict[str, Any]) -> dict[str, Any]:
     for o in outputs:
         if not isinstance(o, dict):
             raise InvalidParameterError("outputs", "list of dicts")
+
+        output_index = o.get("outputIndex")
+        if output_index is None:
+            output_index = o.get("outputIndex")
+        if not isinstance(output_index, int):
+            raise InvalidParameterError("outputIndex", "an integer")
+        if output_index < 0:
+            raise InvalidParameterError("outputIndex", "must be >= 0")
+        o["outputIndex"] = output_index
 
         # protocol: required, must be one of the known types
         protocol = o.get("protocol")
@@ -948,309 +986,6 @@ def validate_discover_by_attributes_args(args: dict[str, Any]) -> None:
             raise InvalidParameterError("limit", f"must be an integer")
         if limit <= 0 or limit > MAX_PAGINATION_LIMIT:
             raise InvalidParameterError("limit", f"must be 1..{MAX_PAGINATION_LIMIT}")
-
-
-# ----------------------------------------------------------------------------
-# Crypto validation functions
-# ----------------------------------------------------------------------------
-
-def validate_get_public_key_args(args: dict[str, Any]) -> None:
-    """Validate GetPublicKeyArgs structure.
-
-    Reference: wallet-toolbox/src/sdk/validationHelpers.ts validateGetPublicKeyArgs
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Check for empty args
-    if not args:
-        raise ValueError("protocolID and keyID are required if identityKey is false or undefined")
-
-    # If identityKey is present, no other validation needed
-    if args.get("identityKey"):
-        return
-
-    # Otherwise, protocolID and keyID are required
-    if "protocolID" not in args:
-        raise ValueError("protocolID is required if identityKey is false or undefined")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    if "keyID" not in args:
-        raise ValueError("keyID is required if identityKey is false or undefined")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id.strip()) == 0:
-        raise ValueError("keyID must be a non-empty string")
-
-    # Validate protocolID: should be present
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise InvalidParameterError("protocolID", "a tuple/list of [security_level, protocol_name]")
-
-    # Validate keyID: non-empty string
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise InvalidParameterError("keyID", "a non-empty string")
-
-
-def validate_encrypt_args(args: dict[str, Any]) -> None:
-    """Validate EncryptArgs structure.
-
-    Reference: wallet-toolbox/test/wallet/crypto/encrypt.test.ts
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Validate plaintext: required
-    if "plaintext" not in args:
-        raise KeyError("plaintext is required")
-    plaintext = args["plaintext"]
-    if plaintext is None:
-        raise ValueError("plaintext cannot be None")
-
-    # Validate protocolID: required
-    if "protocolID" not in args:
-        raise KeyError("protocolID is required")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    # Validate keyID: required non-empty string
-    if "keyID" not in args:
-        raise KeyError("keyID is required")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise ValueError("keyID must be a non-empty string")
-
-    # Validate counterparty: required string
-    if "counterparty" not in args:
-        raise KeyError("counterparty is required")
-    counterparty = args["counterparty"]
-    if not isinstance(counterparty, str) or len(counterparty.strip()) == 0:
-        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
-    # Allow special values 'self' and 'anyone'
-    if counterparty not in ("self", "anyone") and not _is_hex_string(counterparty):
-        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
-
-
-def validate_decrypt_args(args: dict[str, Any]) -> None:
-    """Validate DecryptArgs structure.
-
-    Reference: wallet-toolbox/test/wallet/crypto/decrypt.test.ts
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Validate ciphertext: required non-empty
-    if "ciphertext" not in args:
-        raise KeyError("ciphertext is required")
-    ciphertext = args["ciphertext"]
-    if ciphertext is None:
-        raise ValueError("ciphertext cannot be None")
-    if isinstance(ciphertext, (list, tuple)) and len(ciphertext) == 0:
-        raise ValueError("ciphertext cannot be an empty list")
-
-    # Validate protocolID: required
-    if "protocolID" not in args:
-        raise KeyError("protocolID is required")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    # Validate keyID: required non-empty string
-    if "keyID" not in args:
-        raise KeyError("keyID is required")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise ValueError("keyID must be a non-empty string")
-
-    # Validate counterparty: required string
-    if "counterparty" not in args:
-        raise KeyError("counterparty is required")
-    counterparty = args["counterparty"]
-    if not isinstance(counterparty, str) or len(counterparty.strip()) == 0:
-        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
-    # Allow special values 'self' and 'anyone'
-    if counterparty not in ("self", "anyone") and not _is_hex_string(counterparty):
-        raise ValueError("counterparty must be 'self', 'anyone', or a valid hexadecimal string")
-
-
-# ----------------------------------------------------------------------------
-# HMAC/Signature validation functions
-# ----------------------------------------------------------------------------
-
-def validate_create_hmac_args(args: dict[str, Any]) -> None:
-    """Validate CreateHmacArgs structure.
-
-    Reference: wallet-toolbox/test/wallet/hmac/createHmac.test.ts
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Validate data: required
-    if "data" not in args:
-        raise KeyError("data is required")
-    data = args["data"]
-    if data is None:
-        raise ValueError("data cannot be None")
-
-    # Validate protocolID: required
-    if "protocolID" not in args:
-        raise KeyError("protocolID is required")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    # Validate keyID: required non-empty string
-    if "keyID" not in args:
-        raise KeyError("keyID is required")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise ValueError("keyID must be a non-empty string")
-
-
-def validate_verify_hmac_args(args: dict[str, Any]) -> None:
-    """Validate VerifyHmacArgs structure.
-
-    Reference: wallet-toolbox/test/wallet/hmac/verifyHmac.test.ts
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Validate data: required
-    if "data" not in args:
-        raise KeyError("data is required")
-    data = args["data"]
-    if data is None:
-        raise ValueError("data cannot be None")
-
-    # Validate hmac: required non-empty
-    if "hmac" not in args:
-        raise KeyError("hmac is required")
-    hmac_val = args["hmac"]
-    if hmac_val is None:
-        raise ValueError("hmac cannot be None")
-    if isinstance(hmac_val, list) and len(hmac_val) != 32:
-        raise ValueError("hmac must be a list of exactly 32 integers")
-
-    # Validate protocolID: required
-    if "protocolID" not in args:
-        raise KeyError("protocolID is required")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    # Validate keyID: required non-empty string
-    if "keyID" not in args:
-        raise KeyError("keyID is required")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise ValueError("keyID must be a non-empty string")
-
-
-def validate_create_signature_args(args: dict[str, Any]) -> None:
-    """Validate CreateSignatureArgs structure.
-
-    Reference: wallet-toolbox/test/wallet/signature/createSignature.test.ts
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Validate data or hashToDirectlySign: one is required
-    has_data = "data" in args
-    has_hash = "hashToDirectlySign" in args
-
-    # Check if data key exists and validate its value
-    if has_data:
-        data = args["data"]
-        if data is None:
-            raise ValueError("data cannot be None")
-
-    # Check if hashToDirectlySign key exists and validate its value
-    if has_hash:
-        hash_val = args["hashToDirectlySign"]
-        if hash_val is None:
-            raise ValueError("hashToDirectlySign cannot be None")
-
-    # At least one of data or hashToDirectlySign must be provided
-    if not has_data and not has_hash:
-        raise KeyError("data is required")
-
-    # Validate protocolID: required
-    if "protocolID" not in args:
-        raise KeyError("protocolID is required")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    # Validate keyID: required non-empty string
-    if "keyID" not in args:
-        raise KeyError("keyID is required")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise ValueError("keyID must be a non-empty string")
-
-
-def validate_verify_signature_args(args: dict[str, Any]) -> None:
-    """Validate VerifySignatureArgs structure.
-
-    Reference: wallet-toolbox/test/wallet/signature/verifySignature.test.ts
-    """
-    if not isinstance(args, dict):
-        raise TypeError("args must be a dict")
-
-    # Validate data or hashToDirectlyVerify: one is required
-    has_data = "data" in args
-    has_hash = "hashToDirectlyVerify" in args
-
-    # Check if data key exists and validate its value
-    if has_data:
-        data = args["data"]
-        if data is None:
-            raise ValueError("data cannot be None")
-
-    # Check if hashToDirectlyVerify key exists and validate its value
-    if has_hash:
-        hash_val = args["hashToDirectlyVerify"]
-        if hash_val is None:
-            raise ValueError("hashToDirectlyVerify cannot be None")
-
-    # At least one of data or hashToDirectlyVerify must be provided
-    if not has_data and not has_hash:
-        raise KeyError("data is required")
-
-    # Validate signature: required non-empty
-    if "signature" not in args:
-        raise KeyError("signature is required")
-    signature = args["signature"]
-    if signature is None:
-        raise ValueError("signature cannot be None")
-    if isinstance(signature, list) and len(signature) == 0:
-        raise ValueError("signature cannot be an empty list")
-
-    # Validate publicKey: optional, but if provided must be valid hex string
-    # If not provided, the implementation will derive from protocolID/keyID
-    public_key = args.get("publicKey")
-    if public_key is not None:
-        if not isinstance(public_key, str) or len(public_key) == 0:
-            raise InvalidParameterError("publicKey", "a non-empty string")
-        if not _is_hex_string(public_key):
-            raise InvalidParameterError("publicKey", "a valid hexadecimal string")
-
-    # Validate protocolID: required
-    if "protocolID" not in args:
-        raise KeyError("protocolID is required")
-    protocol_id = args["protocolID"]
-    if protocol_id is None:
-        raise ValueError("protocolID cannot be None")
-
-    # Validate keyID: required non-empty string
-    if "keyID" not in args:
-        raise KeyError("keyID is required")
-    key_id = args["keyID"]
-    if not isinstance(key_id, str) or len(key_id) == 0:
-        raise ValueError("keyID must be a non-empty string")
 
 
 # ----------------------------------------------------------------------------

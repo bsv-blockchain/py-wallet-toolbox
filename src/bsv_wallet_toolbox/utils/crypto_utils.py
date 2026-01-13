@@ -197,15 +197,15 @@ def create_ump_key_derivations(
     privileged_recovery = SymmetricKey(xor_bytes(privileged_key, recovery_key))
 
     return {
-        'presentation_password': presentation_password._key,
-        'presentation_recovery': presentation_recovery._key,
-        'recovery_password': recovery_password._key,
-        'primary_password': primary_password._key,
-        'primary_presentation': primary_presentation._key,
-        'primary_recovery': primary_recovery._key,
-        'privileged_password': privileged_password._key,
-        'privileged_presentation': privileged_presentation._key,
-        'privileged_recovery': privileged_recovery._key,
+        'presentationPassword': presentation_password._key,
+        'presentationRecovery': presentation_recovery._key,
+        'recoveryPassword': recovery_password._key,
+        'primaryPassword': primary_password._key,
+        'primaryPresentation': primary_presentation._key,
+        'primaryRecovery': primary_recovery._key,
+        'privilegedPassword': privileged_password._key,
+        'privilegedPresentation': privileged_presentation._key,
+        'privilegedRecovery': privileged_recovery._key,
     }
 
 
@@ -249,11 +249,11 @@ def create_ump_token_fields(
     # Build fields array (matching TypeScript implementation order)
     fields = [
         bytes_to_int_list(password_salt),                                    # 0: passwordSalt
-        bytes_to_int_list(derivations['primary_password']),               # 1: passwordPresentationPrimary
-        bytes_to_int_list(derivations['primary_recovery']),               # 2: passwordRecoveryPrimary
-        bytes_to_int_list(derivations['primary_presentation']),           # 3: presentationRecoveryPrimary
-        bytes_to_int_list(derivations['privileged_password']),            # 4: passwordPrimaryPrivileged
-        bytes_to_int_list(derivations['privileged_presentation']),        # 5: presentationRecoveryPrivileged
+        bytes_to_int_list(derivations['primaryPassword']),               # 1: passwordPresentationPrimary
+        bytes_to_int_list(derivations['primaryRecovery']),               # 2: passwordRecoveryPrimary
+        bytes_to_int_list(derivations['primaryPresentation']),           # 3: presentationRecoveryPrimary
+        bytes_to_int_list(derivations['privilegedPassword']),            # 4: passwordPrimaryPrivileged
+        bytes_to_int_list(derivations['privilegedPresentation']),        # 5: presentationRecoveryPrivileged
         bytes_to_int_list(presentation_hash),                              # 6: presentationHash
         bytes_to_int_list(recovery_hash),                                  # 7: recoveryHash
         bytes_to_int_list(presentation_key_encrypted),                     # 8: presentationKeyEncrypted

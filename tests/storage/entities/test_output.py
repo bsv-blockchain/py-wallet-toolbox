@@ -24,8 +24,8 @@ class TestOutputEntity:
 
         initial_data = {
             "outputId": 601,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "transactionId": 100,
             "basketId": 1,
@@ -69,8 +69,8 @@ class TestOutputEntity:
 
         initial_data = {
             "outputId": 602,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "transactionId": 101,
             "basketId": 2,
@@ -112,8 +112,8 @@ class TestOutputEntity:
 
         initial_data = {
             "outputId": 603,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "transactionId": 102,
             "basketId": 3,
@@ -157,8 +157,8 @@ class TestOutputEntity:
 
         initial_data = {
             "outputId": 701,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "transactionId": 103,
             "basketId": 1,
@@ -186,7 +186,7 @@ class TestOutputEntity:
 
         updated_data = {
             **initial_data,
-            "updated_at": datetime(2023, 1, 3),  # Newer
+            "updatedAt": datetime(2023, 1, 3),  # Newer
             "spendable": False,
             "change": True,
             "type": "p2sh",
@@ -216,7 +216,7 @@ class TestOutputEntity:
             return []
 
         mock_storage = type(
-            "MockStorage", (), {"update_output": mock_update_output, "find_outputs": mock_find_outputs}
+            "MockStorage", (), {"updateOutput": mock_update_output, "findOutputs": mock_find_outputs}
         )()
 
         # When
@@ -241,8 +241,8 @@ class TestOutputEntity:
 
         initial_data = {
             "outputId": 702,
-            "created_at": datetime(2023, 1, 1),
-            "updated_at": datetime(2023, 1, 2),
+            "createdAt": datetime(2023, 1, 1),
+            "updatedAt": datetime(2023, 1, 2),
             "userId": 1,
             "transactionId": 104,
             "basketId": 1,
@@ -268,7 +268,7 @@ class TestOutputEntity:
 
         entity = Output(initial_data)
 
-        earlier_data = {**initial_data, "updated_at": datetime(2023, 1, 1), "spendable": False}  # Earlier
+        earlier_data = {**initial_data, "updatedAt": datetime(2023, 1, 1), "spendable": False}  # Earlier
 
         sync_map = {"transaction": {"idMap": {104: 104}}, "outputBasket": {"idMap": {1: 1}}}
 
@@ -276,7 +276,7 @@ class TestOutputEntity:
         def mock_update_output(output_id: int, data: dict[str, Any]) -> None:
             raise AssertionError("This should not be called")
 
-        mock_storage = type("MockStorage", (), {"update_output": mock_update_output})()
+        mock_storage = type("MockStorage", (), {"updateOutput": mock_update_output})()
 
         # When
         was_merged = entity.merge_existing(mock_storage, None, earlier_data, sync_map, None)
@@ -298,8 +298,8 @@ class TestOutputEntity:
         now = datetime.now()
         initial_data = {
             "outputId": 701,
-            "created_at": now,
-            "updated_at": now,
+            "createdAt": now,
+            "updatedAt": now,
             "userId": 1,
             "transactionId": 103,
             "basketId": 1,

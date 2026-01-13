@@ -6,7 +6,6 @@ Reference: wallet-toolbox/src/services/__tests/getMerklePath.test.ts
 """
 
 import pytest
-import asyncio
 from unittest.mock import Mock, patch, AsyncMock, PropertyMock
 
 try:
@@ -27,8 +26,8 @@ def valid_services_config():
     """Fixture providing valid services configuration."""
     return {
         "chain": "main",
-        "whatsonchain_api_key": "test_woc_key",
-        "taal_api_key": "test_taal_key"
+        "whatsonchainApiKey": "test_woc_key",
+        "taalApiKey": "test_taal_key"
     }
 
 
@@ -147,7 +146,7 @@ class TestGetMerklePath:
                describe('getRawTx service tests')
     """
 
-    @pytest.mark.skip(reason="Integration test requiring async service calls and network access")
+    @pytest.mark.integration
     def test_get_merkle_path(self) -> None:
         """Given: Services with mainnet configuration
            When: Get merkle path for a known txid
@@ -175,8 +174,7 @@ class TestGetMerklePath:
         assert result["header"]["height"] == 877599
         assert result.get("merklePath") is not None
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_invalid_txid_formats(self, mock_services, invalid_txids) -> None:
+    def test_get_merkle_path_invalid_txid_formats(self, mock_services, invalid_txids) -> None:
         """Given: Invalid txid formats
            When: Call get_merkle_path with invalid txids
            Then: Handles invalid formats appropriately
@@ -186,10 +184,9 @@ class TestGetMerklePath:
         for invalid_txid in invalid_txids:
             # Should handle invalid txid formats gracefully
             with pytest.raises((InvalidParameterError, ValueError, TypeError)):
-                await services.get_merkle_path(invalid_txid)
+                services.get_merkle_path(invalid_txid)
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_network_failure_500(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_network_failure_500(self, mock_services, valid_txid) -> None:
         """Given: Network returns HTTP 500 error
            When: Call get_merkle_path
            Then: Handles server error appropriately
@@ -197,17 +194,16 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return error
-        async def mock_get_merkle_path_error(txid, services=None):
+        def mock_get_merkle_path_error(txid, services=None):
             raise Exception("HTTP 500: Internal Server Error")
 
         mock_stc.service = mock_get_merkle_path_error
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         # Should return error result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_network_timeout(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_network_timeout(self, mock_services, valid_txid) -> None:
         """Given: Network request times out
            When: Call get_merkle_path
            Then: Handles timeout appropriately
@@ -215,18 +211,16 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to timeout
-        async def mock_get_merkle_path_timeout(txid, services=None):
-            await asyncio.sleep(0.1)  # Simulate timeout
-            raise asyncio.TimeoutError("Connection timeout")
+        def mock_get_merkle_path_timeout(txid, services=None):
+            raise TimeoutError("Connection timeout")
 
         mock_stc.service = mock_get_merkle_path_timeout
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         # Should return error result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_rate_limiting_429(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_rate_limiting_429(self, mock_services, valid_txid) -> None:
         """Given: API returns 429 rate limit exceeded
            When: Call get_merkle_path
            Then: Handles rate limiting appropriately
@@ -234,17 +228,16 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return rate limit error
-        async def mock_get_merkle_path_rate_limit(txid, services=None):
+        def mock_get_merkle_path_rate_limit(txid, services=None):
             raise Exception("HTTP 429: Rate limit exceeded")
 
         mock_stc.service = mock_get_merkle_path_rate_limit
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         # Should return error result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_transaction_not_found_404(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_transaction_not_found_404(self, mock_services, valid_txid) -> None:
         """Given: Transaction not found (404)
            When: Call get_merkle_path
            Then: Handles not found appropriately
@@ -252,17 +245,16 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return 404
-        async def mock_get_merkle_path_not_found(txid, services=None):
+        def mock_get_merkle_path_not_found(txid, services=None):
             raise Exception("HTTP 404: Transaction not found")
 
         mock_stc.service = mock_get_merkle_path_not_found
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         # Should return error result for non-existent transactions
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_malformed_response(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_malformed_response(self, mock_services, valid_txid) -> None:
         """Given: API returns malformed response
            When: Call get_merkle_path
            Then: Handles malformed response appropriately
@@ -270,17 +262,16 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to return malformed data
-        async def mock_get_merkle_path_malformed(txid, services=None):
+        def mock_get_merkle_path_malformed(txid, services=None):
             raise Exception("Invalid JSON response")
 
         mock_stc.service = mock_get_merkle_path_malformed
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         # Should return error result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_connection_error(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_connection_error(self, mock_services, valid_txid) -> None:
         """Given: Connection error occurs
            When: Call get_merkle_path
            Then: Handles connection error appropriately
@@ -288,17 +279,16 @@ class TestGetMerklePath:
         services, mock_instance, mock_stc = mock_services
 
         # Mock service to raise connection error
-        async def mock_get_merkle_path_connection_error(txid, services=None):
+        def mock_get_merkle_path_connection_error(txid, services=None):
             raise ConnectionError("Network is unreachable")
 
         mock_stc.service = mock_get_merkle_path_connection_error
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         # Should return error result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_provider_fallback(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
+    def test_get_merkle_path_provider_fallback(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
         """Given: Provider returns merkle path successfully
            When: Call get_merkle_path
            Then: Returns the merkle path data
@@ -308,12 +298,11 @@ class TestGetMerklePath:
         # Set up the mocked service
         mock_stc.service = Mock(return_value=valid_merkle_path_response)
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         assert result == valid_merkle_path_response
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_success_response(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
+    def test_get_merkle_path_success_response(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
         """Given: Valid txid and successful API response
            When: Call get_merkle_path
            Then: Returns merkle path data
@@ -327,12 +316,11 @@ class TestGetMerklePath:
         # Set up the mocked service
         mock_stc.service = mock_get_merkle_path_success
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         assert result == valid_merkle_path_response
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_different_chains(self, mock_services, valid_merkle_path_response) -> None:
+    def test_get_merkle_path_different_chains(self, mock_services, valid_merkle_path_response) -> None:
         """Given: Different blockchain chains
            When: Call get_merkle_path
            Then: Handles different chains appropriately
@@ -353,13 +341,12 @@ class TestGetMerklePath:
             # Set up the mocked service
             mock_stc.service = mock_get_merkle_path_chain
 
-            result = await services.get_merkle_path(txid)
+            result = services.get_merkle_path(txid)
             assert isinstance(result, dict)
             assert "header" in result
             assert "merklePath" in result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_large_response_handling(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_large_response_handling(self, mock_services, valid_txid) -> None:
         """Given: Very large merkle path response
            When: Call get_merkle_path
            Then: Handles large response appropriately
@@ -401,13 +388,12 @@ class TestGetMerklePath:
         # Set up the mocked service
         mock_stc.service = mock_get_merkle_path_large
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         assert "merklePath" in result
         assert "header" in result
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_unicode_txid_handling(self, mock_services, valid_merkle_path_response) -> None:
+    def test_get_merkle_path_unicode_txid_handling(self, mock_services, valid_merkle_path_response) -> None:
         """Given: Txid with unicode characters (though txids are hex)
            When: Call get_merkle_path
            Then: Handles gracefully
@@ -423,12 +409,11 @@ class TestGetMerklePath:
         # Set up the mocked service
         mock_stc.service = mock_get_merkle_path_unicode
 
-        result = await services.get_merkle_path(unicode_txid)
+        result = services.get_merkle_path(unicode_txid)
         assert isinstance(result, dict)
         assert result == valid_merkle_path_response
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_empty_path_response(self, mock_services, valid_txid) -> None:
+    def test_get_merkle_path_empty_path_response(self, mock_services, valid_txid) -> None:
         """Given: API returns empty merkle path
            When: Call get_merkle_path
            Then: Handles empty path appropriately
@@ -446,13 +431,12 @@ class TestGetMerklePath:
         # Set up the mocked service
         mock_stc.service = mock_get_merkle_path_empty
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         assert "notes" in result
         assert result["notes"][0]["what"] == "getMerklePathNoData"
 
-    @pytest.mark.asyncio
-    async def test_get_merkle_path_multiple_providers_fallback(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
+    def test_get_merkle_path_multiple_providers_fallback(self, mock_services, valid_txid, valid_merkle_path_response) -> None:
         """Given: Multiple providers with primary failing, secondary succeeding
            When: Call get_merkle_path
            Then: Successfully falls back to working provider
@@ -466,6 +450,6 @@ class TestGetMerklePath:
         # Set up the mocked service
         mock_stc.service = mock_multi_provider_fallback
 
-        result = await services.get_merkle_path(valid_txid)
+        result = services.get_merkle_path(valid_txid)
         assert isinstance(result, dict)
         assert result == valid_merkle_path_response

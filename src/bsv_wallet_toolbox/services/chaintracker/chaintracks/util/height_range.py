@@ -1,57 +1,144 @@
 """Height range utility for blockchain operations.
 
-Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/HeightRange.ts
+Reference: go-wallet-toolbox/pkg/services/chaintracks/models/height_range.go
 """
 
 from __future__ import annotations
+from typing import List, Optional
 
 
 class HeightRange:
-    """Represents a range of block heights [min, max].
+    """Represents a contiguous range of block heights.
 
-    Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/HeightRange.ts
+    A HeightRange defines a range of block heights from MinHeight to MaxHeight (inclusive).
+    Can represent an empty range when is_empty is True.
+
+    Reference: go-wallet-toolbox/pkg/services/chaintracks/models/height_range.go
     """
 
-    def __init__(self, min_height: int, max_height: int):
+    def __init__(self, min_height: int = 0, max_height: int = 0, is_empty: bool = False):
         """Initialize height range.
 
         Args:
             min_height: Minimum block height (inclusive)
             max_height: Maximum block height (inclusive)
+            is_empty: Whether this represents an empty range
         """
-        self.min = min_height
-        self.max = max_height
-        # Aliases for compatibility
         self.min_height = min_height
         self.max_height = max_height
+        self._is_empty = is_empty
 
-    @property
-    def length(self) -> int:
-        """Get length of range (max - min + 1), or 0 if invalid.
+    @classmethod
+    def new_height_range(
+        cls,
+        min_height: int,
+        max_height: int,
+        *,
+        allow_empty_on_invalid: bool = True,
+    ) -> HeightRange:
+        """Create a new HeightRange.
+
+        Args:
+            min_height: Minimum block height
+            max_height: Maximum block height
+            allow_empty_on_invalid: If True (default), an empty range is returned when
+                min_height > max_height. If False, a ValueError is raised instead.
 
         Returns:
-            Number of blocks in range, or 0 if min > max
+            HeightRange instance, or empty range if min_height > max_height and
+            allow_empty_on_invalid is True.
+
+        Raises:
+            ValueError: If min_height > max_height and allow_empty_on_invalid is False.
         """
-        if self.min > self.max:
-            return 0
-        return self.max - self.min + 1
+        if min_height > max_height:
+            if not allow_empty_on_invalid:
+                raise ValueError(
+                    f"Invalid height range: min_height ({min_height}) "
+                    f"is greater than max_height ({max_height})"
+                )
+            return cls.new_empty_height_range()
+        return cls(min_height, max_height)
+
+    @classmethod
+    def new_empty_height_range(cls) -> HeightRange:
+        """Create an empty HeightRange.
+
+        Returns:
+            Empty HeightRange instance
+        """
+        return cls(is_empty=True)
+
+    @classmethod
+    def new_height_range_from_block_headers(cls, headers: List[dict]) -> HeightRange:
+        """Create HeightRange from list of block headers.
+
+        Args:
+            headers: List of block header dicts with 'height' key
+
+        Returns:
+            HeightRange spanning the min/max heights, or empty if no headers
+        """
+        if not headers:
+            return cls.new_empty_height_range()
+
+        min_height = min(h["height"] for h in headers)
+        max_height = max(h["height"] for h in headers)
+        return cls.new_height_range(min_height, max_height)
 
     @property
     def is_empty(self) -> bool:
-        """Check if range is empty (min > max).
+        """Check if range is empty.
 
         Returns:
-            True if range is empty
+            True if range is empty or min_height > max_height
         """
-        return self.min > self.max
+        return self._is_empty or self.min_height > self.max_height
 
-    def copy(self) -> HeightRange:
-        """Create a copy of this range.
+    def not_empty(self) -> bool:
+        """Check if range is not empty.
 
         Returns:
-            New HeightRange instance with same min/max
+            True if range is not empty
         """
-        return HeightRange(self.min, self.max)
+        return not self.is_empty
+
+    @property
+    def length(self) -> int:
+        """Get the number of heights in this range.
+
+        Returns:
+            Number of heights, or 0 if empty
+        """
+        if self.is_empty:
+            return 0
+        return self.max_height - self.min_height + 1
+
+    def contains_height(self, height: int) -> bool:
+        """Check if height is within this range.
+
+        Args:
+            height: Block height to check
+
+        Returns:
+            True if height is in range (inclusive)
+        """
+        if self.is_empty:
+            return False
+        return height >= self.min_height and height <= self.max_height
+
+    def contains_range(self, other: HeightRange) -> bool:
+        """Check if other range is completely contained within this range.
+
+        Args:
+            other: Another HeightRange
+
+        Returns:
+            True if other is completely within this range
+        """
+        if self.is_empty or other.is_empty:
+            return False
+        return other.min_height >= self.min_height and other.max_height <= self.max_height
 
     def intersect(self, other: HeightRange) -> HeightRange:
         """Get intersection of this range with another.
@@ -62,9 +149,16 @@ class HeightRange:
         Returns:
             HeightRange representing intersection (may be empty)
         """
-        new_min = max(self.min, other.min)
-        new_max = min(self.max, other.max)
-        return HeightRange(new_min, new_max)
+        if self.is_empty or other.is_empty:
+            return self.new_empty_height_range()
+
+        min_height = max(self.min_height, other.min_height)
+        max_height = min(self.max_height, other.max_height)
+
+        if min_height > max_height:
+            return self.new_empty_height_range()
+
+        return self.new_height_range(min_height, max_height)
 
     def union(self, other: HeightRange) -> HeightRange:
         """Get union of this range with another.
@@ -73,26 +167,24 @@ class HeightRange:
             other: Another HeightRange
 
         Returns:
-            HeightRange representing union
+            HeightRange covering both ranges
 
         Raises:
-            Exception: If ranges have a gap between them
+            ValueError: If ranges are disjoint
         """
-        # Check if one or both ranges are empty
-        if self.is_empty and other.is_empty:
-            return HeightRange(self.min, self.max)  # Return empty range
         if self.is_empty:
             return other.copy()
         if other.is_empty:
             return self.copy()
 
-        # Check if ranges are adjacent or overlapping
-        if self.max + 1 < other.min or other.max + 1 < self.min:
-            raise Exception("Cannot union ranges with gap")
+        # Check if ranges are disjoint
+        if self.max_height + 1 < other.min_height or other.max_height + 1 < self.min_height:
+            raise ValueError("cannot union disjoint ranges")
 
-        new_min = min(self.min, other.min)
-        new_max = max(self.max, other.max)
-        return HeightRange(new_min, new_max)
+        min_height = min(self.min_height, other.min_height)
+        max_height = max(self.max_height, other.max_height)
+
+        return self.new_height_range(min_height, max_height)
 
     def subtract(self, other: HeightRange) -> HeightRange:
         """Subtract another range from this one.
@@ -101,33 +193,83 @@ class HeightRange:
             other: HeightRange to subtract
 
         Returns:
-            Remaining HeightRange after subtraction
+            HeightRange representing the result of the subtraction
 
         Raises:
-            Exception: If subtraction would create a hole in the middle
+            ValueError: If subtraction would create disjoint ranges
         """
-        # Handle empty ranges
+        if self.is_empty:
+            return self.new_empty_height_range()
+        if other.is_empty:
+            return self.copy()
+
+        # Complete overlap - return empty
+        if other.min_height <= self.min_height and other.max_height >= self.max_height:
+            return self.new_empty_height_range()
+
+        # No overlap - return original
+        if other.min_height > self.max_height or other.max_height < self.min_height:
+            return self.copy()
+
+        # Partial overlap that would create hole - error
+        if other.min_height > self.min_height and other.max_height < self.max_height:
+            raise ValueError("subtraction would create disjoint ranges")
+
+        # Left side subtraction
+        if other.min_height <= self.min_height:
+            return self.new_height_range(other.max_height + 1, self.max_height)
+
+        # Right side subtraction
+        return self.new_height_range(self.min_height, other.min_height - 1)
+
+    def above(self, other: HeightRange) -> HeightRange:
+        """Get the portion of this range that is strictly above another range.
+
+        Args:
+            other: HeightRange to compare against
+
+        Returns:
+            HeightRange representing heights above other range
+        """
         if self.is_empty or other.is_empty:
             return self.copy()
 
-        # No overlap - return original
-        if other.max < self.min or other.min > self.max:
+        if self.min_height > other.max_height:
             return self.copy()
 
-        # Check if subtraction would create a hole in the middle
-        if other.min > self.min and other.max < self.max:
-            raise Exception("Cannot subtract range that creates hole")
+        if self.max_height <= other.max_height:
+            return self.new_empty_height_range()
 
-        # Complete removal
-        if other.min <= self.min and other.max >= self.max:
-            return HeightRange(self.min, self.min - 1)  # Empty range
+        return self.new_height_range(other.max_height + 1, self.max_height)
 
-        # Left side subtraction
-        if other.min <= self.min:
-            return HeightRange(other.max + 1, self.max)
+    def copy(self) -> HeightRange:
+        """Create a copy of this range.
 
-        # Right side subtraction
-        return HeightRange(self.min, other.min - 1)
+        Returns:
+            New HeightRange instance with same values
+        """
+        return HeightRange(self.min_height, self.max_height, self.is_empty)
+
+    def overlaps(self, other: HeightRange) -> bool:
+        """Check if this range overlaps with another.
+
+        Args:
+            other: Another HeightRange
+
+        Returns:
+            True if ranges overlap
+        """
+        return not self.intersect(other).is_empty
+
+    def __str__(self) -> str:
+        """String representation.
+
+        Returns:
+            "empty" for empty ranges, otherwise "[min-max]"
+        """
+        if self.is_empty:
+            return "empty"
+        return f"[{self.min_height} - {self.max_height}]"
 
     def __eq__(self, other: object) -> bool:
         """Check equality with another HeightRange.
@@ -136,17 +278,15 @@ class HeightRange:
             other: Another HeightRange
 
         Returns:
-            True if both have same min and max
+            True if both have same min/max and empty status
         """
         if not isinstance(other, HeightRange):
             return False
-        return self.min == other.min and self.max == other.max
+        return (self.min_height == other.min_height and
+                self.max_height == other.max_height and
+                self.is_empty == other.is_empty)
 
     def __repr__(self) -> str:
-        """String representation.
-
-        Returns:
-            String like "HeightRange(min=4, max=8)"
-        """
-        return f"HeightRange(min={self.min}, max={self.max})"
+        """String representation for debugging."""
+        return f"HeightRange(min_height={self.min_height}, max_height={self.max_height}, is_empty={self.is_empty})"
 
