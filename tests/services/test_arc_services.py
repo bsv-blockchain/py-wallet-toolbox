@@ -5,13 +5,16 @@ This module tests ARC services integration.
 Reference: wallet-toolbox/src/services/__tests/arcServices.test.ts
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
 try:
     from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.services.wallet_services import Chain
+
     IMPORTS_AVAILABLE = True
 except ImportError:
     IMPORTS_AVAILABLE = False
@@ -20,11 +23,7 @@ except ImportError:
 @pytest.fixture
 def valid_arc_config():
     """Fixture providing valid ARC configuration."""
-    return {
-        "chain": "main",
-        "arcUrl": "https://arc.api.example.com",
-        "arcApiKey": "test_api_key_123"
-    }
+    return {"chain": "main", "arcUrl": "https://arc.api.example.com", "arcApiKey": "test_api_key_123"}
 
 
 @pytest.fixture
@@ -36,11 +35,11 @@ def mock_http_client():
 @pytest.fixture
 def mock_services(valid_arc_config, mock_http_client):
     """Fixture providing mock services instance with ARC config."""
-    with patch('bsv_wallet_toolbox.services.services.ServiceCollection') as mock_service_collection:
+    with patch("bsv_wallet_toolbox.services.services.ServiceCollection") as mock_service_collection:
         mock_instance = Mock()
         mock_service_collection.return_value = mock_instance
 
-        with patch('bsv_wallet_toolbox.services.services.Services._get_http_client', return_value=mock_http_client):
+        with patch("bsv_wallet_toolbox.services.services.Services._get_http_client", return_value=mock_http_client):
             services = Services(valid_arc_config)
             # Disable Bitails to test ARC-only behavior
             services.bitails = None
@@ -72,49 +71,39 @@ def arc_error_responses():
     return [
         # HTTP 400 Bad Request
         {"status": 400, "text": "Bad Request", "json": {"error": "Invalid request format"}},
-
         # HTTP 401 Unauthorized
         {"status": 401, "text": "Unauthorized", "json": {"error": "Invalid API key"}},
-
         # HTTP 403 Forbidden
         {"status": 403, "text": "Forbidden", "json": {"error": "Insufficient permissions"}},
-
         # HTTP 404 Not Found
         {"status": 404, "text": "Not Found", "json": {"error": "Endpoint not found"}},
-
         # HTTP 422 Unprocessable Entity
         {"status": 422, "text": "Unprocessable Entity", "json": {"error": "Invalid transaction data"}},
-
         # HTTP 429 Rate Limited
-        {"status": 429, "text": "Rate limit exceeded", "json": {"error": "Too many requests"}, "headers": {"Retry-After": "60"}},
-
+        {
+            "status": 429,
+            "text": "Rate limit exceeded",
+            "json": {"error": "Too many requests"},
+            "headers": {"Retry-After": "60"},
+        },
         # HTTP 500 Internal Server Error
         {"status": 500, "text": "Internal Server Error", "json": {"error": "Server error"}},
-
         # HTTP 503 Service Unavailable
         {"status": 503, "text": "Service Unavailable", "json": {"error": "Service temporarily unavailable"}},
-
         # Timeout scenarios
         {"timeout": True, "error": "Connection timeout"},
-
         # Malformed JSON response
         {"status": 200, "text": "invalid json {{{", "malformed": True},
-
         # Empty response
         {"status": 200, "text": "", "empty": True},
-
         # Invalid API key responses
         {"status": 401, "text": "Invalid API key", "json": {"code": "INVALID_API_KEY"}},
-
         # Insufficient funds
         {"status": 402, "text": "Payment Required", "json": {"error": "Insufficient funds"}},
-
         # Transaction rejected
         {"status": 400, "text": "Transaction rejected", "json": {"error": "Transaction rejected by network"}},
-
         # Double spend detected
         {"status": 409, "text": "Conflict", "json": {"error": "Double spend detected"}},
-
         # Large response (simulating memory issues)
         {"status": 200, "text": "x" * 1000000, "large": True},
     ]
@@ -127,38 +116,20 @@ def arc_success_responses():
         # Successful transaction broadcast
         {
             "status": 200,
-            "json": {
-                "txid": "a1b2c3d4e5f6...",
-                "accepted": True,
-                "message": "Transaction broadcast successfully"
-            }
+            "json": {"txid": "a1b2c3d4e5f6...", "accepted": True, "message": "Transaction broadcast successfully"},
         },
-
         # Transaction accepted but not yet confirmed
         {
             "status": 202,
-            "json": {
-                "txid": "a1b2c3d4e5f6...",
-                "accepted": True,
-                "message": "Transaction accepted for processing"
-            }
+            "json": {"txid": "a1b2c3d4e5f6...", "accepted": True, "message": "Transaction accepted for processing"},
         },
-
         # Multiple transactions response
         {
             "status": 200,
             "json": [
-                {
-                    "txid": "tx1...",
-                    "accepted": True,
-                    "message": "Transaction 1 broadcast successfully"
-                },
-                {
-                    "txid": "tx2...",
-                    "accepted": True,
-                    "message": "Transaction 2 broadcast successfully"
-                }
-            ]
+                {"txid": "tx1...", "accepted": True, "message": "Transaction 1 broadcast successfully"},
+                {"txid": "tx2...", "accepted": True, "message": "Transaction 2 broadcast successfully"},
+            ],
         },
     ]
 
@@ -171,16 +142,13 @@ def invalid_arc_configs():
         {"chain": "main", "arcUrl": "", "arcApiKey": "key"},
         {"chain": "main", "arcUrl": "not-a-url", "arcApiKey": "key"},
         {"chain": "main", "arcUrl": None, "arcApiKey": "key"},
-
         # Invalid API key
         {"chain": "main", "arcUrl": "https://arc.example.com", "arcApiKey": ""},
         {"chain": "main", "arcUrl": "https://arc.example.com", "arcApiKey": None},
-
         # Invalid chain
         {"chain": "invalid", "arcUrl": "https://arc.example.com", "arcApiKey": "key"},
         {"chain": "", "arcUrl": "https://arc.example.com", "arcApiKey": "key"},
         {"chain": None, "arcUrl": "https://arc.example.com", "arcApiKey": "key"},
-
         # Missing required fields
         {"chain": "main"},  # Missing arcUrl and arcApiKey
         {"arcUrl": "https://arc.example.com"},  # Missing chain and arcApiKey
@@ -209,8 +177,8 @@ class TestArcServices:
 
     def test_arc_services_initialization_invalid_config(self, invalid_arc_configs) -> None:
         """Given: Invalid ARC configuration
-           When: Initialize Services with ARC config
-           Then: Raises appropriate errors or handles gracefully
+        When: Initialize Services with ARC config
+        Then: Raises appropriate errors or handles gracefully
         """
         for invalid_config in invalid_arc_configs:
             try:
@@ -223,10 +191,10 @@ class TestArcServices:
 
     def test_arc_services_initialization_valid_config(self, valid_arc_config) -> None:
         """Given: Valid ARC configuration
-           When: Initialize Services with ARC config
-           Then: Services initializes successfully
+        When: Initialize Services with ARC config
+        Then: Services initializes successfully
         """
-        with patch('bsv_wallet_toolbox.services.services.ServiceCollection'):
+        with patch("bsv_wallet_toolbox.services.services.ServiceCollection"):
             services = Services(valid_arc_config)
             assert services is not None
             assert services.chain.value == valid_arc_config["chain"]
@@ -234,10 +202,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_invalid_beef_data(self, mock_services, invalid_beef_data) -> None:
         """Given: Invalid BEEF data
-           When: Call post_beef with ARC
-           Then: Raises appropriate errors
+        When: Call post_beef with ARC
+        Then: Raises appropriate errors
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         for invalid_beef in invalid_beef_data:
             with pytest.raises((ValueError, TypeError, InvalidParameterError)):
@@ -246,8 +214,8 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_network_failures(self, mock_services, valid_beef_data, arc_error_responses) -> None:
         """Given: Various network failure scenarios
-           When: Call post_beef with ARC
-           Then: Handles errors appropriately
+        When: Call post_beef with ARC
+        Then: Handles errors appropriately
         """
         services, _, mock_client = mock_services
 
@@ -280,8 +248,8 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_authentication_failures(self, mock_services, valid_beef_data) -> None:
         """Given: Authentication failures (401, 403)
-           When: Call post_beef with ARC
-           Then: Handles auth errors appropriately
+        When: Call post_beef with ARC
+        Then: Handles auth errors appropriately
         """
         services, _, mock_client = mock_services
 
@@ -304,10 +272,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_rate_limiting(self, mock_services, valid_beef_data) -> None:
         """Given: Rate limiting response (429)
-           When: Call post_beef with ARC
-           Then: Handles rate limiting appropriately
+        When: Call post_beef with ARC
+        Then: Handles rate limiting appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return rate limited response (since valid_arc_config only sets arcUrl)
         mock_arc_result = Mock()
@@ -323,8 +291,8 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_success_responses(self, mock_services, valid_beef_data, arc_success_responses) -> None:
         """Given: Successful ARC API responses
-           When: Call post_beef with ARC
-           Then: Returns successful results
+        When: Call post_beef with ARC
+        Then: Returns successful results
         """
         services, _, mock_client = mock_services
 
@@ -350,10 +318,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_malformed_requests(self, mock_services) -> None:
         """Given: Malformed request data
-           When: Call post_beef with ARC
-           Then: Handles malformed requests appropriately
+        When: Call post_beef with ARC
+        Then: Handles malformed requests appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         malformed_requests = [
             {"beef": "invalid_hex_data", "extraField": "unexpected"},
@@ -365,16 +333,16 @@ class TestArcServices:
         ]
 
         for malformed_request in malformed_requests:
-            with pytest.raises((ValueError, TypeError,InvalidParameterError)):
+            with pytest.raises((ValueError, TypeError, InvalidParameterError)):
                 services.post_beef(malformed_request)
 
     @pytest.mark.asyncio
     async def test_arc_post_beef_double_spend_handling(self, mock_services, valid_beef_data) -> None:
         """Given: Double spend scenarios
-           When: Call post_beef with ARC
-           Then: Handles double spend detection
+        When: Call post_beef with ARC
+        Then: Handles double spend detection
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return double spend result
         mock_arc_result = Mock()
@@ -391,10 +359,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_insufficient_funds(self, mock_services, valid_beef_data) -> None:
         """Given: Insufficient funds response (402)
-           When: Call post_beef with ARC
-           Then: Handles insufficient funds error
+        When: Call post_beef with ARC
+        Then: Handles insufficient funds error
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return insufficient funds result
         mock_arc_result = Mock()
@@ -414,8 +382,8 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_transaction_rejected(self, mock_services, valid_beef_data) -> None:
         """Given: Transaction rejected by network
-           When: Call post_beef with ARC
-           Then: Handles rejection appropriately
+        When: Call post_beef with ARC
+        Then: Handles rejection appropriately
         """
         services, _, mock_client = mock_services
 
@@ -425,7 +393,7 @@ class TestArcServices:
         mock_response.json.return_value = {
             "error": "Transaction rejected by network",
             "accepted": False,
-            "reason": "Invalid transaction format"
+            "reason": "Invalid transaction format",
         }
         mock_client.post.return_value = mock_response
 
@@ -436,8 +404,8 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_connection_error(self, mock_services, valid_beef_data) -> None:
         """Given: Connection error occurs
-           When: Call post_beef with ARC
-           Then: Handles connection error appropriately
+        When: Call post_beef with ARC
+        Then: Handles connection error appropriately
         """
         services, _, mock_client = mock_services
 
@@ -451,10 +419,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_services_provider_fallback(self, mock_services, valid_beef_data) -> None:
         """Given: Primary ARC provider fails, fallback succeeds
-           When: Call post_beef with ARC
-           Then: Uses fallback provider successfully
+        When: Call post_beef with ARC
+        Then: Uses fallback provider successfully
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return success result
         mock_arc_result = Mock()
@@ -470,10 +438,10 @@ class TestArcServices:
 
     async def test_arc_post_beef_array_invalid_inputs(self, mock_services) -> None:
         """Given: Invalid inputs for post_beef_array
-           When: Call post_beef_array with ARC
-           Then: Raises appropriate errors
+        When: Call post_beef_array with ARC
+        Then: Raises appropriate errors
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         invalid_inputs = [
             None,  # None
@@ -491,10 +459,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_array_empty_list(self, mock_services) -> None:
         """Given: Empty list for post_beef_array
-           When: Call post_beef_array with ARC
-           Then: Handles empty list appropriately
+        When: Call post_beef_array with ARC
+        Then: Handles empty list appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         result = services.post_beef_array([])
         assert isinstance(result, list)
@@ -503,10 +471,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_post_beef_array_partial_failures(self, mock_services, valid_beef_data) -> None:
         """Given: Array with mix of valid and invalid BEEF data
-           When: Call post_beef_array with ARC
-           Then: Handles partial failures appropriately
+        When: Call post_beef_array with ARC
+        Then: Handles partial failures appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC responses for different array elements
         mock_results = [
@@ -529,10 +497,10 @@ class TestArcServices:
     @pytest.mark.asyncio
     async def test_arc_services_large_payload_handling(self, mock_services) -> None:
         """Given: Very large BEEF payload
-           When: Call post_beef with ARC
-           Then: Handles large payload appropriately
+        When: Call post_beef with ARC
+        Then: Handles large payload appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Create large BEEF data (simulate large transaction)
         large_beef = "00" * 100000  # 100KB of data

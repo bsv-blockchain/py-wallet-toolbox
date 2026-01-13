@@ -10,10 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
-from bsv_wallet_toolbox import Wallet
-
 
 class TestUniversalVectorsDiscoverByAttributes:
     """Tests using Universal Test Vectors for discoverByAttributes.
@@ -35,7 +31,7 @@ class TestUniversalVectorsDiscoverByAttributes:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("discoverByAttributes-simple")
+        args_data, _result_data = load_test_vectors("discoverByAttributes-simple")
 
         wallet = wallet_with_services
 
@@ -46,17 +42,17 @@ class TestUniversalVectorsDiscoverByAttributes:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
         wire_request = serialize_request("discoverByAttributes", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "discoverByAttributes"
         assert isinstance(parsed_args, dict)
-        
-        # Test response serialization  
+
+        # Test response serialization
         result = {"test": "data"}
         wire_response = serialize_response(result)
         assert isinstance(wire_response, bytes)

@@ -11,10 +11,9 @@ from typing import Any
 # Note: Most storage methods are implemented as methods on the StorageProvider class.
 # Import StorageProvider and use its methods (e.g., storage_provider.process_action()).
 # The functions exported here are wrappers that delegate to StorageProvider methods.
-
 from .generate_change import (
-    GenerateChangeSdkFundingInput,
     GenerateChangeSdkChangeOutput,
+    GenerateChangeSdkFundingInput,
     GenerateChangeSdkInput,
     GenerateChangeSdkOutput,
     GenerateChangeSdkParams,
@@ -32,6 +31,7 @@ from .generate_change import (
 @dataclass
 class GenerateFundingInput:
     """Input specification for funding generation."""
+
     satoshis: int
     locking_script: str
 
@@ -39,6 +39,7 @@ class GenerateFundingInput:
 @dataclass
 class ListActionsArgs:
     """Arguments for listing wallet actions."""
+
     limit: int = 10
     offset: int = 0
     labels: list[str] | None = None
@@ -47,6 +48,7 @@ class ListActionsArgs:
 @dataclass
 class ListOutputsArgs:
     """Arguments for listing wallet outputs."""
+
     limit: int = 10
     offset: int = 0
     basket: str | None = None
@@ -55,6 +57,7 @@ class ListOutputsArgs:
 @dataclass
 class StorageProcessActionArgs:
     """Arguments for processing a storage action."""
+
     is_new_tx: bool = True
     is_no_send: bool = False
     is_send_with: bool = False
@@ -66,6 +69,7 @@ class StorageProcessActionArgs:
 @dataclass
 class StorageProcessActionResults:
     """Results from processing a storage action."""
+
     send_with_results: dict[str, Any] | None = None
     not_delayed_results: dict[str, Any] | None = None
 
@@ -80,7 +84,7 @@ def process_action(
     args: dict[str, Any] | StorageProcessActionArgs,
 ) -> StorageProcessActionResults:
     """Process a transaction action (finalize & sign).
-    
+
     Wrapper around StorageProvider.process_action().
     """
     # Convert dataclass to dict if needed
@@ -95,7 +99,7 @@ def process_action(
         }
     else:
         args_dict = args
-    
+
     result = storage.process_action(auth, args_dict)
     return StorageProcessActionResults(
         send_with_results=result.get("sendWithResults"),
@@ -105,7 +109,7 @@ def process_action(
 
 def list_actions(storage: Any, auth: dict[str, Any], args: dict[str, Any] | ListActionsArgs) -> dict[str, Any]:
     """List wallet actions.
-    
+
     Wrapper around StorageProvider.list_actions().
     """
     if isinstance(args, ListActionsArgs):
@@ -116,13 +120,13 @@ def list_actions(storage: Any, auth: dict[str, Any], args: dict[str, Any] | List
         }
     else:
         args_dict = args
-    
+
     return storage.list_actions(auth, args_dict)
 
 
 def list_outputs(storage: Any, auth: dict[str, Any], args: dict[str, Any] | ListOutputsArgs) -> dict[str, Any]:
     """List wallet outputs.
-    
+
     Wrapper around StorageProvider.list_outputs().
     """
     if isinstance(args, ListOutputsArgs):
@@ -133,13 +137,13 @@ def list_outputs(storage: Any, auth: dict[str, Any], args: dict[str, Any] | List
         }
     else:
         args_dict = args
-    
+
     return storage.list_outputs(auth, args_dict)
 
 
 def list_certificates(storage: Any, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     """List certificates.
-    
+
     Wrapper around StorageProvider.list_certificates().
     """
     return storage.list_certificates(auth, args)
@@ -147,7 +151,7 @@ def list_certificates(storage: Any, auth: dict[str, Any], args: dict[str, Any]) 
 
 def internalize_action(storage: Any, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
     """Internalize an action.
-    
+
     Wrapper around StorageProvider.internalize_action().
     """
     return storage.internalize_action(auth, args)
@@ -180,14 +184,14 @@ def get_beef_for_transaction(
         - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
         - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
-    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl  # noqa: PLC0415
+    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl
 
     return _impl(storage, auth or {}, txid, options)
 
 
 def attempt_to_post_reqs_to_network(storage: Any, reqs: list[dict[str, Any]]) -> dict[str, Any]:
     """Attempt to post requests to network.
-    
+
     Wrapper around StorageProvider.attempt_to_post_reqs_to_network().
     """
     return storage.attempt_to_post_reqs_to_network(reqs)
@@ -195,7 +199,7 @@ def attempt_to_post_reqs_to_network(storage: Any, reqs: list[dict[str, Any]]) ->
 
 def review_status(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
     """Review transaction statuses.
-    
+
     Wrapper around StorageProvider.review_status().
     """
     result = storage.review_status(args)
@@ -204,7 +208,7 @@ def review_status(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
 
 def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     """Purge transient data.
-    
+
     Wrapper around StorageProvider.purge_data().
     """
     result = storage.purge_data(params)
@@ -213,7 +217,7 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
 
 def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
     """Get synchronization chunk.
-    
+
     Wrapper around StorageProvider.get_sync_chunk().
     """
     return storage.get_sync_chunk(args)
@@ -221,7 +225,7 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
 
 def generate_change(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     """Generate change for a transaction.
-    
+
     Note: This is a placeholder. Actual change generation uses generate_change_sdk().
     """
     raise NotImplementedError("Use generate_change_sdk() from generate_change module instead")

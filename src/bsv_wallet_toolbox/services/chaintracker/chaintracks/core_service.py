@@ -10,19 +10,18 @@ import asyncio
 import logging
 import threading
 import time
-from typing import List, Optional, Dict, Any, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from ...wallet_services import Chain
 from ..chaintracks_storage import ChaintracksStorageMemory
-from .live_ingestor_interface import NamedLiveIngestor
-from .bulk_ingestor_interface import NamedBulkIngestor
-from .live_ingestor_factory import create_live_ingestors
 from .bulk_ingestor_factory import create_bulk_ingestors
 from .bulk_manager import BulkManager
-from .models import HeightRanges, InfoResponse, LiveBlockHeader, BlockHeader
 from .chain_work import ChainWork
-
+from .live_ingestor_factory import create_live_ingestors
+from .live_ingestor_interface import NamedLiveIngestor
+from .models import BlockHeader, HeightRanges, InfoResponse, LiveBlockHeader
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +31,8 @@ class ChaintracksServiceConfig:
     """Configuration for Chaintracks core service."""
 
     chain: Chain
-    live_ingestors: List[str] = None  # List of ingestor types
-    bulk_ingestors: List[Dict[str, Any]] = None  # List of ingestor configs
+    live_ingestors: list[str] = None  # List of ingestor types
+    bulk_ingestors: list[dict[str, Any]] = None  # List of ingestor configs
     add_live_recursion_limit: int = 10
     live_height_threshold: int = 2000
 
@@ -43,7 +42,7 @@ class ChaintracksServiceConfig:
         if self.bulk_ingestors is None:
             self.bulk_ingestors = [
                 {"type": "chaintracks_cdn", "cdnConfig": {"sourceUrl": "https://cdn.projectbabbage.com/blockheaders"}},
-                {"type": "whats_on_chain_cdn"}
+                {"type": "whats_on_chain_cdn"},
             ]
 
 
@@ -51,7 +50,7 @@ class PubSubEvents:
     """Simple pub/sub event system for headers and reorgs."""
 
     def __init__(self):
-        self._subscribers: List[Callable] = []
+        self._subscribers: list[Callable] = []
         self._lock = threading.Lock()
 
     def subscribe(self) -> tuple[Callable[[Any], None], Callable[[], None]]:
@@ -60,6 +59,7 @@ class PubSubEvents:
         Returns:
             Tuple of (send_function, unsubscribe_function)
         """
+
         def send_callback(data: Any) -> None:
             callback(data)
 
@@ -78,6 +78,7 @@ class PubSubEvents:
                             subscriber(data)
                         except Exception as e:
                             logger.error(f"Error in event subscriber: {e}")
+
             return cb
 
         callback = create_callback()
@@ -103,7 +104,7 @@ class CacheableWithTTL:
     def __init__(self, ttl_seconds: float, fetch_func: Callable[[], Any]):
         self.ttl_seconds = ttl_seconds
         self.fetch_func = fetch_func
-        self._cached_value: Optional[Any] = None
+        self._cached_value: Any | None = None
         self._cache_time: float = 0
         self._lock = threading.Lock()
 
@@ -148,7 +149,7 @@ class ChaintracksCoreService:
         self.storage = ChaintracksStorageMemory(storage_opts)
 
         # Live ingestors
-        self.live_ingestors: List[NamedLiveIngestor] = []
+        self.live_ingestors: list[NamedLiveIngestor] = []
 
         # Bulk manager
         bulk_ingestors = create_bulk_ingestors(self.chain)
@@ -167,7 +168,7 @@ class ChaintracksCoreService:
         self.cached_present_height = CacheableWithTTL(60.0, self._fetch_latest_present_height)
 
         # Background tasks
-        self._background_tasks: List[asyncio.Task] = []
+        self._background_tasks: list[asyncio.Task] = []
         self._shutdown_event = asyncio.Event()
 
         # Sync state
@@ -194,7 +195,7 @@ class ChaintracksCoreService:
             self.live_ingestors = create_live_ingestors(self.chain)
 
             # Create bulk ingestors
-            bulk_ingestors = create_bulk_ingestors(self.chain)
+            create_bulk_ingestors(self.chain)
 
             # TODO: Initialize bulk manager
             # self.bulk_mgr = ...
@@ -204,7 +205,7 @@ class ChaintracksCoreService:
                 logger.info(f"Chaintracks service - starting live ingestor {ingestor.name}")
 
                 def create_callback(ingestor_name: str):
-                    def callback(headers: List[Dict[str, Any]]) -> None:
+                    def callback(headers: list[dict[str, Any]]) -> None:
                         # Forward headers to processing channel
                         for header in headers:
                             try:
@@ -219,6 +220,7 @@ class ChaintracksCoreService:
                                 logger.warning(f"No event loop running for {ingestor_name} callback")
                             except Exception as e:
                                 logger.error(f"Failed to queue header from {ingestor_name}: {e}")
+
                     return callback
 
                 try:
@@ -294,10 +296,10 @@ class ChaintracksCoreService:
             height_live=height_ranges.live.max_height if height_ranges.live else 0,
             storage="memory",
             bulk_ingestors=[],  # TODO: Get from bulk manager
-            live_ingestors=[ingestor.name for ingestor in self.live_ingestors]
+            live_ingestors=[ingestor.name for ingestor in self.live_ingestors],
         )
 
-    async def find_chain_tip_header(self) -> Optional[BlockHeader]:
+    async def find_chain_tip_header(self) -> BlockHeader | None:
         """Find the current chain tip header."""
         queries = self.storage.query()
         header, err = queries.get_active_tip_live_header()
@@ -307,12 +309,12 @@ class ChaintracksCoreService:
 
         return header.chain_block_header
 
-    async def find_chain_tip_hash(self) -> Optional[str]:
+    async def find_chain_tip_hash(self) -> str | None:
         """Find the current chain tip hash."""
         tip_header = await self.find_chain_tip_header()
         return tip_header.get("hash") if tip_header else None
 
-    async def find_header_for_height(self, height: int) -> Optional[BlockHeader]:
+    async def find_header_for_height(self, height: int) -> BlockHeader | None:
         """Find block header for specific height."""
         queries = self.storage.query()
         header, err = queries.get_live_header_by_height(height)
@@ -322,11 +324,11 @@ class ChaintracksCoreService:
 
         return header.chain_block_header
 
-    def subscribe_headers(self) -> tuple[Callable[[Dict[str, Any]], None], Callable[[], None]]:
+    def subscribe_headers(self) -> tuple[Callable[[dict[str, Any]], None], Callable[[], None]]:
         """Subscribe to new header events."""
         return self._header_callbacks.subscribe()
 
-    def subscribe_reorgs(self) -> tuple[Callable[[Dict[str, Any]], None], Callable[[], None]]:
+    def subscribe_reorgs(self) -> tuple[Callable[[dict[str, Any]], None], Callable[[], None]]:
         """Subscribe to reorg events."""
         return self._reorg_callbacks.subscribe()
 
@@ -347,10 +349,10 @@ class ChaintracksCoreService:
         """Process incoming live headers and manage synchronization."""
         try:
             # Get present height
-            present_height = await self.get_present_height()
+            await self.get_present_height()
 
             # Get available ranges
-            ranges = await self.get_available_height_ranges()
+            await self.get_available_height_ranges()
 
             # Process queued headers
             headers_processed = 0
@@ -368,7 +370,7 @@ class ChaintracksCoreService:
         except Exception as e:
             logger.error(f"Error shifting live headers: {e}")
 
-    async def _add_live_header(self, header: Dict[str, Any]) -> None:
+    async def _add_live_header(self, header: dict[str, Any]) -> None:
         """Add a live header to storage with chain work calculation."""
         try:
             # Calculate chain work
@@ -389,7 +391,7 @@ class ChaintracksCoreService:
                 chain_block_header=header,
                 chain_work=chain_work.to_64_pad_hex(),
                 is_chain_tip=True,  # TODO: Proper chain tip detection
-                is_active=True
+                is_active=True,
             )
 
             # Store header
@@ -422,7 +424,7 @@ class ChaintracksCoreService:
         except Exception as e:
             logger.error(f"Failed to add live header: {e}")
 
-    async def _get_live_height_range(self) -> Optional[Any]:
+    async def _get_live_height_range(self) -> Any | None:
         """Get height range for live headers."""
         queries = self.storage.query()
         height_range, err = queries.find_live_height_range()
@@ -433,7 +435,7 @@ class ChaintracksCoreService:
 
         return height_range
 
-    async def _get_bulk_height_range(self) -> Optional[Any]:
+    async def _get_bulk_height_range(self) -> Any | None:
         """Get height range for bulk headers."""
         # TODO: Implement bulk manager height range
         return None
@@ -445,8 +447,7 @@ class ChaintracksCoreService:
         for ingestor in self.live_ingestors:
             try:
                 height = ingestor.ingestor.get_present_height()
-                if height > max_height:
-                    max_height = height
+                max_height = max(max_height, height)
             except Exception as e:
                 logger.error(f"Failed to get present height from {ingestor.name}: {e}")
 

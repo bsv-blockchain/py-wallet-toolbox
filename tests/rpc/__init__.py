@@ -1,2 +1,1 @@
 """RPC tests module."""
-

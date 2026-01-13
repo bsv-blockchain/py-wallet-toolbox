@@ -5,8 +5,6 @@ Reference: wallet-toolbox/src/utility/utilityHelpers.ts
 
 from datetime import datetime
 
-import pytest
-
 from bsv_wallet_toolbox.utils import arrays_equal, max_date, optional_arrays_equal
 
 

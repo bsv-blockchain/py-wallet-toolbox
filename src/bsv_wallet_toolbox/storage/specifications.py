@@ -18,7 +18,7 @@ from typing import Any, Generic, TypeVar
 
 from bsv.transaction import Transaction as BsvTransaction
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class User:
@@ -1833,6 +1833,7 @@ class TxLabelMap:
 @dataclass
 class Comparable(Generic[T]):
     """Comparable value with operator for query building."""
+
     operator: str
     value: T
 
@@ -1844,6 +1845,7 @@ class Comparable(Generic[T]):
 @dataclass
 class UserReadSpecification:
     """Specification for user read operations."""
+
     id: Comparable[int] | None = None
     identity_key: Comparable[str] | None = None
     active_storage: Comparable[str] | None = None
@@ -1852,6 +1854,7 @@ class UserReadSpecification:
 @dataclass
 class UserUpdateSpecification:
     """Specification for user update operations."""
+
     id: int
     active_storage: str | None = None
 
@@ -1859,6 +1862,7 @@ class UserUpdateSpecification:
 @dataclass
 class TransactionReadSpecification:
     """Specification for transaction read operations."""
+
     user_id: Comparable[int] | None = None
     txid: Comparable[str] | None = None
     status: Comparable[str] | None = None
@@ -1867,6 +1871,7 @@ class TransactionReadSpecification:
 @dataclass
 class OutputBasketReadSpecification:
     """Specification for output basket read operations."""
+
     user_id: Comparable[int] | None = None
     name: Comparable[str] | None = None
 
@@ -1874,6 +1879,7 @@ class OutputBasketReadSpecification:
 @dataclass
 class OutputReadSpecification:
     """Specification for output read operations."""
+
     user_id: Comparable[int] | None = None
     transaction_id: Comparable[int] | None = None
     spendable: Comparable[bool] | None = None
@@ -1882,6 +1888,7 @@ class OutputReadSpecification:
 @dataclass
 class CommissionReadSpecification:
     """Specification for commission read operations."""
+
     user_id: Comparable[int] | None = None
     amount: Comparable[int] | None = None
 
@@ -1889,6 +1896,7 @@ class CommissionReadSpecification:
 @dataclass
 class CertificateReadSpecification:
     """Specification for certificate read operations."""
+
     user_id: Comparable[int] | None = None
     type: Comparable[str] | None = None
     certifier: Comparable[str] | None = None
@@ -1898,6 +1906,7 @@ class CertificateReadSpecification:
 @dataclass
 class TxNoteReadSpecification:
     """Specification for transaction note read operations."""
+
     transaction_id: Comparable[int] | None = None
     note: Comparable[str] | None = None
 
@@ -1905,6 +1914,7 @@ class TxNoteReadSpecification:
 @dataclass
 class KnownTxReadSpecification:
     """Specification for known transaction read operations."""
+
     txid: Comparable[str] | None = None
 
 

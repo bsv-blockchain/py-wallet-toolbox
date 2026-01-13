@@ -215,9 +215,7 @@ class TestOutputEntity:
                 return updated_records
             return []
 
-        mock_storage = type(
-            "MockStorage", (), {"updateOutput": mock_update_output, "findOutputs": mock_find_outputs}
-        )()
+        mock_storage = type("MockStorage", (), {"updateOutput": mock_update_output, "findOutputs": mock_find_outputs})()
 
         # When
         was_merged = entity.merge_existing(mock_storage, None, updated_data, sync_map, None)

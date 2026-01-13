@@ -11,11 +11,10 @@ Format Overview:
 Reference: BRC-100 specification and Universal Test Vectors
 """
 
-import struct
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 
-def serialize_request(method: str, args: Dict[str, Any]) -> bytes:
+def serialize_request(method: str, args: dict[str, Any]) -> bytes:
     """Serialize a method call request to wire format.
 
     This is a simplified implementation for testing purposes.
@@ -66,7 +65,7 @@ def serialize_request(method: str, args: Dict[str, Any]) -> bytes:
     return bytes([method_id, 0x00])
 
 
-def deserialize_request(data: bytes) -> Tuple[str, Dict[str, Any]]:
+def deserialize_request(data: bytes) -> tuple[str, dict[str, Any]]:
     """Deserialize wire format to method call request.
 
     Simplified implementation for testing.
@@ -121,7 +120,7 @@ def deserialize_request(data: bytes) -> Tuple[str, Dict[str, Any]]:
     return method_name, args
 
 
-def serialize_response(result: Dict[str, Any]) -> bytes:
+def serialize_response(result: dict[str, Any]) -> bytes:
     """Serialize a method response to wire format.
 
     Simplified implementation for testing.
@@ -137,17 +136,17 @@ def serialize_response(result: Dict[str, Any]) -> bytes:
     if "version" in result:
         # For getVersion: \x00 followed by version string
         version = result["version"]
-        return bytes([0x00]) + version.encode('utf-8')
+        return bytes([0x00]) + version.encode("utf-8")
     elif "network" in result:
         return bytes([0x00, 0x00])  # Mock wire format for getNetwork
     elif "signature" in result:
         # Return mock signature bytes
-        return bytes([0x00] + result["signature"][:10])  # Simplified
+        return bytes([0, *result["signature"][:10]])  # Simplified
     else:
         return bytes([0x00, 0x00])  # Default mock response
 
 
-def deserialize_response(data: bytes) -> Dict[str, Any]:
+def deserialize_response(data: bytes) -> dict[str, Any]:
     """Deserialize wire format to method response.
 
     Args:
@@ -159,13 +158,13 @@ def deserialize_response(data: bytes) -> Dict[str, Any]:
     return _deserialize_dict(data)
 
 
-def _serialize_dict(data: Dict[str, Any]) -> bytes:
+def _serialize_dict(data: dict[str, Any]) -> bytes:
     """Serialize a dictionary to binary format."""
     result = bytearray()
 
     for key, value in data.items():
         # Serialize key as length-prefixed string
-        key_bytes = key.encode('utf-8')
+        key_bytes = key.encode("utf-8")
         result.extend(_serialize_length(len(key_bytes)))
         result.extend(key_bytes)
 
@@ -175,7 +174,7 @@ def _serialize_dict(data: Dict[str, Any]) -> bytes:
     return bytes(result)
 
 
-def _deserialize_dict(data: bytes) -> Dict[str, Any]:
+def _deserialize_dict(data: bytes) -> dict[str, Any]:
     """Deserialize binary format to dictionary."""
     result = {}
     i = 0
@@ -185,7 +184,7 @@ def _deserialize_dict(data: bytes) -> Dict[str, Any]:
         key_len, i = _deserialize_length(data, i)
         if i + key_len > len(data):
             raise ValueError("Key data truncated")
-        key = data[i:i + key_len].decode('utf-8')
+        key = data[i : i + key_len].decode("utf-8")
         i += key_len
 
         # Read value
@@ -200,30 +199,30 @@ def _serialize_value(value: Any) -> bytes:
     """Serialize a value based on its type."""
     if isinstance(value, str):
         # String: length + utf-8 bytes
-        value_bytes = value.encode('utf-8')
-        return b'\x01' + _serialize_length(len(value_bytes)) + value_bytes
+        value_bytes = value.encode("utf-8")
+        return b"\x01" + _serialize_length(len(value_bytes)) + value_bytes
     elif isinstance(value, bool):
         # Boolean: single byte
-        return b'\x02' + (b'\x01' if value else b'\x00')
+        return b"\x02" + (b"\x01" if value else b"\x00")
     elif isinstance(value, int):
         # Integer: variable length
-        return b'\x03' + _serialize_varint(value)
+        return b"\x03" + _serialize_varint(value)
     elif isinstance(value, list):
         # List: type + length + elements
         if all(isinstance(x, int) and 0 <= x <= 255 for x in value):
             # Byte array
-            return b'\x04' + _serialize_length(len(value)) + bytes(value)
+            return b"\x04" + _serialize_length(len(value)) + bytes(value)
         else:
             # Generic list (simplified)
-            return b'\x05' + _serialize_length(len(value)) + b''.join(_serialize_value(item) for item in value)
+            return b"\x05" + _serialize_length(len(value)) + b"".join(_serialize_value(item) for item in value)
     elif isinstance(value, dict):
         # Dict: nested dict
-        return b'\x06' + _serialize_dict(value)
+        return b"\x06" + _serialize_dict(value)
     else:
         raise ValueError(f"Unsupported value type: {type(value)}")
 
 
-def _deserialize_value(data: bytes, i: int) -> Tuple[Any, int]:
+def _deserialize_value(data: bytes, i: int) -> tuple[Any, int]:
     """Deserialize a value from binary format."""
     if i >= len(data):
         raise ValueError("Value data truncated")
@@ -235,7 +234,7 @@ def _deserialize_value(data: bytes, i: int) -> Tuple[Any, int]:
         str_len, i = _deserialize_length(data, i)
         if i + str_len > len(data):
             raise ValueError("String data truncated")
-        value = data[i:i + str_len].decode('utf-8')
+        value = data[i : i + str_len].decode("utf-8")
         i += str_len
     elif type_byte == 0x02:  # Boolean
         if i >= len(data):
@@ -248,7 +247,7 @@ def _deserialize_value(data: bytes, i: int) -> Tuple[Any, int]:
         arr_len, i = _deserialize_length(data, i)
         if i + arr_len > len(data):
             raise ValueError("Array data truncated")
-        value = list(data[i:i + arr_len])
+        value = list(data[i : i + arr_len])
         i += arr_len
     elif type_byte == 0x05:  # List
         list_len, i = _deserialize_length(data, i)
@@ -265,7 +264,7 @@ def _deserialize_value(data: bytes, i: int) -> Tuple[Any, int]:
     return value, i
 
 
-def _deserialize_dict_from_offset(data: bytes, i: int) -> Tuple[Dict[str, Any], int]:
+def _deserialize_dict_from_offset(data: bytes, i: int) -> tuple[dict[str, Any], int]:
     """Deserialize a dict from a specific offset."""
     # For now, assume dict ends at end of data
     # In practice, we'd need length prefixing
@@ -283,7 +282,7 @@ def _serialize_length(length: int) -> bytes:
         return bytes([0xC0 | (length >> 24), (length >> 16) & 0xFF, (length >> 8) & 0xFF, length & 0xFF])
 
 
-def _deserialize_length(data: bytes, i: int) -> Tuple[int, int]:
+def _deserialize_length(data: bytes, i: int) -> tuple[int, int]:
     """Deserialize a length value."""
     if i >= len(data):
         raise ValueError("Length data truncated")
@@ -304,7 +303,7 @@ def _deserialize_length(data: bytes, i: int) -> Tuple[int, int]:
         if i + 3 > len(data):
             raise ValueError("Extended length data truncated")
         # Read 4 bytes: first_byte is already read, need 3 more
-        b2, b3, b4 = data[i:i+3]
+        b2, b3, b4 = data[i : i + 3]
         length = ((first_byte & 0x3F) << 24) | (b2 << 16) | (b3 << 8) | b4
         return length, i + 3
 
@@ -322,7 +321,7 @@ def _serialize_varint(value: int) -> bytes:
     return bytes(result)
 
 
-def _deserialize_varint(data: bytes, i: int) -> Tuple[int, int]:
+def _deserialize_varint(data: bytes, i: int) -> tuple[int, int]:
     """Deserialize a variable length integer."""
     value = 0
     shift = 0

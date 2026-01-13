@@ -107,12 +107,12 @@ class TestWhatsOnChainErrorHandling:
         """Test handling transaction not found."""
         try:
             provider = WhatsOnChain(chain="main")
-            
+
             with patch("requests.get") as mock_get:
                 mock_response = Mock()
                 mock_response.status_code = 404
                 mock_get.return_value = mock_response
-                
+
                 if hasattr(provider, "get_raw_tx"):
                     result = provider.get_raw_tx("nonexistent_txid")
                     # Might return None or raise
@@ -124,7 +124,7 @@ class TestWhatsOnChainErrorHandling:
         """Test handling network errors."""
         try:
             provider = WhatsOnChain(chain="main")
-            
+
             with patch("requests.get", side_effect=Exception("Network error")):
                 if hasattr(provider, "get_raw_tx"):
                     try:
@@ -133,4 +133,3 @@ class TestWhatsOnChainErrorHandling:
                         pass
         except TypeError:
             pass
-

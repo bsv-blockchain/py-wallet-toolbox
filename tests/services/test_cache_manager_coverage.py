@@ -253,4 +253,3 @@ class TestCacheManager:
 
         # With 0 TTL, it should expire immediately
         assert result is None
-

@@ -6,8 +6,8 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/bulk_headers_container.go
 """
 
 import logging
-from typing import Any, Dict, List, Optional
 from collections import defaultdict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +28,11 @@ class BulkHeadersContainer:
             chunk_size: Number of headers per chunk for memory efficiency
         """
         self.chunk_size = chunk_size
-        self.chunks: Dict[int, List[Dict[str, Any]]] = defaultdict(list)
-        self.chunk_ranges: Dict[int, tuple[int, int]] = {}  # chunk_id -> (start_height, end_height)
+        self.chunks: dict[int, list[dict[str, Any]]] = defaultdict(list)
+        self.chunk_ranges: dict[int, tuple[int, int]] = {}  # chunk_id -> (start_height, end_height)
         self.logger = logging.getLogger(f"{__name__}.BulkHeadersContainer")
 
-    def add(self, headers: List[Dict[str, Any]]) -> None:
+    def add(self, headers: list[dict[str, Any]]) -> None:
         """Add headers to the container.
 
         Headers are organized into chunks based on height ranges for efficient storage.
@@ -47,7 +47,7 @@ class BulkHeadersContainer:
         sorted_headers = sorted(headers, key=lambda h: h["height"])
 
         # Group into chunks
-        current_chunk: List[Dict[str, Any]] = []
+        current_chunk: list[dict[str, Any]] = []
         current_chunk_start = sorted_headers[0]["height"]
         current_chunk_id = current_chunk_start // self.chunk_size
 
@@ -73,7 +73,7 @@ class BulkHeadersContainer:
 
         self.logger.debug(f"Added {len(headers)} headers in {len(self.chunks)} chunks")
 
-    def _save_chunk(self, chunk_id: int, headers: List[Dict[str, Any]]) -> None:
+    def _save_chunk(self, chunk_id: int, headers: list[dict[str, Any]]) -> None:
         """Save a chunk of headers.
 
         Args:
@@ -88,7 +88,7 @@ class BulkHeadersContainer:
         end_height = headers[-1]["height"]
         self.chunk_ranges[chunk_id] = (start_height, end_height)
 
-    def get(self, height: int) -> Optional[Dict[str, Any]]:
+    def get(self, height: int) -> dict[str, Any] | None:
         """Get header for specific height.
 
         Args:
@@ -119,7 +119,7 @@ class BulkHeadersContainer:
 
         return None
 
-    def get_range(self, start_height: int, end_height: int) -> List[Dict[str, Any]]:
+    def get_range(self, start_height: int, end_height: int) -> list[dict[str, Any]]:
         """Get all headers in a height range.
 
         Args:
@@ -165,7 +165,7 @@ class BulkHeadersContainer:
         """
         return self.get(height) is not None
 
-    def get_height_range(self) -> Optional[tuple[int, int]]:
+    def get_height_range(self) -> tuple[int, int] | None:
         """Get the overall height range covered by this container.
 
         Returns:

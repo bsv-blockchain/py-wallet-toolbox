@@ -4,12 +4,12 @@ This module tests the JSON-RPC 2.0 client implementation for remote storage prov
 Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
 """
 
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import requests
 
-from bsv_wallet_toolbox.rpc.storage_client import StorageClient, JsonRpcError
+from bsv_wallet_toolbox.rpc.storage_client import JsonRpcError, StorageClient
 
 
 class TestJsonRpcError:
@@ -70,7 +70,7 @@ class TestStorageClient:
         """Test creating a StorageClient with certificate requirements."""
         mock_certs = Mock()
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
-            client = StorageClient(
+            StorageClient(
                 wallet=mock_wallet,
                 endpoint_url="https://example.com/rpc",
                 requested_certificates=mock_certs,
@@ -421,4 +421,5 @@ class TestBackwardCompatibility:
     def test_json_rpc_client_alias(self) -> None:
         """Test that JsonRpcClient is an alias for StorageClient."""
         from bsv_wallet_toolbox.rpc.storage_client import JsonRpcClient
+
         assert JsonRpcClient is StorageClient

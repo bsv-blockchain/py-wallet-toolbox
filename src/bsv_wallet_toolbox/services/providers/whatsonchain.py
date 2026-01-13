@@ -21,6 +21,7 @@ from urllib.parse import urlencode
 
 from bsv.chaintrackers.whatsonchain import WhatsOnChainTracker
 
+from ...utils.merkle_path_utils import convert_proof_to_merkle_path
 from ..chaintracker.chaintracks.api import (
     BaseBlockHeader,
     BlockHeader,
@@ -30,7 +31,6 @@ from ..chaintracker.chaintracks.api import (
     ReorgListener,
 )
 from ..wallet_services import Chain
-from ...utils.merkle_path_utils import convert_proof_to_merkle_path
 
 
 class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
@@ -129,9 +129,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             return merkleroot == root
         if response.status_code == 404:
             return False
-        raise RuntimeError(
-            f"Failed to verify merkleroot for height {height} because of an error: {response.json()}"
-        )
+        raise RuntimeError(f"Failed to verify merkleroot for height {height} because of an error: {response.json()}")
 
     async def current_height(self) -> int:  # type: ignore[override]
         """Get current blockchain height from WhatsOnChain API.
@@ -150,20 +148,20 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
     def _get_http_headers(self) -> dict[str, str]:
         """Get HTTP headers for API requests.
-        
+
         Returns headers including Accept and optional Authorization (if api_key is set).
         This is a wrapper around the parent class's get_headers() method.
-        
+
         Returns:
             HTTP headers dictionary.
         """
         headers: dict[str, str] = {
             "Accept": "application/json",
         }
-        
+
         if isinstance(self.api_key, str) and self.api_key.strip():
             headers["Authorization"] = self.api_key
-        
+
         return headers
 
     async def get_info(self) -> ChaintracksInfo:
@@ -199,7 +197,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Get headers in serialized format.
 
         Implements ChaintracksClientApi.get_headers() interface.
-        
+
         Not implemented: WoC lacks bulk header endpoint required for this.
 
         Args:
@@ -225,7 +223,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """Get headers in serialized format (bulk).
 
         Alias for get_headers() for backward compatibility.
-        
+
         Note: This method exists for compatibility but delegates to get_headers().
 
         Args:
@@ -286,7 +284,9 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._find_header_for_height(height)
 
-    async def _fetch_header(self, url: str, height: int | None = None, hash_override: str | None = None) -> BlockHeader | None:
+    async def _fetch_header(
+        self, url: str, height: int | None = None, hash_override: str | None = None
+    ) -> BlockHeader | None:
         """Fetch and parse a block header from WhatsOnChain API.
 
         Args:
@@ -502,18 +502,18 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             data = response.json().get("data", {})
             if not data:
                 raise RuntimeError(f"No header found for height {height}")
-            
+
             # WhatsOnChain returns header fields, not serialized bytes.
             # We need to serialize them into 80-byte block header format:
             # version (4) + prevHash (32) + merkleRoot (32) + time (4) + bits (4) + nonce (4) = 80 bytes
-            
+
             version = data.get("version", 0)
             prev_hash = data.get("previousblockhash", "0" * 64)
             merkle_root = data.get("merkleroot", "0" * 64)
             timestamp = data.get("time", 0)
             bits_hex = data.get("bits", "00000000")
             nonce = data.get("nonce", 0)
-            
+
             # Serialize to 80-byte header
             # version: 4 bytes little-endian
             header = struct.pack("<I", version)
@@ -526,16 +526,12 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             try:
                 header += bytes.fromhex(prev_hash)[::-1]
             except ValueError as e:
-                raise RuntimeError(
-                    f"Invalid previousblockhash hex '{prev_hash}' for height {height}: {e}"
-                ) from e
+                raise RuntimeError(f"Invalid previousblockhash hex '{prev_hash}' for height {height}: {e}") from e
             # merkleroot: 32 bytes (reversed from big-endian hex)
             try:
                 header += bytes.fromhex(merkle_root)[::-1]
             except ValueError as e:
-                raise RuntimeError(
-                    f"Invalid merkleroot hex '{merkle_root}' for height {height}: {e}"
-                ) from e
+                raise RuntimeError(f"Invalid merkleroot hex '{merkle_root}' for height {height}: {e}") from e
             # time: 4 bytes little-endian
             header += struct.pack("<I", timestamp)
             # bits: 4 bytes little-endian (from hex string like "1d00ffff")
@@ -545,14 +541,14 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
                 raise RuntimeError(f"Invalid bits hex '{bits_hex}' for height {height}: {e}") from e
             # nonce: 4 bytes little-endian
             header += struct.pack("<I", nonce)
-            
+
             return header
         elif response.status_code == 404:
             raise RuntimeError(f"No header found for height {height}")
         else:
             raise RuntimeError(f"Failed to get header for height {height}: {response.json()}")
 
-    async def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:  # noqa: ARG002
+    async def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:
         """Fetch the Merkle path for a transaction (TS-compatible response shape).
 
         Behavior (aligned with ts-wallet-toolbox providers/WhatsOnChain):
@@ -576,15 +572,15 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._get_merkle_path(txid, services)
 
-    async def _get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:  # noqa: ARG002
+    async def _get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:
         """Internal implementation of get_merkle_path."""
         # Initialize result dict
         result: dict[str, Any] = {"name": "WoCTsc", "notes": []}
-        
+
         # Build URL and request options
         url = f"{self.URL}/tx/{txid}/proof/tsc"
         request_options = {"method": "GET", "headers": self._get_http_headers()}
-        
+
         try:
             response = await self.http_client.fetch(url, request_options)
             status_text = getattr(response, "status_text", None)
@@ -655,7 +651,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             if proof_target and hasattr(services, "hash_to_header_async"):
                 try:
                     header = await services.hash_to_header_async(proof_target)
-                except Exception as exc:  # noqa: PERF203
+                except Exception as exc:
                     result["notes"].append({**note_base, "what": "getMerklePathNoHeader", "error": str(exc)})
                     return result
 
@@ -736,7 +732,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             }
             result["notes"].append(success_note)
             return result
-        except Exception as exc:  # noqa: PERF203
+        except Exception as exc:
             result["notes"].append({"name": "WoCTsc", "what": "getMerklePathCatch", "error": str(exc)})
             result["error"] = {"message": str(exc), "code": "NETWORK_ERROR"}
             return result
@@ -823,7 +819,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         output: str,
         output_format: str | None = None,
         outpoint: str | None = None,
-        use_next: bool | None = None,  # noqa: ARG002
+        use_next: bool | None = None,
     ) -> dict[str, Any]:
         """Get UTXO status for an output descriptor (TS-compatible shape).
 
@@ -862,6 +858,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Chaintracks-like endpoint (tests will mock this)
         base_url = "https://mainnet-chaintracks.babbage.systems/getUtxoStatus"
+        # Extract parameters from args/kwargs
+        output = args[0] if args else kwargs.get("output", "")
+        output_format = kwargs.get("outputFormat")
+        outpoint = kwargs.get("outpoint")
         params = {"output": output}
         if output_format:
             params["outputFormat"] = output_format
@@ -912,7 +912,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             "unconfirmed": data.get("unconfirmed", []),
         }
 
-    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status for a given txid (TS-compatible response shape).
 
         Behavior (aligned with ts-wallet-toolbox):
@@ -933,7 +933,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._get_transaction_status(txid, use_next)
 
-    async def _get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    async def _get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Internal implementation of get_transaction_status."""
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         base_url = "https://mainnet-chaintracks.babbage.systems/getTransactionStatus"
@@ -957,7 +957,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             elif "connection" in str(e).lower():
                 raise RuntimeError("WhatsOnChain connection error")
             else:
-                raise RuntimeError(f"WhatsOnChain error: {str(e)}")
+                raise RuntimeError(f"WhatsOnChain error: {e!s}")
 
         try:
             data = response.json() or {"status": "unknown"}

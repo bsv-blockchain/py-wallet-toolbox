@@ -3,8 +3,6 @@
 This module tests Bitcoin address generation and validation.
 """
 
-import pytest
-
 
 class TestAddressGeneration:
     """Test address generation."""
@@ -13,7 +11,7 @@ class TestAddressGeneration:
         """Test generating address from public key."""
         try:
             from bsv_wallet_toolbox.utils.address import pubkey_to_address
-            
+
             # Sample public key (33 bytes compressed)
             pubkey = b"\x02" + (b"\x00" * 32)
             address = pubkey_to_address(pubkey)
@@ -25,7 +23,7 @@ class TestAddressGeneration:
         """Test generating address from script."""
         try:
             from bsv_wallet_toolbox.utils.address import script_to_address
-            
+
             # P2PKH script
             script = b"\x76\xa9\x14" + (b"\x00" * 20) + b"\x88\xac"
             address = script_to_address(script)
@@ -37,7 +35,7 @@ class TestAddressGeneration:
         """Test generating new address."""
         try:
             from bsv_wallet_toolbox.utils.address import generate_address
-            
+
             address = generate_address()
             assert isinstance(address, str)
             assert len(address) > 25  # Typical Bitcoin address length
@@ -52,11 +50,11 @@ class TestAddressValidation:
         """Test validating Bitcoin address."""
         try:
             from bsv_wallet_toolbox.utils.address import validate_address
-            
+
             # Valid mainnet address
             valid = validate_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
             assert valid is True or isinstance(valid, bool)
-            
+
             # Invalid address
             invalid = validate_address("invalid")
             assert invalid is False or isinstance(invalid, bool)
@@ -67,7 +65,7 @@ class TestAddressValidation:
         """Test checking if address is valid."""
         try:
             from bsv_wallet_toolbox.utils.address import is_valid_address
-            
+
             assert is_valid_address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa") is True
             assert is_valid_address("invalid") is False
         except (ImportError, AttributeError):
@@ -81,7 +79,7 @@ class TestAddressConversion:
         """Test converting address to script."""
         try:
             from bsv_wallet_toolbox.utils.address import address_to_script
-            
+
             address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
             script = address_to_script(address)
             assert isinstance(script, (bytes, bytearray))
@@ -92,7 +90,7 @@ class TestAddressConversion:
         """Test extracting pubkey hash from address."""
         try:
             from bsv_wallet_toolbox.utils.address import address_to_pubkey_hash
-            
+
             address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
             pubkey_hash = address_to_pubkey_hash(address)
             assert isinstance(pubkey_hash, bytes)
@@ -108,7 +106,7 @@ class TestAddressTypes:
         """Test P2PKH address."""
         try:
             from bsv_wallet_toolbox.utils.address import is_p2pkh_address
-            
+
             address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
             result = is_p2pkh_address(address)
             assert isinstance(result, bool)
@@ -119,7 +117,7 @@ class TestAddressTypes:
         """Test P2SH address."""
         try:
             from bsv_wallet_toolbox.utils.address import is_p2sh_address
-            
+
             # P2SH addresses start with '3'
             address = "3J98t1WpEZ73CNmYviecrnyiWrnqRhWNLy"
             result = is_p2sh_address(address)
@@ -131,7 +129,7 @@ class TestAddressTypes:
         """Test testnet address."""
         try:
             from bsv_wallet_toolbox.utils.address import is_testnet_address
-            
+
             # Testnet addresses start with 'm' or 'n'
             address = "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn"
             result = is_testnet_address(address)
@@ -147,7 +145,7 @@ class TestAddressEncoding:
         """Test encoding address with version."""
         try:
             from bsv_wallet_toolbox.utils.address import encode_address
-            
+
             pubkey_hash = b"\x00" * 20
             version = 0  # Mainnet P2PKH
             address = encode_address(pubkey_hash, version)
@@ -159,11 +157,10 @@ class TestAddressEncoding:
         """Test decoding address to version and hash."""
         try:
             from bsv_wallet_toolbox.utils.address import decode_address
-            
+
             address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
             version, pubkey_hash = decode_address(address)
             assert isinstance(version, int)
             assert isinstance(pubkey_hash, bytes)
         except (ImportError, AttributeError, Exception):
             pass
-

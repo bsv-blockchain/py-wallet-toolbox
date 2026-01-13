@@ -13,9 +13,6 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-
-from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.services import Services, create_default_options
 from src.config import (
     bypass_wallet_infra_auth,
     get_key_deriver,
@@ -28,6 +25,9 @@ from src.config import (
     use_remote_storage,
     use_wallet_infra,
 )
+
+from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.services import Services, create_default_options
 
 
 def _init_wallet() -> Wallet:
@@ -55,7 +55,7 @@ def _init_wallet() -> Wallet:
                 infra_client.make_available()
                 print("✅ wallet-infra connection successful")
                 wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=infra_client)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 print(f"⚠️  wallet-infra connection failed: {exc}")
                 wallet_infra_mode = False
 
@@ -68,7 +68,7 @@ def _init_wallet() -> Wallet:
             remote_client.make_available()
             print("✅ Remote storage connection successful")
             wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=remote_client)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             print(f"❌ Remote storage connection failed: {exc}")
             remote_storage_mode = False
 
@@ -176,4 +176,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -10,46 +10,45 @@ from dotenv import load_dotenv
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import Services, create_default_options
 from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
-
 from src import (
+    demo_abort_action,
+    # certificates
+    demo_acquire_certificate,
+    # actions
+    demo_create_action,
+    # crypto utilities
+    demo_create_hmac,
+    demo_discover_by_attributes,
+    # identity discovery
+    demo_discover_by_identity_key,
+    demo_encrypt_decrypt,
+    demo_get_header_for_height,
+    # blockchain info
+    demo_get_height,
+    # key management
+    demo_get_public_key,
+    # transactions
+    demo_internalize_action,
+    demo_list_actions,
+    demo_list_certificates,
+    # outputs
+    demo_list_outputs,
+    demo_relinquish_certificate,
+    demo_relinquish_output,
+    # key linkage
+    demo_reveal_counterparty_key_linkage,
+    demo_reveal_specific_key_linkage,
+    demo_sign_data,
+    demo_verify_hmac,
+    demo_verify_signature,
+    demo_wait_for_authentication,
+    # wallet info
+    display_wallet_info,
     # configuration helpers
     get_key_deriver,
     get_network,
     get_storage_provider,
     print_network_info,
-    # wallet info
-    display_wallet_info,
-    # key management
-    demo_get_public_key,
-    demo_sign_data,
-    # actions
-    demo_create_action,
-    demo_list_actions,
-    demo_abort_action,
-    # certificates
-    demo_acquire_certificate,
-    demo_list_certificates,
-    demo_relinquish_certificate,
-    # identity discovery
-    demo_discover_by_identity_key,
-    demo_discover_by_attributes,
-    # crypto utilities
-    demo_create_hmac,
-    demo_verify_hmac,
-    demo_verify_signature,
-    demo_encrypt_decrypt,
-    # key linkage
-    demo_reveal_counterparty_key_linkage,
-    demo_reveal_specific_key_linkage,
-    # outputs
-    demo_list_outputs,
-    demo_relinquish_output,
-    # blockchain info
-    demo_get_height,
-    demo_get_header_for_height,
-    demo_wait_for_authentication,
-    # transactions
-    demo_internalize_action,
 )
 
 

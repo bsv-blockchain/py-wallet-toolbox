@@ -7,8 +7,8 @@ Reference: wallet-toolbox/src/services/__tests/getUtxoStatus.test.ts
 
 import pytest
 
-from bsv_wallet_toolbox.services import Services
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.services import Services
 
 
 def test_get_utxo_status_minimal_normal() -> None:
@@ -188,7 +188,7 @@ def test_get_utxo_status_numeric_script() -> None:
         services.get_utxo_status(1234567890)
 
     with pytest.raises((InvalidParameterError, ValueError, TypeError)):
-        services.get_utxo_status(0x1234567890abcdef)
+        services.get_utxo_status(0x1234567890ABCDEF)
 
 
 def test_get_utxo_status_mixed_case_script() -> None:

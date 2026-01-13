@@ -12,6 +12,7 @@ import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionToken, WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True
@@ -234,6 +235,7 @@ class TestWalletPermissionsManagerChecks:
 
         # Bind callback that grants renewal
         renewal_requested = []
+
         def permission_callback(request) -> None:
             renewal_requested.append(request)
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
@@ -631,7 +633,7 @@ class TestWalletPermissionsManagerChecks:
     def test_should_check_monthly_limit_usage_and_prompt_renewal_if_insufficient(self) -> None:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should check monthly limit usage and prompt renewal if insufficient')
-        
+
         Note: Monthly limit functionality is not yet implemented. This test verifies
         that spending authorization is requested when no token exists.
         """
@@ -646,6 +648,7 @@ class TestWalletPermissionsManagerChecks:
         )
 
         spending_requested = []
+
         def permission_callback(request) -> None:
             spending_requested.append(request)
             manager.grant_permission({"requestID": request["requestID"], "ephemeral": True})
@@ -658,7 +661,7 @@ class TestWalletPermissionsManagerChecks:
             },
             originator="user.com",
         )
-        
+
         # Spending authorization was requested
         assert len(spending_requested) == 1
         mock_underlying_wallet.create_action.assert_called_once()
@@ -666,7 +669,7 @@ class TestWalletPermissionsManagerChecks:
     def test_should_pass_if_usage_plus_new_spend_is_within_the_monthly_limit(self) -> None:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should pass if usage plus new spend is within the monthly limit')
-        
+
         Note: Monthly limit functionality is not yet implemented. This test verifies
         that spending authorization is granted and action proceeds.
         """
@@ -727,7 +730,7 @@ class TestWalletPermissionsManagerChecks:
     def test_should_prompt_for_label_usage_if_seekpermissionwhenapplyingactionlabels_true(self) -> None:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should prompt for label usage if seekPermissionWhenApplyingActionLabels=true')
-        
+
         Note: Label permissions use onProtocolPermissionRequested with a special protocol ID
         like [1, 'action label <label>'] per TypeScript implementation.
         """
@@ -755,7 +758,7 @@ class TestWalletPermissionsManagerChecks:
     ) -> None:
         """Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.checks.test.ts
         test('should also prompt for listing actions by label if seekPermissionWhenListingActionsByLabel=true')
-        
+
         Note: Label permissions use onProtocolPermissionRequested with a special protocol ID
         like [1, 'action label <label>'] per TypeScript implementation.
         """

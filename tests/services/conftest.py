@@ -4,8 +4,9 @@ Provides mocked implementations of abstract classes and complex dependencies
 to enable testing of service functionality.
 """
 
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from bsv_wallet_toolbox.services.wallet_services import WalletServices
 
@@ -17,7 +18,7 @@ class MockWalletServices(WalletServices):
         super().__init__(chain)
         self.mock_chain_tracker = AsyncMock()
         self.mock_height = 850000
-        self.mock_header = b'\x00' * 80  # Mock 80-byte header
+        self.mock_header = b"\x00" * 80  # Mock 80-byte header
 
     async def get_chain_tracker(self):
         """Return mock chain tracker."""
@@ -102,19 +103,16 @@ class MockWhatsOnChain:
 
     async def get_header(self, height):
         """Mock get_header method."""
-        return b'\x00' * 80  # Mock header
+        return b"\x00" * 80  # Mock header
 
     async def start_listening(self):
         """Mock start_listening (raises NotImplementedError in real implementation)."""
-        pass
 
     async def listening(self):
         """Mock listening (raises NotImplementedError in real implementation)."""
-        pass
 
     async def add_header(self, header):
         """Mock add_header (raises NotImplementedError in real implementation)."""
-        pass
 
 
 @pytest.fixture

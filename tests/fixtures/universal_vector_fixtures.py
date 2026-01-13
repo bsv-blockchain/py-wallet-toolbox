@@ -9,16 +9,16 @@ Fixtures include:
 - Transaction data supporting the outputs
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 
-def get_universal_certificates() -> List[Dict[str, Any]]:
+def get_universal_certificates() -> list[dict[str, Any]]:
     """Get certificate fixtures matching Universal Test Vector expectations.
 
     Returns certificates that should be returned by listCertificates tests.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return [
         {
@@ -28,22 +28,19 @@ def get_universal_certificates() -> List[Dict[str, Any]]:
             "subject": "025ad43a22ac38d0bc1f8bacaabb323b5d634703b7a774c4268f6a09e4ddf79097",
             "revocationOutpoint": "aec245f27b7640c8b1865045107731bfb848115c573f7da38166074b1c9e475d.0",
             "signature": "3045022100a6f09ee70382ab364f3f6b040aebb8fe7a51dbc3b4c99cfeb2f7756432162833022067349b91a6319345996faddf36d1b2f3a502e4ae002205f9d2db85474f9aed5a",
-            "fields": {
-                "name": "Alice",
-                "email": "alice@example.com"
-            },
+            "fields": {"name": "Alice", "email": "alice@example.com"},
             "createdAt": now,
             "updatedAt": now,
         }
     ]
 
 
-def get_universal_outputs() -> List[Dict[str, Any]]:
+def get_universal_outputs() -> list[dict[str, Any]]:
     """Get output fixtures matching Universal Test Vector expectations.
 
     Returns outputs that should be returned by listOutputs tests.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return [
         {
@@ -58,7 +55,7 @@ def get_universal_outputs() -> List[Dict[str, Any]]:
             "purpose": "payment",
             "type": "standard",
             "txid": "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-            "lockingScript": bytes([0x76, 0xa9, 0x14] + [0xaa] * 20 + [0x88, 0xac]),  # P2PKH
+            "lockingScript": bytes([0x76, 0xA9, 0x14] + [0xAA] * 20 + [0x88, 0xAC]),  # P2PKH
             "createdAt": now,
             "updatedAt": now,
         },
@@ -74,16 +71,16 @@ def get_universal_outputs() -> List[Dict[str, Any]]:
             "purpose": "payment",
             "type": "standard",
             "txid": "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-            "lockingScript": bytes([0x76, 0xa9, 0x14] + [0xbb] * 20 + [0x88, 0xac]),  # P2PKH
+            "lockingScript": bytes([0x76, 0xA9, 0x14] + [0xBB] * 20 + [0x88, 0xAC]),  # P2PKH
             "createdAt": now,
             "updatedAt": now,
-        }
+        },
     ]
 
 
-def get_universal_transactions() -> List[Dict[str, Any]]:
+def get_universal_transactions() -> list[dict[str, Any]]:
     """Get transaction fixtures supporting the universal outputs."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return [
         {
@@ -113,11 +110,11 @@ def get_universal_transactions() -> List[Dict[str, Any]]:
             "rawTx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0] + [0] * 50),  # Minimal valid tx
             "createdAt": now,
             "updatedAt": now,
-        }
+        },
     ]
 
 
-def seed_universal_certificates(storage, user_id: int = 1) -> List[int]:
+def seed_universal_certificates(storage, user_id: int = 1) -> list[int]:
     """Seed universal test certificates into storage.
 
     Args:
@@ -150,7 +147,7 @@ def seed_universal_certificates(storage, user_id: int = 1) -> List[int]:
     return cert_ids
 
 
-def seed_universal_outputs(storage) -> List[int]:
+def seed_universal_outputs(storage) -> list[int]:
     """Seed universal test outputs into storage.
 
     Args:

@@ -8,18 +8,20 @@ Reference: go-wallet-toolbox/pkg/services/internal/servicequeue/
 
 import asyncio
 import logging
-from typing import Any, Callable, Generic, TypeVar, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 ServiceFunc = Callable[[], Awaitable[T]]
 
 
 @dataclass
 class NamedService(Generic[T]):
     """A named service with its implementation function."""
+
     name: str
     service: ServiceFunc[T]
 
@@ -27,6 +29,7 @@ class NamedService(Generic[T]):
 @dataclass
 class NamedResult(Generic[T]):
     """Result from a named service call."""
+
     name: str
     result: T | None = None
     error: Exception | None = None
@@ -42,17 +45,14 @@ class NamedResult(Generic[T]):
 
 class ServiceQueueError(Exception):
     """Base exception for service queue operations."""
-    pass
 
 
 class EmptyResultError(ServiceQueueError):
     """Raised when service returns an empty result."""
-    pass
 
 
 class NoServicesError(ServiceQueueError):
     """Raised when no services are registered."""
-    pass
 
 
 class ServiceQueue(Generic[T]):

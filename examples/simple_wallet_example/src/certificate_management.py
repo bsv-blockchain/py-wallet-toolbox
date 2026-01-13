@@ -61,4 +61,3 @@ def demo_list_certificates(wallet: Wallet) -> None:
                 print()
     except Exception as err:
         print(f"❌ Failed to list certificates: {err}")
-

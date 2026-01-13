@@ -3,19 +3,20 @@
 Tests the core signing logic without requiring full wallet infrastructure.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from bsv.transaction import Transaction
 
 from bsv_wallet_toolbox.signer.methods import (
-    create_action,
-    sign_action,
-    process_action,
-    internalize_action,
-    acquire_direct_certificate,
-    prove_certificate,
     PendingSignAction,
+    acquire_direct_certificate,
+    create_action,
+    internalize_action,
+    process_action,
+    prove_certificate,
+    sign_action,
 )
-from bsv.transaction import Transaction
 
 
 class TestCreateAction:
@@ -53,12 +54,14 @@ class TestCreateAction:
             args=args,
             amount=1000,
             tx=mock_tx,
-            pdi=[]
+            pdi=[],
         )
 
-        with patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx, \
-             patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete, \
-             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx,
+            patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
+            patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process,
+        ):
 
             mock_create_tx.return_value = mock_pending
             mock_complete.return_value = mock_tx
@@ -82,9 +85,11 @@ class TestCreateAction:
         }
 
         # Mock the storage methods to avoid actual validation
-        with patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx, \
-             patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete, \
-             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx,
+            patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
+            patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process,
+        ):
 
             mock_tx = MagicMock()
             mock_tx.txid.return_value = "b" * 64
@@ -106,7 +111,7 @@ class TestCreateAction:
                 args=args,
                 amount=0,
                 tx=mock_tx,
-                pdi=[]
+                pdi=[],
             )
 
             mock_create_tx.return_value = mock_pending
@@ -128,8 +133,8 @@ class TestSignAction:
 
     def test_sign_action_success(self):
         """Test successful sign_action."""
+
         from bsv_wallet_toolbox.signer.methods import PendingSignAction
-        from bsv.transaction import Transaction
 
         mock_wallet = MagicMock()
         mock_auth = MagicMock()
@@ -152,16 +157,18 @@ class TestSignAction:
             },
             amount=1000,
             tx=mock_tx,
-            pdi=[]
+            pdi=[],
         )
 
         # Mock pending_sign_actions as a TTL cache that returns our mock
         mock_wallet.pending_sign_actions.get.return_value = mock_pending
 
         # Mock the complete_signed_transaction function
-        with patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete, \
-             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process, \
-             patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
+            patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process,
+            patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify,
+        ):
 
             mock_complete.return_value = mock_tx
             mock_process.return_value = {"sendWithResults": [], "notDelayedResults": []}
@@ -211,10 +218,7 @@ class TestProcessAction:
         }
 
         # Mock the storage process_action method
-        mock_wallet.storage.process_action.return_value = {
-            "sendWithResults": [],
-            "notDelayedResults": []
-        }
+        mock_wallet.storage.process_action.return_value = {"sendWithResults": [], "notDelayedResults": []}
 
         result = process_action(None, mock_wallet, mock_auth, args)
 
@@ -242,7 +246,7 @@ class TestProcessAction:
             args={},
             amount=0,
             tx=mock_tx,
-            pdi=[]
+            pdi=[],
         )
 
         args = {
@@ -251,10 +255,7 @@ class TestProcessAction:
         }
 
         # Mock the storage process_action method
-        mock_wallet.storage.process_action.return_value = {
-            "sendWithResults": [],
-            "notDelayedResults": []
-        }
+        mock_wallet.storage.process_action.return_value = {"sendWithResults": [], "notDelayedResults": []}
 
         result = process_action(mock_pending, mock_wallet, mock_auth, args)
 
@@ -274,20 +275,20 @@ class TestInternalizeAction:
 
         # Create a minimal valid transaction
         from bsv.transaction import Transaction
+
         tx = Transaction()
         tx_bytes = tx.serialize()
 
         args = {
             "tx": tx_bytes,  # Use actual transaction bytes
-            "outputs": [{"satoshis": 1000, "lockingScript": b"script", "protocol": "wallet payment", "outputIndex": 0}],  # Required outputs parameter with protocol and outputIndex
+            "outputs": [
+                {"satoshis": 1000, "lockingScript": b"script", "protocol": "wallet payment", "outputIndex": 0}
+            ],  # Required outputs parameter with protocol and outputIndex
             "description": "Test description",  # Required description parameter
         }
 
         # Mock the storage internalize_action method
-        mock_wallet.storage.internalize_action.return_value = {
-            "txid": tx.txid(),
-            "status": "success"
-        }
+        mock_wallet.storage.internalize_action.return_value = {"txid": tx.txid(), "status": "success"}
 
         result = internalize_action(mock_wallet, mock_auth, args)
 
@@ -307,6 +308,7 @@ class TestInternalizeAction:
 
         # The validation happens and should raise InvalidParameterError
         from bsv_wallet_toolbox.errors import InvalidParameterError
+
         with pytest.raises(InvalidParameterError):
             internalize_action(mock_wallet, mock_auth, args)
 
@@ -343,10 +345,7 @@ class TestAcquireDirectCertificate:
         }
 
         # Mock storage to avoid actual validation
-        mock_wallet.storage.acquire_certificate.return_value = {
-            "certificate": None,
-            "error": "invalid_type"
-        }
+        mock_wallet.storage.acquire_certificate.return_value = {"certificate": None, "error": "invalid_type"}
 
         # Validation happens before storage call, so expect ValueError
         with pytest.raises(ValueError):
@@ -387,6 +386,7 @@ class TestProveCertificate:
 
         # Should raise WalletError about no certificates found
         from bsv_wallet_toolbox.errors import WalletError
+
         with pytest.raises(WalletError):
             prove_certificate(mock_wallet, mock_auth, args)
 
@@ -435,7 +435,6 @@ class TestSignerHelperFunctions:
     def test_make_change_lock(self):
         """Test _make_change_lock function."""
         from bsv_wallet_toolbox.signer.methods import _make_change_lock
-        from bsv_wallet_toolbox.brc29.types import Protocol, Counterparty, CounterpartyType
 
         mock_wallet = MagicMock()
         # Add mock key_deriver with derive_public_key method
@@ -455,6 +454,7 @@ class TestSignerHelperFunctions:
         assert result is not None
         # Should return a Script object
         from bsv.script import Script
+
         assert isinstance(result, Script)
 
     def test_verify_unlock_scripts(self):

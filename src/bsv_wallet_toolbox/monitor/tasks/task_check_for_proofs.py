@@ -1,6 +1,6 @@
 """TaskCheckForProofs implementation."""
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from bsv.merkle_path import MerklePath
 
@@ -96,7 +96,11 @@ class TaskCheckForProofs(WalletMonitorTask):
         attempts = req.get("attempts", 0)
 
         # Check attempts limit based on network type
-        limit = self.monitor.options.unproven_attempts_limit_test if self.monitor.chain == "test" else self.monitor.options.unproven_attempts_limit_main
+        limit = (
+            self.monitor.options.unproven_attempts_limit_test
+            if self.monitor.chain == "test"
+            else self.monitor.options.unproven_attempts_limit_main
+        )
         if attempts >= limit:
             log_lines.append(f"Reached attempt limit ({limit}) for {txid}, giving up")
             # Mark as failed or something? For now, just skip
@@ -105,6 +109,7 @@ class TaskCheckForProofs(WalletMonitorTask):
         try:
             # 1. Get Merkle Path from Services
             import asyncio
+
             res = asyncio.run(self.monitor.services.get_merkle_path_for_transaction(txid))
         except Exception as e:
             log_lines.append(f"Error getting proof for {txid}: {e!s}")
@@ -180,7 +185,6 @@ class TaskCheckForProofs(WalletMonitorTask):
             # use the bump_bytes we created
             if merkle_path_obj:
                 bump_bytes = merkle_path_obj.to_binary()
-                index = 0  # Extract from BUMP if possible
             # else: bump_bytes was set above
 
             update_args = {
@@ -220,4 +224,3 @@ class TaskCheckForProofs(WalletMonitorTask):
             self.monitor.storage.update_proven_tx_req(req_id, {"attempts": current_attempts + 1})
         except Exception:
             pass
-

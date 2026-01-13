@@ -31,9 +31,9 @@ def update_readme_coverage(coverage_percentage: str):
     else:
         color = "red"
 
-    # Update the coverage badge at the top
-    badge_pattern = r'!\[Coverage\]\(https://img\.shields\.io/badge/coverage-[\d.]+%25-[a-z]+\)'
-    new_badge = f'![Coverage](https://img.shields.io/badge/coverage-{coverage_percentage}%25-{color})'
+    # Update the coverage badge at the top (link-wrapped format)
+    badge_pattern = r'\[!\[Coverage\]\(https://img\.shields\.io/badge/coverage-[\d.]+%25-[a-z]+\)\]\([^)]+\)'
+    new_badge = f'[![Coverage](https://img.shields.io/badge/coverage-{coverage_percentage}%25-{color})](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)'
 
     content = re.sub(badge_pattern, new_badge, content)
 

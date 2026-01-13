@@ -1,32 +1,32 @@
 """Re-export helper modules so wallet_demo.py stays tidy."""
 
-from .address_management import display_wallet_info, get_wallet_address
-from .key_management import demo_get_public_key, demo_sign_data
 from .action_management import demo_create_action, demo_list_actions
+from .address_management import display_wallet_info, get_wallet_address
+from .advanced_management import (
+    demo_abort_action,
+    demo_list_outputs,
+    demo_relinquish_certificate,
+    demo_relinquish_output,
+)
+from .blockchain_info import (
+    demo_get_header_for_height,
+    demo_get_height,
+    demo_wait_for_authentication,
+)
 from .certificate_management import demo_acquire_certificate, demo_list_certificates
-from .identity_discovery import demo_discover_by_identity_key, demo_discover_by_attributes
 from .config import get_key_deriver, get_network, get_storage_provider, print_network_info
 from .crypto_operations import (
     demo_create_hmac,
+    demo_encrypt_decrypt,
     demo_verify_hmac,
     demo_verify_signature,
-    demo_encrypt_decrypt,
 )
+from .identity_discovery import demo_discover_by_attributes, demo_discover_by_identity_key
 from .key_linkage import (
     demo_reveal_counterparty_key_linkage,
     demo_reveal_specific_key_linkage,
 )
-from .advanced_management import (
-    demo_list_outputs,
-    demo_relinquish_output,
-    demo_abort_action,
-    demo_relinquish_certificate,
-)
-from .blockchain_info import (
-    demo_get_height,
-    demo_get_header_for_height,
-    demo_wait_for_authentication,
-)
+from .key_management import demo_get_public_key, demo_sign_data
 from .transaction_management import demo_internalize_action
 
 __all__ = [

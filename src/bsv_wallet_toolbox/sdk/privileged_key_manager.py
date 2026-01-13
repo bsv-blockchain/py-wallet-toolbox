@@ -14,6 +14,7 @@ Reference:
     - ts-sdk: ProtoWallet
 """
 
+import logging
 import os
 import random
 import threading
@@ -24,8 +25,6 @@ from bsv.keys import PrivateKey
 from bsv.wallet import ProtoWallet
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ class PrivilegedKeyManager:
     This class provides cryptographic operations (getPublicKey, createSignature, etc.)
     backed by a privileged key from a secure environment (HSM, enclave, etc.).
     The key is retained in memory for a limited duration and automatically destroyed.
-    
+
     All cryptographic operations are delegated to py-sdk's ProtoWallet, matching
     the TypeScript implementation.
 
@@ -101,7 +100,7 @@ class PrivilegedKeyManager:
             actual_retention_period = retention_period
         else:
             actual_retention_period = 120_000
-            
+
         if isinstance(key_getter, PrivateKey):
             self._key_getter = lambda reason: key_getter
         elif isinstance(key_getter, bytes):
@@ -145,7 +144,7 @@ class PrivilegedKeyManager:
 
     async def destroy_key(self) -> None:
         """Destroy the privileged key from memory.
-        
+
         Async method for TS parity.
         """
         self._destroy_key_sync()
@@ -199,7 +198,7 @@ class PrivilegedKeyManager:
 
     def _xor_bytes(self, a: bytes, b: bytes) -> bytes:
         """XOR two byte sequences."""
-        return bytes(x ^ y for x, y in zip(a, b))
+        return bytes(x ^ y for x, y in zip(a, b, strict=False))
 
     def _split_key_into_chunks(self, key_bytes: bytes) -> list[bytes]:
         """Split the 32-byte key into chunks."""
@@ -209,7 +208,7 @@ class PrivilegedKeyManager:
 
         for i in range(self._chunk_count):
             size = len(key_bytes) - offset if i == self._chunk_count - 1 else chunk_size
-            chunks.append(key_bytes[offset:offset + size])
+            chunks.append(key_bytes[offset : offset + size])
             offset += size
 
         return chunks
@@ -221,16 +220,16 @@ class PrivilegedKeyManager:
             for i in range(len(self._chunk_prop_names)):
                 chunk_enc = getattr(self, self._chunk_prop_names[i], None)
                 chunk_pad = getattr(self, self._chunk_pad_prop_names[i], None)
-                
+
                 if chunk_enc is None or chunk_pad is None:
                     return None
-                    
+
                 chunk_enc_bytes = bytes(chunk_enc)
                 chunk_pad_bytes = bytes(chunk_pad)
-                
+
                 if len(chunk_enc_bytes) != len(chunk_pad_bytes):
                     return None
-                    
+
                 raw_chunk = self._xor_bytes(chunk_enc_bytes, chunk_pad_bytes)
                 chunk_arrays.append(raw_chunk)
 
@@ -238,19 +237,19 @@ class PrivilegedKeyManager:
             raw_key = b"".join(chunk_arrays)
             if len(raw_key) != 32:
                 return None
-                
+
             return raw_key
         except Exception:
             return None
 
     async def get_privileged_key(self, reason: str = "") -> PrivateKey:
         """Get the privileged private key, using obfuscation if already cached.
-        
+
         Public async method for TS parity.
-        
+
         Args:
             reason: The reason for accessing the key (for auditing)
-            
+
         Returns:
             The PrivateKey object
         """
@@ -258,12 +257,12 @@ class PrivilegedKeyManager:
 
     def _get_privileged_key(self, reason: str) -> PrivateKey:
         """Get the privileged private key, using obfuscation if already cached.
-        
+
         Synchronous internal method.
-        
+
         Args:
             reason: The reason for accessing the key (for auditing)
-            
+
         Returns:
             The PrivateKey object
         """
@@ -281,7 +280,7 @@ class PrivilegedKeyManager:
             # Get 32-byte representation (left-pad if necessary)
             key_bytes = bytes.fromhex(fetched_key.hex())
             if len(key_bytes) < 32:
-                key_bytes = b'\x00' * (32 - len(key_bytes)) + key_bytes
+                key_bytes = b"\x00" * (32 - len(key_bytes)) + key_bytes
             elif len(key_bytes) > 32:
                 raise ValueError("PrivilegedKeyManager: Expected a 32-byte key, but got more.")
 
@@ -320,10 +319,10 @@ class PrivilegedKeyManager:
 
     def _create_proto_wallet(self, reason: str) -> ProtoWallet:
         """Create a ProtoWallet with the privileged key.
-        
+
         Args:
             reason: The reason for accessing the key (for auditing)
-            
+
         Returns:
             A ProtoWallet instance backed by the privileged key
         """
@@ -332,33 +331,30 @@ class PrivilegedKeyManager:
 
     def _convert_args_to_proto_format(self, args: dict[str, Any]) -> dict[str, Any]:
         """Convert args to ProtoWallet format (camelCase).
-        
+
         Args:
             args: Arguments in camelCase format (validation is enforced)
-            
+
         Returns:
             Arguments in camelCase format for ProtoWallet (py-sdk expects camelCase)
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         proto_args = {}
-        
+
         # Convert standardized protocolID to py-sdk expectation
         if "protocolID" in args and args["protocolID"] is not None:
             protocol_id = args["protocolID"]
             if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
-                proto_args["protocolID"] = {
-                    "securityLevel": protocol_id[0],
-                    "protocol": protocol_id[1]
-                }
+                proto_args["protocolID"] = {"securityLevel": protocol_id[0], "protocol": protocol_id[1]}
             else:
                 proto_args["protocolID"] = protocol_id
 
         # Convert standardized keyID to py-sdk expectation
         if "keyID" in args and args["keyID"] is not None:
             proto_args["keyID"] = args["keyID"]
-            
+
         # counterparty - default to 'self' if not provided (TS parity)
         counterparty = args.get("counterparty")
         if counterparty is not None:
@@ -366,15 +362,15 @@ class PrivilegedKeyManager:
         elif "protocolID" in args:
             # If protocolID is specified, default counterparty to 'self'
             proto_args["counterparty"] = "self"
-            
+
         # forSelf stays the same
         if "forSelf" in args:
             proto_args["forSelf"] = args["forSelf"]
-            
+
         # identityKey stays the same
         if "identityKey" in args:
             proto_args["identityKey"] = args["identityKey"]
-            
+
         # data - convert to bytes if it's a list
         if "data" in args:
             data = args["data"]
@@ -382,7 +378,7 @@ class PrivilegedKeyManager:
                 proto_args["data"] = bytes(data)
             else:
                 proto_args["data"] = data
-            
+
         # hashToDirectlySign -> hash_to_directly_sign
         if "hashToDirectlySign" in args:
             hash_val = args["hashToDirectlySign"]
@@ -394,7 +390,7 @@ class PrivilegedKeyManager:
             hash_val = args["hashToDirectlyVerify"]
             direct_verify_hash = bytes(hash_val) if isinstance(hash_val, list) else hash_val
             proto_args["hashToDirectlyVerify"] = direct_verify_hash
-            
+
         # signature - convert to bytes if it's a list
         if "signature" in args:
             sig = args["signature"]
@@ -402,7 +398,7 @@ class PrivilegedKeyManager:
                 proto_args["signature"] = bytes(sig)
             else:
                 proto_args["signature"] = sig
-            
+
         # plaintext - convert to bytes if it's a list
         if "plaintext" in args:
             pt = args["plaintext"]
@@ -410,19 +406,19 @@ class PrivilegedKeyManager:
                 proto_args["plaintext"] = bytes(pt)
             else:
                 proto_args["plaintext"] = pt
-            
+
         # ciphertext - keep as list (ProtoWallet handles both)
         if "ciphertext" in args:
             proto_args["ciphertext"] = args["ciphertext"]
-            
+
         # hmac - keep as list
         if "hmac" in args:
             proto_args["hmac"] = args["hmac"]
-            
+
         # verifier stays the same
         if "verifier" in args:
             proto_args["verifier"] = args["verifier"]
-            
+
         return proto_args
 
     async def get_public_key(
@@ -450,11 +446,11 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.get_public_key(proto_args)
         if "error" in result:
             raise RuntimeError(f"get_public_key failed: {result['error']}")
-            
+
         return {"publicKey": result.get("publicKey", "")}
 
     async def create_signature(
@@ -482,11 +478,11 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.create_signature(proto_args)
         if "error" in result:
             raise RuntimeError(f"create_signature failed: {result['error']}")
-            
+
         signature = result.get("signature", [])
         if isinstance(signature, bytes):
             return {"signature": list(signature)}
@@ -518,11 +514,11 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.verify_signature(proto_args)
         if "error" in result:
             raise RuntimeError(f"verify_signature failed: {result['error']}")
-            
+
         return {"valid": bool(result.get("valid", False))}
 
     async def encrypt(
@@ -549,15 +545,15 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         # Also pass plaintext at top level for ProtoWallet
         if "plaintext" in args:
             proto_args["plaintext"] = args["plaintext"]
-        
+
         result = proto.encrypt(proto_args)
         if "error" in result:
             raise RuntimeError(f"encrypt failed: {result['error']}")
-            
+
         ciphertext = result.get("ciphertext", [])
         return {"ciphertext": list(ciphertext) if ciphertext else []}
 
@@ -585,15 +581,15 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         # Also pass ciphertext at top level for ProtoWallet
         if "ciphertext" in args:
             proto_args["ciphertext"] = args["ciphertext"]
-        
+
         result = proto.decrypt(proto_args)
         if "error" in result:
             raise RuntimeError(f"decrypt failed: {result['error']}")
-            
+
         plaintext = result.get("plaintext", [])
         return {"plaintext": list(plaintext) if plaintext else []}
 
@@ -619,11 +615,11 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.create_hmac(proto_args)
         if "error" in result:
             raise RuntimeError(f"create_hmac failed: {result['error']}")
-            
+
         hmac_val = result.get("hmac", [])
         return {"hmac": list(hmac_val) if hmac_val else []}
 
@@ -652,11 +648,11 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.verify_hmac(proto_args)
         if "error" in result:
             raise RuntimeError(f"verify_hmac failed: {result['error']}")
-            
+
         return {"valid": bool(result.get("valid", False))}
 
     def reveal_counterparty_key_linkage(
@@ -679,11 +675,11 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.reveal_counterparty_key_linkage(proto_args)
         if "error" in result:
             raise RuntimeError(f"reveal_counterparty_key_linkage failed: {result['error']}")
-            
+
         return result
 
     def reveal_specific_key_linkage(
@@ -710,9 +706,9 @@ class PrivilegedKeyManager:
         reason = args.get("privilegedReason", "")
         proto = self._create_proto_wallet(reason)
         proto_args = self._convert_args_to_proto_format(args)
-        
+
         result = proto.reveal_specific_key_linkage(proto_args)
         if "error" in result:
             raise RuntimeError(f"reveal_specific_key_linkage failed: {result['error']}")
-            
+
         return result

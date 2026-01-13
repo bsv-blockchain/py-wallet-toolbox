@@ -6,7 +6,6 @@ for permission requests in WalletPermissionsManager.
 Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.callbacks.test.ts
 """
 
-import asyncio
 from typing import Never
 from unittest.mock import Mock
 
@@ -14,6 +13,7 @@ import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionCallback, WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True

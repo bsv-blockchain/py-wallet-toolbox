@@ -4,8 +4,7 @@ This module provides comprehensive tests for Wallet methods that have low covera
 focusing on mocking and edge cases.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.wallet import Wallet
 
@@ -19,7 +18,7 @@ class TestWalletBlockchainMethods:
         mock_services = Mock()
         mock_services.get_present_height.return_value = 800000
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_present_height()
             assert result == 800000
             mock_services.get_present_height.assert_called_once()
@@ -35,7 +34,7 @@ class TestWalletBlockchainMethods:
         mock_services = Mock()
         mock_services.find_chain_tip_header.return_value = mock_header
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.find_chain_tip_header()
             assert result == mock_header
             mock_services.find_chain_tip_header.assert_called_once()
@@ -46,7 +45,7 @@ class TestWalletBlockchainMethods:
         mock_services = Mock()
         mock_services.find_chain_tip_hash.return_value = mock_hash
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.find_chain_tip_hash()
             assert result == mock_hash
             mock_services.find_chain_tip_hash.assert_called_once()
@@ -58,7 +57,7 @@ class TestWalletBlockchainMethods:
         mock_services = Mock()
         mock_services.find_header_for_block_hash.return_value = mock_header
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.find_header_for_block_hash(block_hash)
             assert result == mock_header
             mock_services.find_header_for_block_hash.assert_called_once_with(block_hash)
@@ -70,7 +69,7 @@ class TestWalletBlockchainMethods:
         mock_services = Mock()
         mock_services.find_header_for_height.return_value = mock_header
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.find_header_for_height(height)
             assert result == mock_header
             mock_services.find_header_for_height.assert_called_once_with(height)
@@ -86,7 +85,7 @@ class TestWalletTransactionStatusMethods:
         mock_services = Mock()
         mock_services.get_tx_propagation.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_tx_propagation(txid)
             assert result == mock_result
             mock_services.get_tx_propagation.assert_called_once_with(txid)
@@ -98,7 +97,7 @@ class TestWalletTransactionStatusMethods:
         mock_services = Mock()
         mock_services.get_utxo_status.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_utxo_status(outpoint)
             assert result == mock_result
             mock_services.get_utxo_status.assert_called_once_with(outpoint, None, None)
@@ -110,7 +109,7 @@ class TestWalletTransactionStatusMethods:
         mock_services = Mock()
         mock_services.get_script_history.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_script_history(script_hash)
             assert result == mock_result
             mock_services.get_script_history.assert_called_once_with(script_hash)
@@ -122,7 +121,7 @@ class TestWalletTransactionStatusMethods:
         mock_services = Mock()
         mock_services.get_transaction_status.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_transaction_status(txid)
             assert result == mock_result
             mock_services.get_transaction_status.assert_called_once_with(txid)
@@ -134,7 +133,7 @@ class TestWalletTransactionStatusMethods:
         mock_services = Mock()
         mock_services.get_raw_tx.return_value = raw_tx_data
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_raw_tx(txid)
             # Method wraps the result in {"data": ...}
             assert result == {"data": raw_tx_data}
@@ -150,7 +149,7 @@ class TestWalletExchangeRateMethods:
         mock_services = Mock()
         mock_services.update_bsv_exchange_rate.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.update_bsv_exchange_rate()
             assert result == mock_result
             mock_services.update_bsv_exchange_rate.assert_called_once()
@@ -163,7 +162,7 @@ class TestWalletExchangeRateMethods:
         mock_services = Mock()
         mock_services.get_fiat_exchange_rate.return_value = expected_rate
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_fiat_exchange_rate(currency, base)
             assert result == expected_rate
             mock_services.get_fiat_exchange_rate.assert_called_once_with(currency, base)
@@ -175,7 +174,7 @@ class TestWalletExchangeRateMethods:
         mock_services = Mock()
         mock_services.get_fiat_exchange_rate.return_value = expected_rate
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_fiat_exchange_rate(currency)
             assert result == expected_rate
             mock_services.get_fiat_exchange_rate.assert_called_once_with(currency, "USD")
@@ -191,7 +190,7 @@ class TestWalletMerklePathMethods:
         mock_services = Mock()
         mock_services.get_merkle_path_for_transaction.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_merkle_path_for_transaction(txid)
             assert result == mock_result
             mock_services.get_merkle_path_for_transaction.assert_called_once_with(txid)
@@ -204,7 +203,7 @@ class TestWalletMerklePathMethods:
         mock_services = Mock()
         mock_services.is_valid_root_for_height.return_value = expected_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.is_valid_root_for_height(root, height)
             assert result == expected_result
             mock_services.is_valid_root_for_height.assert_called_once_with(root, height)
@@ -220,7 +219,7 @@ class TestWalletBeefMethods:
         mock_services = Mock()
         mock_services.post_beef.return_value = mock_result
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.post_beef(beef)
             assert result == mock_result
             mock_services.post_beef.assert_called_once_with(beef)
@@ -236,7 +235,7 @@ class TestWalletBeefMethods:
         mock_services = Mock()
         mock_services.post_beef_array.return_value = mock_results
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.post_beef_array(beefs)
             assert result == mock_results
             mock_services.post_beef_array.assert_called_once_with(beefs)
@@ -308,7 +307,7 @@ class TestWalletKnownTxidsMethods:
         # Force fallback to _known_txids by disabling beef (matching test_wallet_getknowntxids.py pattern)
         # This ensures the test works regardless of BEEF state
         wallet_with_storage.beef = None
-        
+
         new_txids = ["tx1", "tx2", "tx3"]
         result = wallet_with_storage.get_known_txids(new_txids)
 
@@ -324,7 +323,7 @@ class TestWalletDestructionMethods:
         """Test destroy method."""
         mock_storage = Mock()
 
-        with patch.object(wallet_with_storage, 'storage', mock_storage):
+        with patch.object(wallet_with_storage, "storage", mock_storage):
             wallet_with_storage.destroy()
 
             # Should call destroy on storage
@@ -371,7 +370,7 @@ class TestWalletNetworkMethods:
         mock_services = Mock()
         mock_services.get_height.return_value = {"height": 800000}
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_height({})
             assert isinstance(result, dict)
 
@@ -399,7 +398,7 @@ class TestWalletHeaderMethods:
         mock_services = Mock()
         mock_services.get_header_for_height.return_value = header_bytes
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_header(args)
             assert result == {"header": header_bytes.hex()}
 
@@ -413,6 +412,6 @@ class TestWalletHeaderMethods:
         mock_services = Mock()
         mock_services.get_header_for_height.return_value = header_bytes
 
-        with patch.object(wallet_with_storage, 'services', mock_services):
+        with patch.object(wallet_with_storage, "services", mock_services):
             result = wallet_with_storage.get_header_for_height(args)
             assert result == {"header": header_bytes.hex()}

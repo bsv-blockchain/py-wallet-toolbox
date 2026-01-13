@@ -55,4 +55,3 @@ def demo_sign_data(wallet: Wallet) -> None:
         print(f"   Public key: {result['publicKey']}")
     except Exception as err:
         print(f"❌ Failed to sign message: {err}")
-

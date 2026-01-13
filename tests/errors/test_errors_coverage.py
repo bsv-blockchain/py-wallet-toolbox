@@ -4,18 +4,19 @@ This module tests custom error classes and error handling utilities.
 """
 
 import pytest
+
 from bsv_wallet_toolbox.errors import (
-    WalletError,
-    ValidationError,
     ConfigurationError,
-    StateError,
-    OperationError,
     FormatError,
-    InvalidParameterError,
     InsufficientFundsError,
+    InvalidParameterError,
+    OperationError,
+    ReviewActionsError,
+    StateError,
     TransactionBroadcastError,
     TransactionSizeError,
-    ReviewActionsError,
+    ValidationError,
+    WalletError,
 )
 
 
@@ -105,11 +106,7 @@ class TestConfigurationError:
 
     def test_configuration_error_full(self) -> None:
         """Test ConfigurationError with all parameters."""
-        error = ConfigurationError(
-            "Incomplete setup",
-            component="wallet",
-            required=["key_deriver", "storage"]
-        )
+        error = ConfigurationError("Incomplete setup", component="wallet", required=["key_deriver", "storage"])
         assert error.context["component"] == "wallet"
         assert error.context["required"] == ["key_deriver", "storage"]
 
@@ -140,11 +137,7 @@ class TestStateError:
 
     def test_state_error_full(self) -> None:
         """Test StateError with all parameters."""
-        error = StateError(
-            "Cannot sign in current state",
-            current_state="locked",
-            expected_state="unlocked"
-        )
+        error = StateError("Cannot sign in current state", current_state="locked", expected_state="unlocked")
         assert error.context["currentState"] == "locked"
         assert error.context["expectedState"] == "unlocked"
 
@@ -170,11 +163,7 @@ class TestOperationError:
 
     def test_operation_error_full(self) -> None:
         """Test OperationError with all parameters."""
-        error = OperationError(
-            "Cannot complete operation",
-            operation="create_action",
-            reason="missing outputs"
-        )
+        error = OperationError("Cannot complete operation", operation="create_action", reason="missing outputs")
         assert error.context["operation"] == "create_action"
         assert error.context["reason"] == "missing outputs"
 
@@ -200,11 +189,7 @@ class TestFormatError:
 
     def test_format_error_full(self) -> None:
         """Test FormatError with all parameters."""
-        error = FormatError(
-            "Invalid BEEF format",
-            data_type="tx",
-            expected_format="atomic_beef"
-        )
+        error = FormatError("Invalid BEEF format", data_type="tx", expected_format="atomic_beef")
         assert error.context["dataType"] == "tx"
         assert error.context["expectedFormat"] == "atomic_beef"
 
@@ -308,7 +293,7 @@ class TestReviewActionsError:
         review_results = [{"txid": "abc123", "status": "success"}]
         send_results = [{"txid": "abc123", "status": "unproven"}]
         error = ReviewActionsError(review_results, send_results)
-        
+
         assert error.review_action_results == review_results
         assert error.send_with_results == send_results
         assert error.txid is None
@@ -318,21 +303,13 @@ class TestReviewActionsError:
 
     def test_review_actions_error_full(self) -> None:
         """Test ReviewActionsError with all parameters."""
-        review_results = [
-            {"txid": "abc123", "status": "doubleSpend", "competingTxs": ["def456"]}
-        ]
+        review_results = [{"txid": "abc123", "status": "doubleSpend", "competingTxs": ["def456"]}]
         send_results = [{"txid": "abc123", "status": "failed"}]
         tx_data = [1, 2, 3, 4, 5]
         no_send = ["xyz789:0"]
-        
-        error = ReviewActionsError(
-            review_results,
-            send_results,
-            txid="abc123",
-            tx=tx_data,
-            no_send_change=no_send
-        )
-        
+
+        error = ReviewActionsError(review_results, send_results, txid="abc123", tx=tx_data, no_send_change=no_send)
+
         assert error.review_action_results == review_results
         assert error.send_with_results == send_results
         assert error.txid == "abc123"
@@ -357,10 +334,7 @@ class TestReviewActionsError:
     def test_raise_review_actions_error(self) -> None:
         """Test raising ReviewActionsError."""
         with pytest.raises(ReviewActionsError):
-            raise ReviewActionsError(
-                [{"txid": "test", "status": "success"}],
-                [{"txid": "test", "status": "unproven"}]
-            )
+            raise ReviewActionsError([{"txid": "test", "status": "success"}], [{"txid": "test", "status": "unproven"}])
 
 
 class TestErrorInheritance:
@@ -437,4 +411,3 @@ class TestErrorStringRepresentations:
         result = str(error)
         assert "1000" in result
         assert "500" in result
-

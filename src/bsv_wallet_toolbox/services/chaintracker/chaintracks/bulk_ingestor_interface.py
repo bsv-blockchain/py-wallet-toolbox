@@ -6,8 +6,10 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/models/bulk_ingestor.go
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Callable, Any
+from collections.abc import Callable
+from typing import Any
 
 
 class BulkIngestor(ABC):
@@ -17,7 +19,7 @@ class BulkIngestor(ABC):
     """
 
     @abstractmethod
-    async def synchronize(self, present_height: int, range_to_fetch: Any) -> Tuple[List[Any], Callable]:
+    async def synchronize(self, present_height: int, range_to_fetch: Any) -> tuple[list[Any], Callable]:
         """Synchronize bulk headers for the given height range.
 
         Args:
@@ -47,11 +49,7 @@ class NamedBulkIngestor:
 class BulkHeaderMinimumInfo:
     """Essential metadata for a bulk block header file."""
 
-    def __init__(self,
-                 first_height: int,
-                 count: int,
-                 file_name: str,
-                 source_url: str = ""):
+    def __init__(self, first_height: int, count: int, file_name: str, source_url: str = ""):
         """Initialize bulk header file info.
 
         Args:
@@ -68,4 +66,5 @@ class BulkHeaderMinimumInfo:
     def to_height_range(self) -> Any:
         """Convert to HeightRange."""
         from .util.height_range import HeightRange
+
         return HeightRange.new_height_range(self.first_height, self.first_height + self.count - 1)

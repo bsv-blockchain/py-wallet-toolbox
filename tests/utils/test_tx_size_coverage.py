@@ -60,7 +60,7 @@ class TestTransactionSize:
         """Test simple 1-input, 2-output transaction."""
         input_sizes = [107]  # Typical P2PKH unlocking script
         output_sizes = [25, 25]  # Two P2PKH outputs
-        
+
         size = transaction_size(input_sizes, output_sizes)
         # 8 (envelope) + 1 (input count) + input + 1 (output count) + outputs
         expected = 8 + 1 + transaction_input_size(107) + 1 + transaction_output_size(25) * 2
@@ -76,7 +76,7 @@ class TestTransactionSize:
         """Test transaction with multiple inputs."""
         input_sizes = [107, 107, 107]
         output_sizes = [25]
-        
+
         size = transaction_size(input_sizes, output_sizes)
         assert size > 400
 
@@ -84,7 +84,7 @@ class TestTransactionSize:
         """Test transaction with many inputs (varint changes)."""
         input_sizes = [107] * 300  # 300 inputs, varint becomes 3 bytes
         output_sizes = [25]
-        
+
         size = transaction_size(input_sizes, output_sizes)
         # Should account for 3-byte varint for input count
         assert size > 40000
@@ -146,7 +146,7 @@ class TestRealWorldScenarios:
         # 1 input with P2PKH (107 byte script), 2 outputs (payment + change)
         input_sizes = [107]
         output_sizes = [25, 25]
-        
+
         size = transaction_size(input_sizes, output_sizes)
         # Should be approximately 226 bytes
         assert 220 <= size <= 230
@@ -155,7 +155,7 @@ class TestRealWorldScenarios:
         """Test consolidation transaction (many inputs, one output)."""
         input_sizes = [107] * 10
         output_sizes = [25]
-        
+
         size = transaction_size(input_sizes, output_sizes)
         # Should be around 1524 bytes
         assert 1480 <= size <= 1530
@@ -164,7 +164,7 @@ class TestRealWorldScenarios:
         """Test distribution transaction (one input, many outputs)."""
         input_sizes = [107]
         output_sizes = [25] * 10
-        
+
         size = transaction_size(input_sizes, output_sizes)
         # Should be around 500 bytes
         assert 490 <= size <= 510

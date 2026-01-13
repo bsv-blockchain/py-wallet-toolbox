@@ -115,21 +115,21 @@ class WalletPermissionsManager:
             "differentiatePrivilegedOperations": True,
         }
         self._config: PermissionsManagerConfig = {**default_config, **(config or {})}
-        
+
         # Apply convenience parameter if provided
         if encrypt_wallet_metadata is not None:
             self._config["encryptWalletMetadata"] = encrypt_wallet_metadata
 
         # Permission token cache
         self._permissions: dict[str, list[PermissionToken]] = {}
-        
+
         # Active permission requests (for async permission flow)
         # Each entry contains: request, pending (list of futures), cache_key
         self._active_requests: dict[str, dict[str, Any]] = {}
-        
+
         # Pending permission requests (for tracking grant/deny)
         self._pending_requests: dict[str, dict[str, Any]] = {}
-        
+
         # Request ID counter
         self._request_counter: int = 0
 
@@ -138,7 +138,7 @@ class WalletPermissionsManager:
         self._db_lock = threading.RLock()
         self._init_database()
         self._load_permissions_from_db()
-        
+
         # Permission event callbacks - support for all event types
         self._callbacks: dict[str, list[Callable]] = {
             "onProtocolPermissionRequested": [],
@@ -1031,10 +1031,11 @@ class WalletPermissionsManager:
                     # Call the callback - for test compatibility, call synchronously
                     # even if it's an async function
                     import asyncio
+
                     if asyncio.iscoroutinefunction(callback):
                         # Create a new event loop if needed for async callbacks
                         try:
-                            loop = asyncio.get_running_loop()
+                            asyncio.get_running_loop()
                             # If we're already in an event loop, we can't run another
                             # Just call the function directly (for testing)
                             callback(data)
@@ -1046,7 +1047,6 @@ class WalletPermissionsManager:
                 except Exception as e:
                     # Continue with other callbacks even if one fails
                     print(f"Exception in callback: {e}")
-                    pass
 
     def unbind_callback(self, reference: int | Callable, event_name: str | None = None) -> bool:
         """Unbind a previously registered callback.
@@ -1121,7 +1121,7 @@ class WalletPermissionsManager:
         reason: str | None = None,
         privileged: bool | None = None,
         seek_permission: bool = True,
-        usage_type: str = "generic"
+        usage_type: str = "generic",
     ) -> bool:
         """Ensure protocol permission is granted.
 
@@ -1169,17 +1169,17 @@ class WalletPermissionsManager:
             return True
 
         # Allow the configured exceptions based on usage_type
-        if usage_type == 'signing' and not self._config.get("seekProtocolPermissionsForSigning", True):
+        if usage_type == "signing" and not self._config.get("seekProtocolPermissionsForSigning", True):
             return True
-        if usage_type == 'encrypting' and not self._config.get("seekProtocolPermissionsForEncrypting", True):
+        if usage_type == "encrypting" and not self._config.get("seekProtocolPermissionsForEncrypting", True):
             return True
-        if usage_type == 'hmac' and not self._config.get("seekProtocolPermissionsForHMAC", True):
+        if usage_type == "hmac" and not self._config.get("seekProtocolPermissionsForHMAC", True):
             return True
-        if usage_type == 'publicKey' and not self._config.get("seekPermissionsForPublicKeyRevelation", True):
+        if usage_type == "publicKey" and not self._config.get("seekPermissionsForPublicKeyRevelation", True):
             return True
-        if usage_type == 'identityKey' and not self._config.get("seekPermissionsForIdentityKeyRevelation", True):
+        if usage_type == "identityKey" and not self._config.get("seekPermissionsForIdentityKeyRevelation", True):
             return True
-        if usage_type == 'linkageRevelation' and not self._config.get("seekPermissionsForKeyLinkageRevelation", True):
+        if usage_type == "linkageRevelation" and not self._config.get("seekPermissionsForKeyLinkageRevelation", True):
             return True
 
         # If not differentiating privileged operations, ignore privileged flag
@@ -1213,7 +1213,9 @@ class WalletPermissionsManager:
                 originator, privileged, protocol_id, counterparty, reason, renewal=False
             )
 
-    def _build_request_key(self, originator: str, privileged: bool, protocol_id: dict[str, Any] | list, counterparty: str | None) -> str:
+    def _build_request_key(
+        self, originator: str, privileged: bool, protocol_id: dict[str, Any] | list, counterparty: str | None
+    ) -> str:
         """Build a cache key for permission requests."""
         if isinstance(protocol_id, list):
             protocol_str = f"{protocol_id[0]}:{protocol_id[1] if len(protocol_id) > 1 else ''}"
@@ -1227,10 +1229,7 @@ class WalletPermissionsManager:
             return False
 
         tokens = self._permissions[cache_key]
-        for token in tokens:
-            if not self._is_token_expired(token):
-                return True
-        return False
+        return any(not self._is_token_expired(token) for token in tokens)
 
     def _cache_permission(self, cache_key: str, expiry: int | None) -> None:
         """Cache a permission with expiry."""
@@ -1251,6 +1250,7 @@ class WalletPermissionsManager:
             return False  # No expiry means never expires
 
         import time
+
         current_time = int(time.time() * 1000)  # Convert to milliseconds
         return current_time > expiry
 
@@ -1260,12 +1260,15 @@ class WalletPermissionsManager:
         privileged: bool,
         protocol_id: dict[str, Any] | list,
         counterparty: str | None,
-        include_expired: bool = False
+        include_expired: bool = False,
     ) -> dict[str, Any] | None:
         """Find an existing protocol permission token."""
         # Convert protocol_id to dict format
         if isinstance(protocol_id, list):
-            protocol_id = {"securityLevel": protocol_id[0], "protocolName": protocol_id[1] if len(protocol_id) > 1 else ""}
+            protocol_id = {
+                "securityLevel": protocol_id[0],
+                "protocolName": protocol_id[1] if len(protocol_id) > 1 else "",
+            }
 
         # For now, use the existing verify_dpacp_permission logic
         # In a full implementation, this would query the actual token storage
@@ -1282,12 +1285,15 @@ class WalletPermissionsManager:
         counterparty: str | None,
         reason: str | None,
         renewal: bool = False,
-        previous_token: dict[str, Any] | None = None
+        previous_token: dict[str, Any] | None = None,
     ) -> bool:
         """Request permission from user via callback flow."""
         # Convert protocol_id to dict format
         if isinstance(protocol_id, list):
-            protocol_id = {"securityLevel": protocol_id[0], "protocolName": protocol_id[1] if len(protocol_id) > 1 else ""}
+            protocol_id = {
+                "securityLevel": protocol_id[0],
+                "protocolName": protocol_id[1] if len(protocol_id) > 1 else "",
+            }
 
         # Create permission request
         request_id = f"req_{self._request_counter}"
@@ -1302,7 +1308,7 @@ class WalletPermissionsManager:
             "reason": reason,
             "renewal": renewal,
             "previousToken": previous_token,
-            "requestID": request_id
+            "requestID": request_id,
         }
 
         # Store as pending request
@@ -1327,11 +1333,7 @@ class WalletPermissionsManager:
 
         # Create a new active request
         future = asyncio.Future()
-        active_request = {
-            "request": request,
-            "pending": [future],
-            "cacheKey": cache_key
-        }
+        active_request = {"request": request, "pending": [future], "cacheKey": cache_key}
         self._active_requests[request_id] = active_request
 
         # Trigger callback if available
@@ -1343,7 +1345,7 @@ class WalletPermissionsManager:
                     # For test compatibility, run async callback synchronously
                     try:
                         # Try to get current loop
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # If we get here, loop is running, create task and wait a bit
                         task = asyncio.create_task(callback(request))
                         # Wait for the task to complete (with timeout for tests)
@@ -1380,7 +1382,7 @@ class WalletPermissionsManager:
         operation: str = "access",
         reason: str | None = None,
         seek_permission: bool = True,
-        usage_type: str = "insertion"
+        usage_type: str = "insertion",
     ) -> bool:
         """Ensure basket access permission is granted.
 
@@ -1416,16 +1418,10 @@ class WalletPermissionsManager:
         if not seek_permission:
             return False
 
-        return await self._request_basket_access_flow(
-            originator, basket, reason, usage_type
-        )
+        return await self._request_basket_access_flow(originator, basket, reason, usage_type)
 
     async def _request_basket_access_flow(
-        self,
-        originator: str,
-        basket: str,
-        reason: str | None,
-        usage_type: str
+        self, originator: str, basket: str, reason: str | None, usage_type: str
     ) -> bool:
         """Request basket access permission from user via callback flow."""
         # Create permission request
@@ -1438,7 +1434,7 @@ class WalletPermissionsManager:
             "basket": basket,
             "reason": reason,
             "usageType": usage_type,
-            "requestID": request_id
+            "requestID": request_id,
         }
 
         # Store as pending request
@@ -1448,11 +1444,7 @@ class WalletPermissionsManager:
         future = asyncio.Future()
 
         # Store active request
-        active_request = {
-            "request": request,
-            "pending": [future],
-            "cacheKey": None  # Basket requests don't coalesce
-        }
+        active_request = {"request": request, "pending": [future], "cacheKey": None}  # Basket requests don't coalesce
         self._active_requests[request_id] = active_request
 
         # Trigger callback if available
@@ -1464,7 +1456,7 @@ class WalletPermissionsManager:
                     # For test compatibility, run async callback synchronously
                     try:
                         # Try to get current loop
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # If we get here, loop is running, create task and wait a bit
                         task = asyncio.create_task(callback(request))
                         # Wait for the task to complete (with timeout for tests)
@@ -1495,12 +1487,7 @@ class WalletPermissionsManager:
         return await future
 
     async def ensure_certificate_access(
-        self,
-        originator: str,
-        cert_type: str,
-        verifier: str,
-        operation: str = "access",
-        reason: str | None = None
+        self, originator: str, cert_type: str, verifier: str, operation: str = "access", reason: str | None = None
     ) -> bool:
         """Ensure certificate access permission is granted.
 
@@ -1526,12 +1513,7 @@ class WalletPermissionsManager:
         token = self.request_dcap_permission(originator, cert_type, verifier)
         return token is not None and token != {}
 
-    async def ensure_spending_authorization(
-        self,
-        originator: str,
-        satoshis: int,
-        reason: str | None = None
-    ) -> bool:
+    async def ensure_spending_authorization(self, originator: str, satoshis: int, reason: str | None = None) -> bool:
         """Ensure spending authorization is granted.
 
         Args:
@@ -1584,7 +1566,7 @@ class WalletPermissionsManager:
 
         # Check for admin-only protocols (BRC-100: starts with 'admin' or 'p ')
         protocol_name = protocol_id.get("protocolName", "") if isinstance(protocol_id, dict) else ""
-        if protocol_name.startswith("admin") or protocol_name.startswith("p "):
+        if protocol_name.startswith(("admin", "p ")):
             raise ValueError(f"Protocol '{protocol_name}' is admin-only")
 
         # Check config flags based on usage type (matching TypeScript ensureProtocolPermission)
@@ -1613,9 +1595,7 @@ class WalletPermissionsManager:
             if not token:
                 raise RuntimeError(f"Protocol permission denied for {operation}")
 
-    def _check_basket_permissions(
-        self, originator: str, basket: str, operation: str = "access"
-    ) -> None:
+    def _check_basket_permissions(self, originator: str, basket: str, operation: str = "access") -> None:
         """Check if basket permissions are granted.
 
         Args:
@@ -1632,7 +1612,7 @@ class WalletPermissionsManager:
         # Check for admin-only baskets (BRC-100: starts with 'admin', 'p ', or is 'default')
         if basket == "default":
             raise ValueError(f"Basket '{basket}' is admin-only")
-        if basket.startswith("admin") or basket.startswith("p "):
+        if basket.startswith(("admin", "p ")):
             raise ValueError(f"Basket '{basket}' is admin-only")
 
         # Check config flags
@@ -1653,7 +1633,7 @@ class WalletPermissionsManager:
             "basket": basket,
             "reason": f"Requesting access to basket '{basket}' for {operation}",
         }
-        
+
         token = self._check_permission(permission_request)
         if not token:
             raise RuntimeError(f"Basket permission denied for {operation}")
@@ -1694,9 +1674,7 @@ class WalletPermissionsManager:
             if not token:
                 raise RuntimeError(f"Certificate permission denied for {operation}")
 
-    def _check_spending_permissions(
-        self, originator: str, satoshis: int, description: str = "spending"
-    ) -> None:
+    def _check_spending_permissions(self, originator: str, satoshis: int, description: str = "spending") -> None:
         """Check if spending permissions are granted.
 
         Args:
@@ -1806,12 +1784,12 @@ class WalletPermissionsManager:
             if callbacks:
                 # Call the first registered callback
                 callback = callbacks[0]
-                    # Execute callback - handle async callbacks
+                # Execute callback - handle async callbacks
                 if asyncio.iscoroutinefunction(callback):
                     # For test compatibility, run async callback synchronously
                     try:
                         # Try to get current loop
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # If we get here, loop is running, create task and wait a bit
                         task = asyncio.create_task(callback(permission_request))
                         # Wait for the task to complete (with timeout for tests)
@@ -1819,15 +1797,14 @@ class WalletPermissionsManager:
                         while not task.done() and (time.time() - start_time) < 1.0:  # 1 second timeout
                             time.sleep(0.01)
                         if task.done():
-                            result = task.result()
+                            task.result()
                         else:
-                            result = None  # Timeout
+                            pass  # Timeout
                     except RuntimeError:
                         # No running loop, create new one
                         asyncio.run(callback(permission_request))
-                        result = None
                 else:
-                    result = callback(permission_request)
+                    callback(permission_request)
 
                     # Check if permission was granted via grant_permission/deny_permission
                     if request_id in self._pending_requests:
@@ -1930,28 +1907,16 @@ class WalletPermissionsManager:
 
         if permission_type == "protocol":
             return self.grant_dpacp_permission(
-                originator,
-                permission_request.get("protocolID", {}),
-                permission_request.get("counterparty")
+                originator, permission_request.get("protocolID", {}), permission_request.get("counterparty")
             )
         elif permission_type == "basket":
-            return self.grant_dbap_permission(
-                originator,
-                permission_request.get("basket", "")
-            )
+            return self.grant_dbap_permission(originator, permission_request.get("basket", ""))
         elif permission_type == "certificate":
             cert_info = permission_request.get("certificate", {})
-            return self.grant_dcap_permission(
-                originator,
-                cert_info.get("certType", ""),
-                cert_info.get("verifier", "")
-            )
+            return self.grant_dcap_permission(originator, cert_info.get("certType", ""), cert_info.get("verifier", ""))
         elif permission_type == "spending":
             spending_info = permission_request.get("spending", {})
-            return self.grant_dsap_permission(
-                originator,
-                spending_info.get("satoshis", 0)
-            )
+            return self.grant_dsap_permission(originator, spending_info.get("satoshis", 0))
 
         # Fallback
         return self.create_permission_token(permission_type, permission_request)
@@ -1990,7 +1955,9 @@ class WalletPermissionsManager:
             cache_key = self._get_cache_key_for_token(token)
             if cache_key in self._permissions:
                 # Replace old token with new one
-                self._permissions[cache_key] = [t for t in self._permissions[cache_key] if t.get("txid") != token.get("txid")]
+                self._permissions[cache_key] = [
+                    t for t in self._permissions[cache_key] if t.get("txid") != token.get("txid")
+                ]
                 self._permissions[cache_key].append(new_token)
 
             return new_token
@@ -2016,8 +1983,7 @@ class WalletPermissionsManager:
             cache_key = self._get_cache_key_for_token(token)
             if cache_key in self._permissions:
                 self._permissions[cache_key] = [
-                    t for t in self._permissions[cache_key]
-                    if t.get("txid") != token.get("txid")
+                    t for t in self._permissions[cache_key] if t.get("txid") != token.get("txid")
                 ]
                 if not self._permissions[cache_key]:
                     del self._permissions[cache_key]
@@ -2092,7 +2058,7 @@ class WalletPermissionsManager:
         active_request = {
             "request": grouped_request,
             "pending": [future],
-            "cacheKey": None  # Grouped requests don't coalesce
+            "cacheKey": None,  # Grouped requests don't coalesce
         }
         self._active_requests[grouped_request["requestID"]] = active_request
 
@@ -2103,7 +2069,7 @@ class WalletPermissionsManager:
                 callback = callbacks[0]
                 try:
                     # Execute callback
-                    result = callback(grouped_request)
+                    callback(grouped_request)
 
                     # Check if permissions were granted
                     request_id = grouped_request["requestID"]
@@ -2168,9 +2134,7 @@ class WalletPermissionsManager:
         # Negative = receiving (our inputs exceed our outputs)
         return output_satoshis - input_satoshis
 
-    def _check_spending_authorization(
-        self, originator: str, satoshis: int, description: str
-    ) -> bool:
+    def _check_spending_authorization(self, originator: str, satoshis: int, description: str) -> bool:
         """Check if spending is authorized for the given amount.
 
         Args:
@@ -2187,9 +2151,11 @@ class WalletPermissionsManager:
 
         for tokens in self._permissions.values():
             for token in tokens:
-                if (token.get("type") == "spending" and
-                    token.get("originator") == originator and
-                    token.get("expiry", 0) > current_time):
+                if (
+                    token.get("type") == "spending"
+                    and token.get("originator") == originator
+                    and token.get("expiry", 0) > current_time
+                ):
                     valid_tokens.append(token)
 
         # Check if any token covers the requested amount
@@ -2231,9 +2197,11 @@ class WalletPermissionsManager:
         # Find and update spending tokens
         for tokens in self._permissions.values():
             for token in tokens:
-                if (token.get("type") == "spending" and
-                    token.get("originator") == originator and
-                    token.get("expiry", 0) > current_time):
+                if (
+                    token.get("type") == "spending"
+                    and token.get("originator") == originator
+                    and token.get("expiry", 0) > current_time
+                ):
 
                     authorized_amount = token.get("authorizedAmount", 0)
                     tracked_spending = token.get("trackedSpending", 0)
@@ -2273,6 +2241,7 @@ class WalletPermissionsManager:
 
         # Make a copy to avoid modifying original
         import copy
+
         args = copy.deepcopy(args)
 
         # Check basket permissions for outputs (BRC-100: admin-only baskets must be blocked first)
@@ -2809,9 +2778,7 @@ class WalletPermissionsManager:
 
         return self._underlying_wallet.discover_by_attributes(args, originator)
 
-    def _check_label_permissions(
-        self, originator: str, action_labels: list[str], operation: str = "apply"
-    ) -> None:
+    def _check_label_permissions(self, originator: str, action_labels: list[str], operation: str = "apply") -> None:
         """Check if label permissions are granted.
 
         Uses protocol permission system with special protocol ID [1, 'action label <label>']
@@ -2848,7 +2815,7 @@ class WalletPermissionsManager:
         # TypeScript uses protocol ID [1, 'action label <label>']
         for label in action_labels:
             protocol_id = {"securityLevel": 1, "protocolName": f"action label {label}"}
-            
+
             # Check for existing permission token
             if not self.verify_dpacp_permission(originator, protocol_id):
                 # Request permission via callback
@@ -2872,10 +2839,10 @@ class WalletPermissionsManager:
         """
         import asyncio
         import inspect
-        
+
         if inspect.iscoroutine(result_or_coro):
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Can't use run_until_complete in existing loop
                 raise RuntimeError("Cannot await in sync context")
             except RuntimeError:
@@ -2992,13 +2959,14 @@ class WalletPermissionsManager:
 
         # Call underlying wallet
         result_or_coro = self._underlying_wallet.list_actions(args, originator)
-        
+
         # Handle async if needed
         import asyncio
         import inspect
+
         if inspect.iscoroutine(result_or_coro):
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Can't use run_until_complete in existing loop
                 # For sync context in tests, just raise
                 raise RuntimeError("Cannot await in sync context")
@@ -3007,11 +2975,11 @@ class WalletPermissionsManager:
                 result = asyncio.run(result_or_coro)
         else:
             result = result_or_coro
-        
+
         # Decrypt metadata if encryption is enabled
         if self._config.get("encryptWalletMetadata") and result.get("actions"):
             result = self._decrypt_actions_metadata(result)
-        
+
         return result
 
     def list_outputs(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
@@ -3033,13 +3001,14 @@ class WalletPermissionsManager:
 
         # Call underlying wallet
         result_or_coro = self._underlying_wallet.list_outputs(args, originator)
-        
+
         # Handle async if needed
         import asyncio
         import inspect
+
         if inspect.iscoroutine(result_or_coro):
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Can't use run_until_complete in existing loop
                 raise RuntimeError("Cannot await in sync context")
             except RuntimeError:
@@ -3047,11 +3016,11 @@ class WalletPermissionsManager:
                 result = asyncio.run(result_or_coro)
         else:
             result = result_or_coro
-        
+
         # Decrypt metadata if encryption is enabled
         if self._config.get("encryptWalletMetadata") and result.get("outputs"):
             result = self._decrypt_outputs_metadata(result)
-        
+
         return result
 
     def grant_permission(self, request_details: dict[str, Any]) -> dict[str, Any]:
@@ -3149,7 +3118,7 @@ class WalletPermissionsManager:
             # Check if it's a coroutine (async) or regular function
             import asyncio
             import inspect
-            
+
             result_or_coro = self._underlying_wallet.encrypt(
                 {
                     "plaintext": plaintext_bytes,
@@ -3158,11 +3127,11 @@ class WalletPermissionsManager:
                 },
                 self._admin_originator,
             )
-            
+
             # Handle async if needed
             if inspect.iscoroutine(result_or_coro):
                 try:
-                    loop = asyncio.get_running_loop()
+                    asyncio.get_running_loop()
                     # If we're in an event loop, we can't use run_until_complete
                     # For sync context in tests, just return plaintext
                     return plaintext
@@ -3174,6 +3143,7 @@ class WalletPermissionsManager:
 
             # Convert ciphertext bytes to base64 string
             import base64
+
             ciphertext_bytes = bytes(result.get("ciphertext", []))
             return base64.b64encode(ciphertext_bytes).decode()
 
@@ -3199,12 +3169,13 @@ class WalletPermissionsManager:
         try:
             # Decode base64 ciphertext to bytes
             import base64
+
             ciphertext_bytes = list(base64.b64decode(ciphertext))
 
             # Call underlying wallet's decrypt with admin protocol
             import asyncio
             import inspect
-            
+
             result_or_coro = self._underlying_wallet.decrypt(
                 {
                     "ciphertext": ciphertext_bytes,
@@ -3213,11 +3184,11 @@ class WalletPermissionsManager:
                 },
                 self._admin_originator,
             )
-            
+
             # Handle async if needed
             if inspect.iscoroutine(result_or_coro):
                 try:
-                    loop = asyncio.get_running_loop()
+                    asyncio.get_running_loop()
                     # If we're in an event loop, we can't use run_until_complete
                     # For sync context in tests, just return ciphertext
                     return ciphertext
@@ -3250,24 +3221,25 @@ class WalletPermissionsManager:
         """
         # Make a copy to avoid modifying original
         import copy
+
         args = copy.deepcopy(args)
 
         # Encrypt top-level description
-        if "description" in args and args["description"]:
+        if args.get("description"):
             args["description"] = self._maybe_encrypt_metadata(args["description"])
 
         # Encrypt input descriptions
         if "inputs" in args:
             for input_item in args["inputs"]:
-                if "inputDescription" in input_item and input_item["inputDescription"]:
+                if input_item.get("inputDescription"):
                     input_item["inputDescription"] = self._maybe_encrypt_metadata(input_item["inputDescription"])
 
         # Encrypt output descriptions and custom instructions
         if "outputs" in args:
             for output_item in args["outputs"]:
-                if "outputDescription" in output_item and output_item["outputDescription"]:
+                if output_item.get("outputDescription"):
                     output_item["outputDescription"] = self._maybe_encrypt_metadata(output_item["outputDescription"])
-                if "customInstructions" in output_item and output_item["customInstructions"]:
+                if output_item.get("customInstructions"):
                     output_item["customInstructions"] = self._maybe_encrypt_metadata(output_item["customInstructions"])
 
         return args
@@ -3287,27 +3259,34 @@ class WalletPermissionsManager:
         """
         # Make a copy to avoid modifying original
         import copy
+
         result = copy.deepcopy(result)
 
         if "actions" in result:
             for action in result["actions"]:
                 # Decrypt action description
-                if "description" in action and action["description"]:
+                if action.get("description"):
                     action["description"] = self._maybe_decrypt_metadata(action["description"])
 
                 # Decrypt input descriptions
                 if "inputs" in action:
                     for input_item in action["inputs"]:
-                        if "inputDescription" in input_item and input_item["inputDescription"]:
-                            input_item["inputDescription"] = self._maybe_decrypt_metadata(input_item["inputDescription"])
+                        if input_item.get("inputDescription"):
+                            input_item["inputDescription"] = self._maybe_decrypt_metadata(
+                                input_item["inputDescription"]
+                            )
 
                 # Decrypt output descriptions and custom instructions
                 if "outputs" in action:
                     for output_item in action["outputs"]:
-                        if "outputDescription" in output_item and output_item["outputDescription"]:
-                            output_item["outputDescription"] = self._maybe_decrypt_metadata(output_item["outputDescription"])
-                        if "customInstructions" in output_item and output_item["customInstructions"]:
-                            output_item["customInstructions"] = self._maybe_decrypt_metadata(output_item["customInstructions"])
+                        if output_item.get("outputDescription"):
+                            output_item["outputDescription"] = self._maybe_decrypt_metadata(
+                                output_item["outputDescription"]
+                            )
+                        if output_item.get("customInstructions"):
+                            output_item["customInstructions"] = self._maybe_decrypt_metadata(
+                                output_item["customInstructions"]
+                            )
 
         return result
 
@@ -3326,15 +3305,15 @@ class WalletPermissionsManager:
         """
         # Make a copy to avoid modifying original
         import copy
+
         result = copy.deepcopy(result)
 
         if "outputs" in result:
             for output_item in result["outputs"]:
-                if "customInstructions" in output_item and output_item["customInstructions"]:
+                if output_item.get("customInstructions"):
                     output_item["customInstructions"] = self._maybe_decrypt_metadata(output_item["customInstructions"])
 
         return result
-
 
     def _init_database(self) -> None:
         """Initialize SQLite database for permission persistence."""
@@ -3342,7 +3321,8 @@ class WalletPermissionsManager:
         self._db_conn = sqlite3.connect(":memory:")
 
         with self._db_lock:
-            self._db_conn.execute("""
+            self._db_conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS permission_tokens (
                     id INTEGER PRIMARY KEY,
                     cache_key TEXT NOT NULL,
@@ -3350,7 +3330,8 @@ class WalletPermissionsManager:
                     created_at INTEGER NOT NULL,
                     UNIQUE(cache_key, token_data)
                 )
-            """)
+            """
+            )
             self._db_conn.commit()
 
     def _load_permissions_from_db(self) -> None:
@@ -3359,11 +3340,14 @@ class WalletPermissionsManager:
             return
 
         with self._db_lock:
-            cursor = self._db_conn.execute("""
+            cursor = self._db_conn.execute(
+                """
                 SELECT cache_key, token_data
                 FROM permission_tokens
                 WHERE created_at > ?
-            """, (int(time.time() * 1000) - 30 * 24 * 60 * 60 * 1000,))  # 30 days ago
+            """,
+                (int(time.time() * 1000) - 30 * 24 * 60 * 60 * 1000,),
+            )  # 30 days ago
 
             for cache_key, token_data in cursor.fetchall():
                 try:
@@ -3380,10 +3364,13 @@ class WalletPermissionsManager:
             return
 
         with self._db_lock:
-            self._db_conn.execute("""
+            self._db_conn.execute(
+                """
                 INSERT OR REPLACE INTO permission_tokens (cache_key, token_data, created_at)
                 VALUES (?, ?, ?)
-            """, (cache_key, json.dumps(token), int(time.time() * 1000)))
+            """,
+                (cache_key, json.dumps(token), int(time.time() * 1000)),
+            )
             self._db_conn.commit()
 
     def _cleanup_expired_permissions(self) -> None:
@@ -3393,13 +3380,16 @@ class WalletPermissionsManager:
 
         current_time = int(time.time() * 1000)
         with self._db_lock:
-            self._db_conn.execute("""
+            self._db_conn.execute(
+                """
                 DELETE FROM permission_tokens
                 WHERE json_extract(token_data, "$.expiry") < ? AND json_extract(token_data, "$.expiry") > 0
-            """, (current_time,))
+            """,
+                (current_time,),
+            )
             self._db_conn.commit()
 
     def __del__(self) -> None:
         """Clean up database connection on destruction."""
-        if hasattr(self, '_db_conn') and self._db_conn:
+        if hasattr(self, "_db_conn") and self._db_conn:
             self._db_conn.close()

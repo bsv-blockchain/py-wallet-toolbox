@@ -11,21 +11,21 @@ import time
 import pytest
 
 try:
-    from bsv_wallet_toolbox.utils.random_utils import (
-        wait_async,
-        random_bytes,
-        random_bytes_hex,
-        random_bytes_base64,
-        sha256_hash,
-        double_sha256_le,
-        double_sha256_be,
-        validate_seconds_since_epoch,
-    )
     from bsv_wallet_toolbox.errors import InvalidParameterError
+    from bsv_wallet_toolbox.utils.random_utils import (
+        double_sha256_be,
+        double_sha256_le,
+        random_bytes,
+        random_bytes_base64,
+        random_bytes_hex,
+        sha256_hash,
+        validate_seconds_since_epoch,
+        wait_async,
+    )
+
     IMPORT_SUCCESS = True
 except ImportError:
     IMPORT_SUCCESS = False
-
 
 
 class TestWaitAsync:
@@ -112,7 +112,6 @@ class TestWaitAsync:
         assert 0.05 < elapsed < 0.20
 
 
-
 class TestRandomBytes:
     """Test random_bytes function."""
 
@@ -171,7 +170,6 @@ class TestRandomBytes:
         assert len(result) == 32
 
 
-
 class TestRandomBytesHex:
     """Test random_bytes_hex function."""
 
@@ -181,7 +179,7 @@ class TestRandomBytesHex:
         assert isinstance(result, str)
         assert len(result) == 32  # 16 bytes = 32 hex chars
         # Check all chars are valid hex
-        assert all(c in '0123456789abcdef' for c in result.lower())
+        assert all(c in "0123456789abcdef" for c in result.lower())
 
     def test_random_bytes_hex_zero(self) -> None:
         """Test generating zero bytes as hex."""
@@ -213,8 +211,7 @@ class TestRandomBytesHex:
         """Test generating large hex string."""
         result = random_bytes_hex(100)
         assert len(result) == 200
-        assert all(c in '0123456789abcdef' for c in result.lower())
-
+        assert all(c in "0123456789abcdef" for c in result.lower())
 
 
 class TestRandomBytesBase64:
@@ -260,7 +257,6 @@ class TestRandomBytesBase64:
             random_bytes_base64(10.5)  # type: ignore
 
 
-
 class TestSha256Hash:
     """Test sha256_hash function."""
 
@@ -276,7 +272,7 @@ class TestSha256Hash:
 
     def test_sha256_hash_list(self) -> None:
         """Test SHA256 hash of list of integers."""
-        data = [0x68, 0x65, 0x6c, 0x6c, 0x6f]  # "hello"
+        data = [0x68, 0x65, 0x6C, 0x6C, 0x6F]  # "hello"
         result = sha256_hash(data)
         assert isinstance(result, list)
         assert len(result) == 32
@@ -315,7 +311,6 @@ class TestSha256Hash:
         assert result1 == result2
 
 
-
 class TestDoubleSha256LE:
     """Test double_sha256_le function."""
 
@@ -328,7 +323,7 @@ class TestDoubleSha256LE:
 
     def test_double_sha256_le_list(self) -> None:
         """Test double SHA256 (little-endian) of list."""
-        data = [0x68, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x68, 0x65, 0x6C, 0x6C, 0x6F]
         result = double_sha256_le(data)
         assert len(result) == 32
 
@@ -359,7 +354,6 @@ class TestDoubleSha256LE:
         assert result1 == result2
 
 
-
 class TestDoubleSha256BE:
     """Test double_sha256_be function."""
 
@@ -372,7 +366,7 @@ class TestDoubleSha256BE:
 
     def test_double_sha256_be_list(self) -> None:
         """Test double SHA256 (big-endian) of list."""
-        data = [0x68, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x68, 0x65, 0x6C, 0x6C, 0x6F]
         result = double_sha256_be(data)
         assert len(result) == 32
 
@@ -400,7 +394,6 @@ class TestDoubleSha256BE:
         result1 = double_sha256_be(data)
         result2 = double_sha256_be(data)
         assert result1 == result2
-
 
 
 class TestValidateSecondsSinceEpoch:
@@ -471,7 +464,6 @@ class TestValidateSecondsSinceEpoch:
         assert result.tm_mday == 1
 
 
-
 class TestRandomUtilsEdgeCases:
     """Test edge cases across random utilities."""
 
@@ -481,23 +473,23 @@ class TestRandomUtilsEdgeCases:
         hex2 = random_bytes_hex(32)
         base64_1 = random_bytes_base64(32)
         base64_2 = random_bytes_base64(32)
-        
+
         assert hex1 != hex2
         assert base64_1 != base64_2
 
     def test_hash_functions_consistency(self) -> None:
         """Test that hash functions are consistent."""
         data = b"consistency test"
-        
+
         sha = sha256_hash(data)
         double_le = double_sha256_le(data)
         double_be = double_sha256_be(data)
-        
+
         # All should be 32 bytes
         assert len(sha) == 32
         assert len(double_le) == 32
         assert len(double_be) == 32
-        
+
         # Double BE and LE should be reverses
         assert double_be == list(reversed(double_le))
 
@@ -505,10 +497,10 @@ class TestRandomUtilsEdgeCases:
         """Test that bytes and list produce same hash."""
         data_bytes = b"test"
         data_list = [ord(c) for c in "test"]
-        
+
         hash_bytes = sha256_hash(data_bytes)
         hash_list = sha256_hash(data_list)
-        
+
         assert hash_bytes == hash_list
 
     def test_large_random_generation(self) -> None:
@@ -522,7 +514,6 @@ class TestRandomUtilsEdgeCases:
         assert unique_values > 200
 
 
-
 class TestRandomUtilsIntegration:
     """Integration tests for random utilities."""
 
@@ -530,7 +521,7 @@ class TestRandomUtilsIntegration:
         """Test generating random data and hashing it."""
         random_data = random_bytes(32)
         hash_result = sha256_hash(random_data)
-        
+
         assert len(random_data) == 32
         assert len(hash_result) == 32
         assert random_data != hash_result
@@ -540,7 +531,7 @@ class TestRandomUtilsIntegration:
         hex_data = random_bytes_hex(32)
         bytes_data = bytes.fromhex(hex_data)
         hash_result = sha256_hash(bytes_data)
-        
+
         assert len(hash_result) == 32
 
     @pytest.mark.asyncio
@@ -558,21 +549,20 @@ class TestRandomUtilsIntegration:
     def test_multiple_hash_operations(self) -> None:
         """Test multiple hash operations in sequence."""
         data = b"start"
-        
+
         # SHA256
         h1 = sha256_hash(data)
-        
+
         # Double SHA256 LE
         h2 = double_sha256_le(h1)
-        
+
         # Double SHA256 BE
         h3 = double_sha256_be(h2)
-        
+
         # All should be 32 bytes
         assert all(len(h) == 32 for h in [h1, h2, h3])
-        
+
         # All should be different
         assert h1 != h2
         assert h2 != h3
         assert h1 != h3
-

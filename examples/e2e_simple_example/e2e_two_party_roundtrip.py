@@ -22,18 +22,18 @@ Env:
 
 from __future__ import annotations
 
-import base64
 import logging
 import os
 from typing import Literal
-
-from dotenv import load_dotenv
 
 from bsv.constants import Network
 from bsv.hd.bip32 import bip32_derive_xprv_from_mnemonic
 from bsv.hd.bip39 import mnemonic_from_entropy
 from bsv.keys import PrivateKey, PublicKey
 from bsv.wallet import KeyDeriver
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.brc29 import KeyID, address_for_counterparty, address_for_self
 from bsv_wallet_toolbox.errors.wallet_errors import ReviewActionsError
@@ -46,7 +46,6 @@ from bsv_wallet_toolbox.utils.wallet_payment_utils import (
     make_wallet_payment_remittance,
     send_wallet_payment_ex,
 )
-from sqlalchemy import create_engine
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +60,7 @@ ALICE_TO_BOB_DERIVATION_PREFIX = "alice-to-bob-prefix-01"
 ALICE_TO_BOB_DERIVATION_SUFFIX = "alice-to-bob-suffix-01"
 BOB_TO_ALICE_DERIVATION_PREFIX = "bob-to-alice-prefix-01"
 BOB_TO_ALICE_DERIVATION_SUFFIX = "bob-to-alice-suffix-01"
+
 
 def _env_truthy(name: str) -> bool:
     """Return True if the environment variable is set to a typical truthy value.
@@ -126,7 +126,9 @@ def _make_wallet(name: str, chain: Chain, services: Services, use_remote: bool) 
     key_deriver = KeyDeriver(root_private_key=root_priv)
 
     if use_remote:
-        bootstrap = StorageProvider(engine=create_engine("sqlite:///:memory:"), chain=chain, storage_identity_key=f"{chain}-{name}-bootstrap")
+        bootstrap = StorageProvider(
+            engine=create_engine("sqlite:///:memory:"), chain=chain, storage_identity_key=f"{chain}-{name}-bootstrap"
+        )
         bootstrap.make_available()
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=bootstrap)
 
@@ -140,7 +142,9 @@ def _make_wallet(name: str, chain: Chain, services: Services, use_remote: bool) 
 
     db_file = f"wallet_{name}.db"
     print(f"💾 {name}: local sqlite = {db_file}")
-    storage = StorageProvider(engine=create_engine(f"sqlite:///{db_file}"), chain=chain, storage_identity_key=f"{chain}-{name}")
+    storage = StorageProvider(
+        engine=create_engine(f"sqlite:///{db_file}"), chain=chain, storage_identity_key=f"{chain}-{name}"
+    )
     storage.make_available()
     storage.set_services(services)
     wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=storage)
@@ -247,7 +251,10 @@ def main() -> None:
     faucet_key_id = KeyID(derivation_prefix=FAUCET_DERIVATION_PREFIX, derivation_suffix=FAUCET_DERIVATION_SUFFIX)
     faucet_sender_pubkey_hex = PrivateKey(1).public_key().hex()
     alice_faucet_addr = address_for_self(
-        sender_public_key=faucet_sender_pubkey_hex, key_id=faucet_key_id, recipient_private_key=alice_root, testnet=(chain == "test")
+        sender_public_key=faucet_sender_pubkey_hex,
+        key_id=faucet_key_id,
+        recipient_private_key=alice_root,
+        testnet=(chain == "test"),
     )["address_string"]
 
     _banner("💧 Fund Alice (BRC-29 derived address)")
@@ -298,7 +305,9 @@ def main() -> None:
     # Show the derived destination address to make explorer debugging easy.
     to_addr = address_for_counterparty(
         sender_private_key=alice.key_deriver,
-        key_id=KeyID(derivation_prefix=ALICE_TO_BOB_DERIVATION_PREFIX, derivation_suffix=ALICE_TO_BOB_DERIVATION_SUFFIX),
+        key_id=KeyID(
+            derivation_prefix=ALICE_TO_BOB_DERIVATION_PREFIX, derivation_suffix=ALICE_TO_BOB_DERIVATION_SUFFIX
+        ),
         recipient_public_key=bob_id,
         testnet=(chain == "test"),
     )["address_string"]
@@ -320,7 +329,9 @@ def main() -> None:
     input("Press Enter after the transaction is visible (then Bob will internalize it)...")
 
     _banner("📥 internalizeAction (Bob receives from Alice)")
-    internalize_wallet_payment(bob, services, txid=a_txid, output_index=a_vout, remittance=a_remit, description="Internalize from Alice")
+    internalize_wallet_payment(
+        bob, services, txid=a_txid, output_index=a_vout, remittance=a_remit, description="Internalize from Alice"
+    )
     bob_bal = _balance(bob)
     print(f"Bob balance: {bob_bal} sats")
 
@@ -329,7 +340,9 @@ def main() -> None:
     _banner(f"💸 Bob -> Alice ({send_b} sats)")
     to_addr2 = address_for_counterparty(
         sender_private_key=bob.key_deriver,
-        key_id=KeyID(derivation_prefix=BOB_TO_ALICE_DERIVATION_PREFIX, derivation_suffix=BOB_TO_ALICE_DERIVATION_SUFFIX),
+        key_id=KeyID(
+            derivation_prefix=BOB_TO_ALICE_DERIVATION_PREFIX, derivation_suffix=BOB_TO_ALICE_DERIVATION_SUFFIX
+        ),
         recipient_public_key=alice_id,
         testnet=(chain == "test"),
     )["address_string"]
@@ -350,7 +363,9 @@ def main() -> None:
     _maybe_print_rawtx_hex(b.get("signActionResult") or b.get("createActionResult"), context="Bob->Alice")
     input("Press Enter after the transaction is visible (then Alice will internalize it)...")
     _banner("📥 internalizeAction (Alice receives from Bob)")
-    internalize_wallet_payment(alice, services, txid=b_txid, output_index=b_vout, remittance=b_remit, description="Internalize from Bob")
+    internalize_wallet_payment(
+        alice, services, txid=b_txid, output_index=b_vout, remittance=b_remit, description="Internalize from Bob"
+    )
 
     _banner("📊 Final balances")
     print(f"Alice: {_balance(alice)} sats")

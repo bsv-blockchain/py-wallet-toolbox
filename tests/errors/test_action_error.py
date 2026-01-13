@@ -7,8 +7,6 @@ Reference: go-wallet-toolbox/pkg/errors/action_error_test.go
 Note: All tests are currently skipped as the error API is not yet implemented.
 """
 
-import pytest
-
 
 class TestTransactionError:
     """Test suite for TransactionError.

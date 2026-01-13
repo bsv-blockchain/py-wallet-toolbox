@@ -51,4 +51,3 @@ def demo_wait_for_authentication(wallet: Wallet) -> None:
         print("   (Base wallet resolves immediately.)")
     except Exception as err:
         print(f"❌ Failed to wait for authentication: {err}")
-

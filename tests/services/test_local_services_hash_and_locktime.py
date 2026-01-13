@@ -6,14 +6,13 @@ Reference: go-wallet-toolbox/pkg/wdk/locktime.go
 """
 
 from time import time
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 
 import pytest
 from bsv.transaction import Transaction
 from bsv.transaction_input import TransactionInput
 
 from bsv_wallet_toolbox.services.services import Services
-from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 class TestHashOutputScript:
@@ -214,10 +213,12 @@ class TestNLockTimeIsFinalErrorHandling:
         # Create transaction with mixed sequences
         tx = Transaction()
         tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF))  # Final
-        tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFE))  # Not final
+        tx.inputs.append(
+            TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFE)
+        )  # Not final
 
         # Mock get_height since transaction locktime (0) is height-based
-        with patch.object(services, 'get_height', return_value=1000000):
+        with patch.object(services, "get_height", return_value=1000000):
             result = services.n_lock_time_is_final(tx)
             assert result is True  # Mixed sequences make transaction final (locktime ignored)
 
@@ -226,11 +227,15 @@ class TestNLockTimeIsFinalErrorHandling:
         services = Services("main")
 
         tx = Transaction()
-        tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFE))  # Not final
-        tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFD))  # Not final
+        tx.inputs.append(
+            TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFE)
+        )  # Not final
+        tx.inputs.append(
+            TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFD)
+        )  # Not final
 
         # Mock get_height since transaction locktime (0) is height-based
-        with patch.object(services, 'get_height', return_value=1000000):
+        with patch.object(services, "get_height", return_value=1000000):
             result = services.n_lock_time_is_final(tx)
             assert result is True  # Non-final sequences make transaction final (locktime ignored)
 
@@ -240,16 +245,16 @@ class TestNLockTimeIsFinalErrorHandling:
 
         # Mock get_height to return specific values
         test_cases = [
-            (500000, 499999, True),   # locktime < height
+            (500000, 499999, True),  # locktime < height
             (500000, 500000, False),  # locktime == height
             (500000, 500001, False),  # locktime > height
-            (0, 0, False),           # boundary at 0
+            (0, 0, False),  # boundary at 0
             (499999999, 499999998, True),  # just below timestamp threshold
             (500000000, 499999999, True),  # just below timestamp threshold
         ]
 
         for mock_height, locktime, expected in test_cases:
-            with patch.object(services, 'get_height', return_value=mock_height):
+            with patch.object(services, "get_height", return_value=mock_height):
                 result = services.n_lock_time_is_final(locktime)
                 assert result == expected, f"Failed for height={mock_height}, locktime={locktime}"
 
@@ -261,9 +266,9 @@ class TestNLockTimeIsFinalErrorHandling:
         now = int(time())
 
         test_cases = [
-            (now - 10, True),   # Past timestamp
-            (now + 3600, False), # Future timestamp
-            (now, False),       # Current time
+            (now - 10, True),  # Past timestamp
+            (now + 3600, False),  # Future timestamp
+            (now, False),  # Current time
         ]
 
         for locktime, expected in test_cases:
@@ -290,8 +295,12 @@ class TestNLockTimeIsFinalErrorHandling:
         services = Services("main")
 
         tx = Transaction()
-        tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF))  # Max uint32
-        tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFF))  # Max uint32
+        tx.inputs.append(
+            TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF)
+        )  # Max uint32
+        tx.inputs.append(
+            TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0xFFFFFFFF)
+        )  # Max uint32
 
         result = services.n_lock_time_is_final(tx)
         assert result is True  # All max sequences should be final
@@ -305,7 +314,7 @@ class TestNLockTimeIsFinalErrorHandling:
         tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=1, sequence=0))  # Zero sequence
 
         # Mock get_height since transaction locktime (0) is height-based
-        with patch.object(services, 'get_height', return_value=1000000):
+        with patch.object(services, "get_height", return_value=1000000):
             result = services.n_lock_time_is_final(tx)
             assert result is True  # Zero sequences make transaction final (locktime ignored)
 
@@ -324,7 +333,7 @@ class TestNLockTimeIsFinalErrorHandling:
         # Now test with one non-final sequence
         tx.inputs[50].sequence = 0xFFFFFFFE
         # Mock get_height since transaction locktime (0) is height-based
-        with patch.object(services, 'get_height', return_value=1000000):
+        with patch.object(services, "get_height", return_value=1000000):
             result = services.n_lock_time_is_final(tx)
             assert result is True  # Mixed sequences make transaction final (locktime ignored)
 
@@ -334,7 +343,7 @@ class TestNLockTimeIsFinalErrorHandling:
 
         # Negative values should be treated as height-based (since < 500M)
         # Mock get_height for height-based locktime check
-        with patch.object(services, 'get_height', return_value=1000000):
+        with patch.object(services, "get_height", return_value=1000000):
             result = services.n_lock_time_is_final(-1)
             assert result is True  # Negative locktime < height is final
 
@@ -355,7 +364,9 @@ class TestNLockTimeIsFinalErrorHandling:
         # The method should only look at input sequences, not tx locktime
         tx = Transaction()
         tx.locktime = 1000000  # Set transaction locktime
-        tx.inputs.append(TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF))  # Final sequence
+        tx.inputs.append(
+            TransactionInput(source_txid="00" * 32, source_output_index=0, sequence=0xFFFFFFFF)
+        )  # Final sequence
 
         result = services.n_lock_time_is_final(tx)
         assert result is True  # Should ignore tx locktime, only check sequences

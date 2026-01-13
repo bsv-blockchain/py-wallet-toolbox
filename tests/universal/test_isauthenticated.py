@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -35,7 +33,7 @@ class TestUniversalVectorsIsAuthenticated:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("isAuthenticated-simple")
+        args_data, _result_data = load_test_vectors("isAuthenticated-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
@@ -46,7 +44,7 @@ class TestUniversalVectorsIsAuthenticated:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
@@ -55,15 +53,15 @@ class TestUniversalVectorsIsAuthenticated:
         args = {}
         wire_request = serialize_request("isAuthenticated", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "isAuthenticated"
         assert isinstance(parsed_args, dict)
-        
+
         # Test basic method call and response serialization
         try:
             # For methods that exist, try to call them
-            if hasattr(wallet, 'isAuthenticated'.lower().replace('get', 'get_')):
-                method = getattr(wallet, 'isAuthenticated'.lower().replace('get', 'get_'))
+            if hasattr(wallet, "isAuthenticated".lower().replace("get", "get_")):
+                method = getattr(wallet, "isAuthenticated".lower().replace("get", "get_"))
                 result = method(args, originator=None)
                 wire_response = serialize_response(result)
                 assert isinstance(wire_response, bytes)

@@ -1,6 +1,6 @@
 """Tests for advanced storage operations."""
 
-import pytest
+from datetime import UTC
 from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.storage.provider import StorageProvider
@@ -15,17 +15,13 @@ class TestAdvancedStorageOperations:
         provider._services = Mock()
 
         # Mock pending transactions
-        provider.find_transactions = Mock(return_value=[
-            {"txid": "abc123", "transactionId": 1, "status": "pending"}
-        ])
+        provider.find_transactions = Mock(return_value=[{"txid": "abc123", "transactionId": 1, "status": "pending"}])
 
         # Mock service response
-        provider._services.get_transaction_status = Mock(return_value={
-            "status": "confirmed"
-        })
+        provider._services.get_transaction_status = Mock(return_value={"status": "confirmed"})
 
         # Import and call the actual method
-        from bsv_wallet_toolbox.storage.provider import StorageProvider
+
         StorageProvider.synchronize_transaction_statuses(provider)
 
         # Should have checked status and updated transaction
@@ -38,11 +34,12 @@ class TestAdvancedStorageOperations:
         provider._services = Mock()
 
         # Mock waiting transactions with old datetime (older than cutoff)
-        from datetime import datetime, timezone, timedelta
-        old_time = datetime.now(timezone.utc) - timedelta(seconds=10)  # 10 seconds ago
-        provider.find_transactions = Mock(return_value=[
-            {"txid": "abc123", "transactionId": 1, "status": "waiting", "createdAt": old_time}
-        ])
+        from datetime import datetime, timedelta
+
+        old_time = datetime.now(UTC) - timedelta(seconds=10)  # 10 seconds ago
+        provider.find_transactions = Mock(
+            return_value=[{"txid": "abc123", "transactionId": 1, "status": "waiting", "createdAt": old_time}]
+        )
 
         # Mock raw transaction
         provider.get_raw_tx_of_known_valid_transaction = Mock(return_value="raw_tx_hex")
@@ -51,7 +48,7 @@ class TestAdvancedStorageOperations:
         provider._services.post_beef = Mock(return_value={"success": True})
 
         # Import and call the actual method
-        from bsv_wallet_toolbox.storage.provider import StorageProvider
+
         result = StorageProvider.send_waiting_transactions(provider, min_age_seconds=0)
 
         assert result["sent"] == 1
@@ -63,14 +60,15 @@ class TestAdvancedStorageOperations:
         provider = Mock()
 
         # Mock processing transactions with proper datetime objects
-        from datetime import datetime, timezone
-        old_time = datetime.now(timezone.utc)
-        provider.find_transactions = Mock(return_value=[
-            {"transactionId": 1, "status": "processing", "createdAt": old_time}
-        ])
+        from datetime import datetime
+
+        old_time = datetime.now(UTC)
+        provider.find_transactions = Mock(
+            return_value=[{"transactionId": 1, "status": "processing", "createdAt": old_time}]
+        )
 
         # Import and call the actual method
-        from bsv_wallet_toolbox.storage.provider import StorageProvider
+
         result = StorageProvider.abort_abandoned(provider, min_age_seconds=0)
 
         assert result["abandoned"] == 1
@@ -82,17 +80,13 @@ class TestAdvancedStorageOperations:
         provider._services = Mock()
 
         # Mock failed transactions
-        provider.find_transactions = Mock(return_value=[
-            {"txid": "abc123", "transactionId": 1, "status": "failed"}
-        ])
+        provider.find_transactions = Mock(return_value=[{"txid": "abc123", "transactionId": 1, "status": "failed"}])
 
         # Mock service showing transaction is now confirmed
-        provider._services.get_transaction_status = Mock(return_value={
-            "status": "confirmed"
-        })
+        provider._services.get_transaction_status = Mock(return_value={"status": "confirmed"})
 
         # Import and call the actual method
-        from bsv_wallet_toolbox.storage.provider import StorageProvider
+
         result = StorageProvider.un_fail(provider)
 
         assert result["unfail"] == 1
@@ -103,7 +97,7 @@ class TestAdvancedStorageOperations:
         provider = Mock()
 
         # Mock the session and database operations
-        with patch('bsv_wallet_toolbox.storage.provider.session_scope') as mock_session_scope:
+        with patch("bsv_wallet_toolbox.storage.provider.session_scope") as mock_session_scope:
             mock_session = Mock()
             mock_session_scope.return_value.__enter__.return_value = mock_session
 
@@ -112,10 +106,9 @@ class TestAdvancedStorageOperations:
 
             # Import and call the actual method
             from bsv_wallet_toolbox.storage.provider import StorageProvider
+
             StorageProvider.configure_basket(
-                provider,
-                auth={"userId": 1},
-                basket_config={"name": "test_basket", "numberOfDesiredUTXOs": 5}
+                provider, auth={"userId": 1}, basket_config={"name": "test_basket", "numberOfDesiredUTXOs": 5}
             )
 
             # Should have executed database operations

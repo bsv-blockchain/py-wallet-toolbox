@@ -9,10 +9,11 @@ from typing import TYPE_CHECKING, Literal
 from bsv.hd.bip32 import bip32_derive_xprv_from_mnemonic
 from bsv.hd.bip39 import mnemonic_from_entropy
 from bsv.wallet import KeyDeriver
-from bsv_wallet_toolbox.storage import StorageProvider
-from bsv_wallet_toolbox.rpc import StorageClient
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+
+from bsv_wallet_toolbox.rpc import StorageClient
+from bsv_wallet_toolbox.storage import StorageProvider
 
 if TYPE_CHECKING:
     from bsv_wallet_toolbox import Wallet
@@ -36,11 +37,11 @@ DEFAULT_WALLET_INFRA_URL = "http://localhost:8080"
 def get_network() -> Chain:
     """Read network selection from the environment."""
     network = os.getenv("BSV_NETWORK", "test").lower()
-    
+
     if network not in ("test", "main"):
         print(f"⚠️  Invalid BSV_NETWORK '{network}'. Falling back to 'test'.")
         return "test"
-    
+
     return network  # type: ignore
 
 
@@ -73,6 +74,7 @@ def get_key_deriver() -> KeyDeriver:
         print("🏗️  wallet-infra mode: using random key (like walletInfraNoEnv)...")
         # Generate a new random key for wallet-infra testing
         from bsv.keys import PrivateKey
+
         root_private_key = PrivateKey()
         return KeyDeriver(root_private_key=root_private_key)
 
@@ -84,6 +86,7 @@ def get_key_deriver() -> KeyDeriver:
         print(f"🔑 Using predefined test identity key: {test_identity_key[:16]}...")
         root_key_hex = dev_keys[test_identity_key]
         from bsv.keys import PrivateKey
+
         root_private_key = PrivateKey.from_hex(root_key_hex)
         return KeyDeriver(root_private_key=root_private_key)
 
@@ -94,7 +97,7 @@ def get_key_deriver() -> KeyDeriver:
         print("⚠️  No mnemonic configured. Creating a brand new wallet...")
         print()
 
-        mnemonic = mnemonic_from_entropy(entropy=None, lang='en')
+        mnemonic = mnemonic_from_entropy(entropy=None, lang="en")
 
         print("=" * 70)
         print("🔑 Generated mnemonic (12 words):")
@@ -114,9 +117,9 @@ def get_key_deriver() -> KeyDeriver:
 
     xprv = bip32_derive_xprv_from_mnemonic(
         mnemonic=mnemonic,
-        lang='en',
-        passphrase='',
-        prefix='mnemonic',
+        lang="en",
+        passphrase="",
+        prefix="mnemonic",
         path="m/0",
     )
 
@@ -132,9 +135,9 @@ def print_network_info(chain: Chain) -> None:
     """Display current network mode to the console."""
     display_name = get_network_display_name(chain)
     emoji = "🔴" if chain == "main" else "🟢"
-    
+
     print(f"{emoji} Network: {display_name}")
-    
+
     if chain == "main":
         print("⚠️  MAINNET MODE – you are dealing with real BSV funds.")
 
@@ -167,27 +170,27 @@ def get_remote_storage_url(network: Chain) -> str:
 def get_storage_provider(network: Chain) -> StorageProvider:
     """Create a SQLite-backed StorageProvider."""
     db_file = f"wallet_{network}.db"
-    
+
     print(f"💾 Using database file: {db_file}")
-    
+
     engine = create_engine(f"sqlite:///{db_file}")
-    
+
     storage = StorageProvider(
         engine=engine,
         chain=network,
         storage_identity_key=f"{network}-wallet",
     )
-    
+
     try:
         storage.make_available()
         print("✅ Storage tables are ready.")
     except Exception as e:
         print(f"⚠️  Storage initialization warning: {e}")
-    
+
     return storage
 
 
-def get_remote_storage_client(wallet: "Wallet", network: Chain) -> StorageClient:
+def get_remote_storage_client(wallet: Wallet, network: Chain) -> StorageClient:
     """Create a StorageClient for Babbage remote storage.
 
     Args:
@@ -210,7 +213,7 @@ def get_remote_storage_client(wallet: "Wallet", network: Chain) -> StorageClient
     return client
 
 
-def get_wallet_infra_client(wallet: "Wallet") -> StorageClient:
+def get_wallet_infra_client(wallet: Wallet) -> StorageClient:
     """Create a StorageClient for wallet-infra server.
 
     Args:
@@ -230,4 +233,3 @@ def get_wallet_infra_client(wallet: "Wallet") -> StorageClient:
     client = StorageClient(wallet, endpoint_url)
 
     return client
-

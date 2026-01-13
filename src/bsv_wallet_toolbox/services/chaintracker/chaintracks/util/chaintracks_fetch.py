@@ -5,8 +5,9 @@ Provides HTTP utilities for fetching data from chaintracks services.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/__tests/ChaintracksFetch.test.ts
 """
 
+from typing import Any
+
 import requests
-from typing import Any, Dict
 
 
 class ChaintracksFetch:
@@ -19,7 +20,7 @@ class ChaintracksFetch:
         """Initialize ChaintracksFetch."""
         self.session = requests.Session()
 
-    def fetch_json(self, url: str) -> Dict[str, Any]:
+    def fetch_json(self, url: str) -> dict[str, Any]:
         """Fetch JSON data from URL.
 
         Args:

@@ -6,13 +6,11 @@ of WalletPermissionsManager.
 Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
 """
 
-import asyncio
 from unittest.mock import AsyncMock, Mock
-
-import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionsManagerConfig, WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True
@@ -228,10 +226,10 @@ class TestWalletPermissionsManagerInitialization:
         manager.bind_callback("onProtocolPermissionRequested", permission_callback)
 
         # When - non-admin origin tries createSignature
-        result = manager.create_signature(
-                {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
-                "nonadmin.com",
-            )
+        manager.create_signature(
+            {"protocolID": [1, "test-protocol"], "keyID": "1", "data": [0x10, 0x20], "privileged": False},
+            "nonadmin.com",
+        )
 
         # Then - callback was triggered and signature was created
         assert len(callback_called) == 1

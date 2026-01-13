@@ -13,7 +13,7 @@ class TestVarintEncoding:
         """Test encoding small integers as varint."""
         try:
             from bsv_wallet_toolbox.utils.varint import encode_varint
-            
+
             # Values < 0xfd should be 1 byte
             result = encode_varint(100)
             assert isinstance(result, (bytes, bytearray))
@@ -25,7 +25,7 @@ class TestVarintEncoding:
         """Test encoding medium integers as varint."""
         try:
             from bsv_wallet_toolbox.utils.varint import encode_varint
-            
+
             # Values >= 0xfd and < 0x10000 should be 3 bytes (0xfd + 2 bytes)
             result = encode_varint(300)
             assert isinstance(result, (bytes, bytearray))
@@ -37,7 +37,7 @@ class TestVarintEncoding:
         """Test encoding large integers as varint."""
         try:
             from bsv_wallet_toolbox.utils.varint import encode_varint
-            
+
             # Values >= 0x10000 should be 5+ bytes
             result = encode_varint(100000)
             assert isinstance(result, (bytes, bytearray))
@@ -53,11 +53,11 @@ class TestVarintDecoding:
         """Test decoding small varint."""
         try:
             from bsv_wallet_toolbox.utils.varint import decode_varint
-            
+
             # Single byte for values < 0xfd
             data = b"\x64"  # 100
             value, size = decode_varint(data)
-            
+
             assert value == 100
             assert size == 1
         except (ImportError, AttributeError, ValueError):
@@ -67,11 +67,11 @@ class TestVarintDecoding:
         """Test decoding varint with 0xfd prefix."""
         try:
             from bsv_wallet_toolbox.utils.varint import decode_varint
-            
+
             # 0xfd prefix for 2-byte values
             data = b"\xfd\x2c\x01"  # 300
             value, size = decode_varint(data)
-            
+
             assert value == 300 or value > 0
             assert size == 3
         except (ImportError, AttributeError, ValueError, AssertionError):
@@ -85,11 +85,11 @@ class TestVarintRoundtrip:
         """Test roundtrip for small values."""
         try:
             from bsv_wallet_toolbox.utils.varint import decode_varint, encode_varint
-            
+
             original = 42
             encoded = encode_varint(original)
             decoded, _ = decode_varint(encoded)
-            
+
             assert decoded == original
         except (ImportError, AttributeError, ValueError):
             pass
@@ -98,11 +98,11 @@ class TestVarintRoundtrip:
         """Test roundtrip for large values."""
         try:
             from bsv_wallet_toolbox.utils.varint import decode_varint, encode_varint
-            
+
             original = 1000000
             encoded = encode_varint(original)
             decoded, _ = decode_varint(encoded)
-            
+
             assert decoded == original
         except (ImportError, AttributeError, ValueError):
             pass
@@ -115,7 +115,7 @@ class TestVarintEdgeCases:
         """Test encoding zero."""
         try:
             from bsv_wallet_toolbox.utils.varint import encode_varint
-            
+
             result = encode_varint(0)
             assert isinstance(result, (bytes, bytearray))
             assert result == b"\x00"
@@ -126,7 +126,7 @@ class TestVarintEdgeCases:
         """Test encoding maximum uint64 value."""
         try:
             from bsv_wallet_toolbox.utils.varint import encode_varint
-            
+
             max_val = 2**64 - 1
             result = encode_varint(max_val)
             assert isinstance(result, (bytes, bytearray))
@@ -137,10 +137,10 @@ class TestVarintEdgeCases:
         """Test decoding with incomplete data."""
         try:
             from bsv_wallet_toolbox.utils.varint import decode_varint
-            
+
             # 0xfd prefix but missing the 2 bytes
             data = b"\xfd"
-            
+
             with pytest.raises((ValueError, IndexError, Exception)):
                 decode_varint(data)
         except (ImportError, AttributeError):
@@ -150,9 +150,8 @@ class TestVarintEdgeCases:
         """Test decoding empty data."""
         try:
             from bsv_wallet_toolbox.utils.varint import decode_varint
-            
+
             with pytest.raises((ValueError, IndexError, Exception)):
                 decode_varint(b"")
         except (ImportError, AttributeError):
             pass
-

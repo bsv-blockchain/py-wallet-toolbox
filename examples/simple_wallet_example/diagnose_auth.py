@@ -13,23 +13,24 @@ from pathlib import Path
 # Enable debug logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 # Change to demo directory
 os.chdir(Path(__file__).parent)
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.services import Services, create_default_options
-from bsv_wallet_toolbox.rpc import StorageClient
 from bsv.keys import PrivateKey
 from bsv.wallet import KeyDeriver
+
+from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.rpc import StorageClient
+from bsv_wallet_toolbox.services import Services, create_default_options
+
 
 def test_authentication_diagnostics():
     """Run comprehensive authentication diagnostics."""
@@ -43,12 +44,13 @@ def test_authentication_diagnostics():
     try:
         root_private_key = PrivateKey()
         key_deriver = KeyDeriver(root_private_key=root_private_key)
-        network = 'test'
+        network = "test"
         options = create_default_options(network)
         services = Services(options)
 
         # Create wallet with local storage first
         from src.config import get_storage_provider
+
         local_storage = get_storage_provider(network)
         wallet = Wallet(chain=network, services=services, key_deriver=key_deriver, storage_provider=local_storage)
 
@@ -63,6 +65,7 @@ def test_authentication_diagnostics():
     except Exception as e:
         print(f"❌ Wallet creation failed: {e}")
         import traceback
+
         traceback.print_exc()
         return
 
@@ -106,13 +109,14 @@ def test_authentication_diagnostics():
         print(f"   Error type: {type(e).__name__}")
 
         # Try to get more details from the exception
-        if hasattr(e, '__cause__') and e.__cause__:
+        if hasattr(e, "__cause__") and e.__cause__:
             print(f"   Caused by: {e.__cause__}")
-        if hasattr(e, '__context__') and e.__context__:
+        if hasattr(e, "__context__") and e.__context__:
             print(f"   Context: {e.__context__}")
 
         # Check if it's a network error vs auth error
         import requests
+
         if isinstance(e, requests.RequestException):
             print("   This appears to be a network-level error")
         else:
@@ -120,6 +124,7 @@ def test_authentication_diagnostics():
 
         # Print full traceback for debugging
         import traceback
+
         print("\n   Full traceback:")
         traceback.print_exc()
 
@@ -132,13 +137,14 @@ def test_authentication_diagnostics():
     ]
 
     import requests
+
     for name, url in urls_to_test:
         try:
             response = requests.post(
                 url,
                 json={"jsonrpc": "2.0", "method": "makeAvailable", "params": [], "id": 1},
                 headers={"Content-Type": "application/json"},
-                timeout=10
+                timeout=10,
             )
             print(f"✅ {name}: status={response.status_code}")
             if response.status_code == 401:
@@ -157,7 +163,7 @@ def test_authentication_diagnostics():
             json={"jsonrpc": "2.0", "method": "makeAvailable", "params": [], "id": 1},
             headers={"Content-Type": "application/json"},
             timeout=10,
-            verify=False  # Skip SSL verification for localhost
+            verify=False,  # Skip SSL verification for localhost
         )
         print(f"✅ HTTPS: status={response.status_code}")
     except Exception as e:
@@ -165,12 +171,7 @@ def test_authentication_diagnostics():
 
     # Test 5: Check wallet interface methods in detail
     print("\n5️⃣ Testing wallet interface methods in detail...")
-    required_methods = [
-        'get_public_key',
-        'create_signature',
-        'verify_signature',
-        'create_action'
-    ]
+    required_methods = ["get_public_key", "create_signature", "verify_signature", "create_action"]
 
     for method_name in required_methods:
         try:
@@ -179,61 +180,77 @@ def test_authentication_diagnostics():
                 print(f"   ✅ {method_name}: implemented")
 
                 # Test calling the method to verify it works
-                if method_name == 'get_public_key':
+                if method_name == "get_public_key":
                     try:
                         result = wallet.get_public_key({"identityKey": True})
-                        print(f"      Returns: {type(result)} with keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
+                        print(
+                            f"      Returns: {type(result)} with keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}"
+                        )
                     except Exception as e:
                         print(f"      ❌ Call failed: {e}")
 
-                elif method_name == 'create_signature':
+                elif method_name == "create_signature":
                     try:
                         # Test with minimal data
-                        result = wallet.create_signature({
-                            "data": [72, 101, 108, 108, 111],  # "Hello"
-                            "protocolID": [0, "test"],
-                            "keyID": "1",
-                            "counterparty": "self"
-                        })
-                        print(f"      Returns: {type(result)} with keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
-                    except Exception as e:
-                        print(f"      ❌ Call failed: {e}")
-
-                elif method_name == 'verify_signature':
-                    try:
-                        # First create a signature to verify
-                        sig_result = wallet.create_signature({
-                            "data": [72, 101, 108, 108, 111],  # "Hello"
-                            "protocolID": [0, "test"],
-                            "keyID": "1",
-                            "counterparty": "self"
-                        })
-                        if 'signature' in sig_result:
-                            result = wallet.verify_signature({
+                        result = wallet.create_signature(
+                            {
                                 "data": [72, 101, 108, 108, 111],  # "Hello"
-                                "signature": sig_result['signature'],
                                 "protocolID": [0, "test"],
                                 "keyID": "1",
-                                "counterparty": "self"
-                            })
-                            print(f"      Returns: {type(result)} = {result}")
-                        else:
-                            print(f"      ❌ Could not create signature to test verification")
+                                "counterparty": "self",
+                            }
+                        )
+                        print(
+                            f"      Returns: {type(result)} with keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}"
+                        )
                     except Exception as e:
                         print(f"      ❌ Call failed: {e}")
 
-                elif method_name == 'create_action':
+                elif method_name == "verify_signature":
+                    try:
+                        # First create a signature to verify
+                        sig_result = wallet.create_signature(
+                            {
+                                "data": [72, 101, 108, 108, 111],  # "Hello"
+                                "protocolID": [0, "test"],
+                                "keyID": "1",
+                                "counterparty": "self",
+                            }
+                        )
+                        if "signature" in sig_result:
+                            result = wallet.verify_signature(
+                                {
+                                    "data": [72, 101, 108, 108, 111],  # "Hello"
+                                    "signature": sig_result["signature"],
+                                    "protocolID": [0, "test"],
+                                    "keyID": "1",
+                                    "counterparty": "self",
+                                }
+                            )
+                            print(f"      Returns: {type(result)} = {result}")
+                        else:
+                            print("      ❌ Could not create signature to test verification")
+                    except Exception as e:
+                        print(f"      ❌ Call failed: {e}")
+
+                elif method_name == "create_action":
                     try:
                         # Test with minimal OP_RETURN action
-                        result = wallet.create_action({
-                            "description": "Test action",
-                            "outputs": [{
-                                "lockingScript": "006a0568656c6c6f",  # OP_RETURN "hello"
-                                "satoshis": 0,
-                                "outputDescription": "Test output"
-                            }]
-                        })
-                        print(f"      Returns: {type(result)} with keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}")
+                        result = wallet.create_action(
+                            {
+                                "description": "Test action",
+                                "outputs": [
+                                    {
+                                        "lockingScript": "006a0568656c6c6f",  # OP_RETURN "hello"
+                                        "satoshis": 0,
+                                        "outputDescription": "Test output",
+                                    }
+                                ],
+                            }
+                        )
+                        print(
+                            f"      Returns: {type(result)} with keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}"
+                        )
                     except Exception as e:
                         print(f"      ❌ Call failed: {e}")
 
@@ -245,6 +262,7 @@ def test_authentication_diagnostics():
     print("\n" + "=" * 80)
     print("🏁 Diagnostics complete")
     print("=" * 80)
+
 
 if __name__ == "__main__":
     test_authentication_diagnostics()

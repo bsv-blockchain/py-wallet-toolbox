@@ -12,6 +12,7 @@ import pytest
 try:
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True
@@ -66,7 +67,7 @@ def wallet_with_mocks(mock_storage, mock_services, mock_monitor):
     if not IMPORTS_AVAILABLE:
         pytest.skip("Required imports not available")
 
-    root_key = PrivateKey(bytes.fromhex('a' * 64))
+    root_key = PrivateKey(bytes.fromhex("a" * 64))
     key_deriver = KeyDeriver(root_key)
 
     wallet = Wallet(
@@ -74,7 +75,7 @@ def wallet_with_mocks(mock_storage, mock_services, mock_monitor):
         services=mock_services,
         key_deriver=key_deriver,
         storage_provider=mock_storage,
-        monitor=mock_monitor
+        monitor=mock_monitor,
     )
     return wallet
 
@@ -87,11 +88,11 @@ class TestWalletInitializationEdgeCases:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         # Mock Beef to raise exception during initialization
-        with patch('bsv_wallet_toolbox.wallet.Beef', side_effect=Exception("Beef init failed")):
+        with patch("bsv_wallet_toolbox.wallet.Beef", side_effect=Exception("Beef init failed")):
             wallet = Wallet(key_deriver=key_deriver, chain="test")
 
             # Should set beef to None as fallback
@@ -112,7 +113,7 @@ class TestWalletBalanceAndUtxoMethods:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         wallet = Wallet(key_deriver=key_deriver, chain="test")
@@ -125,7 +126,7 @@ class TestWalletBalanceAndUtxoMethods:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         wallet = Wallet(key_deriver=key_deriver, chain="test")
@@ -142,7 +143,7 @@ class TestWalletUtilityMethods:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         wallet = Wallet(key_deriver=key_deriver, chain="test")

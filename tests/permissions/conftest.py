@@ -3,8 +3,9 @@
 Provides mocked implementations of permissions managers for testing.
 """
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 

@@ -4,10 +4,10 @@ Provides functions to fetch fiat exchange rates from external APIs.
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from ...errors import InvalidParameterError, WalletError
+from ...errors import InvalidParameterError
 
 
 async def get_exchange_rates_io(api_key: str) -> dict[str, Any]:
@@ -26,12 +26,11 @@ async def get_exchange_rates_io(api_key: str) -> dict[str, Any]:
 
     url = f"https://api.exchangeratesapi.io/v1/latest?access_key={api_key}"
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status != 200:
-                    raise RuntimeError(f"exchangeratesapi.io returned status {response.status}")
-                data = await response.json()
-                return data
+        async with aiohttp.ClientSession() as session, session.get(url) as response:
+            if response.status != 200:
+                raise RuntimeError(f"exchangeratesapi.io returned status {response.status}")
+            data = await response.json()
+            return data
     except Exception as e:
         raise RuntimeError(f"Failed to fetch exchange rates: {e!s}") from e
 
@@ -95,7 +94,7 @@ async def update_exchangeratesapi(
     base_per_usd = rates[base] / rates["USD"]
 
     result: dict[str, Any] = {
-        "timestamp": datetime.fromtimestamp(iorates.get("timestamp", 0), tz=timezone.utc),
+        "timestamp": datetime.fromtimestamp(iorates.get("timestamp", 0), tz=UTC),
         "base": "USD",
         "rates": {},
     }
@@ -143,4 +142,3 @@ def update_exchangeratesapi_sync(
         pass
 
     return asyncio.run(update_exchangeratesapi(target_currencies, options))
-

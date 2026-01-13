@@ -5,7 +5,6 @@ This module provides comprehensive test coverage for database utility functions.
 
 import pytest
 
-import pytest
 from bsv_wallet_toolbox.storage.db import (
     create_engine_from_url,
     create_session_factory,
@@ -120,10 +119,9 @@ class TestSessionScope:
         engine = create_engine_from_url("sqlite:///:memory:")
         session_factory = create_session_factory(engine)
 
-        with pytest.raises(ValueError):
-            with session_scope(session_factory) as session:
-                # This should cause rollback
-                raise ValueError("Test exception")
+        with pytest.raises(ValueError), session_scope(session_factory):
+            # This should cause rollback
+            raise ValueError("Test exception")
 
         # Just verify the exception was raised and rollback occurred
         # (Session state may vary by SQLAlchemy version)

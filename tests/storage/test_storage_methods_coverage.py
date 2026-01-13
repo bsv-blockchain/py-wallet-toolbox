@@ -3,8 +3,8 @@
 This module tests storage-level operations for transaction management.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock, patch
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -93,10 +93,7 @@ class TestProcessActionExtended:
         mock_storage = Mock()
         # Mock process_action to return expected result structure
         # The actual implementation uses SQLAlchemy sessions, not a generic insert method
-        mock_storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": []
-        })
+        mock_storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
 
         auth = {"userId": "test_user"}
 
@@ -159,10 +156,12 @@ class TestProcessActionExtended:
         mock_storage = Mock()
         # Mock process_action to return expected result structure
         # The actual implementation uses SQLAlchemy sessions, not update method directly
-        mock_storage.process_action = Mock(return_value={
-            "sendWithResults": [{"txid": "txid1", "status": "sent"}, {"txid": "txid2", "status": "sent"}],
-            "notDelayedResults": None  # delayed=True
-        })
+        mock_storage.process_action = Mock(
+            return_value={
+                "sendWithResults": [{"txid": "txid1", "status": "sent"}, {"txid": "txid2", "status": "sent"}],
+                "notDelayedResults": None,  # delayed=True
+            }
+        )
 
         auth = {"userId": "test_user"}
 
@@ -230,7 +229,9 @@ class TestProcessActionExtended:
         """Test process_action new tx with missing required fields."""
         mock_storage = Mock()
         # Mock process_action to raise InvalidParameterError when required fields are missing
-        mock_storage.process_action = Mock(side_effect=InvalidParameterError("args", "reference, txid, and rawTx are required"))
+        mock_storage.process_action = Mock(
+            side_effect=InvalidParameterError("args", "reference, txid, and rawTx are required")
+        )
 
         auth = {"userId": "test_user"}
 
@@ -305,10 +306,7 @@ class TestListActionsExtended:
     def test_list_actions_with_labels_filter(self) -> None:
         """Test list_actions with labels filter."""
         mock_storage = Mock()
-        mock_storage.list_actions = Mock(return_value={
-            "totalActions": 0,
-            "actions": []
-        })
+        mock_storage.list_actions = Mock(return_value={"totalActions": 0, "actions": []})
 
         auth = {"userId": 1}
         args = ListActionsArgs(limit=10, offset=0, labels=["test_label"])
@@ -322,10 +320,7 @@ class TestListActionsExtended:
     def test_list_actions_pagination(self) -> None:
         """Test list_actions with pagination."""
         mock_storage = Mock()
-        mock_storage.list_actions = Mock(return_value={
-            "totalActions": 0,
-            "actions": []
-        })
+        mock_storage.list_actions = Mock(return_value={"totalActions": 0, "actions": []})
 
         auth = {"userId": 1}
         args = ListActionsArgs(limit=50, offset=100)
@@ -353,10 +348,7 @@ class TestListOutputsExtended:
     def test_list_outputs_with_basket_filter(self) -> None:
         """Test list_outputs with basket filter."""
         mock_storage = Mock()
-        mock_storage.list_outputs = Mock(return_value={
-            "totalOutputs": 0,
-            "outputs": []
-        })
+        mock_storage.list_outputs = Mock(return_value={"totalOutputs": 0, "outputs": []})
 
         auth = {"userId": 1}
         args = ListOutputsArgs(limit=20, offset=0, basket="test_basket")
@@ -370,10 +362,7 @@ class TestListOutputsExtended:
     def test_list_outputs_all_baskets(self) -> None:
         """Test list_outputs without basket filter."""
         mock_storage = Mock()
-        mock_storage.list_outputs = Mock(return_value={
-            "totalOutputs": 0,
-            "outputs": []
-        })
+        mock_storage.list_outputs = Mock(return_value={"totalOutputs": 0, "outputs": []})
 
         auth = {"userId": 1}
         args = ListOutputsArgs(limit=100, offset=0, basket=None)
@@ -389,10 +378,7 @@ class TestListCertificatesExtended:
     def test_list_certificates_with_pagination(self) -> None:
         """Test list_certificates with pagination."""
         mock_storage = Mock()
-        mock_storage.list_certificates = Mock(return_value={
-            "totalCertificates": 0,
-            "certificates": []
-        })
+        mock_storage.list_certificates = Mock(return_value={"totalCertificates": 0, "certificates": []})
 
         auth = {"userId": 1}
         args = {"limit": 25, "offset": 50}
@@ -406,10 +392,7 @@ class TestListCertificatesExtended:
     def test_list_certificates_empty(self) -> None:
         """Test list_certificates with no certificates."""
         mock_storage = Mock()
-        mock_storage.list_certificates = Mock(return_value={
-            "totalCertificates": 0,
-            "certificates": []
-        })
+        mock_storage.list_certificates = Mock(return_value={"totalCertificates": 0, "certificates": []})
 
         auth = {"userId": 1}
         args = {}
@@ -426,12 +409,9 @@ class TestInternalizeActionExtended:
     def test_internalize_action_basic(self) -> None:
         """Test basic internalize_action functionality."""
         mock_storage = Mock()
-        mock_storage.internalize_action = Mock(return_value={
-            "accepted": True,
-            "isMerge": False,
-            "txid": "a" * 64,
-            "satoshis": 0
-        })
+        mock_storage.internalize_action = Mock(
+            return_value={"accepted": True, "isMerge": False, "txid": "a" * 64, "satoshis": 0}
+        )
 
         auth = {"userId": 1}
         args = {
@@ -439,7 +419,7 @@ class TestInternalizeActionExtended:
             "txid": "a" * 64,
             "rawTx": [0, 1, 2, 3],
             "inputs": [],
-            "outputs": []
+            "outputs": [],
         }
 
         result = internalize_action(mock_storage, auth, args)
@@ -450,12 +430,9 @@ class TestInternalizeActionExtended:
     def test_internalize_action_with_existing_transaction(self) -> None:
         """Test internalize_action with existing transaction."""
         mock_storage = Mock()
-        mock_storage.internalize_action = Mock(return_value={
-            "accepted": True,
-            "isMerge": True,
-            "txid": "b" * 64,
-            "satoshis": 1000
-        })
+        mock_storage.internalize_action = Mock(
+            return_value={"accepted": True, "isMerge": True, "txid": "b" * 64, "satoshis": 1000}
+        )
 
         auth = {"userId": 1}
         args = {
@@ -463,7 +440,7 @@ class TestInternalizeActionExtended:
             "txid": "b" * 64,
             "rawTx": [0, 1, 2, 3],
             "inputs": [{"txid": "input_tx", "outputIndex": 0}],
-            "outputs": [{"satoshis": 1000, "lockingScript": "script"}]
+            "outputs": [{"satoshis": 1000, "lockingScript": "script"}],
         }
 
         result = internalize_action(mock_storage, auth, args)
@@ -501,7 +478,9 @@ class TestBeefOperationsExtended:
         mock_beef_data = b"test_beef_data"
         txid = "a" * 64
 
-        with patch("bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction", return_value=mock_beef_data) as mock_impl:
+        with patch(
+            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction", return_value=mock_beef_data
+        ) as mock_impl:
             result = get_beef_for_transaction(mock_storage, txid)
             mock_impl.assert_called_once_with(mock_storage, {}, txid, None)
         assert result == mock_beef_data
@@ -513,10 +492,7 @@ class TestNetworkOperationsExtended:
     def test_attempt_to_post_reqs_to_network_no_requests(self) -> None:
         """Test attempt_to_post_reqs_to_network with no requests."""
         mock_storage = Mock()
-        mock_storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 0,
-            "failed": 0
-        })
+        mock_storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 0, "failed": 0})
 
         reqs = []
 
@@ -531,10 +507,7 @@ class TestNetworkOperationsExtended:
             {"provenTxReqId": 1, "txid": "tx1", "beef": "beef1"},
             {"provenTxReqId": 2, "txid": "tx2", "beef": "beef2"},
         ]
-        mock_storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 2,
-            "failed": 0
-        })
+        mock_storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 2, "failed": 0})
 
         result = attempt_to_post_reqs_to_network(mock_storage, reqs)
 
@@ -547,10 +520,7 @@ class TestReviewStatusExtended:
     def test_review_status_with_limit(self) -> None:
         """Test review_status with age limit."""
         mock_storage = Mock()
-        mock_storage.review_status = Mock(return_value={
-            "reviewed": 0,
-            "updated": 0
-        })
+        mock_storage.review_status = Mock(return_value={"reviewed": 0, "updated": 0})
 
         aged_limit = datetime.now()
         args = {"agedLimit": aged_limit}
@@ -562,10 +532,7 @@ class TestReviewStatusExtended:
     def test_review_status_no_limit(self) -> None:
         """Test review_status without age limit."""
         mock_storage = Mock()
-        mock_storage.review_status = Mock(return_value={
-            "reviewed": 0,
-            "updated": 0
-        })
+        mock_storage.review_status = Mock(return_value={"reviewed": 0, "updated": 0})
 
         args = {}
 
@@ -580,10 +547,7 @@ class TestPurgeDataExtended:
     def test_purge_data_no_aged_before(self) -> None:
         """Test purge_data without agedBeforeDate."""
         mock_storage = Mock()
-        mock_storage.purge_data = Mock(return_value={
-            "deletedTransactions": 0,
-            "log": ""
-        })
+        mock_storage.purge_data = Mock(return_value={"deletedTransactions": 0, "log": ""})
 
         params = {}
 
@@ -595,10 +559,7 @@ class TestPurgeDataExtended:
     def test_purge_data_with_aged_before(self) -> None:
         """Test purge_data with agedBeforeDate."""
         mock_storage = Mock()
-        mock_storage.purge_data = Mock(return_value={
-            "deletedTransactions": 5,
-            "log": ""
-        })
+        mock_storage.purge_data = Mock(return_value={"deletedTransactions": 5, "log": ""})
 
         params = {"agedBeforeDate": datetime.now()}
 
@@ -614,11 +575,7 @@ class TestGetSyncChunkExtended:
     def test_get_sync_chunk_basic(self) -> None:
         """Test basic get_sync_chunk functionality."""
         mock_storage = Mock()
-        mock_storage.get_sync_chunk = Mock(return_value={
-            "syncState": {},
-            "transactions": [],
-            "hasMore": False
-        })
+        mock_storage.get_sync_chunk = Mock(return_value={"syncState": {}, "transactions": [], "hasMore": False})
 
         args = {"userId": 1}
 
@@ -711,10 +668,7 @@ class TestListActions:
     def test_list_actions_basic(self) -> None:
         """Test basic list_actions functionality."""
         storage = Mock()
-        storage.list_actions = Mock(return_value={
-            "totalActions": 0,
-            "actions": []
-        })
+        storage.list_actions = Mock(return_value={"totalActions": 0, "actions": []})
         auth = {"userId": "user123"}
         args = ListActionsArgs(limit=10, offset=0, labels=None)
 
@@ -728,10 +682,7 @@ class TestListOutputs:
     def test_list_outputs_basic(self) -> None:
         """Test basic list_outputs functionality."""
         storage = Mock()
-        storage.list_outputs = Mock(return_value={
-            "totalOutputs": 0,
-            "outputs": []
-        })
+        storage.list_outputs = Mock(return_value={"totalOutputs": 0, "outputs": []})
         auth = {"userId": "user123"}
         args = ListOutputsArgs(limit=10, offset=0)
 
@@ -790,12 +741,9 @@ class TestInternalizeAction:
     def test_internalize_action_basic(self) -> None:
         """Test basic internalize_action functionality."""
         storage = Mock()
-        storage.internalize_action = Mock(return_value={
-            "accepted": True,
-            "isMerge": False,
-            "txid": "0" * 64,
-            "satoshis": 0
-        })
+        storage.internalize_action = Mock(
+            return_value={"accepted": True, "isMerge": False, "txid": "0" * 64, "satoshis": 0}
+        )
         auth = {"userId": "user123"}
         args = {"txid": "0" * 64, "tx": "01000000", "outputs": []}
 
@@ -805,12 +753,9 @@ class TestInternalizeAction:
     def test_internalize_action_with_outputs(self) -> None:
         """Test internalize_action with outputs."""
         storage = Mock()
-        storage.internalize_action = Mock(return_value={
-            "accepted": True,
-            "isMerge": False,
-            "txid": "0" * 64,
-            "satoshis": 1000
-        })
+        storage.internalize_action = Mock(
+            return_value={"accepted": True, "isMerge": False, "txid": "0" * 64, "satoshis": 1000}
+        )
         auth = {"userId": "user123"}
         args = {
             "txid": "0" * 64,
@@ -1103,10 +1048,7 @@ class TestProcessActionAdvanced:
         storage = Mock()
         # Mock process_action to return expected result structure
         # The actual implementation uses SQLAlchemy sessions, not a generic insert method
-        storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": []
-        })
+        storage.process_action = Mock(return_value={"sendWithResults": [], "notDelayedResults": []})
 
         auth = {"userId": 123}
 
@@ -1139,8 +1081,11 @@ class TestProcessActionAdvanced:
         """Test process_action with missing required fields for new tx."""
         storage = Mock()
         from bsv_wallet_toolbox.utils.validation import InvalidParameterError
+
         # Mock storage.process_action to raise error when required fields are missing
-        storage.process_action = Mock(side_effect=InvalidParameterError("args", "reference, txid, and rawTx are required"))
+        storage.process_action = Mock(
+            side_effect=InvalidParameterError("args", "reference, txid, and rawTx are required")
+        )
         auth = {"userId": 123}
 
         # Create args with is_new_tx=True but missing required fields
@@ -1163,10 +1108,12 @@ class TestProcessActionAdvanced:
         """Test process_action ProvenTx creation logic."""
         storage = Mock()
         # Mock storage.process_action to return expected result structure
-        storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": None  # delayed=True, so notDelayedResults is None
-        })
+        storage.process_action = Mock(
+            return_value={
+                "sendWithResults": [],
+                "notDelayedResults": None,  # delayed=True, so notDelayedResults is None
+            }
+        )
 
         auth = {"userId": 123}
 
@@ -1200,10 +1147,12 @@ class TestProcessActionAdvanced:
         """Test process_action ProvenTx creation when rawTx is provided."""
         storage = Mock()
         # Mock storage.process_action to return expected result structure
-        storage.process_action = Mock(return_value={
-            "sendWithResults": [],
-            "notDelayedResults": {"txid": "c" * 64, "status": "unproven"}  # not delayed
-        })
+        storage.process_action = Mock(
+            return_value={
+                "sendWithResults": [],
+                "notDelayedResults": {"txid": "c" * 64, "status": "unproven"},  # not delayed
+            }
+        )
 
         auth = {"userId": 456}
 
@@ -1367,10 +1316,7 @@ class TestEdgeCases:
 
     def test_generate_change_empty_inputs(self) -> None:
         """Test generate_change with empty inputs."""
-        storage = Mock()
-        auth = {"userId": "user123"}
-        inputs = []
-        total_output_amount = 1000
+        Mock()
 
     def test_generate_change_exact_match_insufficient(self) -> None:
         """Test generate_change with exact match but insufficient funds."""
@@ -1382,7 +1328,7 @@ class TestEdgeCases:
                 GenerateFundingInput(satoshis=300, locking_script="script2"),
             ],
             "targetAmount": 1000,
-            "exactSatoshis": 1000
+            "exactSatoshis": 1000,
         }
 
         # The wrapper function raises NotImplementedError
@@ -1397,7 +1343,7 @@ class TestEdgeCases:
             "availableChange": [
                 GenerateFundingInput(satoshis=500, locking_script="script1"),
             ],
-            "targetAmount": 1000
+            "targetAmount": 1000,
         }
 
         # The wrapper function raises NotImplementedError
@@ -1413,7 +1359,7 @@ class TestEdgeCases:
                 GenerateFundingInput(satoshis=1000, locking_script="script1"),
                 GenerateFundingInput(satoshis=500, locking_script="script2"),
             ],
-            "targetAmount": 1200
+            "targetAmount": 1200,
         }
 
         # The wrapper function raises NotImplementedError
@@ -1430,7 +1376,7 @@ class TestEdgeCases:
                 GenerateFundingInput(satoshis=500, locking_script="script2"),
                 GenerateFundingInput(satoshis=200, locking_script="script3"),
             ],
-            "targetAmount": 600
+            "targetAmount": 600,
         }
 
         # The wrapper function raises NotImplementedError
@@ -1446,7 +1392,7 @@ class TestEdgeCases:
                 GenerateFundingInput(satoshis=1000, locking_script="script1"),
             ],
             "targetAmount": 800,
-            "exactSatoshis": 1000
+            "exactSatoshis": 1000,
         }
 
         # The wrapper function raises NotImplementedError
@@ -1461,12 +1407,14 @@ class TestGetBeefForTransaction:
 
     def test_get_beef_for_transaction_missing_storage(self) -> None:
         """Wrapper should propagate errors when storage is missing."""
-        with patch(
-            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
-            side_effect=AttributeError("storage missing"),
-        ) as mock_impl:
-            with pytest.raises(AttributeError, match="storage missing"):
-                get_beef_for_transaction(None, self.VALID_TXID)
+        with (
+            patch(
+                "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+                side_effect=AttributeError("storage missing"),
+            ) as mock_impl,
+            pytest.raises(AttributeError, match="storage missing"),
+        ):
+            get_beef_for_transaction(None, self.VALID_TXID)
         mock_impl.assert_called_once_with(None, {}, self.VALID_TXID, None)
 
     def test_get_beef_for_transaction_missing_txid(self) -> None:
@@ -1537,12 +1485,14 @@ class TestGetBeefForTransaction:
     def test_get_beef_for_transaction_beef_unavailable(self) -> None:
         """WalletError from implementation should propagate."""
         storage = Mock()
-        with patch(
-            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
-            side_effect=WalletError("BEEF unavailable"),
-        ) as mock_impl:
-            with pytest.raises(WalletError, match="BEEF unavailable"):
-                get_beef_for_transaction(storage, self.VALID_TXID)
+        with (
+            patch(
+                "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+                side_effect=WalletError("BEEF unavailable"),
+            ) as mock_impl,
+            pytest.raises(WalletError, match="BEEF unavailable"),
+        ):
+            get_beef_for_transaction(storage, self.VALID_TXID)
         mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
 
     def test_get_beef_for_transaction_merge_beef(self) -> None:
@@ -1578,7 +1528,9 @@ class TestAttemptToPostReqsToNetwork:
         # The function doesn't validate storage, it just tries to call it
         # which raises AttributeError when storage is None
         reqs = [{"txid": "txid1"}]
-        with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'attempt_to_post_reqs_to_network'"):
+        with pytest.raises(
+            AttributeError, match="'NoneType' object has no attribute 'attempt_to_post_reqs_to_network'"
+        ):
             attempt_to_post_reqs_to_network(None, reqs)
 
     def test_attempt_to_post_reqs_to_network_missing_user_id(self) -> None:
@@ -1592,10 +1544,7 @@ class TestAttemptToPostReqsToNetwork:
     def test_attempt_to_post_reqs_to_network_success(self) -> None:
         """Test attempt_to_post_reqs_to_network successful posting."""
         storage = Mock()
-        storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 1,
-            "failed": 0
-        })
+        storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 1, "failed": 0})
 
         reqs = [{"txid": "txid1"}]
         result = attempt_to_post_reqs_to_network(storage, reqs)
@@ -1607,10 +1556,7 @@ class TestAttemptToPostReqsToNetwork:
     def test_attempt_to_post_reqs_to_network_no_requests_available(self) -> None:
         """Test attempt_to_post_reqs_to_network when no requests available."""
         storage = Mock()
-        storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 0,
-            "failed": 0
-        })
+        storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 0, "failed": 0})
 
         reqs = []
         result = attempt_to_post_reqs_to_network(storage, reqs)
@@ -1628,7 +1574,7 @@ class TestReviewStatus:
         """Test review_status with missing storage."""
         # The function doesn't validate storage, it just tries to call it
         # which raises AttributeError when storage is None
-        args = {"agedLimit": datetime.now(timezone.utc)}
+        args = {"agedLimit": datetime.now(UTC)}
         with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'review_status'"):
             review_status(None, args)
 
@@ -1636,17 +1582,14 @@ class TestReviewStatus:
         """Test review_status with missing userId."""
         storage = Mock()
         storage.review_status = Mock(side_effect=WalletError("userId is required"))
-        args = {"agedLimit": datetime.now(timezone.utc)}
+        args = {"agedLimit": datetime.now(UTC)}
         with pytest.raises(WalletError, match="userId is required"):
             review_status(storage, args)
 
     def test_review_status_success(self) -> None:
         """Test review_status with successful execution."""
         storage = Mock()
-        storage.review_status = Mock(return_value={
-            "updatedCount": 1,
-            "agedCount": 0
-        })
+        storage.review_status = Mock(return_value={"updatedCount": 1, "agedCount": 0})
 
         aged_limit = datetime(2023, 1, 1, 11, 30, 0)  # 1.5 hours ago
         args = {"agedLimit": aged_limit}
@@ -1659,10 +1602,7 @@ class TestReviewStatus:
     def test_review_status_no_aged_transactions(self) -> None:
         """Test review_status with no aged transactions."""
         storage = Mock()
-        storage.review_status = Mock(return_value={
-            "updatedCount": 0,
-            "agedCount": 0
-        })
+        storage.review_status = Mock(return_value={"updatedCount": 0, "agedCount": 0})
 
         args = {"agedLimit": datetime(2023, 1, 1, 12, 0, 0)}
         result = review_status(storage, args)
@@ -1720,13 +1660,15 @@ class TestGetSyncChunk:
     def test_get_sync_chunk_success(self) -> None:
         """Test get_sync_chunk with successful execution."""
         storage = Mock()
-        storage.get_sync_chunk = Mock(return_value={
-            "transactions": [
-                {"transactionId": 1, "status": "completed"},
-                {"transactionId": 2, "status": "unprocessed"},
-            ],
-            "syncState": {"syncVersion": 1}
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "transactions": [
+                    {"transactionId": 1, "status": "completed"},
+                    {"transactionId": 2, "status": "unprocessed"},
+                ],
+                "syncState": {"syncVersion": 1},
+            }
+        )
 
         args = {"userId": 123, "chunkSize": 10}
         result = get_sync_chunk(storage, args)
@@ -1754,4 +1696,3 @@ class TestGetSyncChunk:
 
         result = internalize_action(storage, auth, args)
         assert isinstance(result, dict)
-

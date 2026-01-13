@@ -26,7 +26,7 @@ class TestServiceCollectionInitialization:
         try:
             mock_provider1 = Mock()
             mock_provider2 = Mock()
-            
+
             collection = ServiceCollection(
                 service_name="test_service",
                 providers=[mock_provider1, mock_provider2],
@@ -106,9 +106,10 @@ class TestServiceCollectionFailover:
         """Test failover when provider fails."""
         try:
             if hasattr(mock_collection_with_providers, "call_with_failover"):
+
                 def failing_call():
                     raise Exception("Provider failed")
-                
+
                 # Should try next provider on failure
                 result = mock_collection_with_providers.call_with_failover(failing_call)
                 assert result is not None or result is None
@@ -182,16 +183,16 @@ class TestServiceCollectionErrorHandling:
         """Test when all providers fail."""
         try:
             collection = ServiceCollection(service_name="test")
-            
+
             failing_provider1 = Mock()
             failing_provider1.call = Mock(side_effect=Exception("Failed"))
             failing_provider2 = Mock()
             failing_provider2.call = Mock(side_effect=Exception("Failed"))
-            
+
             if hasattr(collection, "add_provider"):
                 collection.add_provider("p1", failing_provider1)
                 collection.add_provider("p2", failing_provider2)
-            
+
             # Should raise or return None after all fail
             if hasattr(collection, "call_with_failover"):
                 try:
@@ -200,4 +201,3 @@ class TestServiceCollectionErrorHandling:
                     pass
         except (TypeError, AttributeError):
             pass
-

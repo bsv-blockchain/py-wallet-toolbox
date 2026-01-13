@@ -17,6 +17,7 @@ import pytest
 try:
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True
@@ -72,7 +73,7 @@ def wallet_with_mocks(mock_storage, mock_services, mock_monitor):
     if not IMPORTS_AVAILABLE:
         pytest.skip("Required imports not available")
 
-    root_key = PrivateKey(bytes.fromhex('a' * 64))
+    root_key = PrivateKey(bytes.fromhex("a" * 64))
     key_deriver = KeyDeriver(root_key)
 
     wallet = Wallet(
@@ -80,7 +81,7 @@ def wallet_with_mocks(mock_storage, mock_services, mock_monitor):
         services=mock_services,
         key_deriver=key_deriver,
         storage_provider=mock_storage,
-        monitor=mock_monitor
+        monitor=mock_monitor,
     )
     return wallet
 
@@ -94,7 +95,7 @@ class TestWalletInitializationExceptionHandling:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         # Create storage that raises exception on set_services
@@ -109,7 +110,7 @@ class TestWalletInitializationExceptionHandling:
             services=mock_services,
             key_deriver=key_deriver,
             storage_provider=mock_storage,
-            monitor=mock_monitor
+            monitor=mock_monitor,
         )
 
         # Verify wallet was created successfully despite set_services failure
@@ -121,16 +122,12 @@ class TestWalletInitializationExceptionHandling:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         # Create wallet without services
-        wallet = Wallet(
-            chain="test",
-            services=None,
-            key_deriver=key_deriver,
-            storage_provider=mock_storage,
-            monitor=mock_monitor
+        Wallet(
+            chain="test", services=None, key_deriver=key_deriver, storage_provider=mock_storage, monitor=mock_monitor
         )
 
         # Should not call set_services since services is None
@@ -141,16 +138,12 @@ class TestWalletInitializationExceptionHandling:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         # Create wallet without storage
         wallet = Wallet(
-            chain="test",
-            services=mock_services,
-            key_deriver=key_deriver,
-            storage_provider=None,
-            monitor=mock_monitor
+            chain="test", services=mock_services, key_deriver=key_deriver, storage_provider=None, monitor=mock_monitor
         )
 
         # Should not call set_services since storage is None
@@ -191,8 +184,10 @@ class TestBeefProcessing:
         mock_beef = Mock()
         mock_beef.to_binary_atomic.return_value = b"verified_beef_data"
 
-        with patch('bsv_wallet_toolbox.wallet.parse_beef_ex') as mock_parse_beef_ex, \
-             patch.object(wallet, 'verify_returned_txid_only') as mock_verify:
+        with (
+            patch("bsv_wallet_toolbox.wallet.parse_beef_ex") as mock_parse_beef_ex,
+            patch.object(wallet, "verify_returned_txid_only") as mock_verify,
+        ):
 
             mock_parse_beef_ex.return_value = (mock_beef, "subject_txid", None)
             mock_verify.return_value = mock_beef
@@ -212,7 +207,7 @@ class TestBeefProcessing:
         beef_data = b"original_beef_data"
         known_txids = ["test_txid"]
 
-        with patch('bsv_wallet_toolbox.wallet.parse_beef', side_effect=Exception("Parse failed")):
+        with patch("bsv_wallet_toolbox.wallet.parse_beef", side_effect=Exception("Parse failed")):
             # Should return original beef_data as fallback
             result = wallet.verify_returned_txid_only_atomic_beef(beef_data, known_txids)
 
@@ -226,8 +221,10 @@ class TestBeefProcessing:
         mock_beef = Mock()
         mock_beef.to_binary_atomic.return_value = b"verified_beef_data"
 
-        with patch('bsv_wallet_toolbox.wallet.parse_beef_ex') as mock_parse_beef_ex, \
-             patch.object(wallet, 'verify_returned_txid_only') as mock_verify:
+        with (
+            patch("bsv_wallet_toolbox.wallet.parse_beef_ex") as mock_parse_beef_ex,
+            patch.object(wallet, "verify_returned_txid_only") as mock_verify,
+        ):
 
             mock_parse_beef_ex.return_value = (mock_beef, "subject_txid", None)
             mock_verify.return_value = mock_beef
@@ -247,7 +244,7 @@ class TestBeefProcessing:
         beef_data = b"original_beef_data"
         known_txids = ["test_txid"]
 
-        with patch('bsv_wallet_toolbox.wallet.parse_beef', side_effect=Exception("Parse failed")):
+        with patch("bsv_wallet_toolbox.wallet.parse_beef", side_effect=Exception("Parse failed")):
             # Should return original beef_data as fallback
             result = wallet.verify_returned_txid_only_atomic_beef(beef_data, known_txids)
 
@@ -269,11 +266,13 @@ class TestSignActionResultProcessing:
             "txid": "test_txid_beef",
             "tx": b"beef_data_bytes",
             "sendWithResults": [],
-            "notDelayedResults": []
+            "notDelayedResults": [],
         }
 
-        with patch('bsv_wallet_toolbox.wallet.signer_sign_action') as mock_signer, \
-             patch('bsv_wallet_toolbox.wallet.parse_beef') as mock_parse_beef:
+        with (
+            patch("bsv_wallet_toolbox.wallet.signer_sign_action") as mock_signer,
+            patch("bsv_wallet_toolbox.wallet.parse_beef") as mock_parse_beef,
+        ):
 
             mock_signer.return_value = mock_signer_result
             mock_parsed_beef = Mock()
@@ -298,11 +297,13 @@ class TestSignActionResultProcessing:
             "txid": "test_txid_beef_fail",
             "tx": b"beef_data_bytes",
             "sendWithResults": [],
-            "notDelayedResults": []
+            "notDelayedResults": [],
         }
 
-        with patch('bsv_wallet_toolbox.wallet.signer_sign_action') as mock_signer, \
-             patch('bsv_wallet_toolbox.wallet.parse_beef', side_effect=Exception("Parse failed")):
+        with (
+            patch("bsv_wallet_toolbox.wallet.signer_sign_action") as mock_signer,
+            patch("bsv_wallet_toolbox.wallet.parse_beef", side_effect=Exception("Parse failed")),
+        ):
 
             mock_signer.return_value = mock_signer_result
 
@@ -322,10 +323,10 @@ class TestSignActionResultProcessing:
             "txid": "test_txid_no_beef",
             "tx": b"beef_data_bytes",
             "sendWithResults": [],
-            "notDelayedResults": []
+            "notDelayedResults": [],
         }
 
-        with patch('bsv_wallet_toolbox.wallet.signer_sign_action') as mock_signer:
+        with patch("bsv_wallet_toolbox.wallet.signer_sign_action") as mock_signer:
             mock_signer.return_value = mock_signer_result
 
             args = {"reference": "test_ref", "options": {"isDelayed": False}}
@@ -403,8 +404,8 @@ class TestWalletUtilityFunctions:
 
     def test_as_bytes_invalid_type(self):
         """Test _as_bytes with invalid type."""
-        from bsv_wallet_toolbox.wallet import _as_bytes
         from bsv_wallet_toolbox.errors import InvalidParameterError
+        from bsv_wallet_toolbox.wallet import _as_bytes
 
         with pytest.raises(InvalidParameterError):
             _as_bytes(123, "test_field")  # int is invalid
@@ -426,13 +427,9 @@ class TestWalletErrorConditions:
         """Test sign_action without reference in pending actions."""
         wallet = wallet_with_mocks
 
-        mock_signer_result = {
-            "txid": "test_txid_no_ref",
-            "sendWithResults": [],
-            "notDelayedResults": []
-        }
+        mock_signer_result = {"txid": "test_txid_no_ref", "sendWithResults": [], "notDelayedResults": []}
 
-        with patch('bsv_wallet_toolbox.wallet.signer_sign_action') as mock_signer:
+        with patch("bsv_wallet_toolbox.wallet.signer_sign_action") as mock_signer:
             mock_signer.return_value = mock_signer_result
 
             args = {"reference": "test_ref_no_pending", "options": {"isDelayed": False}}
@@ -447,11 +444,11 @@ class TestWalletErrorConditions:
         if not IMPORTS_AVAILABLE:
             pytest.skip("Required imports not available")
 
-        root_key = PrivateKey(bytes.fromhex('a' * 64))
+        root_key = PrivateKey(bytes.fromhex("a" * 64))
         key_deriver = KeyDeriver(root_key)
 
         # Mock Beef to always fail
-        with patch('bsv_wallet_toolbox.wallet.Beef', side_effect=Exception("Beef always fails")):
+        with patch("bsv_wallet_toolbox.wallet.Beef", side_effect=Exception("Beef always fails")):
             wallet = Wallet(key_deriver=key_deriver, chain="test")
 
             # Should set beef to None as fallback
@@ -461,7 +458,7 @@ class TestWalletErrorConditions:
         """Test verify_returned_txid_only when no subject txid can be extracted."""
         wallet = wallet_with_mocks
 
-        with patch('bsv_wallet_toolbox.wallet.parse_beef_ex', return_value=(None, None, None)):
+        with patch("bsv_wallet_toolbox.wallet.parse_beef_ex", return_value=(None, None, None)):
             beef_data = b"original_beef_data"
 
             # Should return original beef_data when parsing fails

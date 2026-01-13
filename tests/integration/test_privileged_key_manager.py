@@ -6,15 +6,15 @@ signing, HMAC, key derivation, and key lifecycle.
 Reference: wallet-toolbox/src/sdk/__test/PrivilegedKeyManager.test.ts
 """
 
-import asyncio
 import os
 from hashlib import sha256
 
 import pytest
 
 try:
-    from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
     from bsv.keys import PrivateKey
+
+    from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
     from bsv_wallet_toolbox.utils import to_utf8
 
     IMPORTS_AVAILABLE = True
@@ -34,12 +34,12 @@ def xor_bytes(a: bytes | list[int], b: bytes | list[int]) -> list[int]:
     """XOR two byte arrays."""
     a_bytes = bytes(a) if isinstance(a, (list, bytes)) else a.encode()
     b_bytes = bytes(b) if isinstance(b, (list, bytes)) else b.encode()
-    return list(x ^ y for x, y in zip(a_bytes, b_bytes, strict=False))
+    return [x ^ y for x, y in zip(a_bytes, b_bytes, strict=False)]
 
 
 def create_random_private_key() -> PrivateKey:
     """Create a random private key."""
-    return PrivateKey(int.from_bytes(os.urandom(32), 'big'))
+    return PrivateKey(int.from_bytes(os.urandom(32), "big"))
 
 
 class TestPrivilegedKeyManager:
@@ -66,7 +66,76 @@ class TestPrivilegedKeyManager:
             {
                 "data": to_array("BRC-3 Compliance Validated!", "utf8"),
                 "signature": [
-                    48, 68, 2, 32, 43, 34, 58, 156, 219, 32, 50, 70, 29, 240, 155, 137, 88, 60, 200, 95, 243, 198, 201, 21, 56, 82, 141, 112, 69, 196, 170, 73, 156, 6, 44, 48, 2, 32, 118, 125, 254, 201, 44, 87, 177, 170, 93, 11, 193, 134, 18, 70, 9, 31, 234, 27, 170, 177, 54, 96, 181, 140, 166, 196, 144, 14, 230, 118, 106, 105
+                    48,
+                    68,
+                    2,
+                    32,
+                    43,
+                    34,
+                    58,
+                    156,
+                    219,
+                    32,
+                    50,
+                    70,
+                    29,
+                    240,
+                    155,
+                    137,
+                    88,
+                    60,
+                    200,
+                    95,
+                    243,
+                    198,
+                    201,
+                    21,
+                    56,
+                    82,
+                    141,
+                    112,
+                    69,
+                    196,
+                    170,
+                    73,
+                    156,
+                    6,
+                    44,
+                    48,
+                    2,
+                    32,
+                    118,
+                    125,
+                    254,
+                    201,
+                    44,
+                    87,
+                    177,
+                    170,
+                    93,
+                    11,
+                    193,
+                    134,
+                    18,
+                    70,
+                    9,
+                    31,
+                    234,
+                    27,
+                    170,
+                    177,
+                    54,
+                    96,
+                    181,
+                    140,
+                    166,
+                    196,
+                    144,
+                    14,
+                    230,
+                    118,
+                    106,
+                    105,
                 ],
                 "protocolID": [2, "BRC3 Test"],
                 "keyID": "42",
@@ -97,8 +166,38 @@ class TestPrivilegedKeyManager:
             {
                 "data": to_array("BRC-2 HMAC Compliance Validated!", "utf8"),
                 "hmac": [
-                    81, 240, 18, 153, 163, 45, 174, 85, 9, 246, 142, 125, 209, 133, 82, 76,
-                    254, 103, 46, 182, 86, 59, 219, 61, 126, 30, 176, 232, 233, 100, 234, 14
+                    81,
+                    240,
+                    18,
+                    153,
+                    163,
+                    45,
+                    174,
+                    85,
+                    9,
+                    246,
+                    142,
+                    125,
+                    209,
+                    133,
+                    82,
+                    76,
+                    254,
+                    103,
+                    46,
+                    182,
+                    86,
+                    59,
+                    219,
+                    61,
+                    126,
+                    30,
+                    176,
+                    232,
+                    233,
+                    100,
+                    234,
+                    14,
                 ],
                 "protocolID": [2, "BRC2 Test"],
                 "keyID": "42",
@@ -128,10 +227,92 @@ class TestPrivilegedKeyManager:
         result = await wallet.decrypt(
             {
                 "ciphertext": [
-                    252, 203, 216, 184, 29, 161, 223, 212, 16, 193, 94, 99, 31, 140, 99, 43, 61, 236, 184, 67, 54, 105, 199, 47, 11,
-                    19, 184, 127, 2, 165, 125, 9, 188, 195, 196, 39, 120, 130, 213, 95, 186, 89, 64, 28, 1, 80, 20, 213, 159, 133,
-                    98, 253, 128, 105, 113, 247, 197, 152, 236, 64, 166, 207, 113, 134, 65, 38, 58, 24, 127, 145, 140, 206, 47, 70,
-                    146, 84, 186, 72, 95, 35, 154, 112, 178, 55, 72, 124
+                    252,
+                    203,
+                    216,
+                    184,
+                    29,
+                    161,
+                    223,
+                    212,
+                    16,
+                    193,
+                    94,
+                    99,
+                    31,
+                    140,
+                    99,
+                    43,
+                    61,
+                    236,
+                    184,
+                    67,
+                    54,
+                    105,
+                    199,
+                    47,
+                    11,
+                    19,
+                    184,
+                    127,
+                    2,
+                    165,
+                    125,
+                    9,
+                    188,
+                    195,
+                    196,
+                    39,
+                    120,
+                    130,
+                    213,
+                    95,
+                    186,
+                    89,
+                    64,
+                    28,
+                    1,
+                    80,
+                    20,
+                    213,
+                    159,
+                    133,
+                    98,
+                    253,
+                    128,
+                    105,
+                    113,
+                    247,
+                    197,
+                    152,
+                    236,
+                    64,
+                    166,
+                    207,
+                    113,
+                    134,
+                    65,
+                    38,
+                    58,
+                    24,
+                    127,
+                    145,
+                    140,
+                    206,
+                    47,
+                    70,
+                    146,
+                    84,
+                    186,
+                    72,
+                    95,
+                    35,
+                    154,
+                    112,
+                    178,
+                    55,
+                    72,
+                    124,
                 ],
                 "protocolID": [2, "BRC2 Test"],
                 "keyID": "42",
@@ -352,7 +533,7 @@ class TestPrivilegedKeyManager:
             }
         )
         # NOTE: hashToDirectlyVerify verification is skipped because py-sdk
-        # does not properly handle this parameter yet. The issue is that 
+        # does not properly handle this parameter yet. The issue is that
         # verify_signature expects 'data' to compute digest, but when
         # hashToDirectlyVerify is provided, it should use that directly.
         # See: tests/universal/test_signature_min.py for related skip.
@@ -804,7 +985,7 @@ class TestPrivilegedKeyManager:
         """
         # Given
         wallet = PrivilegedKeyManager(lambda reason="": create_random_private_key())
-        initial_decoys = len(wallet._decoy_prop_names_remain)
+        len(wallet._decoy_prop_names_remain)
 
         # When
         await wallet.get_privileged_key()

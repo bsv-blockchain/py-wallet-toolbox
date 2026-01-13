@@ -37,9 +37,7 @@ class TestBRC29TemplateLock:
         """
         # Given / When
         locking_script = lock_for_counterparty(
-            sender_private_key=SENDER_PRIVATE_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+            sender_private_key=SENDER_PRIVATE_KEY_HEX, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
         )
 
         # Then
@@ -66,7 +64,7 @@ class TestBRC29TemplateLock:
             lock_for_counterparty(
                 sender_private_key=SENDER_PRIVATE_KEY_HEX,
                 key_id=invalid_key_id,
-                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX,
             )
 
     def test_return_error_when_nil_is_passed_as_sender_private_key_deriver(self) -> None:
@@ -81,9 +79,7 @@ class TestBRC29TemplateLock:
         # Given / When / Then
         with pytest.raises(Exception):
             lock_for_counterparty(
-                sender_private_key=None,  # KeyDeriver
-                key_id=KEY_ID,
-                recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX
+                sender_private_key=None, key_id=KEY_ID, recipient_public_key=RECIPIENT_PUBLIC_KEY_HEX  # KeyDeriver
             )
 
     def test_return_error_when_nil_is_passed_as_sender_private_key(self) -> None:
@@ -265,9 +261,7 @@ class TestBRC29TemplateLockForSelf:
         """
         # Given / When
         locking_script = lock_for_self(
-            sender_public_key=SENDER_PUBLIC_KEY_HEX,
-            key_id=KEY_ID,
-            recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+            sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
         )
 
         # Then
@@ -294,7 +288,7 @@ class TestBRC29TemplateLockForSelf:
             lock_for_self(
                 sender_public_key=SENDER_PUBLIC_KEY_HEX,
                 key_id=invalid_key_id,
-                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX
+                recipient_private_key=RECIPIENT_PRIVATE_KEY_HEX,
             )
 
     def test_return_error_when_nil_is_passed_as_sender_public_key_deriver(self) -> None:
@@ -628,11 +622,7 @@ class TestBRC29TemplateUnlock:
         """
         # Given / When / Then
         with pytest.raises(ValueError):
-            unlock(
-                sender_public_key=SENDER_PUBLIC_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=""
-            )
+            unlock(sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key="")
 
     def test_return_error_when_recipient_key_parsing_fails(self) -> None:
         """Given: Invalid recipient key
@@ -645,8 +635,4 @@ class TestBRC29TemplateUnlock:
         """
         # Given / When / Then
         with pytest.raises(ValueError):
-            unlock(
-                sender_public_key=SENDER_PUBLIC_KEY_HEX,
-                key_id=KEY_ID,
-                recipient_private_key=INVALID_KEY_HEX
-            )
+            unlock(sender_public_key=SENDER_PUBLIC_KEY_HEX, key_id=KEY_ID, recipient_private_key=INVALID_KEY_HEX)

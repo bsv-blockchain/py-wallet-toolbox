@@ -24,7 +24,7 @@ Reference Implementation: ts-wallet-toolbox/src/services/providers/Bitails.ts
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -195,7 +195,7 @@ class Bitails:
         def make_note_extended(name: str, when: str, beef_hex: str, txids_str: str) -> dict[str, Any]:
             return {"name": name, "when": when, "beef": beef_hex, "txids": txids_str}
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         nn = make_note("BitailsPostBeef", now)
         beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else ""
         txids_str = ",".join(txids)
@@ -323,13 +323,13 @@ class Bitails:
                             result.txid = raw_txids[i]
 
                     # Set success and error_message
-                    if hasattr(result, 'error') and result.error:
+                    if hasattr(result, "error") and result.error:
                         result.success = False
                         if isinstance(result.error, dict):
                             result.error_message = str(result.error.get("message", result.error))
                         else:
                             result.error_message = str(result.error)
-                    elif not hasattr(result, 'success') or result.success is None:
+                    elif not hasattr(result, "success") or result.success is None:
                         result.success = True
 
                     results.append(result)
@@ -338,21 +338,13 @@ class Bitails:
                 error_msg = f"{response.status_code} {getattr(response, 'text', '')}".strip()
                 requested_txids = txids or raw_txids
                 for txid in requested_txids:
-                    results.append(BitailsPostRawsResult(
-                        txid=txid,
-                        success=False,
-                        error_message=error_msg
-                    ))
+                    results.append(BitailsPostRawsResult(txid=txid, success=False, error_message=error_msg))
 
         except Exception as e:
             # Return error results for all requested txids
             requested_txids = txids or raw_txids
             for txid in requested_txids:
-                results.append(BitailsPostRawsResult(
-                    txid=txid,
-                    success=False,
-                    error_message=str(e)
-                ))
+                results.append(BitailsPostRawsResult(txid=txid, success=False, error_message=str(e)))
 
         return results
 
@@ -374,7 +366,7 @@ class Bitails:
         result = GetMerklePathResult(name="BitailsTsc", notes=[])
 
         url = f"{self.url}tx/{txid}/proof/tsc"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         def make_note_merkle(name: str, when: str, txid_val: str, url_val: str) -> dict[str, Any]:
             return {"name": name, "when": when, "txid": txid_val, "url": url_val}
@@ -430,7 +422,7 @@ class Bitails:
 
         return result
 
-    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status for a given txid (TS-compatible response shape).
 
         Args:
@@ -450,9 +442,7 @@ class Bitails:
 
         try:
             response = requests.get(url, headers=headers, timeout=30)
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 404:
+            if response.status_code == 200 or response.status_code == 404:
                 return response.json()
             elif response.status_code == 500:
                 return {"error": "Bitails server error (500)"}
@@ -465,6 +455,6 @@ class Bitails:
         except requests.exceptions.ConnectionError as e:
             return {"error": str(e)}
         except requests.exceptions.RequestException as e:
-            return {"error": f"Bitails network error: {str(e)}"}
+            return {"error": f"Bitails network error: {e!s}"}
         except Exception as e:
-            return {"error": f"Bitails error: {str(e)}"}
+            return {"error": f"Bitails error: {e!s}"}

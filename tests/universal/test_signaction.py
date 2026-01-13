@@ -12,8 +12,6 @@ from collections.abc import Callable
 
 import pytest
 
-from bsv_wallet_toolbox import Wallet
-
 
 class TestUniversalVectorsSignAction:
     """Tests using Universal Test Vectors for signAction.
@@ -37,7 +35,7 @@ class TestUniversalVectorsSignAction:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("signAction-simple")
+        args_data, _result_data = load_test_vectors("signAction-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet_with_storage.sign_action(args_data["json"], originator=None)
@@ -46,17 +44,17 @@ class TestUniversalVectorsSignAction:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
         wire_request = serialize_request("signAction", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "signAction"
         assert isinstance(parsed_args, dict)
-        
-        # Test response serialization  
+
+        # Test response serialization
         result = {"test": "data"}
         wire_response = serialize_response(result)
         assert isinstance(wire_response, bytes)

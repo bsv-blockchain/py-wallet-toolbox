@@ -3,8 +3,6 @@
 This module tests serialization and deserialization of Bitcoin structures.
 """
 
-import pytest
-
 
 class TestTransactionSerialization:
     """Test transaction serialization."""
@@ -13,7 +11,7 @@ class TestTransactionSerialization:
         """Test serializing transaction to bytes."""
         try:
             from bsv_wallet_toolbox.utils.serialization import serialize_tx
-            
+
             mock_tx = {
                 "version": 1,
                 "inputs": [],
@@ -29,7 +27,7 @@ class TestTransactionSerialization:
         """Test deserializing transaction from bytes."""
         try:
             from bsv_wallet_toolbox.utils.serialization import deserialize_tx
-            
+
             # Minimal valid transaction
             tx_bytes = b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
             tx = deserialize_tx(tx_bytes)
@@ -45,7 +43,7 @@ class TestInputOutputSerialization:
         """Test serializing transaction input."""
         try:
             from bsv_wallet_toolbox.utils.serialization import serialize_input
-            
+
             tx_input = {
                 "txid": "a" * 64,
                 "vout": 0,
@@ -61,7 +59,7 @@ class TestInputOutputSerialization:
         """Test serializing transaction output."""
         try:
             from bsv_wallet_toolbox.utils.serialization import serialize_output
-            
+
             tx_output = {
                 "satoshis": 1000,
                 "script": b"\x76\xa9\x14" + (b"\x00" * 20) + b"\x88\xac",
@@ -79,8 +77,8 @@ class TestScriptSerialization:
         """Test serializing script."""
         try:
             from bsv_wallet_toolbox.utils.serialization import serialize_script
-            
-            script = [0x76, 0xa9, 0x14]  # OP_DUP OP_HASH160 OP_PUSH_20
+
+            script = [0x76, 0xA9, 0x14]  # OP_DUP OP_HASH160 OP_PUSH_20
             serialized = serialize_script(script)
             assert isinstance(serialized, (bytes, bytearray))
         except (ImportError, AttributeError, Exception):
@@ -90,7 +88,7 @@ class TestScriptSerialization:
         """Test deserializing script."""
         try:
             from bsv_wallet_toolbox.utils.serialization import deserialize_script
-            
+
             script_bytes = b"\x76\xa9\x14"
             script = deserialize_script(script_bytes)
             assert isinstance(script, list) or script is not None
@@ -105,13 +103,13 @@ class TestBlockSerialization:
         """Test serializing block header."""
         try:
             from bsv_wallet_toolbox.utils.serialization import serialize_block_header
-            
+
             header = {
                 "version": 1,
                 "prevHash": "0" * 64,
                 "merkleRoot": "0" * 64,
                 "time": 1234567890,
-                "bits": 0x1d00ffff,
+                "bits": 0x1D00FFFF,
                 "nonce": 0,
             }
             serialized = serialize_block_header(header)
@@ -124,7 +122,7 @@ class TestBlockSerialization:
         """Test deserializing block header."""
         try:
             from bsv_wallet_toolbox.utils.serialization import deserialize_block_header
-            
+
             # 80 bytes of header data
             header_bytes = b"\x00" * 80
             header = deserialize_block_header(header_bytes)
@@ -140,7 +138,7 @@ class TestCompactSizeEncoding:
         """Test encoding compact size integer."""
         try:
             from bsv_wallet_toolbox.utils.serialization import encode_compact_size
-            
+
             # Small value < 253
             result = encode_compact_size(100)
             assert isinstance(result, (bytes, bytearray))
@@ -152,7 +150,7 @@ class TestCompactSizeEncoding:
         """Test decoding compact size integer."""
         try:
             from bsv_wallet_toolbox.utils.serialization import decode_compact_size
-            
+
             data = b"\x64"  # 100
             value, size = decode_compact_size(data)
             assert value == 100
@@ -168,7 +166,7 @@ class TestSerializationUtilities:
         """Test reading bytes from stream."""
         try:
             from bsv_wallet_toolbox.utils.serialization import read_bytes
-            
+
             data = b"\x00\x01\x02\x03\x04"
             result = read_bytes(data, 0, 3)
             assert result == b"\x00\x01\x02"
@@ -179,7 +177,7 @@ class TestSerializationUtilities:
         """Test reading varint from stream."""
         try:
             from bsv_wallet_toolbox.utils.serialization import read_varint
-            
+
             data = b"\x64\x00\x00"  # 100 + extra data
             value, offset = read_varint(data, 0)
             assert value == 100
@@ -191,10 +189,9 @@ class TestSerializationUtilities:
         """Test writing varint to stream."""
         try:
             from bsv_wallet_toolbox.utils.serialization import write_varint
-            
+
             value = 100
             result = write_varint(value)
             assert isinstance(result, (bytes, bytearray))
         except (ImportError, AttributeError):
             pass
-

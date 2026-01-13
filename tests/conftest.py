@@ -25,6 +25,7 @@ Design goals:
 
 import json
 from collections.abc import Callable
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -162,7 +163,7 @@ class MockWalletServices(Services):
         """
         return self._height
 
-    def get_header_for_height(self, height: int) -> bytes:  # noqa: ARG002
+    def get_header_for_height(self, height: int) -> bytes:
         """Get mock block header (overrides Services.get_header_for_height).
 
         Args:
@@ -216,13 +217,16 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     storage.make_available()
 
     # Get or create user for seeding
-    from datetime import datetime, timezone
-    user_id = storage.insert_user({
-        "identityKey": test_key_deriver._root_private_key.public_key().hex(),
-        "activeStorage": "test",
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
+    from datetime import datetime
+
+    user_id = storage.insert_user(
+        {
+            "identityKey": test_key_deriver._root_private_key.public_key().hex(),
+            "activeStorage": "test",
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
+        }
+    )
 
     # Get or create default basket (use find_or_insert to match storage provider behavior)
     change_basket = storage.find_or_insert_output_basket(user_id, "default")
@@ -231,45 +235,49 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     # Seed transaction that will provide the UTXO
     # This txid matches what the universal test vector expects as input
     source_txid = "03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c"
-    tx_id = storage.insert_transaction({
-        "userId": user_id,
-        "txid": source_txid,
-        "status": "completed",
-        "reference": "test-seed-tx",
-        "isOutgoing": False,
-        "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests
-        "description": "Seeded UTXO for testing",
-        "version": 1,
-        "lockTime": 0,
-        "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
+    tx_id = storage.insert_transaction(
+        {
+            "userId": user_id,
+            "txid": source_txid,
+            "status": "completed",
+            "reference": "test-seed-tx",
+            "isOutgoing": False,
+            "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests
+            "description": "Seeded UTXO for testing",
+            "version": 1,
+            "lockTime": 0,
+            "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
+        }
+    )
 
     # Seed spendable UTXO (output at vout 0)
     # Use a simple P2PKH locking script (OP_DUP OP_HASH160 <pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG)
     pub_key = test_key_deriver._root_private_key.public_key()
     pub_key_hash = pub_key.hash160()
     # P2PKH: 76 a9 14 <20 bytes pubkey hash> 88 ac
-    locking_script = bytes([0x76, 0xa9, 0x14]) + pub_key_hash + bytes([0x88, 0xac])
-    
-    storage.insert_output({
-        "transactionId": tx_id,
-        "userId": user_id,
-        "basketId": basket_id,  # "default" basket - required for allocate_funding_input
-        "spendable": True,
-        "change": True,  # Change outputs are spendable
-        "vout": 0,
-        "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests (999 sat output + fees)
-        "providedBy": "storage",  # Changed from "test" to "storage" to match working examples
-        "purpose": "change",
-        "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
-        "txid": source_txid,
-        "lockingScript": locking_script,
-        "spentBy": None,  # Explicitly set to None to ensure it's allocatable
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
+    locking_script = bytes([0x76, 0xA9, 0x14]) + pub_key_hash + bytes([0x88, 0xAC])
+
+    storage.insert_output(
+        {
+            "transactionId": tx_id,
+            "userId": user_id,
+            "basketId": basket_id,  # "default" basket - required for allocate_funding_input
+            "spendable": True,
+            "change": True,  # Change outputs are spendable
+            "vout": 0,
+            "satoshis": 50000,  # Increased to ensure sufficient funds for createAction tests (999 sat output + fees)
+            "providedBy": "storage",  # Changed from "test" to "storage" to match working examples
+            "purpose": "change",
+            "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
+            "txid": source_txid,
+            "lockingScript": locking_script,
+            "spentBy": None,  # Explicitly set to None to ensure it's allocatable
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
+        }
+    )
 
     # Create mock Services instance for testing
     services = MockWalletServices(chain="main", height=850000)
@@ -347,7 +355,7 @@ def wallet_with_storage(test_key_deriver: KeyDeriver) -> Wallet:
 
 def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
     """Seed test certificate data matching TypeScript test expectations."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Certificate data from TypeScript tests
     certifier_pubkey = "02cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17"
@@ -364,8 +372,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "deadbeef" * 8 + ".1",
             "signature": "test_signature_1",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         {
             "userId": user_id,
@@ -375,8 +383,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "beefdead" * 8 + ".2",
             "signature": "test_signature_2",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         {
             "userId": user_id,
@@ -386,8 +394,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "feeddead" * 8 + ".3",
             "signature": "test_signature_3",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         {
             "userId": user_id,
@@ -397,8 +405,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "deedbeef" * 8 + ".4",
             "signature": "test_signature_4",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         # 1 certificate with different certifier (for multiple certifiers test)
         {
@@ -409,9 +417,9 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": "03cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17",  # Different certifier
             "revocationOutpoint": "beefdeed" * 8 + ".5",
             "signature": "test_signature_5",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
-        }
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
+        },
     ]
 
     # Insert certificates into storage
@@ -543,7 +551,7 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             - Add a new URL branch inside fetch() and return a canned object following TS contracts
         """
 
-        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002
+        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:
             """Return a recorded response for supported WhatsOnChain/Chaintracks URLs.
 
             Covered endpoints:
@@ -592,12 +600,18 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                                     nodes.append(leaf["hash"])
                                     break  # Only one sibling per level
                         if index is not None and nodes:
-                            return Resp(True, 200, [{
-                                "index": index,
-                                "nodes": nodes,
-                                "target": target,
-                                "txOrId": txid,
-                            }])
+                            return Resp(
+                                True,
+                                200,
+                                [
+                                    {
+                                        "index": index,
+                                        "nodes": nodes,
+                                        "target": target,
+                                        "txOrId": txid,
+                                    }
+                                ],
+                            )
                 # For invalid txids, return 200 with empty data (not 404) to match test expectations
                 return Resp(True, 200, {})
             # getMerklePath - legacy endpoint (kept for compatibility)

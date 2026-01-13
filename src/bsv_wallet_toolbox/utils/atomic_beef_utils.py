@@ -31,7 +31,7 @@ def try_fetch_merkle_path(services: Any, txid: str) -> dict[str, Any] | None:
     """Best-effort merkle path fetch. Returns None if unavailable/unmined."""
     try:
         merkle_result = services.get_merkle_path_for_transaction(txid)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return None
     if not isinstance(merkle_result, dict):
         return None
@@ -89,7 +89,7 @@ def build_internalize_atomic_beef(
             parents_total=parents_total,
             parents_with_proof=parents_with_proof,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     # 2) Fallback: raw tx only (optional subject merkle path if already mined)
@@ -160,7 +160,7 @@ def build_atomic_beef_from_tx_with_proven_inputs(
 
         try:
             raw_hex = fetch_raw_tx_with_retry(services, parent_txid, retry=retry)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
 
         bump_index = None
@@ -172,12 +172,12 @@ def build_atomic_beef_from_tx_with_proven_inputs(
                 bump_path = PyMerklePath(merkle_path["blockHeight"], merkle_path.get("path", []))
                 bump_index = merge_bump(beef, bump_path)
                 parents_with_proof += 1
-            except Exception:  # noqa: BLE001
+            except Exception:
                 bump_index = None
 
         try:
             btx = merge_raw_tx(beef, bytes.fromhex(raw_hex), bump_index)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
 
         # If this parent is also unmined (no bump), try to expand its parents too.
@@ -199,5 +199,3 @@ def build_atomic_beef_for_txid(services: Any, txid: str, retry: RawTxRetryConfig
     raw_hex = fetch_raw_tx_with_retry(services, txid, retry=retry)
     merkle_path = try_fetch_merkle_path(services, txid)
     return build_atomic_beef_from_raw_tx(raw_hex, txid, merkle_path=merkle_path)
-
-

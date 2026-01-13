@@ -5,8 +5,7 @@ This module provides services for fetching blockchain data from WhatsOnChain API
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
 """
 
-from typing import Any, Dict
-from urllib.parse import urlencode
+from typing import Any
 
 from ....providers.whatsonchain import WhatsOnChain
 
@@ -14,7 +13,17 @@ from ....providers.whatsonchain import WhatsOnChain
 class BlockHeader:
     """Simple block header class for test compatibility."""
 
-    def __init__(self, hash: str, height: int, version: int = 0, previous_hash: str = "", merkle_root: str = "", time: int = 0, bits: int = 0, nonce: int = 0):
+    def __init__(
+        self,
+        hash: str,
+        height: int,
+        version: int = 0,
+        previous_hash: str = "",
+        merkle_root: str = "",
+        time: int = 0,
+        bits: int = 0,
+        nonce: int = 0,
+    ):
         self.hash = hash
         self.height = height
         self.version = version
@@ -54,13 +63,12 @@ class WhatsOnChainServices:
             options: Service configuration options
         """
         self.options = options
-        self._woc = WhatsOnChain(
-            network=options.network,
-            api_key=options.api_key
-        )
+        self._woc = WhatsOnChain(network=options.network, api_key=options.api_key)
 
     @classmethod
-    def create_whats_on_chain_services_options(cls, chain: str, api_key: str | None = None) -> WhatsOnChainServicesOptions:
+    def create_whats_on_chain_services_options(
+        cls, chain: str, api_key: str | None = None
+    ) -> WhatsOnChainServicesOptions:
         """Create options for WhatsOnChainServices.
 
         Args:
@@ -113,7 +121,7 @@ class WhatsOnChainServices:
         # For test compatibility, return a reasonable height
         return 850000  # Mock height for testing
 
-    def get_header_for_height(self, height: int) -> Dict[str, Any] | None:
+    def get_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get block header for a specific height.
 
         Args:
@@ -125,7 +133,7 @@ class WhatsOnChainServices:
         # For test compatibility, return None (not implemented)
         return None
 
-    def get_headers(self, from_height: int, to_height: int) -> list[Dict[str, Any]]:
+    def get_headers(self, from_height: int, to_height: int) -> list[dict[str, Any]]:
         """Get range of block headers.
 
         Args:

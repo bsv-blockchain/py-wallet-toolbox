@@ -4,13 +4,13 @@ This module provides comprehensive test coverage for the BulkIngestorWOC class,
 focusing on synchronization logic, error handling, and edge cases.
 """
 
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
-from bsv_wallet_toolbox.services.chaintracker.chaintracks.bulk_ingestor_woc import BulkIngestorWOC
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.bulk_ingestor_interface import BulkHeaderMinimumInfo
+from bsv_wallet_toolbox.services.chaintracker.chaintracks.bulk_ingestor_woc import BulkIngestorWOC
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.util.height_range import HeightRange
-from bsv_wallet_toolbox.services.wallet_services import Chain
 
 
 class TestBulkIngestorWOCInitialization:
@@ -60,11 +60,11 @@ class TestBulkIngestorWOCSynchronize:
                 "filename": "mainNet_0.headers",
                 "url": "https://example.com/mainNet_0.headers",
                 "heightRange": HeightRange(0, 99999),
-                "fileId": 0
+                "fileId": 0,
             }
         ]
 
-        with patch.object(ingestor, '_fetch_bulk_header_files_info', return_value=mock_file_infos):
+        with patch.object(ingestor, "_fetch_bulk_header_files_info", return_value=mock_file_infos):
             file_infos, downloader = await ingestor.synchronize(present_height, range_to_fetch)
 
             assert len(file_infos) == 1
@@ -78,7 +78,7 @@ class TestBulkIngestorWOCSynchronize:
         present_height = 1000
         range_to_fetch = HeightRange(0, 500)
 
-        with patch.object(ingestor, '_fetch_bulk_header_files_info', return_value=[]):
+        with patch.object(ingestor, "_fetch_bulk_header_files_info", return_value=[]):
             with pytest.raises(Exception, match="No bulk header files available"):
                 await ingestor.synchronize(present_height, range_to_fetch)
 
@@ -88,7 +88,7 @@ class TestBulkIngestorWOCSynchronize:
         present_height = 1000
         range_to_fetch = HeightRange(0, 500)
 
-        with patch.object(ingestor, '_fetch_bulk_header_files_info', side_effect=Exception("API error")):
+        with patch.object(ingestor, "_fetch_bulk_header_files_info", side_effect=Exception("API error")):
             with pytest.raises(Exception, match="Failed to synchronize bulk headers: API error"):
                 await ingestor.synchronize(present_height, range_to_fetch)
 
@@ -106,7 +106,7 @@ class TestBulkIngestorWOCFetchBulkHeaderFilesInfo:
         # Mock the WOC client to return filenames
         mock_filenames = ["mainNet_0.headers", "mainNet_1.headers"]
 
-        with patch.object(ingestor.woc_client, 'get_headers_resource_list', return_value=mock_filenames):
+        with patch.object(ingestor.woc_client, "get_headers_resource_list", return_value=mock_filenames):
             result = ingestor._fetch_bulk_header_files_info()
 
             assert len(result) == 2
@@ -118,14 +118,14 @@ class TestBulkIngestorWOCFetchBulkHeaderFilesInfo:
 
     def test_fetch_bulk_header_files_info_empty_response(self, ingestor: BulkIngestorWOC) -> None:
         """Test fetching files info when API returns empty list."""
-        with patch.object(ingestor.woc_client, 'get_headers_resource_list', return_value=[]):
+        with patch.object(ingestor.woc_client, "get_headers_resource_list", return_value=[]):
             result = ingestor._fetch_bulk_header_files_info()
 
             assert result == []
 
     def test_fetch_bulk_header_files_info_api_error(self, ingestor: BulkIngestorWOC) -> None:
         """Test fetching files info when API call fails."""
-        with patch.object(ingestor.woc_client, 'get_headers_resource_list', side_effect=Exception("Network error")):
+        with patch.object(ingestor.woc_client, "get_headers_resource_list", side_effect=Exception("Network error")):
             result = ingestor._fetch_bulk_header_files_info()
 
             assert result == []
@@ -133,13 +133,13 @@ class TestBulkIngestorWOCFetchBulkHeaderFilesInfo:
     def test_fetch_bulk_header_files_info_invalid_response(self, ingestor: BulkIngestorWOC) -> None:
         """Test fetching files info with invalid response format."""
         # Test with None response
-        with patch.object(ingestor.woc_client, 'get_headers_resource_list', return_value=None):
+        with patch.object(ingestor.woc_client, "get_headers_resource_list", return_value=None):
             result = ingestor._fetch_bulk_header_files_info()
 
             assert result == []
 
         # Test with non-list response
-        with patch.object(ingestor.woc_client, 'get_headers_resource_list', return_value="invalid"):
+        with patch.object(ingestor.woc_client, "get_headers_resource_list", return_value="invalid"):
             result = ingestor._fetch_bulk_header_files_info()
 
             assert result == []
@@ -165,16 +165,13 @@ class TestBulkIngestorWOCBulkFileDownloader:
 
         # Mock file info
         file_info = BulkHeaderMinimumInfo(
-            first_height=0,
-            count=1000,
-            file_name="test_headers.txt",
-            source_url="https://example.com/test_headers.txt"
+            first_height=0, count=1000, file_name="test_headers.txt", source_url="https://example.com/test_headers.txt"
         )
 
         # Mock the download process
         mock_data = b"header_data_line_1\nheader_data_line_2"
 
-        with patch.object(ingestor.woc_client, 'download_header_file', return_value=mock_data) as mock_download:
+        with patch.object(ingestor.woc_client, "download_header_file", return_value=mock_data) as mock_download:
             result = downloader(file_info)
 
             # Should return the downloaded data
@@ -188,13 +185,10 @@ class TestBulkIngestorWOCBulkFileDownloader:
         downloader = ingestor._bulk_file_downloader()
 
         file_info = BulkHeaderMinimumInfo(
-            first_height=0,
-            count=1000,
-            file_name="test_headers.txt",
-            source_url="https://example.com/test_headers.txt"
+            first_height=0, count=1000, file_name="test_headers.txt", source_url="https://example.com/test_headers.txt"
         )
 
-        with patch.object(ingestor.woc_client, 'download_header_file', side_effect=Exception("404 Not Found")):
+        with patch.object(ingestor.woc_client, "download_header_file", side_effect=Exception("404 Not Found")):
             with pytest.raises(Exception, match="404 Not Found"):
                 downloader(file_info)
 
@@ -203,13 +197,10 @@ class TestBulkIngestorWOCBulkFileDownloader:
         downloader = ingestor._bulk_file_downloader()
 
         file_info = BulkHeaderMinimumInfo(
-            first_height=0,
-            count=1000,
-            file_name="test_headers.txt",
-            source_url="https://example.com/test_headers.txt"
+            first_height=0, count=1000, file_name="test_headers.txt", source_url="https://example.com/test_headers.txt"
         )
 
-        with patch.object(ingestor.woc_client, 'download_header_file', side_effect=Exception("Request timeout")):
+        with patch.object(ingestor.woc_client, "download_header_file", side_effect=Exception("Request timeout")):
             with pytest.raises(Exception, match="Request timeout"):
                 downloader(file_info)
 
@@ -218,10 +209,7 @@ class TestBulkIngestorWOCBulkFileDownloader:
         downloader = ingestor._bulk_file_downloader()
 
         file_info = BulkHeaderMinimumInfo(
-            first_height=0,
-            count=1000,
-            file_name="test_headers.txt",
-            source_url=""  # Empty URL
+            first_height=0, count=1000, file_name="test_headers.txt", source_url=""  # Empty URL
         )
 
         with pytest.raises(Exception, match="SourceURL is required"):
@@ -232,15 +220,12 @@ class TestBulkIngestorWOCBulkFileDownloader:
         downloader = ingestor._bulk_file_downloader()
 
         file_info = BulkHeaderMinimumInfo(
-            first_height=0,
-            count=1000,
-            file_name="test_headers.txt",
-            source_url="https://example.com/test_headers.txt"
+            first_height=0, count=1000, file_name="test_headers.txt", source_url="https://example.com/test_headers.txt"
         )
 
         mock_data = b"header data"
 
-        with patch.object(ingestor.woc_client, 'download_header_file', return_value=mock_data) as mock_download:
+        with patch.object(ingestor.woc_client, "download_header_file", return_value=mock_data) as mock_download:
             result = downloader(file_info)
 
             assert result == mock_data
@@ -272,7 +257,7 @@ class TestBulkIngestorWOCEdgeCases:
         ]
 
         for malformed_response in malformed_responses:
-            with patch.object(ingestor.woc_client, 'get_headers_resource_list', return_value=malformed_response):
+            with patch.object(ingestor.woc_client, "get_headers_resource_list", return_value=malformed_response):
                 result = ingestor._fetch_bulk_header_files_info()
 
                 # Should filter out invalid filenames and return valid ones
@@ -287,15 +272,17 @@ class TestBulkIngestorWOCEdgeCases:
         # Test with range that goes beyond present height
         range_to_fetch = HeightRange(500, 1200)  # Beyond present height
 
-        mock_file_infos = [{
-            "filename": "mainNet_0.headers",
-            "url": "https://example.com/mainNet_0.headers",
-            "heightRange": HeightRange(0, 99999),
-            "fileId": 0
-        }]
+        mock_file_infos = [
+            {
+                "filename": "mainNet_0.headers",
+                "url": "https://example.com/mainNet_0.headers",
+                "heightRange": HeightRange(0, 99999),
+                "fileId": 0,
+            }
+        ]
 
-        with patch.object(ingestor, '_fetch_bulk_header_files_info', return_value=mock_file_infos):
-            file_infos, downloader = await ingestor.synchronize(present_height, range_to_fetch)
+        with patch.object(ingestor, "_fetch_bulk_header_files_info", return_value=mock_file_infos):
+            file_infos, _downloader = await ingestor.synchronize(present_height, range_to_fetch)
 
             assert len(file_infos) == 1
             assert file_infos[0].file_name == "mainNet_0.headers"
@@ -305,15 +292,12 @@ class TestBulkIngestorWOCEdgeCases:
         downloader = ingestor._bulk_file_downloader()
 
         file_info = BulkHeaderMinimumInfo(
-            first_height=0,
-            count=1000,
-            file_name="empty.txt",
-            source_url="https://example.com/empty.txt"
+            first_height=0, count=1000, file_name="empty.txt", source_url="https://example.com/empty.txt"
         )
 
         mock_data = b""
 
-        with patch.object(ingestor.woc_client, 'download_header_file', return_value=mock_data):
+        with patch.object(ingestor.woc_client, "download_header_file", return_value=mock_data):
             result = downloader(file_info)
 
             assert result == b""
@@ -326,14 +310,14 @@ class TestBulkIngestorWOCEdgeCases:
             first_height=0,
             count=1000,
             file_name="large_headers.txt",
-            source_url="https://example.com/large_headers.txt"
+            source_url="https://example.com/large_headers.txt",
         )
 
         # Simulate large content (multiple header lines)
-        large_content = "\n".join([f"header_{i}" for i in range(1000)]).encode('utf-8')
+        large_content = "\n".join([f"header_{i}" for i in range(1000)]).encode("utf-8")
 
-        with patch.object(ingestor.woc_client, 'download_header_file', return_value=large_content):
+        with patch.object(ingestor.woc_client, "download_header_file", return_value=large_content):
             result = downloader(file_info)
 
             assert result == large_content
-            assert len(result.decode('utf-8').split('\n')) == 1000
+            assert len(result.decode("utf-8").split("\n")) == 1000

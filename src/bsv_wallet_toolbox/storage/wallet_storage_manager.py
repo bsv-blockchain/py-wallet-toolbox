@@ -7,13 +7,13 @@ Reference:
     wallet-toolbox/src/storage/WalletStorageManager.ts
 """
 
-import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Protocol
 
-from ..errors import WalletError, InvalidParameterError
+from ..errors import InvalidParameterError, WalletError
 
 logger = logging.getLogger(__name__)
 
@@ -21,30 +21,32 @@ logger = logging.getLogger(__name__)
 # Type definitions
 class WalletStorageProvider(Protocol):
     """Protocol for wallet storage providers."""
-    
+
     def is_storage_provider(self) -> bool: ...
-    def make_available(self) -> Dict[str, Any]: ...
-    def get_settings(self) -> Dict[str, Any]: ...
-    def find_or_insert_user(self, identity_key: str) -> Dict[str, Any]: ...
-    def get_sync_chunk(self, args: Dict[str, Any]) -> Dict[str, Any]: ...
-    def process_sync_chunk(self, args: Dict[str, Any], chunk: Dict[str, Any]) -> Dict[str, Any]: ...
+    def make_available(self) -> dict[str, Any]: ...
+    def get_settings(self) -> dict[str, Any]: ...
+    def find_or_insert_user(self, identity_key: str) -> dict[str, Any]: ...
+    def get_sync_chunk(self, args: dict[str, Any]) -> dict[str, Any]: ...
+    def process_sync_chunk(self, args: dict[str, Any], chunk: dict[str, Any]) -> dict[str, Any]: ...
     def set_services(self, services: Any) -> None: ...
     def find_or_insert_sync_state_auth(
-        self, auth: Dict[str, Any], storage_identity_key: str, storage_name: str
-    ) -> Dict[str, Any]: ...
+        self, auth: dict[str, Any], storage_identity_key: str, storage_name: str
+    ) -> dict[str, Any]: ...
 
 
 @dataclass
 class AuthId:
     """Authentication ID container."""
+
     identity_key: str
-    user_id: Optional[int] = None
+    user_id: int | None = None
     is_active: bool = False
 
 
 @dataclass
 class TableSettings:
     """Storage settings table data."""
+
     storage_identity_key: str
     storage_name: str
 
@@ -52,30 +54,33 @@ class TableSettings:
 @dataclass
 class TableUser:
     """User table data."""
+
     user_id: int
     identity_key: str
-    active_storage: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    active_storage: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
-@dataclass 
+@dataclass
 class ManagedStorage:
     """Wrapper for managed storage providers."""
+
     storage: Any  # WalletStorageProvider
     is_storage_provider: bool = False
     is_available: bool = False
-    settings: Optional[TableSettings] = None
-    user: Optional[TableUser] = None
+    settings: TableSettings | None = None
+    user: TableUser | None = None
 
     def __post_init__(self):
-        if hasattr(self.storage, 'is_storage_provider'):
+        if hasattr(self.storage, "is_storage_provider"):
             self.is_storage_provider = self.storage.is_storage_provider()
 
 
 @dataclass
 class SyncResult:
     """Result of a sync operation."""
+
     inserts: int = 0
     updates: int = 0
     log: str = ""
@@ -84,29 +89,39 @@ class SyncResult:
 @dataclass
 class EntitySyncMap:
     """Sync state for a single entity type."""
+
     entity_name: str
     count: int = 0
-    max_updated_at: Optional[datetime] = None
-    id_map: Dict[int, int] = field(default_factory=dict)
+    max_updated_at: datetime | None = None
+    id_map: dict[int, int] = field(default_factory=dict)
 
 
-def create_sync_map() -> Dict[str, EntitySyncMap]:
+def create_sync_map() -> dict[str, EntitySyncMap]:
     """Create initial sync map with all entity types."""
     entity_names = [
-        "provenTx", "outputBasket", "outputTag", "txLabel",
-        "transaction", "output", "txLabelMap", "outputTagMap",
-        "certificate", "certificateField", "commission", "provenTxReq"
+        "provenTx",
+        "outputBasket",
+        "outputTag",
+        "txLabel",
+        "transaction",
+        "output",
+        "txLabelMap",
+        "outputTagMap",
+        "certificate",
+        "certificateField",
+        "commission",
+        "provenTxReq",
     ]
     return {name: EntitySyncMap(entity_name=name) for name in entity_names}
 
 
 class EntitySyncState:
     """Manages sync state between two storage providers.
-    
+
     Reference:
         wallet-toolbox/src/storage/schema/entities/EntitySyncState.ts
     """
-    
+
     def __init__(
         self,
         sync_state_id: int = 0,
@@ -116,8 +131,8 @@ class EntitySyncState:
         init: bool = False,
         ref_num: str = "",
         status: str = "unknown",
-        when: Optional[datetime] = None,
-        sync_map: Optional[Dict[str, EntitySyncMap]] = None
+        when: datetime | None = None,
+        sync_map: dict[str, EntitySyncMap] | None = None,
     ):
         self.sync_state_id = sync_state_id
         self.user_id = user_id
@@ -133,18 +148,15 @@ class EntitySyncState:
 
     @classmethod
     def from_storage(
-        cls,
-        storage: WalletStorageProvider,
-        user_identity_key: str,
-        remote_settings: Dict[str, Any]
+        cls, storage: WalletStorageProvider, user_identity_key: str, remote_settings: dict[str, Any]
     ) -> "EntitySyncState":
         """Load or create sync state from storage.
-        
+
         Args:
             storage: Storage provider to query
             user_identity_key: User's identity key
             remote_settings: Settings from remote storage
-            
+
         Returns:
             EntitySyncState instance
         """
@@ -152,22 +164,20 @@ class EntitySyncState:
         user_result = storage.find_or_insert_user(user_identity_key)
         user = user_result.get("user", {})
         user_id = user.get("userId") or user.get("userId", 0)
-        
+
         # Get or create sync state
         storage_identity_key = remote_settings.get("storageIdentityKey", "")
         storage_name = remote_settings.get("storageName", "")
-        
+
         try:
             sync_result = storage.find_or_insert_sync_state_auth(
-                {"userId": user_id, "identityKey": user_identity_key},
-                storage_identity_key,
-                storage_name
+                {"userId": user_id, "identityKey": user_identity_key}, storage_identity_key, storage_name
             )
             sync_state = sync_result.get("syncState", {})
         except Exception:
             # If sync state doesn't exist, create a new one
             sync_state = {}
-        
+
         return cls(
             sync_state_id=sync_state.get("syncStateId", 0),
             user_id=user_id,
@@ -184,28 +194,37 @@ class EntitySyncState:
         for_identity_key: str,
         for_storage_identity_key: str,
         max_rough_size: int = 10_000_000,
-        max_items: int = 1000
-    ) -> Dict[str, Any]:
+        max_items: int = 1000,
+    ) -> dict[str, Any]:
         """Create arguments for getSyncChunk request.
-        
+
         Args:
             for_identity_key: Target user identity key
             for_storage_identity_key: Target storage identity key
             max_rough_size: Max rough byte size
             max_items: Max items per chunk
-            
+
         Returns:
             Dict with sync chunk request arguments
         """
         offsets = []
         for name in [
-            "provenTx", "outputBasket", "outputTag", "txLabel",
-            "transaction", "output", "txLabelMap", "outputTagMap",
-            "certificate", "certificateField", "commission", "provenTxReq"
+            "provenTx",
+            "outputBasket",
+            "outputTag",
+            "txLabel",
+            "transaction",
+            "output",
+            "txLabelMap",
+            "outputTagMap",
+            "certificate",
+            "certificateField",
+            "commission",
+            "provenTxReq",
         ]:
             esm = self.sync_map.get(name, EntitySyncMap(entity_name=name))
             offsets.append({"name": esm.entity_name, "offset": esm.count})
-        
+
         return {
             "identityKey": for_identity_key,
             "maxRoughSize": max_rough_size,
@@ -217,12 +236,12 @@ class EntitySyncState:
         }
 
     @staticmethod
-    def sync_chunk_summary(chunk: Dict[str, Any]) -> str:
+    def sync_chunk_summary(chunk: dict[str, Any]) -> str:
         """Generate a summary of sync chunk contents.
-        
+
         Args:
             chunk: Sync chunk data
-            
+
         Returns:
             Summary string
         """
@@ -230,10 +249,10 @@ class EntitySyncState:
         log += f"  from storage: {chunk.get('fromStorageIdentityKey', '')}\n"
         log += f"  to storage: {chunk.get('toStorageIdentityKey', '')}\n"
         log += f"  for user: {chunk.get('userIdentityKey', '')}\n"
-        
+
         if chunk.get("user"):
             log += f"  USER activeStorage {chunk['user'].get('activeStorage', '')}\n"
-        
+
         for key, label in [
             ("provenTxs", "PROVEN_TXS"),
             ("provenTxReqs", "PROVEN_TX_REQS"),
@@ -254,41 +273,41 @@ class EntitySyncState:
                         log += f"    {item.get('outputId')} {item.get('txid')}.{item.get('vout')}\n"
                 if len(items) > 5:
                     log += f"    ... and {len(items) - 5} more\n"
-        
+
         return log
 
 
 class WalletStorageManager:
     """Manages multiple storage providers with synchronization support.
-    
+
     Handles active storage and backup storage providers, with support for
     synchronizing data between them.
-    
+
     Reference:
         wallet-toolbox/src/storage/WalletStorageManager.ts
     """
-    
+
     def __init__(
         self,
         identity_key: str,
-        active: Optional[WalletStorageProvider] = None,
-        backups: Optional[List[WalletStorageProvider]] = None
+        active: WalletStorageProvider | None = None,
+        backups: list[WalletStorageProvider] | None = None,
     ):
         """Initialize WalletStorageManager.
-        
+
         Args:
             identity_key: User's identity key
             active: Optional active storage provider
             backups: Optional list of backup storage providers
         """
-        self._stores: List[ManagedStorage] = []
+        self._stores: list[ManagedStorage] = []
         self._is_available = False
-        self._active: Optional[ManagedStorage] = None
-        self._backups: List[ManagedStorage] = []
-        self._conflicting_actives: List[ManagedStorage] = []
+        self._active: ManagedStorage | None = None
+        self._backups: list[ManagedStorage] = []
+        self._conflicting_actives: list[ManagedStorage] = []
         self._auth_id = AuthId(identity_key=identity_key)
-        self._services: Optional[Any] = None
-        
+        self._services: Any | None = None
+
         # Add stores
         stores = list(backups or [])
         if active:
@@ -317,9 +336,9 @@ class WalletStorageManager:
         """Check if storage can be made available."""
         return len(self._stores) > 0
 
-    def make_available(self) -> Dict[str, Any]:
+    def make_available(self) -> dict[str, Any]:
         """Make storage available and return settings.
-        
+
         Returns:
             Settings from the active storage
         """
@@ -328,17 +347,17 @@ class WalletStorageManager:
                 "storageIdentityKey": self._active.settings.storage_identity_key if self._active.settings else "",
                 "storageName": self._active.settings.storage_name if self._active.settings else "",
             }
-        
+
         self._active = None
         self._backups = []
         self._conflicting_actives = []
-        
+
         if len(self._stores) < 1:
             raise InvalidParameterError("active", "valid. Must add active storage provider to wallet.")
-        
-        backups: List[ManagedStorage] = []
-        
-        for i, store in enumerate(self._stores):
+
+        backups: list[ManagedStorage] = []
+
+        for _i, store in enumerate(self._stores):
             if not store.is_available or not store.settings or not store.user:
                 # Make store available
                 store.settings_dict = store.storage.make_available()
@@ -346,7 +365,7 @@ class WalletStorageManager:
                     storage_identity_key=store.settings_dict.get("storageIdentityKey", ""),
                     storage_name=store.settings_dict.get("storageName", ""),
                 )
-                
+
                 user_result = store.storage.find_or_insert_user(self._auth_id.identity_key)
                 user_data = user_result.get("user", {})
                 store.user = TableUser(
@@ -355,7 +374,7 @@ class WalletStorageManager:
                     active_storage=user_data.get("activeStorage") or user_data.get("activeStorage"),
                 )
                 store.is_available = True
-            
+
             if not self._active:
                 self._active = store
             else:
@@ -366,7 +385,7 @@ class WalletStorageManager:
                     self._active = store
                 else:
                     backups.append(store)
-        
+
         # Review backups, partition out conflicting actives
         if self._active and self._active.settings:
             si = self._active.settings.storage_identity_key
@@ -375,23 +394,25 @@ class WalletStorageManager:
                     self._conflicting_actives.append(store)
                 else:
                     self._backups.append(store)
-        
+
         self._is_available = True
         if self._active and self._active.user:
             self._auth_id.user_id = self._active.user.user_id
             self._auth_id.is_active = self.is_active_enabled
-        
+
         return {
-            "storageIdentityKey": self._active.settings.storage_identity_key if self._active and self._active.settings else "",
+            "storageIdentityKey": (
+                self._active.settings.storage_identity_key if self._active and self._active.settings else ""
+            ),
             "storageName": self._active.settings.storage_name if self._active and self._active.settings else "",
         }
 
     def get_auth(self, must_be_active: bool = False) -> AuthId:
         """Get authentication ID.
-        
+
         Args:
             must_be_active: If True, raise error if not active
-            
+
         Returns:
             AuthId instance
         """
@@ -407,7 +428,7 @@ class WalletStorageManager:
             raise WalletError("An active WalletStorageProvider must be added and makeAvailable must be called.")
         return self._active.storage
 
-    def get_settings(self) -> Dict[str, Any]:
+    def get_settings(self) -> dict[str, Any]:
         """Get settings from active storage."""
         return self.get_active().get_settings()
 
@@ -415,7 +436,7 @@ class WalletStorageManager:
         """Set services for all stores."""
         self._services = services
         for store in self._stores:
-            if hasattr(store.storage, 'set_services'):
+            if hasattr(store.storage, "set_services"):
                 store.storage.set_services(services)
 
     # =========================================================================
@@ -427,61 +448,70 @@ class WalletStorageManager:
         identity_key: str,
         reader: WalletStorageProvider,
         log: str = "",
-        prog_log: Optional[Callable[[str], str]] = None
+        prog_log: Callable[[str], str] | None = None,
     ) -> SyncResult:
         """Sync data from a reader storage to local (active) storage.
-        
+
         Remote → Local synchronization.
-        
+
         Args:
             identity_key: User's identity key
             reader: Storage provider to read from
             log: Initial log string
             prog_log: Optional progress logging function
-            
+
         Returns:
             SyncResult with inserts, updates, and log
-            
+
         Reference:
             wallet-toolbox/src/storage/WalletStorageManager.ts (syncFromReader)
         """
         prog_log = prog_log or (lambda s: s)
-        
+
         auth = self.get_auth()
         if identity_key != auth.identity_key:
             raise WalletError("Unauthorized: identity key mismatch")
-        
+
         reader_settings = reader.make_available()
         writer = self.get_active()
         writer_settings = self.get_settings()
-        
+
         inserts = 0
         updates = 0
-        
+
         log += prog_log(
             f"syncFromReader from {reader_settings.get('storageName', '')} "
             f"to {writer_settings.get('storageName', '')}\n"
         )
-        
+
         # Track offsets locally
         local_sync_map = create_sync_map()
-        
+
         chunk_num = 0
         max_chunks = 100  # Safety limit
-        
+
         while chunk_num < max_chunks:
             chunk_num += 1
-            
+
             # Build args with current offsets
             offsets = []
             for name in [
-                "provenTx", "outputBasket", "outputTag", "txLabel",
-                "transaction", "output", "txLabelMap", "outputTagMap",
-                "certificate", "certificateField", "commission", "provenTxReq"
+                "provenTx",
+                "outputBasket",
+                "outputTag",
+                "txLabel",
+                "transaction",
+                "output",
+                "txLabelMap",
+                "outputTagMap",
+                "certificate",
+                "certificateField",
+                "commission",
+                "provenTxReq",
             ]:
                 esm = local_sync_map.get(name, EntitySyncMap(entity_name=name))
                 offsets.append({"name": esm.entity_name, "offset": esm.count})
-            
+
             args = {
                 "identityKey": identity_key,
                 "maxRoughSize": 10_000_000,
@@ -491,39 +521,48 @@ class WalletStorageManager:
                 "fromStorageIdentityKey": reader_settings.get("storageIdentityKey", ""),
                 "toStorageIdentityKey": writer_settings.get("storageIdentityKey", ""),
             }
-            
+
             # Get chunk from reader
             chunk = reader.get_sync_chunk(args)
-            
+
             # Don't let reader update activeStorage
             if chunk.get("user"):
                 if self._active and self._active.user:
                     chunk["user"]["activeStorage"] = self._active.user.active_storage
-            
+
             # Check if sync is complete
             entity_keys = [
-                "provenTxs", "outputBaskets", "outputTags", "txLabels",
-                "transactions", "outputs", "txLabelMaps", "outputTagMaps",
-                "certificates", "certificateFields", "commissions", "provenTxReqs"
+                "provenTxs",
+                "outputBaskets",
+                "outputTags",
+                "txLabels",
+                "transactions",
+                "outputs",
+                "txLabelMaps",
+                "outputTagMaps",
+                "certificates",
+                "certificateFields",
+                "commissions",
+                "provenTxReqs",
             ]
             has_data = any(chunk.get(key) for key in entity_keys)
-            
+
             if not has_data:
                 log += prog_log("Sync complete: no more data to transfer\n")
                 break
-            
+
             # Process chunk on writer (local)
             result = writer.process_sync_chunk(args, chunk)
-            
+
             inserts += result.get("inserts", 0)
             updates += result.get("updates", 0)
             max_updated = result.get("maxUpdatedAt", "")
-            
+
             log += prog_log(
                 f"chunk {chunk_num} inserted {result.get('inserts', 0)} "
                 f"updated {result.get('updates', 0)} {max_updated}\n"
             )
-            
+
             # Update local offsets
             entity_name_map = {
                 "provenTxs": "provenTx",
@@ -539,16 +578,16 @@ class WalletStorageManager:
                 "commissions": "commission",
                 "provenTxReqs": "provenTxReq",
             }
-            
+
             for chunk_key, entity_name in entity_name_map.items():
                 if chunk.get(chunk_key):
                     local_sync_map[entity_name].count += len(chunk[chunk_key])
-            
+
             if result.get("done", False):
                 break
-        
+
         log += prog_log(f"syncFromReader complete: {inserts} inserts, {updates} updates\n")
-        
+
         return SyncResult(inserts=inserts, updates=updates, log=log)
 
     def sync_to_writer(
@@ -556,59 +595,68 @@ class WalletStorageManager:
         auth: AuthId,
         writer: WalletStorageProvider,
         log: str = "",
-        prog_log: Optional[Callable[[str], str]] = None
+        prog_log: Callable[[str], str] | None = None,
     ) -> SyncResult:
         """Sync data from local (active) storage to a writer storage.
-        
+
         Local → Remote synchronization.
-        
+
         Args:
             auth: Authentication ID
             writer: Storage provider to write to
             log: Initial log string
             prog_log: Optional progress logging function
-            
+
         Returns:
             SyncResult with inserts, updates, and log
-            
+
         Reference:
             wallet-toolbox/src/storage/WalletStorageManager.ts (syncToWriter)
         """
         prog_log = prog_log or (lambda s: s)
         identity_key = auth.identity_key
-        
+
         writer_settings = writer.make_available()
         reader = self.get_active()
         reader_settings = self.get_settings()
-        
+
         inserts = 0
         updates = 0
-        
+
         log += prog_log(
             f"syncToWriter from {reader_settings.get('storageName', '')} "
             f"to {writer_settings.get('storageName', '')}\n"
         )
-        
+
         # Track offsets locally for simple implementations that don't persist sync state
         # This allows sync to work even without full sync state management on the writer
         local_sync_map = create_sync_map()
-        
+
         chunk_num = 0
         max_chunks = 100  # Safety limit
-        
+
         while chunk_num < max_chunks:
             chunk_num += 1
-            
+
             # Build args with current offsets
             offsets = []
             for name in [
-                "provenTx", "outputBasket", "outputTag", "txLabel",
-                "transaction", "output", "txLabelMap", "outputTagMap",
-                "certificate", "certificateField", "commission", "provenTxReq"
+                "provenTx",
+                "outputBasket",
+                "outputTag",
+                "txLabel",
+                "transaction",
+                "output",
+                "txLabelMap",
+                "outputTagMap",
+                "certificate",
+                "certificateField",
+                "commission",
+                "provenTxReq",
             ]:
                 esm = local_sync_map.get(name, EntitySyncMap(entity_name=name))
                 offsets.append({"name": esm.entity_name, "offset": esm.count})
-            
+
             args = {
                 "identityKey": identity_key,
                 "maxRoughSize": 10_000_000,
@@ -618,37 +666,46 @@ class WalletStorageManager:
                 "fromStorageIdentityKey": reader_settings.get("storageIdentityKey", ""),
                 "toStorageIdentityKey": writer_settings.get("storageIdentityKey", ""),
             }
-            
+
             # Get chunk from reader (local)
             chunk = reader.get_sync_chunk(args)
-            
+
             # Log chunk summary
             log += EntitySyncState.sync_chunk_summary(chunk)
-            
+
             # Check if sync is complete (only user data, no other entities)
             entity_keys = [
-                "provenTxs", "outputBaskets", "outputTags", "txLabels",
-                "transactions", "outputs", "txLabelMaps", "outputTagMaps",
-                "certificates", "certificateFields", "commissions", "provenTxReqs"
+                "provenTxs",
+                "outputBaskets",
+                "outputTags",
+                "txLabels",
+                "transactions",
+                "outputs",
+                "txLabelMaps",
+                "outputTagMaps",
+                "certificates",
+                "certificateFields",
+                "commissions",
+                "provenTxReqs",
             ]
             has_data = any(chunk.get(key) for key in entity_keys)
-            
+
             if not has_data:
                 log += prog_log("Sync complete: no more data to transfer\n")
                 break
-            
+
             # Process chunk on writer (remote)
             result = writer.process_sync_chunk(args, chunk)
-            
+
             inserts += result.get("inserts", 0)
             updates += result.get("updates", 0)
             max_updated = result.get("maxUpdatedAt", "")
-            
+
             log += prog_log(
                 f"chunk {chunk_num} inserted {result.get('inserts', 0)} "
                 f"updated {result.get('updates', 0)} {max_updated}\n"
             )
-            
+
             # Update local offsets based on what was in the chunk
             entity_name_map = {
                 "provenTxs": "provenTx",
@@ -664,88 +721,91 @@ class WalletStorageManager:
                 "commissions": "commission",
                 "provenTxReqs": "provenTxReq",
             }
-            
+
             for chunk_key, entity_name in entity_name_map.items():
                 if chunk.get(chunk_key):
                     local_sync_map[entity_name].count += len(chunk[chunk_key])
-            
+
             if result.get("done", False):
                 break
-        
+
         log += prog_log(f"syncToWriter complete: {inserts} inserts, {updates} updates\n")
-        
+
         return SyncResult(inserts=inserts, updates=updates, log=log)
 
-    def update_backups(
-        self,
-        prog_log: Optional[Callable[[str], str]] = None
-    ) -> str:
+    def update_backups(self, prog_log: Callable[[str], str] | None = None) -> str:
         """Sync current active storage to all backup storage providers.
-        
+
         Args:
             prog_log: Optional progress logging function
-            
+
         Returns:
             Log string with sync results
-            
+
         Reference:
             wallet-toolbox/src/storage/WalletStorageManager.ts (updateBackups)
         """
         prog_log = prog_log or (lambda s: s)
         auth = self.get_auth(must_be_active=True)
-        
+
         log = prog_log(f"BACKUP CURRENT ACTIVE TO {len(self._backups)} STORES\n")
-        
+
         for backup in self._backups:
             result = self.sync_to_writer(auth, backup.storage, "", prog_log)
             log += result.log
-        
+
         return log
 
-    def get_stores(self) -> List[Dict[str, Any]]:
+    def get_stores(self) -> list[dict[str, Any]]:
         """Get information about all managed stores.
-        
+
         Returns:
             List of store information dicts
         """
         stores = []
-        
+
         if self._active:
-            stores.append({
-                "isActive": True,
-                "isEnabled": self.is_active_enabled,
-                "isBackup": False,
-                "isConflicting": False,
-                "userId": self._active.user.user_id if self._active.user else None,
-                "storageIdentityKey": self._active.settings.storage_identity_key if self._active.settings else "",
-                "storageName": self._active.settings.storage_name if self._active.settings else "",
-                "storageClass": type(self._active.storage).__name__,
-            })
-        
+            stores.append(
+                {
+                    "isActive": True,
+                    "isEnabled": self.is_active_enabled,
+                    "isBackup": False,
+                    "isConflicting": False,
+                    "userId": self._active.user.user_id if self._active.user else None,
+                    "storageIdentityKey": self._active.settings.storage_identity_key if self._active.settings else "",
+                    "storageName": self._active.settings.storage_name if self._active.settings else "",
+                    "storageClass": type(self._active.storage).__name__,
+                }
+            )
+
         for store in self._conflicting_actives:
-            stores.append({
-                "isActive": True,
-                "isEnabled": False,
-                "isBackup": False,
-                "isConflicting": True,
-                "userId": store.user.user_id if store.user else None,
-                "storageIdentityKey": store.settings.storage_identity_key if store.settings else "",
-                "storageName": store.settings.storage_name if store.settings else "",
-                "storageClass": type(store.storage).__name__,
-            })
-        
+            stores.append(
+                {
+                    "isActive": True,
+                    "isEnabled": False,
+                    "isBackup": False,
+                    "isConflicting": True,
+                    "userId": store.user.user_id if store.user else None,
+                    "storageIdentityKey": store.settings.storage_identity_key if store.settings else "",
+                    "storageName": store.settings.storage_name if store.settings else "",
+                    "storageClass": type(store.storage).__name__,
+                }
+            )
+
         for store in self._backups:
-            stores.append({
-                "isActive": False,
-                "isEnabled": False,
-                "isBackup": True,
-                "isConflicting": False,
-                "userId": store.user.user_id if store.user else None,
-                "storageIdentityKey": store.settings.storage_identity_key if store.settings else "",
-                "storageName": store.settings.storage_name if store.settings else "",
-                "storageClass": type(store.storage).__name__,
-            })
-        
+            stores.append(
+                {
+                    "isActive": False,
+                    "isEnabled": False,
+                    "isBackup": True,
+                    "isConflicting": False,
+                    "userId": store.user.user_id if store.user else None,
+                    "storageIdentityKey": store.settings.storage_identity_key if store.settings else "",
+                    "storageName": store.settings.storage_name if store.settings else "",
+                    "storageClass": type(store.storage).__name__,
+                }
+            )
+
         return stores
 
     def set_active(self, storage_identity_key: str, backup_first: bool = False) -> None:
@@ -784,7 +844,7 @@ class WalletStorageManager:
                 result = self.sync_to_writer(
                     auth=self.get_auth(),
                     writer=target_store.storage,
-                    log=f"Backup before switching to {storage_identity_key}"
+                    log=f"Backup before switching to {storage_identity_key}",
                 )
                 logger.info(f"Backup sync completed: {result.inserts} inserts, {result.updates} updates")
             except Exception as e:
@@ -820,4 +880,3 @@ class WalletStorageManager:
         self._stores.append(ManagedStorage(storage=provider))
         self._is_available = False
         self.make_available()
-

@@ -15,18 +15,18 @@ import pytest
 
 try:
     from bsv_wallet_toolbox.storage.crud import (
-        StringCondition,
-        NumericCondition,
         BoolCondition,
-        TimeCondition,
-        OutputAccessor,
-        OutputReader,
-        TxNoteAccessor,
-        TxNoteReader,
-        KnownTxAccessor,
-        KnownTxReader,
         CertifierAccessor,
         CertifierReader,
+        KnownTxAccessor,
+        KnownTxReader,
+        NumericCondition,
+        OutputAccessor,
+        OutputReader,
+        StringCondition,
+        TimeCondition,
+        TxNoteAccessor,
+        TxNoteReader,
     )
     from bsv_wallet_toolbox.storage.provider import StorageProvider
 
@@ -320,6 +320,7 @@ class TestTimeCondition:
     def test_time_condition_equals(self):
         """Test TimeCondition.equals method."""
         from datetime import datetime
+
         parent = Mock()
         setter_calls = []
 
@@ -338,6 +339,7 @@ class TestTimeCondition:
     def test_time_condition_not_equals(self):
         """Test TimeCondition.not_equals method."""
         from datetime import datetime
+
         parent = Mock()
         setter_calls = []
 
@@ -356,6 +358,7 @@ class TestTimeCondition:
     def test_time_condition_in(self):
         """Test TimeCondition.in_ method."""
         from datetime import datetime
+
         parent = Mock()
         setter_calls = []
 
@@ -374,6 +377,7 @@ class TestTimeCondition:
     def test_time_condition_not_in(self):
         """Test TimeCondition.not_in method."""
         from datetime import datetime
+
         parent = Mock()
         setter_calls = []
 
@@ -391,7 +395,7 @@ class TestTimeCondition:
 
     def test_time_condition_like_raises(self):
         """Test TimeCondition.like method raises NotImplementedError."""
-        from datetime import datetime
+
         parent = Mock()
         setter_calls = []
 
@@ -422,8 +426,8 @@ class TestOutputReader:
         condition = reader.user_id()
 
         # Should return a NumericCondition
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'not_equals')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "not_equals")
 
     def test_output_reader_transaction_id_condition(self, mock_provider):
         """Test OutputReader.transaction_id condition."""
@@ -431,8 +435,8 @@ class TestOutputReader:
         condition = reader.transaction_id()
 
         # Should return a NumericCondition
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'not_equals')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "not_equals")
 
     def test_output_reader_spendable_condition(self, mock_provider):
         """Test OutputReader.spendable condition."""
@@ -440,8 +444,8 @@ class TestOutputReader:
         condition = reader.spendable()
 
         # Should return a BoolCondition
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'not_equals')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "not_equals")
 
     def test_output_reader_paged(self, mock_provider):
         """Test OutputReader.paged method."""
@@ -460,11 +464,9 @@ class TestOutputReader:
         result = reader.find()
 
         assert result == []
-        mock_provider.find_outputs.assert_called_once_with({
-            "partial": {"userId": "test_spec"},
-            "limit": 5,
-            "offset": 0
-        })
+        mock_provider.find_outputs.assert_called_once_with(
+            {"partial": {"userId": "test_spec"}, "limit": 5, "offset": 0}
+        )
 
     def test_output_reader_count(self, mock_provider):
         """Test OutputReader.count method."""
@@ -519,16 +521,16 @@ class TestTxNoteReader:
         reader = TxNoteReader(mock_provider)
         condition = reader.transaction_id()
 
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'not_equals')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "not_equals")
 
     def test_tx_note_reader_note_condition(self, mock_provider):
         """Test TxNoteReader.note condition."""
         reader = TxNoteReader(mock_provider)
         condition = reader.note()
 
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'like')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "like")
 
     def test_tx_note_reader_find(self, mock_provider):
         """Test TxNoteReader.find method."""
@@ -546,14 +548,9 @@ class TestTxNoteReader:
         reader.spec = {"note": "test"}
         reader.paging = {"limit": 10, "offset": 5, "desc": False}
 
-        result = reader.find()
+        reader.find()
 
-        expected_query = {
-            "partial": {"note": "test"},
-            "limit": 10,
-            "offset": 5,
-            "desc": False
-        }
+        expected_query = {"partial": {"note": "test"}, "limit": 10, "offset": 5, "desc": False}
         mock_provider._find_generic.assert_called_once_with("tx_note", expected_query)
 
 
@@ -599,8 +596,8 @@ class TestKnownTxReader:
         reader = KnownTxReader(mock_provider)
         condition = reader.txid()
 
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'like')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "like")
 
     def test_known_tx_reader_find(self, mock_provider):
         """Test KnownTxReader.find method."""
@@ -649,8 +646,8 @@ class TestCertifierReader:
         reader = CertifierReader(mock_provider)
         condition = reader.certifier()
 
-        assert hasattr(condition, 'equals')
-        assert hasattr(condition, 'like')
+        assert hasattr(condition, "equals")
+        assert hasattr(condition, "like")
 
     def test_certifier_reader_find_empty(self, mock_provider):
         """Test CertifierReader.find with empty certificates."""
@@ -683,10 +680,9 @@ class TestCertifierReader:
         reader = CertifierReader(mock_provider)
 
         # Mock the Comparable object that gets set
-        from unittest.mock import Mock
         from bsv_wallet_toolbox.storage.specifications import Comparable
 
-        mock_comparable = Comparable(operator="equals", value="certifier_a")
+        Comparable(operator="equals", value="certifier_a")
         reader.certifier().equals("certifier_a")
 
         mock_provider.find_certificates.return_value = [

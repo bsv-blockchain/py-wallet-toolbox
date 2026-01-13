@@ -10,10 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
-from bsv_wallet_toolbox import Wallet
-
 
 class TestUniversalVectorsProveCertificate:
     """Tests using Universal Test Vectors for proveCertificate.
@@ -35,9 +31,7 @@ class TestUniversalVectorsProveCertificate:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("proveCertificate-simple")
-
-        wallet = wallet_with_services
+        _args_data, result_data = load_test_vectors("proveCertificate-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         # For testing ABI serialization, use the expected result from test vectors
@@ -48,17 +42,17 @@ class TestUniversalVectorsProveCertificate:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
         wire_request = serialize_request("proveCertificate", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "proveCertificate"
         assert isinstance(parsed_args, dict)
-        
-        # Test response serialization  
+
+        # Test response serialization
         result = {"test": "data"}
         wire_response = serialize_response(result)
         assert isinstance(wire_response, bytes)

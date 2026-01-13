@@ -5,12 +5,12 @@ Provides efficient blockchain header tracking with optional database storage.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Chaintracks.ts
 """
 
-import asyncio
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
+from ...wallet_services import Chain
 from .api import BaseBlockHeader, BlockHeader, ChaintracksInfo
 from .util.block_header_utilities import block_hash, serialize_base_block_header
-from ...wallet_services import Chain
 
 
 class ChaintracksInfo:
@@ -105,7 +105,7 @@ class Chaintracks:
             "storage": "memory" if not self._use_storage else "database",
             "bulkIngestors": [],
             "liveIngestors": [],
-            "packages": []
+            "packages": [],
         }
 
     async def get_present_height(self) -> int:
@@ -143,7 +143,11 @@ class Chaintracks:
         for i in range(actual_count):
             mock_header = {
                 "version": 1,
-                "previousHash": "0000000000000000000000000000000000000000000000000000000000000000" if i == 0 else headers[-1]["hash"],
+                "previousHash": (
+                    "0000000000000000000000000000000000000000000000000000000000000000"
+                    if i == 0
+                    else headers[-1]["hash"]
+                ),
                 "merkleRoot": "0000000000000000000000000000000000000000000000000000000000000000",
                 "time": 1231006505 + i * 600,  # Increment time
                 "bits": 486604799,
@@ -179,7 +183,7 @@ class Chaintracks:
             "bits": 486604799,
             "nonce": 2083236893,
             "height": self._present_height,
-            "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+            "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
         }
 
     async def find_header_for_height(self, height: int) -> BlockHeader | None:
@@ -204,7 +208,7 @@ class Chaintracks:
                 "bits": 486604799,
                 "nonce": 2083236893,
                 "height": 0,
-                "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+                "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
             }
         elif height == self._present_height:
             return await self.find_chain_tip_header()
@@ -232,7 +236,6 @@ class Chaintracks:
                    addHeader()
         """
         # Stub implementation - do nothing
-        pass
 
     async def subscribe_headers(self, listener: Callable) -> str:
         """Subscribe to new header events.
@@ -301,4 +304,3 @@ class Chaintracks:
                    isAvailable()
         """
         return self._available
-

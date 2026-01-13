@@ -49,7 +49,7 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Any, Callable, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 import requests
 
@@ -302,7 +302,7 @@ class ChaintracksServiceClient(ChaintracksClientApi):
         self._websocket_subscriptions[subscription_id] = {
             "type": "headers",
             "listener": listener,
-            "active": False  # Would be True if WebSocket connected
+            "active": False,  # Would be True if WebSocket connected
         }
 
         # TODO: Establish WebSocket connection and register subscription
@@ -326,7 +326,7 @@ class ChaintracksServiceClient(ChaintracksClientApi):
         self._websocket_subscriptions[subscription_id] = {
             "type": "reorgs",
             "listener": listener,
-            "active": False  # Would be True if WebSocket connected
+            "active": False,  # Would be True if WebSocket connected
         }
 
         # TODO: Establish WebSocket connection and register subscription

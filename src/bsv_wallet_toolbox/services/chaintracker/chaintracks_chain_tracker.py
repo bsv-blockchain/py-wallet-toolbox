@@ -6,8 +6,6 @@ Go wdk.ChainTracker interface.
 Reference: go-wallet-toolbox/pkg/wdk/services.interface.go
 """
 
-from typing import Optional, Dict, Any
-
 from ..wallet_services import Chain
 
 
@@ -32,7 +30,7 @@ class ChaintracksChainTracker:
                 "bits": 486604799,
                 "nonce": 2083236893,
                 "height": 877599,
-                "hash": "00000000000000000b010edee7422c59ec9131742e35f3e0d5837d710b961406"
+                "hash": "00000000000000000b010edee7422c59ec9131742e35f3e0d5837d710b961406",
             }
         },
         "test": {
@@ -44,9 +42,9 @@ class ChaintracksChainTracker:
                 "bits": 486604799,
                 "nonce": 2083236893,
                 "height": 1654265,
-                "hash": "0000000049686fe721f70614c89df146e410240f838b8f3ef8e6471c6dfdd153"
+                "hash": "0000000049686fe721f70614c89df146e410240f838b8f3ef8e6471c6dfdd153",
             }
-        }
+        },
     }
 
     def __init__(self, chain: Chain):
@@ -96,4 +94,3 @@ class ChaintracksChainTracker:
     def destroy(self) -> None:
         """Clean up resources."""
         # No resources to clean up in test implementation
-        pass

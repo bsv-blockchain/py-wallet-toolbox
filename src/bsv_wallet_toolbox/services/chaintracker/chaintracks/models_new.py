@@ -6,12 +6,10 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/models/
 """
 
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import List, Optional, Protocol, TypedDict, Any
+
+from typing import Any, Protocol, TypedDict
 
 from .util.height_range import HeightRange
-from .chain_work import ChainWork
 
 
 class FiatExchangeRates(TypedDict):
@@ -37,13 +35,15 @@ class LiveBlockHeader:
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/live_block_header.go
     """
 
-    def __init__(self,
-                 chain_block_header: dict[str, Any],
-                 chain_work: str = "",
-                 is_chain_tip: bool = False,
-                 is_active: bool = False,
-                 header_id: int = 0,
-                 previous_header_id: Optional[int] = None):
+    def __init__(
+        self,
+        chain_block_header: dict[str, Any],
+        chain_work: str = "",
+        is_chain_tip: bool = False,
+        is_active: bool = False,
+        header_id: int = 0,
+        previous_header_id: int | None = None,
+    ):
         """Initialize LiveBlockHeader.
 
         Args:
@@ -87,7 +87,7 @@ class HeightRanges:
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/height_range.go
     """
 
-    def __init__(self, bulk: Optional[HeightRange] = None, live: Optional[HeightRange] = None):
+    def __init__(self, bulk: HeightRange | None = None, live: HeightRange | None = None):
         """Initialize height ranges.
 
         Args:
@@ -97,7 +97,7 @@ class HeightRanges:
         self.bulk = bulk or HeightRange.new_empty_height_range()
         self.live = live or HeightRange.new_empty_height_range()
 
-    def validate(self) -> Optional[Exception]:
+    def validate(self) -> Exception | None:
         """Validate height ranges invariants.
 
         Returns:
@@ -114,9 +114,11 @@ class HeightRanges:
 
             if not self.live.is_empty() and self.bulk.max_height + 1 < self.live.min_height:
                 gap = self.live.min_height - self.bulk.max_height - 1
-                return Exception(f"there is a gap ({gap}) between bulk and live header storage, "
-                               f"bulk max height: {self.bulk.max_height}, "
-                               f"live min height: {self.live.min_height}")
+                return Exception(
+                    f"there is a gap ({gap}) between bulk and live header storage, "
+                    f"bulk max height: {self.bulk.max_height}, "
+                    f"live min height: {self.live.min_height}"
+                )
 
         return None
 
@@ -158,21 +160,21 @@ class StorageQueries(Protocol):
     def begin(self) -> None:
         """Begin a database transaction."""
 
-    def rollback(self) -> Optional[Exception]:
+    def rollback(self) -> Exception | None:
         """Rollback the current transaction.
 
         Returns:
             Exception if rollback fails
         """
 
-    def commit(self) -> Optional[Exception]:
+    def commit(self) -> Exception | None:
         """Commit the current transaction.
 
         Returns:
             Exception if commit fails
         """
 
-    def live_header_exists(self, hash_str: str) -> tuple[bool, Optional[Exception]]:
+    def live_header_exists(self, hash_str: str) -> tuple[bool, Exception | None]:
         """Check if a live header exists by hash.
 
         Args:
@@ -182,7 +184,7 @@ class StorageQueries(Protocol):
             Tuple of (exists, error)
         """
 
-    def get_live_header_by_hash(self, hash_str: str) -> tuple[Optional[LiveBlockHeader], Optional[Exception]]:
+    def get_live_header_by_hash(self, hash_str: str) -> tuple[LiveBlockHeader | None, Exception | None]:
         """Get live header by hash.
 
         Args:
@@ -192,14 +194,14 @@ class StorageQueries(Protocol):
             Tuple of (header, error)
         """
 
-    def get_active_tip_live_header(self) -> tuple[Optional[LiveBlockHeader], Optional[Exception]]:
+    def get_active_tip_live_header(self) -> tuple[LiveBlockHeader | None, Exception | None]:
         """Get the active chain tip live header.
 
         Returns:
             Tuple of (header, error)
         """
 
-    def set_chain_tip_by_id(self, header_id: int, is_chain_tip: bool) -> Optional[Exception]:
+    def set_chain_tip_by_id(self, header_id: int, is_chain_tip: bool) -> Exception | None:
         """Set chain tip status for header by ID.
 
         Args:
@@ -210,7 +212,7 @@ class StorageQueries(Protocol):
             Exception if operation fails
         """
 
-    def set_active_by_id(self, header_id: int, is_active: bool) -> Optional[Exception]:
+    def set_active_by_id(self, header_id: int, is_active: bool) -> Exception | None:
         """Set active status for header by ID.
 
         Args:
@@ -221,7 +223,7 @@ class StorageQueries(Protocol):
             Exception if operation fails
         """
 
-    def insert_new_live_header(self, header: LiveBlockHeader) -> Optional[Exception]:
+    def insert_new_live_header(self, header: LiveBlockHeader) -> Exception | None:
         """Insert a new live header.
 
         Args:
@@ -231,14 +233,14 @@ class StorageQueries(Protocol):
             Exception if insertion fails
         """
 
-    def count_live_headers(self) -> tuple[int, Optional[Exception]]:
+    def count_live_headers(self) -> tuple[int, Exception | None]:
         """Count total live headers.
 
         Returns:
             Tuple of (count, error)
         """
 
-    def get_live_header_by_height(self, height: int) -> tuple[Optional[LiveBlockHeader], Optional[Exception]]:
+    def get_live_header_by_height(self, height: int) -> tuple[LiveBlockHeader | None, Exception | None]:
         """Get live header by height.
 
         Args:
@@ -248,14 +250,16 @@ class StorageQueries(Protocol):
             Tuple of (header, error)
         """
 
-    def find_live_height_range(self) -> tuple[HeightRange, Optional[Exception]]:
+    def find_live_height_range(self) -> tuple[HeightRange, Exception | None]:
         """Find the height range covered by live headers.
 
         Returns:
             Tuple of (height_range, error)
         """
 
-    def find_headers_for_height_less_than_or_equal_sorted(self, height: int, limit: int) -> tuple[List[LiveBlockHeader], Optional[Exception]]:
+    def find_headers_for_height_less_than_or_equal_sorted(
+        self, height: int, limit: int
+    ) -> tuple[list[LiveBlockHeader], Exception | None]:
         """Find headers with height <= specified height, sorted.
 
         Args:
@@ -266,7 +270,7 @@ class StorageQueries(Protocol):
             Tuple of (headers_list, error)
         """
 
-    def delete_live_headers_by_ids(self, ids: List[int]) -> Optional[Exception]:
+    def delete_live_headers_by_ids(self, ids: list[int]) -> Exception | None:
         """Delete live headers by their IDs.
 
         Args:
@@ -283,13 +287,15 @@ class InfoResponse:
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/
     """
 
-    def __init__(self,
-                 chain: str,
-                 height_bulk: int,
-                 height_live: int,
-                 storage: str,
-                 bulk_ingestors: List[str],
-                 live_ingestors: List[str]):
+    def __init__(
+        self,
+        chain: str,
+        height_bulk: int,
+        height_live: int,
+        storage: str,
+        bulk_ingestors: list[str],
+        live_ingestors: list[str],
+    ):
         """Initialize info response.
 
         Args:
@@ -313,6 +319,7 @@ class BlockHeader(TypedDict):
 
     Reference: go-wallet-toolbox/pkg/services/chaintracks/models/
     """
+
     version: int
     previousHash: str
     merkleRoot: str

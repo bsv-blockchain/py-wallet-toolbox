@@ -1,12 +1,10 @@
 """Tests for service queue pattern."""
 
-import pytest
-import asyncio
 from unittest.mock import AsyncMock
 
-from bsv_wallet_toolbox.services.service_queue import (
-    ServiceQueue, NamedService, EmptyResultError, NoServicesError
-)
+import pytest
+
+from bsv_wallet_toolbox.services.service_queue import EmptyResultError, NamedService, NoServicesError, ServiceQueue
 
 
 class TestServiceQueue:
@@ -18,10 +16,7 @@ class TestServiceQueue:
         service1 = AsyncMock(return_value="result1")
         service2 = AsyncMock(return_value="result2")
 
-        queue = ServiceQueue("test", [
-            NamedService("svc1", service1),
-            NamedService("svc2", service2)
-        ])
+        queue = ServiceQueue("test", [NamedService("svc1", service1), NamedService("svc2", service2)])
 
         result = await queue.one_by_one()
 
@@ -35,10 +30,7 @@ class TestServiceQueue:
         service1 = AsyncMock(return_value=None)  # Empty result
         service2 = AsyncMock(return_value="result2")
 
-        queue = ServiceQueue("test", [
-            NamedService("svc1", service1),
-            NamedService("svc2", service2)
-        ])
+        queue = ServiceQueue("test", [NamedService("svc1", service1), NamedService("svc2", service2)])
 
         result = await queue.one_by_one()
 
@@ -52,10 +44,7 @@ class TestServiceQueue:
         service1 = AsyncMock(return_value=None)
         service2 = AsyncMock(return_value=None)
 
-        queue = ServiceQueue("test", [
-            NamedService("svc1", service1),
-            NamedService("svc2", service2)
-        ])
+        queue = ServiceQueue("test", [NamedService("svc1", service1), NamedService("svc2", service2)])
 
         with pytest.raises(EmptyResultError):
             await queue.one_by_one()
@@ -66,10 +55,7 @@ class TestServiceQueue:
         service1 = AsyncMock(side_effect=Exception("Service 1 failed"))
         service2 = AsyncMock(side_effect=Exception("Service 2 failed"))
 
-        queue = ServiceQueue("test", [
-            NamedService("svc1", service1),
-            NamedService("svc2", service2)
-        ])
+        queue = ServiceQueue("test", [NamedService("svc1", service1), NamedService("svc2", service2)])
 
         with pytest.raises(Exception, match="Service 2 failed"):
             await queue.one_by_one()
@@ -80,10 +66,7 @@ class TestServiceQueue:
         service1 = AsyncMock(return_value="result1")
         service2 = AsyncMock(return_value="result2")
 
-        queue = ServiceQueue("test", [
-            NamedService("svc1", service1),
-            NamedService("svc2", service2)
-        ])
+        queue = ServiceQueue("test", [NamedService("svc1", service1), NamedService("svc2", service2)])
 
         results = await queue.all_parallel()
 
@@ -103,10 +86,7 @@ class TestServiceQueue:
         service1 = AsyncMock()
         service2 = AsyncMock()
 
-        queue = ServiceQueue("test", [
-            NamedService("svc1", service1),
-            NamedService("svc2", service2)
-        ])
+        queue = ServiceQueue("test", [NamedService("svc1", service1), NamedService("svc2", service2)])
 
         assert queue.get_service_names() == ["svc1", "svc2"]
         assert queue.count_services() == 2

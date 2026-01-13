@@ -5,8 +5,8 @@ These tests focus on edge cases and constraint validation (unique/foreign key).
 Reference: wallet-toolbox/test/storage/update2.test.ts
 """
 
-from datetime import datetime
 import re
+from datetime import datetime
 
 import pytest
 

@@ -3,10 +3,8 @@
 import logging
 import threading
 import time
-from typing import Any
 
 from .monitor import Monitor
-
 
 logger = logging.getLogger(__name__)
 
@@ -70,4 +68,3 @@ class MonitorDaemon:
             while self._running and waited < wait_msecs:
                 time.sleep(step_msecs / 1000.0)
                 waited += step_msecs
-

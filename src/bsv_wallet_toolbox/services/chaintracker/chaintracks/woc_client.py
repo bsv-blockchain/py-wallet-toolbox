@@ -7,13 +7,13 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/chaintracks_woc_cli
 """
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from ...wallet_services import Chain
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class WOCBlockHeaderDTO:
     """DTO for block header from WhatsOnChain API."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         self.hash = data.get("hash", "")
         self.size = data.get("size", 0)
         self.height = data.get("height", 0)
@@ -38,7 +38,7 @@ class WOCBlockHeaderDTO:
         self.next_block = data.get("nextblockhash", "")
         self.confirmations = data.get("confirmations", 0)
 
-    def to_block_header(self) -> Dict[str, Any]:
+    def to_block_header(self) -> dict[str, Any]:
         """Convert to block header dict."""
         # Handle genesis block (no previous block)
         if not self.prev_block:
@@ -62,14 +62,14 @@ class WOCBlockHeaderDTO:
 class WOCChainInfoDTO:
     """DTO for chain info from WhatsOnChain API."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         self.blocks = data.get("blocks", 0)
 
 
 class WOCClient:
     """HTTP client for WhatsOnChain API."""
 
-    def __init__(self, chain: Chain, api_key: Optional[str] = None, timeout: int = 30):
+    def __init__(self, chain: Chain, api_key: str | None = None, timeout: int = 30):
         """Initialize WOC client.
 
         Args:
@@ -84,28 +84,22 @@ class WOCClient:
         # Base URLs for WhatsOnChain
         self.base_urls = {
             "main": "https://api.whatsonchain.com/v1/bsv/main",
-            "test": "https://api.whatsonchain.com/v1/bsv/test"
+            "test": "https://api.whatsonchain.com/v1/bsv/test",
         }
 
         # Setup requests session with retry strategy
         self.session = requests.Session()
 
-        retry_strategy = Retry(
-            total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            backoff_factor=1
-        )
+        retry_strategy = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], backoff_factor=1)
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
         # Set headers
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "py-wallet-toolbox"
-        })
+        self.session.headers.update(
+            {"Accept": "application/json", "Content-Type": "application/json", "User-Agent": "py-wallet-toolbox"}
+        )
 
         if api_key:
             self.session.headers["Authorization"] = f"Bearer {api_key}"
@@ -114,7 +108,7 @@ class WOCClient:
         """Get base URL for current chain."""
         return self.base_urls.get(self.chain, self.base_urls["main"])
 
-    def get_header_by_hash(self, block_hash: str) -> Optional[WOCBlockHeaderDTO]:
+    def get_header_by_hash(self, block_hash: str) -> WOCBlockHeaderDTO | None:
         """Fetch block header by hash.
 
         Args:
@@ -164,7 +158,7 @@ class WOCClient:
         except Exception as e:
             raise Exception(f"Failed to fetch chain info: {e}") from e
 
-    def get_last_headers(self, count: int = 10) -> List[WOCBlockHeaderDTO]:
+    def get_last_headers(self, count: int = 10) -> list[WOCBlockHeaderDTO]:
         """Get last N block headers.
 
         Args:
@@ -188,7 +182,7 @@ class WOCClient:
         except Exception as e:
             raise Exception(f"Failed to fetch last headers: {e}") from e
 
-    def get_headers_resource_list(self) -> List[str]:
+    def get_headers_resource_list(self) -> list[str]:
         """Get list of available bulk header files.
 
         Returns:

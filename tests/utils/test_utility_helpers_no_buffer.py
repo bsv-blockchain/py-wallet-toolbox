@@ -5,10 +5,9 @@ This module tests asString and asUint8Array conversion functions.
 Reference: wallet-toolbox/src/utility/__tests/utilityHelpers.noBuffer.test.ts
 """
 
-import pytest
-
 try:
-    from bsv_wallet_toolbox.utils import as_string, as_uint8array as as_uint8_array
+    from bsv_wallet_toolbox.utils import as_string
+    from bsv_wallet_toolbox.utils import as_uint8array as as_uint8_array
 
     IMPORTS_AVAILABLE = True
 except ImportError:

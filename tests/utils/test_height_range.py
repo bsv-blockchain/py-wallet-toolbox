@@ -171,7 +171,9 @@ class TestHeightRange:
         Reference: Tests strict validation behavior
         """
         # Given/When/Then
-        with pytest.raises(ValueError, match="Invalid height range: min_height \\(10\\) is greater than max_height \\(5\\)"):
+        with pytest.raises(
+            ValueError, match="Invalid height range: min_height \\(10\\) is greater than max_height \\(5\\)"
+        ):
             HeightRange.new_height_range(10, 5, allow_empty_on_invalid=False)
 
     def test_new_height_range_allow_empty_on_invalid_false_valid_input(self) -> None:
@@ -195,8 +197,12 @@ class TestHeightRange:
         Reference: Tests error message formatting with different values
         """
         # Given/When/Then
-        with pytest.raises(ValueError, match="Invalid height range: min_height \\(1\\) is greater than max_height \\(0\\)"):
+        with pytest.raises(
+            ValueError, match="Invalid height range: min_height \\(1\\) is greater than max_height \\(0\\)"
+        ):
             HeightRange.new_height_range(1, 0, allow_empty_on_invalid=False)
 
-        with pytest.raises(ValueError, match="Invalid height range: min_height \\(100\\) is greater than max_height \\(50\\)"):
+        with pytest.raises(
+            ValueError, match="Invalid height range: min_height \\(100\\) is greater than max_height \\(50\\)"
+        ):
             HeightRange.new_height_range(100, 50, allow_empty_on_invalid=False)

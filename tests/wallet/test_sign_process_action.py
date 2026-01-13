@@ -16,22 +16,13 @@ from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 @pytest.fixture
 def valid_sign_action_args():
     """Fixture providing valid sign action arguments."""
-    return {
-        "reference": "test_reference_base64",
-        "spends": {}
-    }
+    return {"reference": "test_reference_base64", "spends": {}}
 
 
 @pytest.fixture
 def valid_process_action_args():
     """Fixture providing valid process action arguments."""
-    return {
-        "txid": "a" * 64,
-        "isNewTx": True,
-        "rawTx": "deadbeef",
-        "reference": "test_ref_base64",
-        "noSend": True
-    }
+    return {"txid": "a" * 64, "isNewTx": True, "rawTx": "deadbeef", "reference": "test_ref_base64", "noSend": True}
 
 
 @pytest.fixture
@@ -120,7 +111,11 @@ class TestWalletSignAction:
 
         sign_args = {
             "reference": create_result["signableTransaction"]["reference"],
-            "rawTx": "".join(f"{b:02x}" for b in create_result["signableTransaction"]["tx"]) if create_result["signableTransaction"]["tx"] else "",
+            "rawTx": (
+                "".join(f"{b:02x}" for b in create_result["signableTransaction"]["tx"])
+                if create_result["signableTransaction"]["tx"]
+                else ""
+            ),
             "spends": {},  # No specific spend authorizations needed
         }
 
@@ -161,8 +156,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_none_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with None reference
-           When: Call sign_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sign_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"reference": None, "spends": {}}
@@ -173,8 +168,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_wrong_reference_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with wrong reference type
-           When: Call sign_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sign_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid reference types
         invalid_types = [123, [], {}, True, 45.67]
@@ -188,8 +183,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_whitespace_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with whitespace-only reference
-           When: Call sign_action
-           Then: Raises InvalidParameterError
+        When: Call sign_action
+        Then: Raises InvalidParameterError
         """
         # Given - Various whitespace references
         whitespace_refs = ["   ", "\t", "\n", " \t \n "]
@@ -203,8 +198,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_wrong_spends_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with wrong spends type
-           When: Call sign_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call sign_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid spends types
         invalid_types = ["string", 123, True, 45.67]
@@ -218,8 +213,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_missing_reference_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs missing reference key
-           When: Call sign_action
-           Then: Raises KeyError or TypeError
+        When: Call sign_action
+        Then: Raises KeyError or TypeError
         """
         # Given
         invalid_args = {"spends": {}}
@@ -230,8 +225,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_missing_spends_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs missing spends key
-           When: Call sign_action
-           Then: Raises KeyError or TypeError
+        When: Call sign_action
+        Then: Raises KeyError or TypeError
         """
         # Given
         invalid_args = {"reference": "test_ref"}
@@ -242,8 +237,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_params_extra_keys_ignored(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with extra keys
-           When: Call sign_action
-           Then: Extra keys are ignored, processes normally or fails on invalid reference
+        When: Call sign_action
+        Then: Extra keys are ignored, processes normally or fails on invalid reference
         """
         # Given
         invalid_args = {
@@ -251,7 +246,7 @@ class TestWalletSignAction:
             "spends": {},
             "extraKey": "ignored",
             "anotherKey": 123,
-            "nested": {"key": "value"}
+            "nested": {"key": "value"},
         }
 
         # When/Then - Should fail on the invalid reference, not the extra keys
@@ -260,8 +255,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_reference_too_short_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with very short reference
-           When: Call sign_action
-           Then: Raises InvalidParameterError
+        When: Call sign_action
+        Then: Raises InvalidParameterError
         """
         # Given - Very short references
         short_refs = ["a", "ab", "abc", "1", "12"]
@@ -275,8 +270,8 @@ class TestWalletSignAction:
 
     def test_sign_action_invalid_reference_invalid_base64_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: SignActionArgs with invalid base64 reference
-           When: Call sign_action
-           Then: Raises InvalidParameterError
+        When: Call sign_action
+        Then: Raises InvalidParameterError
         """
         # Given - References with invalid base64 chars
         invalid_refs = [
@@ -289,7 +284,7 @@ class TestWalletSignAction:
             "asterisk*here",
             "plus+but+invalid",
             "slash/invalid",
-            "backslash\\invalid"
+            "backslash\\invalid",
         ]
 
         for ref in invalid_refs:
@@ -406,16 +401,11 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_none_txid_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with None txid
-           When: Call process_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call process_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
-        invalid_args = {
-            "txid": None,
-            "isNewTx": True,
-            "rawTx": "deadbeef",
-            "reference": "test_ref"
-        }
+        invalid_args = {"txid": None, "isNewTx": True, "rawTx": "deadbeef", "reference": "test_ref"}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -423,19 +413,14 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_wrong_txid_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with wrong txid type
-           When: Call process_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call process_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid txid types
         invalid_types = [123, [], {}, True, 45.67, b"bytes"]
 
         for invalid_txid in invalid_types:
-            invalid_args = {
-                "txid": invalid_txid,
-                "isNewTx": True,
-                "rawTx": "deadbeef",
-                "reference": "test_ref"
-            }
+            invalid_args = {"txid": invalid_txid, "isNewTx": True, "rawTx": "deadbeef", "reference": "test_ref"}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -443,19 +428,14 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_txid_wrong_length_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with txid of wrong length
-           When: Call process_action
-           Then: Raises InvalidParameterError
+        When: Call process_action
+        Then: Raises InvalidParameterError
         """
         # Given - txid should be 64 hex characters
         invalid_lengths = ["", "short", "a" * 63, "a" * 65, "g" * 64]  # Last one has invalid hex char
 
         for invalid_txid in invalid_lengths:
-            invalid_args = {
-                "txid": invalid_txid,
-                "isNewTx": True,
-                "rawTx": "deadbeef",
-                "reference": "test_ref"
-            }
+            invalid_args = {"txid": invalid_txid, "isNewTx": True, "rawTx": "deadbeef", "reference": "test_ref"}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -463,16 +443,11 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_none_raw_tx_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with None rawTx
-           When: Call process_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call process_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
-        invalid_args = {
-            "txid": "a" * 64,
-            "isNewTx": True,
-            "rawTx": None,
-            "reference": "test_ref"
-        }
+        invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": None, "reference": "test_ref"}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -480,19 +455,14 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_wrong_raw_tx_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with wrong rawTx type
-           When: Call process_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call process_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid rawTx types
         invalid_types = [123, [], {}, True, 45.67]
 
         for invalid_raw_tx in invalid_types:
-            invalid_args = {
-                "txid": "a" * 64,
-                "isNewTx": True,
-                "rawTx": invalid_raw_tx,
-                "reference": "test_ref"
-            }
+            invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": invalid_raw_tx, "reference": "test_ref"}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -500,16 +470,11 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_none_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with None reference
-           When: Call process_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call process_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
-        invalid_args = {
-            "txid": "a" * 64,
-            "isNewTx": True,
-            "rawTx": "deadbeef",
-            "reference": None
-        }
+        invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": "deadbeef", "reference": None}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -517,19 +482,14 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_wrong_reference_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with wrong reference type
-           When: Call process_action
-           Then: Raises InvalidParameterError or TypeError
+        When: Call process_action
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid reference types
         invalid_types = [123, [], {}, True, 45.67, b"bytes"]
 
         for invalid_ref in invalid_types:
-            invalid_args = {
-                "txid": "a" * 64,
-                "isNewTx": True,
-                "rawTx": "deadbeef",
-                "reference": invalid_ref
-            }
+            invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": "deadbeef", "reference": invalid_ref}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -537,19 +497,14 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_whitespace_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with whitespace-only reference
-           When: Call process_action
-           Then: Raises InvalidParameterError
+        When: Call process_action
+        Then: Raises InvalidParameterError
         """
         # Given - Various whitespace references
         whitespace_refs = ["   ", "\t", "\n", " \t \n "]
 
         for ref in whitespace_refs:
-            invalid_args = {
-                "txid": "a" * 64,
-                "isNewTx": True,
-                "rawTx": "deadbeef",
-                "reference": ref
-            }
+            invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": "deadbeef", "reference": ref}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -557,15 +512,11 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_missing_txid_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs missing txid key
-           When: Call process_action
-           Then: Raises KeyError or TypeError
+        When: Call process_action
+        Then: Raises KeyError or TypeError
         """
         # Given
-        invalid_args = {
-            "isNewTx": True,
-            "rawTx": "deadbeef",
-            "reference": "test_ref"
-        }
+        invalid_args = {"isNewTx": True, "rawTx": "deadbeef", "reference": "test_ref"}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -573,31 +524,25 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_missing_raw_tx_key_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs missing rawTx key
-           When: Call process_action
-           Then: Raises KeyError or TypeError
+        When: Call process_action
+        Then: Raises KeyError or TypeError
         """
         # Given
-        invalid_args = {
-            "txid": "a" * 64,
-            "isNewTx": True,
-            "reference": "test_ref"
-        }
+        invalid_args = {"txid": "a" * 64, "isNewTx": True, "reference": "test_ref"}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
             wallet_with_storage.process_action(invalid_args)
 
-    def test_process_action_invalid_params_is_new_tx_false_missing_txid_allowed(self, wallet_with_storage: Wallet) -> None:
+    def test_process_action_invalid_params_is_new_tx_false_missing_txid_allowed(
+        self, wallet_with_storage: Wallet
+    ) -> None:
         """Given: ProcessActionArgs with isNewTx=False and missing txid
-           When: Call process_action
-           Then: May succeed or raise appropriate error based on implementation
+        When: Call process_action
+        Then: May succeed or raise appropriate error based on implementation
         """
         # Given - For non-new transactions, txid might not be required
-        args = {
-            "isNewTx": False,
-            "rawTx": "deadbeef",
-            "reference": "test_ref"
-        }
+        args = {"isNewTx": False, "rawTx": "deadbeef", "reference": "test_ref"}
 
         # When/Then - Implementation dependent, but should not crash
         try:
@@ -608,26 +553,18 @@ class TestWalletProcessAction:
             # Acceptable - implementation may require txid or reference recovery may fail
             pass
 
-    def test_process_action_invalid_params_invalid_base64_reference_raises_error(self, wallet_with_storage: Wallet) -> None:
+    def test_process_action_invalid_params_invalid_base64_reference_raises_error(
+        self, wallet_with_storage: Wallet
+    ) -> None:
         """Given: ProcessActionArgs with invalid base64 reference
-           When: Call process_action
-           Then: Raises InvalidParameterError
+        When: Call process_action
+        Then: Raises InvalidParameterError
         """
         # Given - References with invalid base64 chars
-        invalid_refs = [
-            "invalid@chars!",
-            "contains#symbols",
-            "with$dollar$signs",
-            "percent%encoded"
-        ]
+        invalid_refs = ["invalid@chars!", "contains#symbols", "with$dollar$signs", "percent%encoded"]
 
         for ref in invalid_refs:
-            invalid_args = {
-                "txid": "a" * 64,
-                "isNewTx": True,
-                "rawTx": "deadbeef",
-                "reference": ref
-            }
+            invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": "deadbeef", "reference": ref}
 
             # When/Then
             with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):
@@ -635,16 +572,11 @@ class TestWalletProcessAction:
 
     def test_process_action_invalid_params_empty_raw_tx_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ProcessActionArgs with empty rawTx
-           When: Call process_action
-           Then: Raises InvalidParameterError
+        When: Call process_action
+        Then: Raises InvalidParameterError
         """
         # Given
-        invalid_args = {
-            "txid": "a" * 64,
-            "isNewTx": True,
-            "rawTx": "",
-            "reference": "test_ref"
-        }
+        invalid_args = {"txid": "a" * 64, "isNewTx": True, "rawTx": "", "reference": "test_ref"}
 
         # When/Then
         with pytest.raises((InvalidParameterError, ValueError, TypeError, KeyError, WalletError)):

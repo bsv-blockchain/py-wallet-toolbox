@@ -12,8 +12,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -32,7 +30,7 @@ class TestUniversalVectorsCreateAction:
         Then: Result has expected structure (structural validation instead of exact match)
         """
         # Given
-        args_data, result_data = load_test_vectors("createAction-1-out")
+        args_data, _result_data = load_test_vectors("createAction-1-out")
 
         # When
         result = wallet_with_services.create_action(args_data["json"], originator=None)
@@ -56,7 +54,7 @@ class TestUniversalVectorsCreateAction:
 
         Verifies basic wire format functionality.
         """
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
@@ -79,7 +77,7 @@ class TestUniversalVectorsCreateAction:
         Then: Result has expected structure (returns signableTransaction instead of direct tx)
         """
         # Given
-        args_data, result_data = load_test_vectors("createAction-no-signAndProcess")
+        args_data, _result_data = load_test_vectors("createAction-no-signAndProcess")
 
         # When
         result = wallet_with_services.create_action(args_data["json"], originator=None)
@@ -100,7 +98,7 @@ class TestUniversalVectorsCreateAction:
 
         Verifies basic wire format functionality.
         """
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}

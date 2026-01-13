@@ -6,10 +6,9 @@ Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
 """
 
 import pytest
-from unittest.mock import patch
 
-from bsv_wallet_toolbox.services import Services
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.services import Services
 
 
 def test_post_beef_array_minimal() -> None:
@@ -260,7 +259,7 @@ def test_post_beef_array_consecutive_calls() -> None:
     services = Services(options)
 
     # Make multiple consecutive calls
-    for i in range(3):
+    for _i in range(3):
         result = services.post_beef_array(["00", "11"])
         assert isinstance(result, list)
         assert len(result) == 2

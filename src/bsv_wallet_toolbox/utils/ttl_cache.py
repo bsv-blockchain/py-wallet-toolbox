@@ -6,15 +6,16 @@ following the Go pending sign actions cache pattern.
 Reference: go-wallet-toolbox/pkg/wallet/pending/local_pending_sign_actions_repo.go
 """
 
-import time
 import threading
-from typing import Any, Dict, Optional
+import time
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
 class CacheItem:
     """Cache item with value and expiration time."""
+
     value: Any
     expires_at: float
 
@@ -37,9 +38,9 @@ class TTLCache:
         """
         self.ttl_seconds = ttl_seconds
         self.cleanup_interval = cleanup_interval
-        self.cache: Dict[str, CacheItem] = {}
+        self.cache: dict[str, CacheItem] = {}
         self.lock = threading.RLock()
-        self._cleanup_timer: Optional[threading.Timer] = None
+        self._cleanup_timer: threading.Timer | None = None
         self._schedule_cleanup()
 
     def get(self, key: str) -> Any:
@@ -63,7 +64,7 @@ class TTLCache:
 
             return item.value
 
-    def set(self, key: str, value: Any, ttl_seconds: Optional[float] = None) -> None:
+    def set(self, key: str, value: Any, ttl_seconds: float | None = None) -> None:
         """Set value in cache with TTL.
 
         Args:
@@ -112,10 +113,7 @@ class TTLCache:
         removed = 0
 
         with self.lock:
-            expired_keys = [
-                key for key, item in self.cache.items()
-                if current_time > item.expires_at
-            ]
+            expired_keys = [key for key, item in self.cache.items() if current_time > item.expires_at]
 
             for key in expired_keys:
                 del self.cache[key]

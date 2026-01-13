@@ -90,4 +90,3 @@ def convert_proof_to_merkle_path(txid: str, proof: TscMerkleProofApi | dict[str,
         nodes=proof["nodes"],
         height=proof.get("height"),
     )
-

@@ -58,4 +58,3 @@ class TaskPurge(WalletMonitorTask):
             log = f"Error running purge_data: {e!s}"
 
         return log
-

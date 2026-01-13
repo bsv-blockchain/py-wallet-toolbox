@@ -106,8 +106,8 @@ class TestReaderUint8ArrayReadBytes:
         b1 = reader.read_uint8()
         b2 = reader.read_uint8()
         b3 = reader.read_uint8()
-        assert b1 == 0xfd
-        assert b2 == 0x2c
+        assert b1 == 0xFD
+        assert b2 == 0x2C
         assert b3 == 0x01
 
 
@@ -219,4 +219,3 @@ class TestReaderUint8ArrayUtilityMethods:
         if hasattr(reader, "slice"):
             result = reader.slice(1, 4)
             assert result == b"\x02\x03\x04"
-
