@@ -55,6 +55,38 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
+def normalize_url_for_brc104(endpoint_url: str) -> str:
+    """Normalize URL path for BRC-104 signature compatibility.
+    
+    IMPORTANT (BRC-104 signature compatibility):
+    If the URL has an empty path (e.g. "http://host:port"), different stacks may
+    canonicalize it as "" vs "/". That can change the signed payload for the
+    authenticated request and cause server-side "Invalid signature".
+    
+    This function ensures empty paths are normalized to "/" to maintain consistent
+    signature computation across different URL parsing implementations.
+    
+    Args:
+        endpoint_url: The endpoint URL to normalize
+        
+    Returns:
+        The normalized URL with empty path replaced by "/"
+    """
+    parsed = urlparse(endpoint_url)
+    if not parsed.path:
+        endpoint_url = urlunparse(
+            (
+                parsed.scheme,
+                parsed.netloc,
+                "/",
+                parsed.params,
+                parsed.query,
+                parsed.fragment,
+            )
+        )
+    return endpoint_url
+
+
 class JsonRpcError(Exception):
     """Exception raised when JSON-RPC error response is received.
 
@@ -131,22 +163,8 @@ class StorageClient:
             msg = "endpoint_url must be a non-empty string"
             raise ValueError(msg)
 
-        # IMPORTANT (BRC-104 signature compatibility):
-        # If the URL has an empty path (e.g. "http://host:port"), different stacks may
-        # canonicalize it as "" vs "/". That can change the signed payload for the
-        # authenticated request and cause server-side "Invalid signature".
-        parsed = urlparse(endpoint_url)
-        if not parsed.path:
-            endpoint_url = urlunparse(
-                (
-                    parsed.scheme,
-                    parsed.netloc,
-                    "/",
-                    parsed.params,
-                    parsed.query,
-                    parsed.fragment,
-                )
-            )
+        # Normalize URL for BRC-104 signature compatibility
+        endpoint_url = normalize_url_for_brc104(endpoint_url)
 
         self.wallet = wallet
         self.endpoint_url = endpoint_url

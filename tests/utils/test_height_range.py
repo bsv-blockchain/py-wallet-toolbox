@@ -140,3 +140,63 @@ class TestHeightRange:
         assert hr(4, -8).subtract(hr(4, 10)).is_empty is True
         assert hr(4, -8).subtract(hr(4, -10)).is_empty is True
         assert hr(4, 8).subtract(hr(9, -10)) == hr(4, 8)
+
+    def test_new_height_range_default_behavior(self) -> None:
+        """Given: Invalid height range with min_height > max_height
+           When: Call new_height_range() with default parameters
+           Then: Returns empty range (backward compatibility)
+
+        Reference: Ensures default behavior preserves existing functionality
+        """
+        # Given/When/Then
+        result = HeightRange.new_height_range(10, 5)
+        assert result.is_empty is True
+
+    def test_new_height_range_allow_empty_on_invalid_true(self) -> None:
+        """Given: Invalid height range with min_height > max_height
+           When: Call new_height_range() with allow_empty_on_invalid=True
+           Then: Returns empty range
+
+        Reference: Explicit test for allow_empty_on_invalid=True behavior
+        """
+        # Given/When/Then
+        result = HeightRange.new_height_range(10, 5, allow_empty_on_invalid=True)
+        assert result.is_empty is True
+
+    def test_new_height_range_allow_empty_on_invalid_false_raises(self) -> None:
+        """Given: Invalid height range with min_height > max_height
+           When: Call new_height_range() with allow_empty_on_invalid=False
+           Then: Raises ValueError with descriptive message
+
+        Reference: Tests strict validation behavior
+        """
+        # Given/When/Then
+        with pytest.raises(ValueError, match="Invalid height range: min_height \\(10\\) is greater than max_height \\(5\\)"):
+            HeightRange.new_height_range(10, 5, allow_empty_on_invalid=False)
+
+    def test_new_height_range_allow_empty_on_invalid_false_valid_input(self) -> None:
+        """Given: Valid height range
+           When: Call new_height_range() with allow_empty_on_invalid=False
+           Then: Returns valid HeightRange instance
+
+        Reference: Ensures valid input works with strict validation enabled
+        """
+        # Given/When/Then
+        result = HeightRange.new_height_range(5, 10, allow_empty_on_invalid=False)
+        assert result.min_height == 5
+        assert result.max_height == 10
+        assert result.is_empty is False
+
+    def test_new_height_range_error_message_content(self) -> None:
+        """Given: Various invalid height ranges
+           When: Call new_height_range() with allow_empty_on_invalid=False
+           Then: Error message includes both min_height and max_height values
+
+        Reference: Tests error message formatting with different values
+        """
+        # Given/When/Then
+        with pytest.raises(ValueError, match="Invalid height range: min_height \\(1\\) is greater than max_height \\(0\\)"):
+            HeightRange.new_height_range(1, 0, allow_empty_on_invalid=False)
+
+        with pytest.raises(ValueError, match="Invalid height range: min_height \\(100\\) is greater than max_height \\(50\\)"):
+            HeightRange.new_height_range(100, 50, allow_empty_on_invalid=False)

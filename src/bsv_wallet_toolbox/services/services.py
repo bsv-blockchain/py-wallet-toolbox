@@ -22,6 +22,7 @@ Phase 4 Implementation Status:
   ✅ Retry logic: Implemented for getUtxoStatus (2 retries)
   ✅ ServiceCallHistory tracking: get_services_call_history() method
   ✅ Provider failover and error handling
+  ✅ Process forking compatibility: Lazy initialization with automatic fork detection
 
 ⏳ Phase 5 TODO (Future Enhancement):
 Background: These features are NOT implemented in TypeScript (ts-wallet-toolbox) Services
@@ -41,6 +42,7 @@ See: ts-wallet-toolbox/src/Services.ts (no monitoring), ts-wallet-toolbox/src/Mo
 import asyncio
 import inspect
 import logging
+import os
 import threading
 from collections.abc import Callable
 from time import time
@@ -218,42 +220,63 @@ def compute_txid_from_hex(raw_tx_hex: str) -> str:
     return bytes(double_sha256_be(raw_tx_bytes)).hex()
 
 
+# Global async runner with lazy initialization (thread-safe)
+_async_runner_lock = threading.Lock()
+_async_runner: _AsyncRunner | None = None
+_parent_pid = os.getpid()
+
+
+def _reset_async_runner_after_fork():
+    """Reset async runner in child process after fork."""
+    global _async_runner, _parent_pid
+    current_pid = os.getpid()
+    if current_pid != _parent_pid:
+        if _async_runner is not None:
+            try:
+                _async_runner.shutdown()
+            except Exception:
+                pass
+        _async_runner = None
+        _parent_pid = current_pid
+
+
+# Register fork handler if available (Python 3.7+)
+if hasattr(os, 'register_at_fork'):
+    os.register_at_fork(after_in_child=_reset_async_runner_after_fork)
+
+
+def _get_async_runner() -> _AsyncRunner:
+    """Get or create the global async runner (lazy initialization).
+
+    Thread-safe singleton pattern. The runner is created on first access,
+    avoiding issues with process forking since it won't exist at import time.
+    """
+    global _async_runner
+    if _async_runner is None:
+        with _async_runner_lock:
+            # Double-check pattern for thread safety
+            if _async_runner is None:
+                _async_runner = _AsyncRunner()
+    return _async_runner
+
+
 def shutdown_async_runner() -> None:
     """Shutdown the global async runner.
 
     This function should be called when the application is shutting down
     to ensure proper cleanup of the background thread and event loop.
 
-    When using process forking (e.g. multiprocessing, gunicorn pre-fork workers),
-    call this function in the parent process *before* forking to avoid copying
-    a running event loop and thread into child processes. Each child process
-    should then import this module after the fork so it can create its own
-    independent async runner.
+    The async runner is created lazily on first use, so this function is safe
+    to call even if the runner hasn't been created yet.
     """
-    _ASYNC_RUNNER.shutdown()
+    global _async_runner
+    if _async_runner is not None:
+        _async_runner.shutdown()
+        _async_runner = None
 
-
-# Global async runner initialized at module import time.
-# WARNING: This module is incompatible with process forking (multiprocessing, gunicorn workers).
-# The event loop and background thread will be copied to child processes, leading to undefined behavior
-# if a fork occurs after this module has been imported and the runner is active.
-#
-# Recommended usage:
-#   - Prefer thread-based concurrency or single-process deployment for applications using this module.
-#   - If forking is unavoidable, either:
-#       * Import this module only inside child processes after the fork, or
-#       * MUST call shutdown_async_runner() in the parent process BEFORE forking, and ensure each child
-#         imports this module after the fork so it creates a fresh async runner.
-#
-# Note: Lazy initialization would require significant refactoring across 35+ usages throughout the codebase.
-# The current approach is acceptable for the primary use case of long-running applications, provided
-# that the above guidelines are followed when using process forking.
-_ASYNC_RUNNER = _AsyncRunner()
-
-# Note: atexit cleanup is not registered to avoid issues with forked processes and daemon threads.
-# Applications should ensure proper shutdown by calling shutdown_async_runner() explicitly when
-# the process is exiting or before creating child processes via fork, if this module has already
-# been imported.
+# Global async runner with lazy initialization (thread-safe)
+# The async runner is created on first use to avoid issues with process forking.
+# Fork detection is registered to automatically reset the runner in child processes.
 
 
 class Services(WalletServices):
@@ -485,7 +508,7 @@ class Services(WalletServices):
             The result, running the coroutine if needed
         """
         if inspect.iscoroutine(coro_or_result):
-            return _ASYNC_RUNNER.run(coro_or_result)
+            return _get_async_runner().run(coro_or_result)
         return coro_or_result
 
     def get_chain_tracker(self) -> ChainTracker:

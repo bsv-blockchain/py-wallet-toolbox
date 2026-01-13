@@ -29,17 +29,34 @@ class HeightRange:
         self._is_empty = is_empty
 
     @classmethod
-    def new_height_range(cls, min_height: int, max_height: int) -> HeightRange:
+    def new_height_range(
+        cls,
+        min_height: int,
+        max_height: int,
+        *,
+        allow_empty_on_invalid: bool = True,
+    ) -> HeightRange:
         """Create a new HeightRange.
 
         Args:
             min_height: Minimum block height
             max_height: Maximum block height
+            allow_empty_on_invalid: If True (default), an empty range is returned when
+                min_height > max_height. If False, a ValueError is raised instead.
 
         Returns:
-            HeightRange instance, or empty range if min_height > max_height
+            HeightRange instance, or empty range if min_height > max_height and
+            allow_empty_on_invalid is True.
+
+        Raises:
+            ValueError: If min_height > max_height and allow_empty_on_invalid is False.
         """
         if min_height > max_height:
+            if not allow_empty_on_invalid:
+                raise ValueError(
+                    f"Invalid height range: min_height ({min_height}) "
+                    f"is greater than max_height ({max_height})"
+                )
             return cls.new_empty_height_range()
         return cls(min_height, max_height)
 
