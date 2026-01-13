@@ -2,9 +2,9 @@ name: build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
 
 jobs:
   test:
@@ -61,13 +61,13 @@ jobs:
         echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
         echo "Coverage: $COVERAGE%"
 
-    - name: Update coverage badge (main branch only)
-      if: github.ref == 'refs/heads/main' && matrix.python-version == '3.11'
+    - name: Update coverage badge (master branch only)
+      if: github.ref == 'refs/heads/master' && matrix.python-version == '3.11'
       run: |
         python update_coverage.py ${{ steps.coverage.outputs.coverage }}
 
     - name: Commit coverage update
-      if: github.ref == 'refs/heads/main' && matrix.python-version == '3.11'
+      if: github.ref == 'refs/heads/master' && matrix.python-version == '3.11'
       uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "chore: update coverage badge to ${{ steps.coverage.outputs.coverage }}%"
