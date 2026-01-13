@@ -2697,7 +2697,9 @@ class StorageProvider:
             random_vals=vargs.random_vals,
         )
 
-        def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None) -> GenerateChangeSdkFundingInput | None:
+        def allocate_cb(
+            target_satoshis: int, exact_satoshis: int | None = None
+        ) -> GenerateChangeSdkFundingInput | None:
             o = self.allocate_funding_input(
                 user_id,
                 change_basket_id,
