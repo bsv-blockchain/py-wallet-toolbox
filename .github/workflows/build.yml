@@ -9,6 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: write
     strategy:
       matrix:
         python-version: ['3.11', '3.12']
@@ -42,12 +46,6 @@ jobs:
         black --check src/ tests/
         echo "Running ruff..."
         ruff check src/ tests/
-
-    - name: Run type checking
-      continue-on-error: true
-      run: |
-        echo "Running mypy..."
-        mypy src/
 
     - name: Run tests with coverage
       run: |

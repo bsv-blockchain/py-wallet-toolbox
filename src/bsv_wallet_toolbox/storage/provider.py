@@ -1775,7 +1775,7 @@ class StorageProvider:
             statuses = ["completed", "unprocessed", "sending", "unproven", "unsigned", "nosend", "nonfinal"]
 
             # Query label IDs if any labels specified (TS lines 61-73)
-            label_ids = []
+            label_ids: list[int] = []
             if labels:
                 q_labels = select(TxLabel.tx_label_id).where(
                     (TxLabel.user_id == user_id) & (TxLabel.is_deleted.is_(False)) & (TxLabel.label.in_(labels))
@@ -1881,7 +1881,7 @@ class StorageProvider:
                     q_outputs = select(Output).where(Output.transaction_id == tx.transaction_id)
                     _result = s.execute(q_outputs)
                     for output in _result.scalars().all():
-                        output_obj = {
+                        output_obj: dict[str, Any] = {
                             "satoshis": output.satoshis or 0,
                             "spendable": bool(output.spendable),
                             "tags": [],
@@ -2697,7 +2697,7 @@ class StorageProvider:
             random_vals=vargs.random_vals,
         )
 
-        def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None):
+        def allocate_cb(target_satoshis: int, exact_satoshis: int | None = None) -> GenerateChangeSdkFundingInput | None:
             o = self.allocate_funding_input(
                 user_id,
                 change_basket_id,
@@ -2827,7 +2827,7 @@ class StorageProvider:
         log = util_stamp_log(log, "start storage processActionSdk")
 
         # Result structure (TS lines 39-41)
-        result = {"sendWithResults": [], "notDelayedResults": None}
+        result: dict[str, Any] = {"sendWithResults": [], "notDelayedResults": None}
 
         # Check if this is a new transaction or just sendWith
         is_new_tx = args.get("isNewTx", True)
@@ -3395,7 +3395,7 @@ class StorageProvider:
         try:
             session.add(obj)
             session.flush()
-            mapper = inspect(model)
+            mapper: Any = inspect(model)
             pk_col = mapper.primary_key[0]
             # Convert camelCase column name to snake_case Python attribute
             pk_attr_name = StorageProvider._to_snake_case(pk_col.name)
@@ -3437,7 +3437,7 @@ class StorageProvider:
         """
         model = self._get_model(table_name)
         with session_scope(self.SessionLocal) as s:
-            query = select(model)
+            query: Any = select(model)
             if args:
                 normalized_args = self._normalize_dict_keys(args)
                 for key, value in normalized_args.items():
