@@ -497,7 +497,7 @@ class ChaintracksStorage:
         except Exception:
             pass  # Best-effort cleanup
 
-    def query(self, context=None) -> "StorageQueries":
+    def query(self, context=None) -> StorageQueries:
         """Get StorageQueries interface for database operations.
 
         Args:

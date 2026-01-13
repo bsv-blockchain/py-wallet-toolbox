@@ -984,7 +984,7 @@ def validate_discover_by_attributes_args(args: dict[str, Any]) -> None:
     if "limit" in args:
         limit = args["limit"]
         if not isinstance(limit, int) or isinstance(limit, bool):
-            raise InvalidParameterError("limit", f"must be an integer")
+            raise InvalidParameterError("limit", "must be an integer")
         if limit <= 0 or limit > MAX_PAGINATION_LIMIT:
             raise InvalidParameterError("limit", f"must be 1..{MAX_PAGINATION_LIMIT}")
 

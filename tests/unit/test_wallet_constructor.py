@@ -5,11 +5,11 @@ This module tests wallet initialization and basic functionality.
 Reference: wallet-toolbox/test/wallet/construct/Wallet.constructor.test.ts
 """
 
-import pytest
 
 try:
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
     from bsv_wallet_toolbox.storage import StorageProvider
     from bsv_wallet_toolbox.storage.db import create_engine_from_url
     from bsv_wallet_toolbox.storage.models import Base

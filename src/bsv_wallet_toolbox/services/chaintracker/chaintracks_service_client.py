@@ -49,7 +49,7 @@ import asyncio
 import json
 import time
 import uuid
-from typing import Any, Callable, Generic, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 
 import requests
 

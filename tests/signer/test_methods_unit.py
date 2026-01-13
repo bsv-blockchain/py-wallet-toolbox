@@ -3,19 +3,20 @@
 Tests the core signing logic without requiring full wallet infrastructure.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from bsv.transaction import Transaction
 
 from bsv_wallet_toolbox.signer.methods import (
-    create_action,
-    sign_action,
-    process_action,
-    internalize_action,
-    acquire_direct_certificate,
-    prove_certificate,
     PendingSignAction,
+    acquire_direct_certificate,
+    create_action,
+    internalize_action,
+    process_action,
+    prove_certificate,
+    sign_action,
 )
-from bsv.transaction import Transaction
 
 
 class TestCreateAction:
@@ -132,8 +133,8 @@ class TestSignAction:
 
     def test_sign_action_success(self):
         """Test successful sign_action."""
+
         from bsv_wallet_toolbox.signer.methods import PendingSignAction
-        from bsv.transaction import Transaction
 
         mock_wallet = MagicMock()
         mock_auth = MagicMock()
@@ -434,7 +435,6 @@ class TestSignerHelperFunctions:
     def test_make_change_lock(self):
         """Test _make_change_lock function."""
         from bsv_wallet_toolbox.signer.methods import _make_change_lock
-        from bsv_wallet_toolbox.brc29.types import Protocol, Counterparty, CounterpartyType
 
         mock_wallet = MagicMock()
         # Add mock key_deriver with derive_public_key method

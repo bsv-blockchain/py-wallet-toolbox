@@ -3,7 +3,6 @@
 This module tests Bitcoin address generation and validation.
 """
 
-import pytest
 
 
 class TestAddressGeneration:

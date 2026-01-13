@@ -6,6 +6,13 @@ that Python implementation produces identical results.
 Reference: go-wallet-toolbox/pkg/internal/testabilities/tsgenerated/
 """
 
+from .beef_to_internalize import (
+    BEEF_TO_INTERNALIZE_HEIGHT,
+    BEEF_TO_INTERNALIZE_MERKLE_ROOT,
+    PARENT_BEEF,
+    PARENT_BEEF_TXID,
+    parent_transaction_atomic_beef,
+)
 from .create_action_result import (
     CREATE_ACTION_RESULT,
     create_action_result_json,
@@ -15,13 +22,6 @@ from .signed_transaction import (
     SIGNED_TRANSACTION_HEX,
     signed_transaction,
     signed_transaction_bytes,
-)
-from .beef_to_internalize import (
-    PARENT_BEEF,
-    PARENT_BEEF_TXID,
-    BEEF_TO_INTERNALIZE_HEIGHT,
-    BEEF_TO_INTERNALIZE_MERKLE_ROOT,
-    parent_transaction_atomic_beef,
 )
 
 __all__ = [

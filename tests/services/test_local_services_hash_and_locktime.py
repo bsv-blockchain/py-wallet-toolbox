@@ -6,14 +6,13 @@ Reference: go-wallet-toolbox/pkg/wdk/locktime.go
 """
 
 from time import time
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 
 import pytest
 from bsv.transaction import Transaction
 from bsv.transaction_input import TransactionInput
 
 from bsv_wallet_toolbox.services.services import Services
-from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 class TestHashOutputScript:

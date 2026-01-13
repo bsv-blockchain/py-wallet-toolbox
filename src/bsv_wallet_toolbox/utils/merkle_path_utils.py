@@ -106,7 +106,7 @@ def normalize_merkle_path_value(
         if s.startswith("{") or s.startswith("["):
             try:
                 mp = json.loads(s)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 return None
         else:
             return None

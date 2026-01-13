@@ -4,13 +4,22 @@ This module provides exhaustive test coverage for all functions and edge cases
 in the signer methods module, targeting the 168 missing lines.
 """
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
 
+from bsv_wallet_toolbox.errors.wallet_errors import WalletError
 from bsv_wallet_toolbox.signer.methods import (
     CreateActionResultX,
-    PendingSignAction,
-    PendingStorageInput,
+    _create_new_tx,
+    _make_change_lock,
+    _make_signable_transaction_beef,
+    _make_signable_transaction_result,
+    _merge_prior_options,
+    _recover_action_from_storage,
+    _remove_unlock_scripts,
+    _setup_wallet_payment_for_output,
+    _verify_unlock_scripts,
     acquire_direct_certificate,
     build_signable_transaction,
     complete_signed_transaction,
@@ -19,17 +28,7 @@ from bsv_wallet_toolbox.signer.methods import (
     process_action,
     prove_certificate,
     sign_action,
-    _create_new_tx,
-    _make_signable_transaction_result,
-    _make_signable_transaction_beef,
-    _remove_unlock_scripts,
-    _make_change_lock,
-    _verify_unlock_scripts,
-    _merge_prior_options,
-    _setup_wallet_payment_for_output,
-    _recover_action_from_storage,
 )
-from bsv_wallet_toolbox.errors.wallet_errors import WalletError
 
 
 class TestCreateAction:

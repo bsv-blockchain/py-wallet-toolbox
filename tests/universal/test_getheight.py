@@ -5,11 +5,6 @@ Reference: https://github.com/bsv-blockchain/universal-test-vectors
 
 from collections.abc import Callable
 
-import pytest
-
-from bsv_wallet_toolbox import Wallet
-from tests.conftest import MockWalletServices
-
 # Expected height from Universal Test Vectors
 EXPECTED_HEIGHT = 850000
 

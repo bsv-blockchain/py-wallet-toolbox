@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import Any
 
 import aiohttp
-
 from bsv.http_client import HttpClient, HttpResponse
 
 
@@ -28,22 +27,21 @@ class ToolboxHttpClient(HttpClient):
 
         request_timeout = aiohttp.ClientTimeout(total=timeout_value) if timeout_value is not None else None
 
-        async with aiohttp.ClientSession(timeout=request_timeout) as session:
-            async with session.request(
-                method=method,
-                url=url,
-                headers=headers,
-                json=data,
-                timeout=request_timeout,
-            ) as response:
-                status = response.status
-                ok = 200 <= status <= 299
+        async with aiohttp.ClientSession(timeout=request_timeout) as session, session.request(
+            method=method,
+            url=url,
+            headers=headers,
+            json=data,
+            timeout=request_timeout,
+        ) as response:
+            status = response.status
+            ok = 200 <= status <= 299
 
-                try:
-                    payload = await response.json()
-                    body = {"data": payload}
-                except Exception:
-                    text_payload = await response.text()
-                    body = {"data": text_payload}
+            try:
+                payload = await response.json()
+                body = {"data": payload}
+            except Exception:
+                text_payload = await response.text()
+                body = {"data": text_payload}
 
-                return HttpResponse(ok=ok, status_code=status, json_data=body)
+            return HttpResponse(ok=ok, status_code=status, json_data=body)

@@ -7,13 +7,13 @@ Reference:
     wallet-toolbox/src/storage/WalletStorageManager.ts
 """
 
-import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Union
+from typing import Any, Protocol
 
-from ..errors import WalletError, InvalidParameterError
+from ..errors import InvalidParameterError, WalletError
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +23,15 @@ class WalletStorageProvider(Protocol):
     """Protocol for wallet storage providers."""
 
     def is_storage_provider(self) -> bool: ...
-    def make_available(self) -> Dict[str, Any]: ...
-    def get_settings(self) -> Dict[str, Any]: ...
-    def find_or_insert_user(self, identity_key: str) -> Dict[str, Any]: ...
-    def get_sync_chunk(self, args: Dict[str, Any]) -> Dict[str, Any]: ...
-    def process_sync_chunk(self, args: Dict[str, Any], chunk: Dict[str, Any]) -> Dict[str, Any]: ...
+    def make_available(self) -> dict[str, Any]: ...
+    def get_settings(self) -> dict[str, Any]: ...
+    def find_or_insert_user(self, identity_key: str) -> dict[str, Any]: ...
+    def get_sync_chunk(self, args: dict[str, Any]) -> dict[str, Any]: ...
+    def process_sync_chunk(self, args: dict[str, Any], chunk: dict[str, Any]) -> dict[str, Any]: ...
     def set_services(self, services: Any) -> None: ...
     def find_or_insert_sync_state_auth(
-        self, auth: Dict[str, Any], storage_identity_key: str, storage_name: str
-    ) -> Dict[str, Any]: ...
+        self, auth: dict[str, Any], storage_identity_key: str, storage_name: str
+    ) -> dict[str, Any]: ...
 
 
 @dataclass
@@ -39,7 +39,7 @@ class AuthId:
     """Authentication ID container."""
 
     identity_key: str
-    user_id: Optional[int] = None
+    user_id: int | None = None
     is_active: bool = False
 
 
@@ -57,9 +57,9 @@ class TableUser:
 
     user_id: int
     identity_key: str
-    active_storage: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    active_storage: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @dataclass
@@ -69,8 +69,8 @@ class ManagedStorage:
     storage: Any  # WalletStorageProvider
     is_storage_provider: bool = False
     is_available: bool = False
-    settings: Optional[TableSettings] = None
-    user: Optional[TableUser] = None
+    settings: TableSettings | None = None
+    user: TableUser | None = None
 
     def __post_init__(self):
         if hasattr(self.storage, "is_storage_provider"):
@@ -92,11 +92,11 @@ class EntitySyncMap:
 
     entity_name: str
     count: int = 0
-    max_updated_at: Optional[datetime] = None
-    id_map: Dict[int, int] = field(default_factory=dict)
+    max_updated_at: datetime | None = None
+    id_map: dict[int, int] = field(default_factory=dict)
 
 
-def create_sync_map() -> Dict[str, EntitySyncMap]:
+def create_sync_map() -> dict[str, EntitySyncMap]:
     """Create initial sync map with all entity types."""
     entity_names = [
         "provenTx",
@@ -131,8 +131,8 @@ class EntitySyncState:
         init: bool = False,
         ref_num: str = "",
         status: str = "unknown",
-        when: Optional[datetime] = None,
-        sync_map: Optional[Dict[str, EntitySyncMap]] = None,
+        when: datetime | None = None,
+        sync_map: dict[str, EntitySyncMap] | None = None,
     ):
         self.sync_state_id = sync_state_id
         self.user_id = user_id
@@ -148,7 +148,7 @@ class EntitySyncState:
 
     @classmethod
     def from_storage(
-        cls, storage: WalletStorageProvider, user_identity_key: str, remote_settings: Dict[str, Any]
+        cls, storage: WalletStorageProvider, user_identity_key: str, remote_settings: dict[str, Any]
     ) -> "EntitySyncState":
         """Load or create sync state from storage.
 
@@ -195,7 +195,7 @@ class EntitySyncState:
         for_storage_identity_key: str,
         max_rough_size: int = 10_000_000,
         max_items: int = 1000,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create arguments for getSyncChunk request.
 
         Args:
@@ -236,7 +236,7 @@ class EntitySyncState:
         }
 
     @staticmethod
-    def sync_chunk_summary(chunk: Dict[str, Any]) -> str:
+    def sync_chunk_summary(chunk: dict[str, Any]) -> str:
         """Generate a summary of sync chunk contents.
 
         Args:
@@ -290,8 +290,8 @@ class WalletStorageManager:
     def __init__(
         self,
         identity_key: str,
-        active: Optional[WalletStorageProvider] = None,
-        backups: Optional[List[WalletStorageProvider]] = None,
+        active: WalletStorageProvider | None = None,
+        backups: list[WalletStorageProvider] | None = None,
     ):
         """Initialize WalletStorageManager.
 
@@ -300,13 +300,13 @@ class WalletStorageManager:
             active: Optional active storage provider
             backups: Optional list of backup storage providers
         """
-        self._stores: List[ManagedStorage] = []
+        self._stores: list[ManagedStorage] = []
         self._is_available = False
-        self._active: Optional[ManagedStorage] = None
-        self._backups: List[ManagedStorage] = []
-        self._conflicting_actives: List[ManagedStorage] = []
+        self._active: ManagedStorage | None = None
+        self._backups: list[ManagedStorage] = []
+        self._conflicting_actives: list[ManagedStorage] = []
         self._auth_id = AuthId(identity_key=identity_key)
-        self._services: Optional[Any] = None
+        self._services: Any | None = None
 
         # Add stores
         stores = list(backups or [])
@@ -336,7 +336,7 @@ class WalletStorageManager:
         """Check if storage can be made available."""
         return len(self._stores) > 0
 
-    def make_available(self) -> Dict[str, Any]:
+    def make_available(self) -> dict[str, Any]:
         """Make storage available and return settings.
 
         Returns:
@@ -355,7 +355,7 @@ class WalletStorageManager:
         if len(self._stores) < 1:
             raise InvalidParameterError("active", "valid. Must add active storage provider to wallet.")
 
-        backups: List[ManagedStorage] = []
+        backups: list[ManagedStorage] = []
 
         for i, store in enumerate(self._stores):
             if not store.is_available or not store.settings or not store.user:
@@ -428,7 +428,7 @@ class WalletStorageManager:
             raise WalletError("An active WalletStorageProvider must be added and makeAvailable must be called.")
         return self._active.storage
 
-    def get_settings(self) -> Dict[str, Any]:
+    def get_settings(self) -> dict[str, Any]:
         """Get settings from active storage."""
         return self.get_active().get_settings()
 
@@ -448,7 +448,7 @@ class WalletStorageManager:
         identity_key: str,
         reader: WalletStorageProvider,
         log: str = "",
-        prog_log: Optional[Callable[[str], str]] = None,
+        prog_log: Callable[[str], str] | None = None,
     ) -> SyncResult:
         """Sync data from a reader storage to local (active) storage.
 
@@ -595,7 +595,7 @@ class WalletStorageManager:
         auth: AuthId,
         writer: WalletStorageProvider,
         log: str = "",
-        prog_log: Optional[Callable[[str], str]] = None,
+        prog_log: Callable[[str], str] | None = None,
     ) -> SyncResult:
         """Sync data from local (active) storage to a writer storage.
 
@@ -733,7 +733,7 @@ class WalletStorageManager:
 
         return SyncResult(inserts=inserts, updates=updates, log=log)
 
-    def update_backups(self, prog_log: Optional[Callable[[str], str]] = None) -> str:
+    def update_backups(self, prog_log: Callable[[str], str] | None = None) -> str:
         """Sync current active storage to all backup storage providers.
 
         Args:
@@ -756,7 +756,7 @@ class WalletStorageManager:
 
         return log
 
-    def get_stores(self) -> List[Dict[str, Any]]:
+    def get_stores(self) -> list[dict[str, Any]]:
         """Get information about all managed stores.
 
         Returns:

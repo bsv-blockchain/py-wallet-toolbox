@@ -4,21 +4,20 @@ These tests verify the logic of individual monitor tasks in isolation,
 mocking the Monitor dependency to focus on task behavior.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 from bsv_wallet_toolbox.monitor.tasks import (
-    TaskClock,
-    TaskNewHeader,
-    TaskSendWaiting,
     TaskCheckForProofs,
-    TaskReviewStatus,
-    TaskPurge,
+    TaskClock,
     TaskFailAbandoned,
     TaskMonitorCallHistory,
+    TaskNewHeader,
+    TaskPurge,
     TaskReorg,
+    TaskReviewStatus,
+    TaskSendWaiting,
     TaskSyncWhenIdle,
     TaskUnFail,
 )
@@ -411,7 +410,7 @@ class TestTaskFailAbandoned:
         """Test run_task with transaction that hasn't been abandoned yet."""
         mock_monitor = MagicMock()
         # Transaction updated 1 minute ago, abandoned threshold is 5 minutes
-        recent_time = datetime.now(timezone.utc) - timedelta(minutes=1)
+        recent_time = datetime.now(UTC) - timedelta(minutes=1)
         mock_monitor.storage.find_transactions.return_value = [{"transactionId": 1, "updatedAt": recent_time}]
 
         task = TaskFailAbandoned(mock_monitor)
@@ -425,7 +424,7 @@ class TestTaskFailAbandoned:
         """Test run_task with transaction that should be failed."""
         mock_monitor = MagicMock()
         # Transaction updated 10 minutes ago (past the 5 minute threshold)
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
         mock_monitor.storage.find_transactions.return_value = [{"transactionId": 123, "updatedAt": old_time}]
 
         task = TaskFailAbandoned(mock_monitor)
@@ -438,8 +437,8 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_multiple_transactions(self) -> None:
         """Test run_task with multiple transactions."""
         mock_monitor = MagicMock()
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
-        recent_time = datetime.now(timezone.utc) - timedelta(minutes=1)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
+        recent_time = datetime.now(UTC) - timedelta(minutes=1)
 
         mock_monitor.storage.find_transactions.return_value = [
             {"transactionId": 1, "updatedAt": old_time},  # Should be failed
@@ -462,7 +461,7 @@ class TestTaskFailAbandoned:
         """Test run_task with string datetime format."""
         mock_monitor = MagicMock()
         # ISO format string from 10 minutes ago
-        old_time_str = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
+        old_time_str = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
         mock_monitor.storage.find_transactions.return_value = [{"transactionId": 456, "updatedAt": old_time_str}]
 
         task = TaskFailAbandoned(mock_monitor)
@@ -499,7 +498,7 @@ class TestTaskFailAbandoned:
         """Test run_task with naive datetime (no timezone)."""
         mock_monitor = MagicMock()
         # Naive datetime from 10 minutes ago (representing UTC time)
-        old_time_naive = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
+        old_time_naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=10)
         mock_monitor.storage.find_transactions.return_value = [{"transactionId": 111, "updatedAt": old_time_naive}]
 
         task = TaskFailAbandoned(mock_monitor)
@@ -511,7 +510,7 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_update_error(self) -> None:
         """Test run_task when transaction update fails."""
         mock_monitor = MagicMock()
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
         mock_monitor.storage.find_transactions.return_value = [{"transactionId": 222, "updatedAt": old_time}]
         mock_monitor.storage.update_transaction_status.side_effect = Exception("DB error")
 
@@ -524,7 +523,7 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_no_transaction_id(self) -> None:
         """Test run_task with transaction missing transaction_id."""
         mock_monitor = MagicMock()
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
         mock_monitor.storage.find_transactions.return_value = [{"updatedAt": old_time}]  # No transaction_id field
 
         task = TaskFailAbandoned(mock_monitor)

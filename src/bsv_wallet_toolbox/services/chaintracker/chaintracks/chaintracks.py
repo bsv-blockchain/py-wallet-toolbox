@@ -5,12 +5,12 @@ Provides efficient blockchain header tracking with optional database storage.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Chaintracks.ts
 """
 
-import asyncio
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
+from ...wallet_services import Chain
 from .api import BaseBlockHeader, BlockHeader, ChaintracksInfo
 from .util.block_header_utilities import block_hash, serialize_base_block_header
-from ...wallet_services import Chain
 
 
 class ChaintracksInfo:
@@ -236,7 +236,6 @@ class Chaintracks:
                    addHeader()
         """
         # Stub implementation - do nothing
-        pass
 
     async def subscribe_headers(self, listener: Callable) -> str:
         """Subscribe to new header events.

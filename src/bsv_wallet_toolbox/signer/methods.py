@@ -18,7 +18,7 @@ from __future__ import annotations
 import base64
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bsv.auth.master_certificate import MasterCertificate
@@ -28,12 +28,12 @@ from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.atomic_beef_utils import (
     AtomicBeefBuildResult,
     build_internalize_atomic_beef,
 )
 from bsv_wallet_toolbox.utils.trace import trace
-from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
 
 logger = logging.getLogger(__name__)
@@ -318,10 +318,9 @@ def build_signable_transaction(
             # IMPORTANT (TS parity):
             # When args_input is present, this input is already added. Do NOT add a second placeholder input.
             continue
-        else:
-            # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
-            if storage_input.get("type") != "P2PKH":
-                raise WalletError(f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported')
+        # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
+        elif storage_input.get("type") != "P2PKH":
+            raise WalletError(f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported')
 
         # ---- Storage-provided (wallet-managed) input ----
         # StorageCreateTransactionSdkInput uses camelCase keys (TS parity / @wallet-infra).
@@ -376,7 +375,7 @@ def build_signable_transaction(
         if isinstance(ls_hex, str) and ls_hex:
             try:
                 tx_input.locking_script = Script(ls_hex)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # Debug-only: locking script parse failure should surface as WalletError later if critical
                 pass
 
@@ -502,7 +501,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     logger.debug(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
                 else:
                     counterparty = Counterparty(type=CounterpartyType.SELF)
-                    logger.debug(f"  Using CounterpartyType.SELF (no senderIdentityKey)")
+                    logger.debug("  Using CounterpartyType.SELF (no senderIdentityKey)")
 
                 # Derive private key for this input
                 logger.debug(
@@ -532,17 +531,17 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 logger.debug(f"  Actual locking script: {actual_locking_script_hex}")
 
                 if expected_locking_script_hex != actual_locking_script_hex:
-                    logger.error(f"  ❌ MISMATCH: Derived key does not match locking script!")
+                    logger.error("  ❌ MISMATCH: Derived key does not match locking script!")
                     logger.error(f"    Expected hash160: {derived_pub_key_hash.hex()}")
                     logger.error(
                         f"    Actual hash160:   {actual_locking_script_hex[6:46] if len(actual_locking_script_hex) >= 46 else 'N/A'}"
                     )
                     logger.error(f"    Expected script:  {expected_locking_script_hex}")
                     logger.error(f"    Actual script:    {actual_locking_script_hex}")
-                    logger.error(f"    This will cause script evaluation errors!")
-                    logger.error(f"    Check: keyID format, counterparty type, or identity key")
+                    logger.error("    This will cause script evaluation errors!")
+                    logger.error("    Check: keyID format, counterparty type, or identity key")
                 else:
-                    logger.debug(f"  ✅ Derived key matches locking script")
+                    logger.debug("  ✅ Derived key matches locking script")
 
                 # Step 2: Create P2PKH unlock template
                 p2pkh = P2PKH()
@@ -781,7 +780,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
                 subject_txid=subject_txid,
                 has_subject_tx=bool(subject_tx),
             )
-        except Exception as exc:  # noqa: PERF203
+        except Exception as exc:
             trace(logger, "signer.internalize_action.parse_beef.error", error=str(exc), exc_type=type(exc).__name__)
             raise WalletError("tx is not valid AtomicBEEF") from exc
     else:
@@ -812,7 +811,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         try:
             services = wallet.get_services()
             build_result = build_internalize_atomic_beef(services, tx, txid)
-        except Exception:  # noqa: BLE001
+        except Exception:
             build_result = None
     if build_result is None:
         normalized_atomic = bytes(tx_bytes) if tx_bytes else ab.to_binary()
@@ -883,7 +882,6 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
                     error=str(e),
                     exc_type=type(e).__name__,
                 )
-            pass
         else:
             trace(logger, "signer.internalize_action.output.unexpected_protocol", protocol=protocol)
             raise WalletError(f"unexpected protocol {protocol}")
@@ -941,7 +939,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
         ValueError: If required fields are missing
         WalletError: If certificate verification fails
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     user_id = auth.get("userId") if isinstance(auth, dict) else getattr(auth, "userId", None)
 
     # Validate required fields before processing
@@ -1463,9 +1461,7 @@ def _setup_wallet_payment_for_output(
         else:
             current_script = output.get("lockingScript", "")
 
-        if isinstance(current_script, Script):
-            current_script_hex = current_script.hex()
-        elif isinstance(current_script, bytes):
+        if isinstance(current_script, Script) or isinstance(current_script, bytes):
             current_script_hex = current_script.hex()
         elif isinstance(current_script, str):
             current_script_hex = current_script

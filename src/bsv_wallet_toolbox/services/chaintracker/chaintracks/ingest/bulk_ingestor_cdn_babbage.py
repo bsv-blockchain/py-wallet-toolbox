@@ -5,8 +5,8 @@ Provides bulk ingestion of blockchain headers from Project Babbage CDN.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/BulkIngestorCDNBabbage.test.ts
 """
 
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
+from typing import Any
 
 from ..util.chaintracks_fetch import ChaintracksFetch
 
@@ -26,7 +26,7 @@ class BulkHeaderFileInfo:
     filename: str
     url: str
     size: int
-    height_range: Dict[str, int]
+    height_range: dict[str, int]
     hash: str
 
 
@@ -34,7 +34,7 @@ class BulkHeaderFileInfo:
 class BulkHeaderFilesInfo:
     """Information about bulk header files."""
 
-    files: List[BulkHeaderFileInfo]
+    files: list[BulkHeaderFileInfo]
 
 
 class BulkIngestorCDNBabbage:
@@ -54,7 +54,7 @@ class BulkIngestorCDNBabbage:
         self.options = options
         self.chain = options.chain
         self.fetch = options.fetch
-        self._available_bulk_files: Optional[BulkHeaderFilesInfo] = None
+        self._available_bulk_files: BulkHeaderFilesInfo | None = None
 
     @classmethod
     def create_bulk_ingestor_cdn_babbage_options(
@@ -72,7 +72,7 @@ class BulkIngestorCDNBabbage:
         return BulkIngestorCDNBabbageOptions(chain=chain, fetch=fetch)
 
     @property
-    def available_bulk_files(self) -> Optional[BulkHeaderFilesInfo]:
+    def available_bulk_files(self) -> BulkHeaderFilesInfo | None:
         """Get available bulk files information.
 
         Returns:
@@ -116,7 +116,7 @@ class BulkIngestorCDNBabbage:
                 )
             self._available_bulk_files = BulkHeaderFilesInfo(files=files)
 
-    async def set_storage(self, storage: Any, print_func: Optional[callable] = None) -> None:
+    async def set_storage(self, storage: Any, print_func: callable | None = None) -> None:
         """Set storage provider for this ingestor.
 
         Args:
@@ -127,8 +127,8 @@ class BulkIngestorCDNBabbage:
         await self._load_bulk_files_info()
 
     async def fetch_headers(
-        self, before_ranges: Any, target_range: Any, fetch_range: Any, live_headers: List[Any]
-    ) -> List[Any]:
+        self, before_ranges: Any, target_range: Any, fetch_range: Any, live_headers: list[Any]
+    ) -> list[Any]:
         """Fetch headers for the given ranges.
 
         Args:

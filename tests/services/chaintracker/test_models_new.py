@@ -4,7 +4,6 @@ This module provides comprehensive test coverage for all classes and methods
 in the models_new.py file.
 """
 
-import pytest
 from unittest.mock import Mock
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.models_new import (

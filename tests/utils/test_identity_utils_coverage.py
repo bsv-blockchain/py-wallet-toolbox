@@ -3,11 +3,13 @@
 This module tests identity certificate management and overlay service operations.
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 try:
     from bsv.overlay_tools.lookup_resolver import LookupQuestion
+
     from bsv_wallet_toolbox.utils.identity_utils import (
         parse_results,
         query_overlay,

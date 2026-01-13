@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 

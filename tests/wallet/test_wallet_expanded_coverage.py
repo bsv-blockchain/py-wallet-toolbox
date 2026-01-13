@@ -4,8 +4,7 @@ This module provides comprehensive tests for Wallet methods that have low covera
 focusing on mocking and edge cases.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.wallet import Wallet
 

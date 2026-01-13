@@ -4,6 +4,7 @@ This module provides comprehensive test coverage for CDN-related classes and met
 """
 
 from unittest.mock import Mock, patch
+
 import pytest
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.cdn_reader import (

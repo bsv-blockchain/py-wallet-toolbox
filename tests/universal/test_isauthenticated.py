@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -46,7 +44,7 @@ class TestUniversalVectorsIsAuthenticated:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)

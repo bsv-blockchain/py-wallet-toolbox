@@ -6,13 +6,13 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/cdn_reader.go
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from ...wallet_services import Chain
-
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class BulkHeaderFilesInfo:
     """Metadata about bulk block header files collection."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Initialize from JSON data.
 
         Args:
@@ -35,7 +35,7 @@ class BulkHeaderFilesInfo:
 class BulkHeaderFileInfo:
     """Metadata for a single bulk block header file."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Initialize from JSON data.
 
         Args:

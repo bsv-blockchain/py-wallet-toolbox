@@ -24,7 +24,7 @@ Reference Implementation: ts-wallet-toolbox/src/services/providers/Bitails.ts
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -195,7 +195,7 @@ class Bitails:
         def make_note_extended(name: str, when: str, beef_hex: str, txids_str: str) -> dict[str, Any]:
             return {"name": name, "when": when, "beef": beef_hex, "txids": txids_str}
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         nn = make_note("BitailsPostBeef", now)
         beef_hex = beef.to_hex() if hasattr(beef, "to_hex") else ""
         txids_str = ",".join(txids)
@@ -366,7 +366,7 @@ class Bitails:
         result = GetMerklePathResult(name="BitailsTsc", notes=[])
 
         url = f"{self.url}tx/{txid}/proof/tsc"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         def make_note_merkle(name: str, when: str, txid_val: str, url_val: str) -> dict[str, Any]:
             return {"name": name, "when": when, "txid": txid_val, "url": url_val}
@@ -422,7 +422,7 @@ class Bitails:
 
         return result
 
-    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status for a given txid (TS-compatible response shape).
 
         Args:
@@ -442,9 +442,7 @@ class Bitails:
 
         try:
             response = requests.get(url, headers=headers, timeout=30)
-            if response.status_code == 200:
-                return response.json()
-            elif response.status_code == 404:
+            if response.status_code == 200 or response.status_code == 404:
                 return response.json()
             elif response.status_code == 500:
                 return {"error": "Bitails server error (500)"}
@@ -457,6 +455,6 @@ class Bitails:
         except requests.exceptions.ConnectionError as e:
             return {"error": str(e)}
         except requests.exceptions.RequestException as e:
-            return {"error": f"Bitails network error: {str(e)}"}
+            return {"error": f"Bitails network error: {e!s}"}
         except Exception as e:
-            return {"error": f"Bitails error: {str(e)}"}
+            return {"error": f"Bitails error: {e!s}"}

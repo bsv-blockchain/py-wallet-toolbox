@@ -4,14 +4,13 @@ This module provides helper functions for creating test wallets with monitors,
 mocking services, and setting up test infrastructure.
 """
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import Services
-from bsv_wallet_toolbox.storage.provider import StorageProvider
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import Base
+from bsv_wallet_toolbox.storage.provider import StorageProvider
 
 
 class MockWalletContext:
@@ -38,8 +37,8 @@ def create_sqlite_test_setup_1_wallet(database_name="test_wallet", chain="main",
 
     # Create wallet with minimal key deriver for monitor tests
     try:
-        from bsv.wallet import KeyDeriver
         from bsv import PrivateKey
+        from bsv.wallet import KeyDeriver
 
         # Create a key deriver from a test private key
         test_private_key = PrivateKey.from_hex(root_key_hex[:64] if len(root_key_hex) >= 64 else "3" * 64)
@@ -65,7 +64,7 @@ def create_sqlite_test_setup_1_wallet(database_name="test_wallet", chain="main",
             unproven_attempts_limit_main=144,
         )
         monitor = Monitor(monitor_options)
-    except Exception as e:
+    except Exception:
         # Fallback to mock if Monitor creation fails
         import warnings
 

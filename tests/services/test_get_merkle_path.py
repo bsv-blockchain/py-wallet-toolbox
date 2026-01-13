@@ -5,12 +5,13 @@ This module tests getMerklePath service functionality.
 Reference: wallet-toolbox/src/services/__tests/getMerklePath.test.ts
 """
 
+from unittest.mock import Mock, PropertyMock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock, PropertyMock
 
 try:
-    from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.errors import InvalidParameterError
+    from bsv_wallet_toolbox.services import Services
 
     # Check if Services has the required method
     if hasattr(Services, "create_default_options"):

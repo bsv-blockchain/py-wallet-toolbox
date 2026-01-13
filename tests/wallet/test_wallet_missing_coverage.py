@@ -12,6 +12,7 @@ import pytest
 try:
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True

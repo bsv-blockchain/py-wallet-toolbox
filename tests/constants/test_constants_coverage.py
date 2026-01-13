@@ -3,7 +3,6 @@
 This module tests constant values and configuration settings.
 """
 
-import pytest
 
 
 class TestNetworkConstants:
@@ -79,7 +78,7 @@ class TestScriptConstants:
     def test_op_codes(self) -> None:
         """Test OP code constants."""
         try:
-            from bsv_wallet_toolbox.constants import OP_DUP, OP_HASH160, OP_CHECKSIG
+            from bsv_wallet_toolbox.constants import OP_CHECKSIG, OP_DUP, OP_HASH160
 
             assert isinstance(OP_DUP, int)
             assert OP_DUP == 0x76
@@ -107,7 +106,7 @@ class TestCryptographicConstants:
     def test_hash_lengths(self) -> None:
         """Test hash length constants."""
         try:
-            from bsv_wallet_toolbox.constants import SHA256_LENGTH, RIPEMD160_LENGTH
+            from bsv_wallet_toolbox.constants import RIPEMD160_LENGTH, SHA256_LENGTH
 
             assert SHA256_LENGTH == 32
             assert RIPEMD160_LENGTH == 20

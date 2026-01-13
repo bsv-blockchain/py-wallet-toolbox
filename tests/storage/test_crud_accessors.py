@@ -1,17 +1,14 @@
 """Tests for CRUD entity accessors."""
 
-import pytest
 from unittest.mock import Mock
 
+import pytest
+
 from bsv_wallet_toolbox.storage.crud import (
+    CertifierAccessor,
     CommissionAccessor,
     TransactionAccessor,
     UserAccessor,
-    OutputBasketAccessor,
-    OutputAccessor,
-    TxNoteAccessor,
-    KnownTxAccessor,
-    CertifierAccessor,
 )
 
 

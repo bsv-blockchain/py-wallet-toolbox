@@ -10,24 +10,26 @@ Reference:
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
-import inspect
 import traceback
 from collections.abc import Mapping
 from contextlib import contextmanager
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 # Re-export from py-sdk for full BRC-104 authentication
 from bsv.auth.clients.auth_fetch import (
     AuthFetch as _AuthFetch,
+)
+from bsv.auth.clients.auth_fetch import (
     AuthPeer,
     SimplifiedFetchRequestOptions,
     p2pkh_locking_script_from_pubkey,
 )
-from bsv.auth.session_manager import DefaultSessionManager
 from bsv.auth.requested_certificate_set import RequestedCertificateSet
+from bsv.auth.session_manager import DefaultSessionManager
 from bsv.keys import PublicKey
 
 logger = logging.getLogger(__name__)
@@ -69,7 +71,7 @@ def _to_debug_str(value: Any) -> Any:
         return [_to_debug_str(v) for v in value]
     if isinstance(value, dict):
         return {str(k): _to_debug_str(v) for k, v in value.items()}
-    if hasattr(value, "hex") and callable(getattr(value, "hex")):
+    if hasattr(value, "hex") and callable(value.hex):
         try:
             return {"type": type(value).__name__, "hex": value.hex()}
         except Exception:
@@ -230,7 +232,7 @@ def _patch_requests_for_auth_interop(debug: bool) -> Any:
                         if not obj.get("initialNonce") and obj.get("nonce"):
                             obj["initialNonce"] = obj.get("nonce")
                         # Re-encode into response content so py-sdk sees the normalized shape.
-                        resp._content = json.dumps(obj).encode("utf-8")  # noqa: SLF001
+                        resp._content = json.dumps(obj).encode("utf-8")
 
                     if debug:
                         logger.debug(
@@ -318,7 +320,7 @@ class WalletAdapter:
     def __init__(self, wallet: Any):
         self._wallet = wallet
 
-    def get_public_key(self, args: Dict[str, Any], originator: str = "") -> Any:
+    def get_public_key(self, args: dict[str, Any], originator: str = "") -> Any:
         """Convert dict response to object with public_key attribute."""
         _auth_trace("wallet.get_public_key.call", originator=originator, args=args)
         result = self._wallet.get_public_key(args, originator)
@@ -338,7 +340,7 @@ class WalletAdapter:
 
         return result
 
-    def create_signature(self, args: Dict[str, Any], originator: str = "") -> Any:
+    def create_signature(self, args: dict[str, Any], originator: str = "") -> Any:
         """Convert dict response to object with signature attribute.
 
         Also transforms py-sdk's encryption_args format to py-wallet-toolbox's flat format.
@@ -395,11 +397,11 @@ class WalletAdapter:
 
         return result
 
-    def create_action(self, args: Dict[str, Any], originator: str = "") -> Any:
+    def create_action(self, args: dict[str, Any], originator: str = "") -> Any:
         """Pass through to wallet's create_action."""
         return self._wallet.create_action(args, originator)
 
-    def create_hmac(self, args: Dict[str, Any], originator: str = "") -> Any:
+    def create_hmac(self, args: dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for create_hmac.
 
         py-sdk uses:
@@ -462,7 +464,7 @@ class WalletAdapter:
 
         return result
 
-    def verify_hmac(self, args: Dict[str, Any], originator: str = "") -> Any:
+    def verify_hmac(self, args: dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for verify_hmac."""
         _auth_trace("wallet.verify_hmac.call", originator=originator, args=args)
         enc_args = args.get("encryptionArgs", {})
@@ -505,7 +507,7 @@ class WalletAdapter:
         _auth_trace("wallet.verify_hmac.result", originator=originator, result=result)
         return result
 
-    def verify_signature(self, args: Dict[str, Any], originator: str = "") -> Any:
+    def verify_signature(self, args: dict[str, Any], originator: str = "") -> Any:
         """Convert encryption_args format for verify_signature.
 
         py-sdk uses:
@@ -596,8 +598,8 @@ class AuthFetch:
     def __init__(
         self,
         wallet: Any,
-        requested_certificates: Optional[RequestedCertificateSet] = None,
-        session_manager: Optional[DefaultSessionManager] = None,
+        requested_certificates: RequestedCertificateSet | None = None,
+        session_manager: DefaultSessionManager | None = None,
     ):
         """Initialize AuthFetch.
 
@@ -622,7 +624,7 @@ class AuthFetch:
     async def fetch(
         self,
         url: str,
-        config: Optional[SimplifiedFetchRequestOptions] = None,
+        config: SimplifiedFetchRequestOptions | None = None,
     ):
         """Make authenticated HTTP request.
 
@@ -738,8 +740,8 @@ class AuthFetch:
 __all__ = [
     "AuthFetch",
     "AuthPeer",
-    "SimplifiedFetchRequestOptions",
-    "RequestedCertificateSet",
     "DefaultSessionManager",
+    "RequestedCertificateSet",
+    "SimplifiedFetchRequestOptions",
     "p2pkh_locking_script_from_pubkey",
 ]

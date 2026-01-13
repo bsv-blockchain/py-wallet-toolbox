@@ -3,7 +3,6 @@
 This module tests serialization and deserialization of Bitcoin structures.
 """
 
-import pytest
 
 
 class TestTransactionSerialization:

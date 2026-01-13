@@ -20,7 +20,7 @@ def load_create_action_result() -> dict[str, Any]:
     Returns:
         dict: The CreateActionResult as a Python dict
     """
-    with open(_JSON_FILE, "r") as f:
+    with open(_JSON_FILE) as f:
         return json.load(f)
 
 
@@ -32,7 +32,7 @@ def create_action_result_json() -> str:
     Returns:
         str: The CreateActionResult as a JSON string
     """
-    with open(_JSON_FILE, "r") as f:
+    with open(_JSON_FILE) as f:
         return f.read()
 
 

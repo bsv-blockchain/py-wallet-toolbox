@@ -1,7 +1,8 @@
 """Tests for sync chunk processor."""
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.storage.sync_processor import SyncChunkProcessor
 

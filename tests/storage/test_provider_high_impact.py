@@ -10,11 +10,6 @@ to maximize coverage improvement. Focuses on:
 
 from __future__ import annotations
 
-import base64
-import secrets
-from datetime import UTC, datetime
-from typing import Any
-
 import pytest
 from sqlalchemy import select
 
@@ -22,10 +17,7 @@ from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.storage.db import create_engine_from_url, session_scope
 from bsv_wallet_toolbox.storage.models import (
     Base,
-    Output,
     OutputBasket,
-    Transaction as TransactionModel,
-    User,
 )
 from bsv_wallet_toolbox.storage.provider import StorageProvider
 from bsv_wallet_toolbox.utils.validation import InvalidParameterError

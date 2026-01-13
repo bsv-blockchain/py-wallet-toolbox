@@ -5,28 +5,13 @@ of storage/provider.py from 60.65% towards 80%+. Focuses on complex list_actions
 functionality, InternalizeActionContext class, BEEF operations, and change allocation.
 """
 
-import base64
-import secrets
-from datetime import datetime, UTC
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
-from bsv_wallet_toolbox.errors import WalletError, InvalidParameterError
+from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import (
     Base,
-    Certificate,
-    Output,
-    OutputBasket,
-    ProvenTx,
-    User,
-    Transaction as TransactionModel,
-    TxLabel,
-    TxLabelMap,
-    OutputTag,
-    OutputTagMap,
 )
 from bsv_wallet_toolbox.storage.provider import StorageProvider
 
@@ -370,6 +355,7 @@ class TestBEEFOperations:
     def test_get_valid_beef_for_known_txid_not_found(self, storage_provider):
         """Test getting valid BEEF for known txid."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.errors import WalletError
 
         # BEEF operations require Services to be set
@@ -527,6 +513,7 @@ class TestBeefOperationsExtended:
     def test_get_beef_for_transaction_not_found(self, storage_provider):
         """Test getting BEEF for non-existent transaction."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.errors import WalletError
 
         # BEEF operations require Services to be set
@@ -650,7 +637,6 @@ class TestAbortAction:
 
     def test_abort_action_non_existent_reference(self, storage_provider):
         """Test aborting non-existent action."""
-        from bsv_wallet_toolbox.errors import InvalidParameterError
 
         with pytest.raises(InvalidParameterError):
             storage_provider.abort_action("nonexistent_ref")

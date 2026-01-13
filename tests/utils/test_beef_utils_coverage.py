@@ -3,9 +3,7 @@
 This module tests BEEF (BRC-62) encoding/decoding utilities.
 """
 
-from unittest.mock import Mock
 
-import pytest
 
 
 class TestBeefUtilities:

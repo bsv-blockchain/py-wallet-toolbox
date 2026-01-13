@@ -21,6 +21,7 @@ from urllib.parse import urlencode
 
 from bsv.chaintrackers.whatsonchain import WhatsOnChainTracker
 
+from ...utils.merkle_path_utils import convert_proof_to_merkle_path
 from ..chaintracker.chaintracks.api import (
     BaseBlockHeader,
     BlockHeader,
@@ -30,7 +31,6 @@ from ..chaintracker.chaintracks.api import (
     ReorgListener,
 )
 from ..wallet_services import Chain
-from ...utils.merkle_path_utils import convert_proof_to_merkle_path
 
 
 class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
@@ -548,7 +548,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         else:
             raise RuntimeError(f"Failed to get header for height {height}: {response.json()}")
 
-    async def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:  # noqa: ARG002
+    async def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:
         """Fetch the Merkle path for a transaction (TS-compatible response shape).
 
         Behavior (aligned with ts-wallet-toolbox providers/WhatsOnChain):
@@ -572,7 +572,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._get_merkle_path(txid, services)
 
-    async def _get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:  # noqa: ARG002
+    async def _get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:
         """Internal implementation of get_merkle_path."""
         # Initialize result dict
         result: dict[str, Any] = {"name": "WoCTsc", "notes": []}
@@ -651,7 +651,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             if proof_target and hasattr(services, "hash_to_header_async"):
                 try:
                     header = await services.hash_to_header_async(proof_target)
-                except Exception as exc:  # noqa: PERF203
+                except Exception as exc:
                     result["notes"].append({**note_base, "what": "getMerklePathNoHeader", "error": str(exc)})
                     return result
 
@@ -732,7 +732,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             }
             result["notes"].append(success_note)
             return result
-        except Exception as exc:  # noqa: PERF203
+        except Exception as exc:
             result["notes"].append({"name": "WoCTsc", "what": "getMerklePathCatch", "error": str(exc)})
             result["error"] = {"message": str(exc), "code": "NETWORK_ERROR"}
             return result
@@ -819,7 +819,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         output: str,
         output_format: str | None = None,
         outpoint: str | None = None,
-        use_next: bool | None = None,  # noqa: ARG002
+        use_next: bool | None = None,
     ) -> dict[str, Any]:
         """Get UTXO status for an output descriptor (TS-compatible shape).
 
@@ -908,7 +908,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             "unconfirmed": data.get("unconfirmed", []),
         }
 
-    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    async def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status for a given txid (TS-compatible response shape).
 
         Behavior (aligned with ts-wallet-toolbox):
@@ -953,7 +953,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
             elif "connection" in str(e).lower():
                 raise RuntimeError("WhatsOnChain connection error")
             else:
-                raise RuntimeError(f"WhatsOnChain error: {str(e)}")
+                raise RuntimeError(f"WhatsOnChain error: {e!s}")
 
         try:
             data = response.json() or {"status": "unknown"}

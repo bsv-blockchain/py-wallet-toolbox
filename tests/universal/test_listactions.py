@@ -10,10 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
-from bsv_wallet_toolbox import Wallet
-
 
 class TestUniversalVectorsListActions:
     """Tests using Universal Test Vectors for listActions.
@@ -29,10 +25,8 @@ class TestUniversalVectorsListActions:
 
         Verifies basic wire format functionality with wallet services.
         """
-        from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
-
         # Test serialization/deserialization functions exist and work
-        from bsv_wallet_toolbox.abi import serialize_request
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         args = {}
         wire_request = serialize_request("listActions", args)

@@ -7,11 +7,11 @@ Reference: go-wallet-toolbox/pkg/internal/assembler/
 """
 
 from .create_action_tx_assembler import (
-    CreateActionTransactionAssembler,
     AssembledTransaction,
+    CreateActionTransactionAssembler,
 )
 
 __all__ = [
-    "CreateActionTransactionAssembler",
     "AssembledTransaction",
+    "CreateActionTransactionAssembler",
 ]

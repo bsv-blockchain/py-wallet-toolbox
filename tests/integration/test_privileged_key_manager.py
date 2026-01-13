@@ -6,15 +6,15 @@ signing, HMAC, key derivation, and key lifecycle.
 Reference: wallet-toolbox/src/sdk/__test/PrivilegedKeyManager.test.ts
 """
 
-import asyncio
 import os
 from hashlib import sha256
 
 import pytest
 
 try:
-    from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
     from bsv.keys import PrivateKey
+
+    from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
     from bsv_wallet_toolbox.utils import to_utf8
 
     IMPORTS_AVAILABLE = True

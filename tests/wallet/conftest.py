@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -19,7 +20,6 @@ def wallet_with_mocked_create_action(test_key_deriver) -> tuple[Wallet, StorageP
     that bypass complex transaction building while capturing argument handling.
     """
 
-    from unittest.mock import MagicMock
 
     engine = create_engine_from_url("sqlite:///:memory:")
     Base.metadata.create_all(engine)
@@ -144,15 +144,15 @@ def _wallet(test_key_deriver) -> Wallet:
     wallet = Wallet(chain="main", key_deriver=test_key_deriver, storage_provider=storage)
 
     # Seed some data (similar to wallet_with_services but minimal)
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     try:
         user_id = storage.insert_user(
             {
                 "identityKey": test_key_deriver._root_private_key.public_key().hex(),
                 "activeStorage": "test",
-                "createdAt": datetime.now(timezone.utc),
-                "updatedAt": datetime.now(timezone.utc),
+                "createdAt": datetime.now(UTC),
+                "updatedAt": datetime.now(UTC),
             }
         )
     except Exception:
@@ -168,8 +168,8 @@ def _wallet(test_key_deriver) -> Wallet:
                 "numberOfDesiredUTXOs": 10,
                 "minimumDesiredUTXOValue": 1000,
                 "isDeleted": False,
-                "createdAt": datetime.now(timezone.utc),
-                "updatedAt": datetime.now(timezone.utc),
+                "createdAt": datetime.now(UTC),
+                "updatedAt": datetime.now(UTC),
             }
         )
     except Exception:

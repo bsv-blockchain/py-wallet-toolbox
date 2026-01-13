@@ -2,7 +2,7 @@
 
 import math
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ..wallet_monitor_task import WalletMonitorTask
 

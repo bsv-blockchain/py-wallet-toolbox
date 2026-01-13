@@ -3,13 +3,11 @@
 This module tests configuration loading and management functionality.
 """
 
-import pytest
-from pathlib import Path
 
 try:
     from bsv_wallet_toolbox.utils.config import (
-        load_config,
         get_config_value,
+        load_config,
         set_config_value,
         validate_config,
     )

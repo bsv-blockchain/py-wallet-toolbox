@@ -14,6 +14,7 @@ Reference:
     - ts-sdk: ProtoWallet
 """
 
+import logging
 import os
 import random
 import threading
@@ -24,8 +25,6 @@ from bsv.keys import PrivateKey
 from bsv.wallet import ProtoWallet
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
-
-import logging
 
 logger = logging.getLogger(__name__)
 

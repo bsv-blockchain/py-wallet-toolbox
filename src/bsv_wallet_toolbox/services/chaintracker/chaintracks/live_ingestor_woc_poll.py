@@ -8,12 +8,12 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/live_ingestor_woc_p
 
 import asyncio
 import logging
-from typing import Optional, List, Dict, Any, Callable
+from collections.abc import Callable
+from typing import Any
 
+from ...wallet_services import Chain
 from .live_ingestor_interface import LiveIngestor
 from .woc_client import WOCClient
-from ...wallet_services import Chain
-
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class LiveIngestorWocPoll(LiveIngestor):
     Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/live_ingestor_woc_poll.go
     """
 
-    def __init__(self, chain: Chain, sync_period: float = 60.0, api_key: Optional[str] = None, cache_size: int = 500):
+    def __init__(self, chain: Chain, sync_period: float = 60.0, api_key: str | None = None, cache_size: int = 500):
         """Initialize WOC polling ingestor.
 
         Args:
@@ -44,9 +44,9 @@ class LiveIngestorWocPoll(LiveIngestor):
         self.woc_client = WOCClient(chain, api_key)
 
         # Background polling state
-        self._polling_task: Optional[asyncio.Task] = None
+        self._polling_task: asyncio.Task | None = None
         self._stop_event = asyncio.Event()
-        self._callbacks: List[Callable] = []
+        self._callbacks: list[Callable] = []
 
         # LRU cache for seen header hashes
         self._seen_headers: set[str] = set()
@@ -74,7 +74,7 @@ class LiveIngestorWocPoll(LiveIngestor):
             self._stop_event.set()
             logger.info("LiveIngestorWocPoll stopping listening")
 
-    def get_header_by_hash(self, block_hash: str) -> Optional[Dict[str, Any]]:
+    def get_header_by_hash(self, block_hash: str) -> dict[str, Any] | None:
         """Get block header by hash.
 
         Args:
@@ -118,7 +118,7 @@ class LiveIngestorWocPoll(LiveIngestor):
 
                 await self._process_new_headers()
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Normal timeout, continue polling
                 continue
             except Exception as e:

@@ -4,34 +4,34 @@ This module adds extensive tests for all entity classes and specifications
 in specifications.py to increase coverage from 28.94% towards 75%+.
 """
 
-from unittest.mock import Mock
-import pytest
 from datetime import datetime, timedelta
-from typing import Any
+from unittest.mock import Mock
+
+import pytest
 
 from bsv_wallet_toolbox.storage.specifications import (
     Certificate,
     CertificateField,
+    CertificateReadSpecification,
     Commission,
+    CommissionReadSpecification,
     Comparable,
+    KnownTxReadSpecification,
     Output,
     OutputBasket,
+    OutputBasketReadSpecification,
+    OutputReadSpecification,
     OutputTag,
     OutputTagMap,
     ProvenTx,
     ProvenTxReq,
     SyncState,
     Transaction,
+    TransactionReadSpecification,
     TxLabel,
     TxLabelMap,
-    User,
-    CertificateReadSpecification,
-    CommissionReadSpecification,
-    KnownTxReadSpecification,
-    OutputBasketReadSpecification,
-    OutputReadSpecification,
-    TransactionReadSpecification,
     TxNoteReadSpecification,
+    User,
     UserReadSpecification,
     UserUpdateSpecification,
 )

@@ -46,7 +46,7 @@ class TestUniversalVectorsAcquireCertificate:
 
         Verifies basic wire format functionality.
         """
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
@@ -92,7 +92,7 @@ class TestUniversalVectorsAcquireCertificate:
 
         Verifies basic wire format functionality.
         """
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}

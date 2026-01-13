@@ -3,7 +3,7 @@
 This module tests the simple wallet manager implementation.
 """
 
-from unittest.mock import Mock, MagicMock, AsyncMock
+from unittest.mock import MagicMock
 
 import pytest
 

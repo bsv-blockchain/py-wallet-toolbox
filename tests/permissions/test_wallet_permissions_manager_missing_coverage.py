@@ -5,7 +5,6 @@ of manager/wallet_permissions_manager.py from 60.37% towards 80%+. Focuses on me
 not covered by existing tests.
 """
 
-import asyncio
 import time
 from unittest.mock import Mock
 

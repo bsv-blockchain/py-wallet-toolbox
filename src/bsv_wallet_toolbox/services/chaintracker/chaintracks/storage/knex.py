@@ -69,7 +69,7 @@ class ChaintracksStorageKnex:
         """
         if self.knex is not None and hasattr(self.knex, "destroy"):
             # Handle both sync and async destroy methods
-            destroy_method = getattr(self.knex, "destroy")
+            destroy_method = self.knex.destroy
             if callable(destroy_method):
                 result = destroy_method()
                 # If it returns a coroutine/awaitable, await it
@@ -78,7 +78,6 @@ class ChaintracksStorageKnex:
 
     async def initialize(self) -> None:
         """Initialize database schema."""
-        pass
 
     async def store_headers(self, headers: list[dict[str, Any]]) -> None:
         """Store block headers.
@@ -86,7 +85,6 @@ class ChaintracksStorageKnex:
         Args:
             headers: List of header dictionaries
         """
-        pass
 
     async def get_headers(self, start_height: int, count: int) -> list[dict[str, Any]]:
         """Retrieve block headers.

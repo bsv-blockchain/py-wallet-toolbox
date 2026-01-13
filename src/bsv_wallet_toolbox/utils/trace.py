@@ -91,7 +91,7 @@ def to_trace_value(value: Any) -> Any:
             }
         return filtered_dict
     # Common SDK objects: PublicKey has `.hex()`
-    if hasattr(value, "hex") and callable(getattr(value, "hex")):
+    if hasattr(value, "hex") and callable(value.hex):
         try:
             return {"type": type(value).__name__, "hex": value.hex()}
         except Exception:

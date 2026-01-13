@@ -3,27 +3,24 @@
 This module adds comprehensive tests for uncovered paths in signer/methods.py.
 """
 
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
+
 import pytest
+from bsv.transaction import Transaction, TransactionInput
 
-from bsv.transaction import Transaction, TransactionInput, TransactionOutput
-from bsv.script import Script, P2PKH
-
-from bsv_wallet_toolbox.errors import WalletError, InvalidParameterError
+from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 from bsv_wallet_toolbox.signer.methods import (
     CreateActionResultX,
     PendingSignAction,
     PendingStorageInput,
-    create_action,
+    acquire_direct_certificate,
     build_signable_transaction,
     complete_signed_transaction,
-    sign_action,
+    create_action,
     internalize_action,
-    acquire_direct_certificate,
-    prove_certificate,
     process_action,
-    _recover_action_from_storage,
-    _merge_prior_options,
+    prove_certificate,
+    sign_action,
 )
 
 
@@ -675,7 +672,6 @@ class TestSignerMissingCoverage:
 
     def test_build_signable_transaction_vout_index_mismatch_error(self) -> None:
         """Test build_signable_transaction vout index mismatch error (line 173)."""
-        from bsv_wallet_toolbox.signer.methods import build_signable_transaction
 
         wallet = Mock()
         wallet.get_client_change_key_pair = Mock(return_value=Mock())
@@ -684,4 +680,3 @@ class TestSignerMissingCoverage:
         # This is tricky to trigger because the mapping logic finds the correct indices
         # Let's just skip this test for now since the main goal is coverage improvement
         # and we already have one working test
-        pass

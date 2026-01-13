@@ -5,8 +5,7 @@ This module provides services for fetching blockchain data from WhatsOnChain API
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
 """
 
-from typing import Any, Dict
-from urllib.parse import urlencode
+from typing import Any
 
 from ....providers.whatsonchain import WhatsOnChain
 
@@ -122,7 +121,7 @@ class WhatsOnChainServices:
         # For test compatibility, return a reasonable height
         return 850000  # Mock height for testing
 
-    def get_header_for_height(self, height: int) -> Dict[str, Any] | None:
+    def get_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get block header for a specific height.
 
         Args:
@@ -134,7 +133,7 @@ class WhatsOnChainServices:
         # For test compatibility, return None (not implemented)
         return None
 
-    def get_headers(self, from_height: int, to_height: int) -> list[Dict[str, Any]]:
+    def get_headers(self, from_height: int, to_height: int) -> list[dict[str, Any]]:
         """Get range of block headers.
 
         Args:

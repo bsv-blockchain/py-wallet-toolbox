@@ -10,9 +10,8 @@ import asyncio
 import pytest
 
 try:
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import LiveIngestorWhatsOnChainPoll
-
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import BlockHeader
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.ingest import LiveIngestorWhatsOnChainPoll
 
     IMPORTS_AVAILABLE = True
 except ImportError:

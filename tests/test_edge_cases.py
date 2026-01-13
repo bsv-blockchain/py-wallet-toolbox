@@ -75,6 +75,7 @@ class TestPermissionTokenEdgeCases:
     def test_expired_token_handling(self) -> None:
         """Test handling of expired tokens."""
         import time
+
         from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionToken
 
         # Create expired token
@@ -92,6 +93,7 @@ class TestPermissionTokenEdgeCases:
     def test_token_cache_key_generation(self) -> None:
         """Test cache key generation for different token types."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 
         # Mock wallet
@@ -145,6 +147,7 @@ class TestIntegrationEdgeCases:
     def test_permission_manager_with_mock_wallet(self) -> None:
         """Test permission manager initialization with mock wallet."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 
         mock_wallet = Mock()
@@ -158,6 +161,7 @@ class TestIntegrationEdgeCases:
     def test_spending_calculation_edge_cases(self) -> None:
         """Test spending calculation with edge cases."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 
         mock_wallet = Mock()

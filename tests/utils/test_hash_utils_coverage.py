@@ -3,7 +3,6 @@
 This module tests various hashing functions used in Bitcoin operations.
 """
 
-import pytest
 
 
 class TestSHA256Hashing:

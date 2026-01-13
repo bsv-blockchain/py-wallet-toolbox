@@ -3,8 +3,6 @@
 This module provides comprehensive test coverage for the MonitorDaemon class.
 """
 
-import threading
-import time
 from unittest.mock import Mock, patch
 
 import pytest

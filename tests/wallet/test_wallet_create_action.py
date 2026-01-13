@@ -3,7 +3,7 @@
 Reference: wallet-toolbox/test/wallet/action/createAction.test.ts
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -46,8 +46,8 @@ def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
     )
 
@@ -73,8 +73,8 @@ def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
             "txid": source_txid,
             "lockingScript": locking_script,
             "spentBy": None,  # Explicitly set to None to ensure it's allocatable
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
     )
 

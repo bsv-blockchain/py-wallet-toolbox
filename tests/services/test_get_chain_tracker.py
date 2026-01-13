@@ -5,12 +5,11 @@ network failure testing, and validation scenarios.
 Reference: wallet-toolbox/src/services/__tests/chainTracker.test.ts
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, patch
 
 from bsv_wallet_toolbox.services import Services
-from bsv_wallet_toolbox.services.wallet_services import Chain
-from bsv_wallet_toolbox.errors import InvalidParameterError
 
 
 def test_get_chain_tracker_basic_functionality() -> None:

@@ -8,8 +8,9 @@ Reference: go-wallet-toolbox/pkg/services/internal/servicequeue/
 
 import asyncio
 import logging
-from typing import Any, Callable, Generic, TypeVar, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Generic, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -45,19 +46,16 @@ class NamedResult(Generic[T]):
 class ServiceQueueError(Exception):
     """Base exception for service queue operations."""
 
-    pass
 
 
 class EmptyResultError(ServiceQueueError):
     """Raised when service returns an empty result."""
 
-    pass
 
 
 class NoServicesError(ServiceQueueError):
     """Raised when no services are registered."""
 
-    pass
 
 
 class ServiceQueue(Generic[T]):

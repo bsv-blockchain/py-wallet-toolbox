@@ -4,8 +4,7 @@ This module provides comprehensive test coverage for PubSubEvents and CacheableW
 """
 
 import asyncio
-import time
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

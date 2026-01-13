@@ -306,7 +306,7 @@ def verify_truthy(value: object, description: str | None = None) -> object:
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyTruthy
     """
     if not value:
-        msg = description or f"Value must be truthy"
+        msg = description or "Value must be truthy"
         raise ValueError(msg)
     return value
 
@@ -327,7 +327,7 @@ def verify_hex_string(value: str, description: str | None = None) -> str:
     Reference: wallet-toolbox/src/utility/utilityHelpers.ts - verifyHexString
     """
     if not isinstance(value, str):
-        msg = description or f"Value must be a string"
+        msg = description or "Value must be a string"
         raise ValueError(msg)
     # Trim whitespace and lowercase
     normalized = value.strip().lower()
@@ -335,7 +335,7 @@ def verify_hex_string(value: str, description: str | None = None) -> str:
     try:
         int(normalized, 16)
     except ValueError as e:
-        msg = description or f"Value is not a valid hex string"
+        msg = description or "Value is not a valid hex string"
         raise ValueError(msg) from e
     return normalized
 
@@ -472,7 +472,9 @@ __all__ = [
     "double_sha256_le",
     "generate_change_sdk",
     "get_config_value",
+    "internalize_wallet_payment",
     "load_config",
+    "make_wallet_payment_remittance",
     "max_date",
     "merge_result_arrays",
     "optional_arrays_equal",
@@ -493,6 +495,8 @@ __all__ = [
     "satoshi_subtract",
     "satoshi_sum",
     "satoshi_to_uint64",
+    "send_wallet_payment",
+    "send_wallet_payment_ex",
     "set_config_value",
     "sha256_hash",
     "to_wallet_network",
@@ -505,10 +509,6 @@ __all__ = [
     "validate_process_action_args",
     "validate_satoshis",
     "validate_seconds_since_epoch",
-    "internalize_wallet_payment",
-    "make_wallet_payment_remittance",
-    "send_wallet_payment",
-    "send_wallet_payment_ex",
     "verify_hex_string",
     "verify_id",
     "verify_integer",

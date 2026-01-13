@@ -6,12 +6,11 @@ and performing BRC-42 key derivation operations for BRC-29.
 Reference: go-wallet-toolbox/pkg/brc29/brc29_utils.go
 """
 
-from typing import Any
 
 from bsv.keys import PrivateKey, PublicKey
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver
 
-from .types import CounterpartyPrivateKey, CounterpartyPublicKey, KeyID, PROTOCOL
+from .types import PROTOCOL, CounterpartyPrivateKey, CounterpartyPublicKey, KeyID
 
 
 def to_identity_key(key_source: CounterpartyPublicKey) -> PublicKey:

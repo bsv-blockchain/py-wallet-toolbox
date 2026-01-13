@@ -3,7 +3,6 @@
 This module tests the Format class utilities.
 """
 
-import pytest
 
 from bsv_wallet_toolbox.utils.format_utils import Format
 

@@ -9,10 +9,9 @@ Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.encryption.test.t
 import base64
 from unittest.mock import AsyncMock, MagicMock, Mock
 
-import pytest
-
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True

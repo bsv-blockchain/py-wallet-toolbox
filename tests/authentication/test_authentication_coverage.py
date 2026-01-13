@@ -92,6 +92,7 @@ class TestAuthenticationErrors:
         """Test handling invalid credentials."""
         try:
             from bsv_wallet_toolbox.authentication import verify_credentials
+
             from bsv_wallet_toolbox.errors import AuthenticationError
 
             with pytest.raises((AuthenticationError, Exception)):
@@ -103,6 +104,7 @@ class TestAuthenticationErrors:
         """Test handling missing permission."""
         try:
             from bsv_wallet_toolbox.authentication import require_permission
+
             from bsv_wallet_toolbox.errors import PermissionError
 
             mock_auth = Mock()

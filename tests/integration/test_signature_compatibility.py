@@ -13,13 +13,14 @@ The key test is TestTxAssemblerAlignsTsGenerated which:
 """
 
 import json
+
 import pytest
 
 from tests.testabilities.testusers import ALICE
 from tests.testabilities.tsgenerated import (
+    SIGNED_TRANSACTION_HEX,
     create_action_result_json,
     load_create_action_result,
-    SIGNED_TRANSACTION_HEX,
 )
 
 
@@ -187,21 +188,21 @@ class TestBeefToInternalizeCompatibility:
         from tests.testabilities.tsgenerated import PARENT_BEEF_TXID
 
         expected = "756754d5ad8f00e05c36d89a852971c0a1dc0c10f20cd7840ead347aff475ef6"
-        assert PARENT_BEEF_TXID == expected
+        assert expected == PARENT_BEEF_TXID
 
     def test_beef_internalize_height_matches_go(self) -> None:
         """Verify BEEF internalize height matches Go implementation."""
         from tests.testabilities.tsgenerated import BEEF_TO_INTERNALIZE_HEIGHT
 
         expected = 1653933
-        assert BEEF_TO_INTERNALIZE_HEIGHT == expected
+        assert expected == BEEF_TO_INTERNALIZE_HEIGHT
 
     def test_beef_merkle_root_matches_go(self) -> None:
         """Verify BEEF merkle root matches Go implementation."""
         from tests.testabilities.tsgenerated import BEEF_TO_INTERNALIZE_MERKLE_ROOT
 
         expected = "6ee2e72ad8ca8db54d8272875d4b6a53f3afe194d82c1f71369a2983f6a343c8"
-        assert BEEF_TO_INTERNALIZE_MERKLE_ROOT == expected
+        assert expected == BEEF_TO_INTERNALIZE_MERKLE_ROOT
 
     def test_parent_beef_is_valid_hex(self) -> None:
         """Verify parent BEEF is valid hex."""

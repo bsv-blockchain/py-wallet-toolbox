@@ -3,7 +3,6 @@
 This module provides comprehensive tests for Merkle path conversion utilities.
 """
 
-import pytest
 
 try:
     from bsv_wallet_toolbox.utils.merkle_path_utils import convert_proof_to_merkle_path

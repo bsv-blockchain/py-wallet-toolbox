@@ -9,16 +9,16 @@ Fixtures include:
 - Transaction data supporting the outputs
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 
-def get_universal_certificates() -> List[Dict[str, Any]]:
+def get_universal_certificates() -> list[dict[str, Any]]:
     """Get certificate fixtures matching Universal Test Vector expectations.
 
     Returns certificates that should be returned by listCertificates tests.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return [
         {
@@ -35,12 +35,12 @@ def get_universal_certificates() -> List[Dict[str, Any]]:
     ]
 
 
-def get_universal_outputs() -> List[Dict[str, Any]]:
+def get_universal_outputs() -> list[dict[str, Any]]:
     """Get output fixtures matching Universal Test Vector expectations.
 
     Returns outputs that should be returned by listOutputs tests.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return [
         {
@@ -78,9 +78,9 @@ def get_universal_outputs() -> List[Dict[str, Any]]:
     ]
 
 
-def get_universal_transactions() -> List[Dict[str, Any]]:
+def get_universal_transactions() -> list[dict[str, Any]]:
     """Get transaction fixtures supporting the universal outputs."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     return [
         {
@@ -114,7 +114,7 @@ def get_universal_transactions() -> List[Dict[str, Any]]:
     ]
 
 
-def seed_universal_certificates(storage, user_id: int = 1) -> List[int]:
+def seed_universal_certificates(storage, user_id: int = 1) -> list[int]:
     """Seed universal test certificates into storage.
 
     Args:
@@ -147,7 +147,7 @@ def seed_universal_certificates(storage, user_id: int = 1) -> List[int]:
     return cert_ids
 
 
-def seed_universal_outputs(storage) -> List[int]:
+def seed_universal_outputs(storage) -> list[int]:
     """Seed universal test outputs into storage.
 
     Args:

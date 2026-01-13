@@ -5,15 +5,15 @@ Provides bulk ingestion of blockchain headers from WhatsOnChain API.
 Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/bulk_ingestor_woc.go
 """
 
-import logging
-from typing import List, Tuple, Callable, Any, Optional, Dict
 import asyncio
+import logging
 import re
+from collections.abc import Callable
+from typing import Any
 
-from .bulk_ingestor_interface import BulkIngestor, BulkHeaderMinimumInfo
-from .woc_client import WOCClient
 from ...wallet_services import Chain
-
+from .bulk_ingestor_interface import BulkHeaderMinimumInfo, BulkIngestor
+from .woc_client import WOCClient
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class BulkIngestorWOC(BulkIngestor):
     """Bulk ingestor that downloads headers from WhatsOnChain API."""
 
-    def __init__(self, chain: Chain, api_key: Optional[str] = None):
+    def __init__(self, chain: Chain, api_key: str | None = None):
         """Initialize WOC bulk ingestor.
 
         Args:
@@ -36,7 +36,7 @@ class BulkIngestorWOC(BulkIngestor):
 
     async def synchronize(
         self, present_height: int, range_to_fetch: Any
-    ) -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
+    ) -> tuple[list[BulkHeaderMinimumInfo], Callable]:
         """Synchronize bulk headers for the given height range.
 
         Args:
@@ -80,7 +80,7 @@ class BulkIngestorWOC(BulkIngestor):
         except Exception as e:
             raise Exception(f"Failed to synchronize bulk headers: {e}") from e
 
-    def _fetch_bulk_header_files_info(self) -> List[Dict[str, Any]]:
+    def _fetch_bulk_header_files_info(self) -> list[dict[str, Any]]:
         """Fetch metadata about available bulk header files.
 
         Returns:

@@ -7,7 +7,8 @@ Reference: toolbox/go-wallet-toolbox/pkg/services/chaintracks/internal/
 
 import asyncio
 import logging
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import Generic, TypeVar
 
 T = TypeVar("T")
 

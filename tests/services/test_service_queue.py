@@ -1,10 +1,10 @@
 """Tests for service queue pattern."""
 
-import pytest
-import asyncio
 from unittest.mock import AsyncMock
 
-from bsv_wallet_toolbox.services.service_queue import ServiceQueue, NamedService, EmptyResultError, NoServicesError
+import pytest
+
+from bsv_wallet_toolbox.services.service_queue import EmptyResultError, NamedService, NoServicesError, ServiceQueue
 
 
 class TestServiceQueue:

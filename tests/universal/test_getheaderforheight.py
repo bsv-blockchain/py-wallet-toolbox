@@ -5,10 +5,7 @@ Reference: https://github.com/bsv-blockchain/universal-test-vectors
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
-from tests.conftest import MockWalletServices
 
 # Block header is 80 bytes = 160 hex characters
 BLOCK_HEADER_HEX_LENGTH = 160
@@ -39,7 +36,7 @@ class TestUniversalVectorsGetHeaderForHeight:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)

@@ -4,7 +4,6 @@ This module provides comprehensive test coverage for the BulkFileDataManager
 and related utility classes.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.util.bulk_file_data_manager import (
@@ -12,7 +11,6 @@ from bsv_wallet_toolbox.services.chaintracker.chaintracks.util.bulk_file_data_ma
     BulkFileDataManager,
     BulkFileDataManagerOptions,
 )
-from bsv_wallet_toolbox.services.wallet_services import Chain
 
 
 class TestBulkFileData:

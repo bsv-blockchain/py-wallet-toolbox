@@ -6,13 +6,13 @@ Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
 """
 
 import asyncio
+
 import pytest
 from bsv.keys import PrivateKey
 from bsv.wallet import KeyDeriver
 
 try:
     from bsv_wallet_toolbox.local_kv_store import LocalKVStore
-
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True

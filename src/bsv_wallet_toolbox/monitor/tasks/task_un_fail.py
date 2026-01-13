@@ -1,8 +1,8 @@
 """TaskUnFail implementation."""
 
-from bsv.transaction import Transaction as BsvTransaction
-
 from typing import TYPE_CHECKING
+
+from bsv.transaction import Transaction as BsvTransaction
 
 if TYPE_CHECKING:
     from ..monitor import Monitor

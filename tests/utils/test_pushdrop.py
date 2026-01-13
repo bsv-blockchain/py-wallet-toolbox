@@ -12,9 +12,9 @@ import pytest
 try:
     from bsv_wallet_toolbox.beef import Beef
     from bsv_wallet_toolbox.pushdrop import PushDrop
-    from bsv_wallet_toolbox.utils import Setup
 
     from bsv_wallet_toolbox.errors import TransactionBroadcastError
+    from bsv_wallet_toolbox.utils import Setup
 
     IMPORTS_AVAILABLE = True
 except ImportError:

@@ -30,12 +30,10 @@ class LocalCdnServer:
     async def start(self) -> None:
         """Start the server."""
         # Stub - in production would start an HTTP server
-        pass
 
     async def stop(self) -> None:
         """Stop the server."""
         # Stub - in production would stop the HTTP server
-        pass
 
     def get_url(self) -> str:
         """Get the server URL.

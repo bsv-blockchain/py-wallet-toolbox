@@ -9,17 +9,12 @@ from unittest.mock import Mock, patch
 import pytest
 
 from bsv_wallet_toolbox.signer.methods import (
-    PendingSignAction,
-    PendingStorageInput,
+    _merge_prior_options,
+    _remove_unlock_scripts,
+    _setup_wallet_payment_for_output,
     build_signable_transaction,
     complete_signed_transaction,
     process_action,
-    _remove_unlock_scripts,
-    _make_change_lock,
-    _verify_unlock_scripts,
-    _merge_prior_options,
-    _setup_wallet_payment_for_output,
-    _recover_action_from_storage,
 )
 
 

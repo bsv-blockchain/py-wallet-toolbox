@@ -8,8 +8,6 @@ This module provides:
 Reference: go-wallet-toolbox/pkg/internal/testabilities/
 """
 
-from . import tsgenerated
-from . import testusers
-from . import testservices
+from . import testservices, testusers, tsgenerated
 
-__all__ = ["tsgenerated", "testusers", "testservices"]
+__all__ = ["testservices", "testusers", "tsgenerated"]

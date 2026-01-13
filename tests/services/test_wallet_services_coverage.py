@@ -3,7 +3,6 @@
 This module tests the wallet services layer that integrates various service providers.
 """
 
-from unittest.mock import Mock
 
 import pytest
 

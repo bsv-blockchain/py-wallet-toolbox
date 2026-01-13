@@ -3,7 +3,6 @@
 This module tests Bitcoin script utility functions.
 """
 
-import pytest
 
 
 class TestScriptUtilities:

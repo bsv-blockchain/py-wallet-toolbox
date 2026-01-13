@@ -5,16 +5,15 @@ This module tests complete flows for MasterCertificate and VerifiableCertificate
 Reference: wallet-toolbox/src/sdk/__test/CertificateLifeCycle.test.ts
 """
 
-import pytest
 
 import base64
 
 try:
+    from bsv.keys import PrivateKey as SDKPrivateKey
+
     from bsv_wallet_toolbox.certificate import Certificate, MasterCertificate, VerifiableCertificate
     from bsv_wallet_toolbox.private_key import PrivateKey
-
     from bsv_wallet_toolbox.wallet import ProtoWallet
-    from bsv.keys import PrivateKey as SDKPrivateKey
 
     IMPORTS_AVAILABLE = True
 except ImportError:

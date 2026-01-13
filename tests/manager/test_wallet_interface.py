@@ -6,8 +6,6 @@ This module tests the WalletInterface protocol definition.
 from typing import Any
 from unittest.mock import Mock
 
-import pytest
-
 from bsv_wallet_toolbox.manager.wallet_interface import WalletInterface
 
 
@@ -17,7 +15,7 @@ class TestWalletInterfaceProtocol:
     def test_wallet_interface_is_protocol(self) -> None:
         """Test that WalletInterface is a Protocol."""
         # Check if it's a Protocol (works across Python versions)
-        from typing import Protocol, runtime_checkable, get_type_hints
+        from typing import Protocol
 
         # WalletInterface should be a subclass of Protocol or have Protocol characteristics
         # In Python 3.11+, _is_protocol is the reliable attribute

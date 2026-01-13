@@ -1,6 +1,6 @@
 """TaskCheckForProofs implementation."""
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from bsv.merkle_path import MerklePath
 

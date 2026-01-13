@@ -8,15 +8,15 @@ and deterministic serialization for testing and compatibility.
 """
 
 from .serializer import (
-    serialize_request,
     deserialize_request,
-    serialize_response,
     deserialize_response,
+    serialize_request,
+    serialize_response,
 )
 
 __all__ = [
-    "serialize_request",
     "deserialize_request",
-    "serialize_response",
     "deserialize_response",
+    "serialize_request",
+    "serialize_response",
 ]

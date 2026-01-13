@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, field
-from typing import Any, Protocol, cast
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 from bsv_wallet_toolbox.utils.validation import validate_satoshis

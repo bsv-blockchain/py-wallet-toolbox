@@ -5,14 +5,14 @@ import json
 import logging
 import re
 import secrets
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, ClassVar, Callable, overload
+from typing import TYPE_CHECKING, Any, ClassVar, overload
 
 from bsv.merkle_path import MerklePath
 from bsv.transaction import Transaction
 from bsv.transaction import Transaction as BsvTransaction
-from bsv.transaction.beef import Beef, BEEF_V2, parse_beef, parse_beef_ex
+from bsv.transaction.beef import BEEF_V2, Beef, parse_beef_ex
 from sqlalchemy import delete, func, inspect, or_, select, update
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import IntegrityError
@@ -30,24 +30,22 @@ from bsv_wallet_toolbox.utils.validation import (
 
 from .create_action import (
     deterministic_txid,
-    generate_reference,
     normalize_create_action_args,
     validate_required_outputs,
 )
+from .db import create_session_factory, session_scope
 from .methods.generate_change import (
-    GenerateChangeSdkParams,
+    MAX_POSSIBLE_SATOSHIS,
+    GenerateChangeSdkChangeOutput,
+    GenerateChangeSdkFundingInput,
     GenerateChangeSdkInput,
     GenerateChangeSdkOutput,
-    GenerateChangeSdkFundingInput,
-    GenerateChangeSdkChangeOutput,
+    GenerateChangeSdkParams,
+    InternalError,
     StorageFeeModel,
     generate_change_sdk,
-    MAX_POSSIBLE_SATOSHIS,
-    InternalError,
-    InsufficientFundsError,
 )
 from .methods_impl import get_sync_chunk as _impl_get_sync_chunk
-from .db import create_session_factory, session_scope
 from .models import (
     Base,
     Certificate,
@@ -193,7 +191,7 @@ class StorageProvider:
         """
         self._randomizer = randomizer
 
-    def with_randomizer(self, randomizer: Any) -> "StorageProvider":
+    def with_randomizer(self, randomizer: Any) -> StorageProvider:
         """Set a custom randomizer and return self for chaining.
 
         Args:
@@ -2303,7 +2301,6 @@ class StorageProvider:
         transaction and merges it into the result. Mirrors TypeScript
         mergeAllocatedChangeBeefs at storage/methods/createAction.ts L903-926.
         """
-        from bsv.transaction.beef import Beef, BEEF_V2
 
         # If returnTXIDOnly, don't generate BEEF
         if getattr(vargs.options, "return_txid_only", False):
@@ -2646,7 +2643,7 @@ class StorageProvider:
                 return output
 
             return None
-        except Exception as e:
+        except Exception:
             session.rollback()
             raise
         finally:
@@ -3127,14 +3124,13 @@ class StorageProvider:
                                     "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
                                     "This should be raw transaction hex. Transaction will fail to broadcast."
                                 )
-                            else:
-                                # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
-                                if not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
-                                    self.logger.warning(
-                                        "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
-                                        "First 8 chars: %s",
-                                        raw_tx_hex[:8],
-                                    )
+                            # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
+                            elif not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
+                                self.logger.warning(
+                                    "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
+                                    "First 8 chars: %s",
+                                    raw_tx_hex[:8],
+                                )
 
                             # Send raw transaction hex to services.post_beef
                             # services.post_beef will parse it and extract the Transaction object for ARC
@@ -5248,10 +5244,10 @@ class StorageProvider:
         if not self._services:
             raise RuntimeError("Services must be set to send waiting transactions")
 
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         # Find waiting transactions older than min_age
-        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=min_age_seconds)
+        cutoff_time = datetime.now(UTC) - timedelta(seconds=min_age_seconds)
 
         waiting_transactions = self.find_transactions({"partial": {"status": "waiting"}})
 
@@ -5311,10 +5307,10 @@ class StorageProvider:
         Reference:
             go-wallet-toolbox/pkg/storage/provider.go AbortAbandoned()
         """
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
 
         # Find transactions in processing states that are too old
-        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=min_age_seconds)
+        cutoff_time = datetime.now(UTC) - timedelta(seconds=min_age_seconds)
 
         # Get transactions that might be abandoned (not completed or failed)
         processing_transactions = self.find_transactions({"partial": {"status": ["created", "signed", "processing"]}})
@@ -5385,7 +5381,6 @@ class StorageProvider:
         # For now, we don't have a background broadcaster implementation
         # This is a placeholder for when we add the full background broadcaster
         # asyncio.run(self._background_broadcaster.stop())  # When implemented
-        pass
 
     def get_proven_or_req(self, txid: str) -> dict[str, Any]:
         """Get either a ProvenTx or ProvenTxReq record for a transaction.
@@ -5567,7 +5562,7 @@ class InternalizeActionContext:
 
         try:
             beef_obj, subject_txid, subject_tx = parse_beef_ex(beef_bytes)
-        except Exception as exc:  # noqa: PERF203
+        except Exception as exc:
             raise InvalidParameterError("tx", f"valid AtomicBEEF: {exc!s}") from exc
 
         if not subject_txid or subject_tx is None:
@@ -6207,7 +6202,7 @@ class InternalizeActionContext:
                 session.flush()
 
     # Entity Accessor Methods would go here if needed for InternalizeActionContext
-    def commission_entity(self) -> "CommissionAccessor":
+    def commission_entity(self) -> CommissionAccessor:
         """Get commission entity accessor for CRUD operations.
 
         Returns:
@@ -6220,7 +6215,7 @@ class InternalizeActionContext:
 
         return CommissionAccessor(self)
 
-    def transaction_entity(self) -> "TransactionAccessor":
+    def transaction_entity(self) -> TransactionAccessor:
         """Get transaction entity accessor for CRUD operations.
 
         Returns:
@@ -6233,7 +6228,7 @@ class InternalizeActionContext:
 
         return TransactionAccessor(self)
 
-    def user_entity(self) -> "UserAccessor":
+    def user_entity(self) -> UserAccessor:
         """Get user entity accessor for CRUD operations.
 
         Returns:
@@ -6246,7 +6241,7 @@ class InternalizeActionContext:
 
         return UserAccessor(self)
 
-    def output_baskets_entity(self) -> "OutputBasketAccessor":
+    def output_baskets_entity(self) -> OutputBasketAccessor:
         """Get output basket entity accessor for CRUD operations.
 
         Returns:
@@ -6259,7 +6254,7 @@ class InternalizeActionContext:
 
         return OutputBasketAccessor(self)
 
-    def outputs_entity(self) -> "OutputAccessor":
+    def outputs_entity(self) -> OutputAccessor:
         """Get output entity accessor for CRUD operations.
 
         Returns:
@@ -6272,7 +6267,7 @@ class InternalizeActionContext:
 
         return OutputAccessor(self)
 
-    def tx_note_entity(self) -> "TxNoteAccessor":
+    def tx_note_entity(self) -> TxNoteAccessor:
         """Get transaction note entity accessor for CRUD operations.
 
         Returns:
@@ -6285,7 +6280,7 @@ class InternalizeActionContext:
 
         return TxNoteAccessor(self)
 
-    def known_tx_entity(self) -> "KnownTxAccessor":
+    def known_tx_entity(self) -> KnownTxAccessor:
         """Get known transaction entity accessor for CRUD operations.
 
         Returns:
@@ -6298,7 +6293,7 @@ class InternalizeActionContext:
 
         return KnownTxAccessor(self)
 
-    def certifier_entity(self) -> "CertifierAccessor":
+    def certifier_entity(self) -> CertifierAccessor:
         """Get certifier entity accessor for read operations.
 
         Returns:
@@ -6313,8 +6308,8 @@ class InternalizeActionContext:
 
     @classmethod
     def create_with_factory(
-        cls, chain: str, storage_factory: Callable[[], "StorageProvider"], **kwargs
-    ) -> "StorageProvider":
+        cls, chain: str, storage_factory: Callable[[], StorageProvider], **kwargs
+    ) -> StorageProvider:
         """Create storage provider using factory pattern.
 
         This method allows for dependency injection and testing by accepting

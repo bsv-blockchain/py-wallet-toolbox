@@ -6,8 +6,6 @@ Provides reusable utilities for seeding outputs in test storage.
 from datetime import UTC, datetime
 from typing import Any
 
-from bsv.script import Script
-
 
 def create_test_output(
     *,

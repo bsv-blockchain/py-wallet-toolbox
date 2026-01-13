@@ -6,8 +6,10 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/models/bulk_ingestor.go
 """
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Callable, Any
+from collections.abc import Callable
+from typing import Any
 
 
 class BulkIngestor(ABC):
@@ -17,7 +19,7 @@ class BulkIngestor(ABC):
     """
 
     @abstractmethod
-    async def synchronize(self, present_height: int, range_to_fetch: Any) -> Tuple[List[Any], Callable]:
+    async def synchronize(self, present_height: int, range_to_fetch: Any) -> tuple[list[Any], Callable]:
         """Synchronize bulk headers for the given height range.
 
         Args:

@@ -1047,7 +1047,6 @@ class WalletPermissionsManager:
                 except Exception as e:
                     # Continue with other callbacks even if one fails
                     print(f"Exception in callback: {e}")
-                    pass
 
     def unbind_callback(self, reference: int | Callable, event_name: str | None = None) -> bool:
         """Unbind a previously registered callback.
@@ -3230,21 +3229,21 @@ class WalletPermissionsManager:
         args = copy.deepcopy(args)
 
         # Encrypt top-level description
-        if "description" in args and args["description"]:
+        if args.get("description"):
             args["description"] = self._maybe_encrypt_metadata(args["description"])
 
         # Encrypt input descriptions
         if "inputs" in args:
             for input_item in args["inputs"]:
-                if "inputDescription" in input_item and input_item["inputDescription"]:
+                if input_item.get("inputDescription"):
                     input_item["inputDescription"] = self._maybe_encrypt_metadata(input_item["inputDescription"])
 
         # Encrypt output descriptions and custom instructions
         if "outputs" in args:
             for output_item in args["outputs"]:
-                if "outputDescription" in output_item and output_item["outputDescription"]:
+                if output_item.get("outputDescription"):
                     output_item["outputDescription"] = self._maybe_encrypt_metadata(output_item["outputDescription"])
-                if "customInstructions" in output_item and output_item["customInstructions"]:
+                if output_item.get("customInstructions"):
                     output_item["customInstructions"] = self._maybe_encrypt_metadata(output_item["customInstructions"])
 
         return args
@@ -3270,13 +3269,13 @@ class WalletPermissionsManager:
         if "actions" in result:
             for action in result["actions"]:
                 # Decrypt action description
-                if "description" in action and action["description"]:
+                if action.get("description"):
                     action["description"] = self._maybe_decrypt_metadata(action["description"])
 
                 # Decrypt input descriptions
                 if "inputs" in action:
                     for input_item in action["inputs"]:
-                        if "inputDescription" in input_item and input_item["inputDescription"]:
+                        if input_item.get("inputDescription"):
                             input_item["inputDescription"] = self._maybe_decrypt_metadata(
                                 input_item["inputDescription"]
                             )
@@ -3284,11 +3283,11 @@ class WalletPermissionsManager:
                 # Decrypt output descriptions and custom instructions
                 if "outputs" in action:
                     for output_item in action["outputs"]:
-                        if "outputDescription" in output_item and output_item["outputDescription"]:
+                        if output_item.get("outputDescription"):
                             output_item["outputDescription"] = self._maybe_decrypt_metadata(
                                 output_item["outputDescription"]
                             )
-                        if "customInstructions" in output_item and output_item["customInstructions"]:
+                        if output_item.get("customInstructions"):
                             output_item["customInstructions"] = self._maybe_decrypt_metadata(
                                 output_item["customInstructions"]
                             )
@@ -3315,7 +3314,7 @@ class WalletPermissionsManager:
 
         if "outputs" in result:
             for output_item in result["outputs"]:
-                if "customInstructions" in output_item and output_item["customInstructions"]:
+                if output_item.get("customInstructions"):
                     output_item["customInstructions"] = self._maybe_decrypt_metadata(output_item["customInstructions"])
 
         return result

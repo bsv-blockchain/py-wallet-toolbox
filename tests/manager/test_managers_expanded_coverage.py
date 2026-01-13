@@ -3,7 +3,7 @@
 This module adds comprehensive tests for Simple wallet manager.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

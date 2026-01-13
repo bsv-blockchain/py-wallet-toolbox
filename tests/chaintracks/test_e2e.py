@@ -9,9 +9,10 @@ environments. These tests verify the pub/sub event system functionality.
 Reference: wallet-toolbox/src/services/chaintracker/__tests__/e2e.test.ts
 """
 
-import pytest
 import asyncio
-from typing import Dict, Any
+from typing import Any
+
+import pytest
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.core_service import (
     ChaintracksCoreService,
@@ -92,9 +93,9 @@ class TestChaintracksE2E:
         service = ChaintracksCoreService(config)
         await service.make_available()
 
-        received_events: list[Dict[str, Any]] = []
+        received_events: list[dict[str, Any]] = []
 
-        def event_handler(event: Dict[str, Any]) -> None:
+        def event_handler(event: dict[str, Any]) -> None:
             received_events.append(event)
 
         # When
@@ -129,9 +130,9 @@ class TestChaintracksE2E:
         service = ChaintracksCoreService(config)
         await service.make_available()
 
-        received_events: list[Dict[str, Any]] = []
+        received_events: list[dict[str, Any]] = []
 
-        def event_handler(event: Dict[str, Any]) -> None:
+        def event_handler(event: dict[str, Any]) -> None:
             received_events.append(event)
 
         # When

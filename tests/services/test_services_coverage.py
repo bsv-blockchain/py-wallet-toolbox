@@ -8,7 +8,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 from bsv_wallet_toolbox.services.services import Services
-from bsv_wallet_toolbox.services.wallet_services import Chain
 
 
 class TestServicesInitialization:

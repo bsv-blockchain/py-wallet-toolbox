@@ -14,8 +14,8 @@ Key features:
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from typing import Any
 from threading import Lock
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -171,12 +171,11 @@ class MockARC:
 
     def is_up_and_running(self) -> None:
         """Mark the mock ARC as ready to accept connections."""
-        pass  # Already ready by default
+        # Already ready by default
 
     def will_always_return_status(self, http_status: int) -> None:
         """Configure the mock to always return a specific HTTP status."""
         # This would be used for error injection testing
-        pass
 
     def when_querying_tx(self, txid: str) -> MockARCQueryFixture:
         """Create a fixture for configuring query responses for a specific txid."""
@@ -294,7 +293,7 @@ class MockARC:
             await asyncio.sleep(float("inf"))
 
         try:
-            from bsv.transaction import Transaction, Beef
+            from bsv.transaction import Beef
 
             # Parse BEEF
             beef_bytes = bytes.fromhex(beef_hex)

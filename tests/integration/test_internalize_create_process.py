@@ -9,21 +9,20 @@ These tests verify the complete transaction lifecycle:
 Reference: go-wallet-toolbox/pkg/storage/internal/integrationtests/internalize_create_process_test.go
 """
 
-import json
-import pytest
 from typing import Any
 
+import pytest
+
+from tests.testabilities.testservices import BHSMerkleRootConfirmed, MockBHS
 from tests.testabilities.testusers import ALICE, ANYONE_IDENTITY_KEY
 from tests.testabilities.tsgenerated import (
-    PARENT_BEEF_TXID,
     BEEF_TO_INTERNALIZE_HEIGHT,
     BEEF_TO_INTERNALIZE_MERKLE_ROOT,
-    parent_transaction_atomic_beef,
-    load_create_action_result,
+    PARENT_BEEF_TXID,
     SIGNED_TRANSACTION_HEX,
+    load_create_action_result,
+    parent_transaction_atomic_beef,
 )
-from tests.testabilities.testservices import MockBHS, BHSMerkleRootConfirmed
-
 
 # Test constants matching Go implementation
 DER_PREFIX = "Pr=="
@@ -420,7 +419,7 @@ class TestMockBHSWithMerkleVerification:
     @pytest.mark.asyncio
     async def test_mock_bhs_confirms_valid_merkle_root(self) -> None:
         """Test that MockBHS confirms valid merkle root."""
-        from tests.testabilities.testservices import MockBHS, BHSMerkleRootConfirmed
+        from tests.testabilities.testservices import BHSMerkleRootConfirmed, MockBHS
 
         mock_bhs = MockBHS()
         mock_bhs.on_merkle_root_verify_response(
@@ -440,7 +439,7 @@ class TestMockBHSWithMerkleVerification:
     @pytest.mark.asyncio
     async def test_mock_bhs_rejects_unknown_merkle_root(self) -> None:
         """Test that MockBHS rejects unknown merkle root."""
-        from tests.testabilities.testservices import MockBHS, BHSMerkleRootNotFound
+        from tests.testabilities.testservices import BHSMerkleRootNotFound, MockBHS
 
         mock_bhs = MockBHS()
 
@@ -525,8 +524,8 @@ class TestInternalizePlusTooHighCreate:
         Basket insertion outputs are NOT added to the default change basket,
         so they cannot be used as inputs for new transactions.
         """
-        from tests.testabilities.testservices import create_in_memory_storage_provider
         from bsv_wallet_toolbox.storage.methods.generate_change import InsufficientFundsError
+        from tests.testabilities.testservices import create_in_memory_storage_provider
 
         # Given: Create in-memory storage provider
         storage_provider, cleanup = create_in_memory_storage_provider(chain="testnet")

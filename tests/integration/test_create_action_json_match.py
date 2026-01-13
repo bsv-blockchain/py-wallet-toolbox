@@ -7,18 +7,18 @@ Reference: go-wallet-toolbox/pkg/storage/internal/integrationtests/internalize_c
 """
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
+
+from tests.testabilities.testservices import BHSMerkleRootConfirmed, MockBHS
 from tests.testabilities.testusers import ALICE, ANYONE_IDENTITY_KEY
 from tests.testabilities.tsgenerated import (
-    PARENT_BEEF_TXID,
     BEEF_TO_INTERNALIZE_HEIGHT,
     BEEF_TO_INTERNALIZE_MERKLE_ROOT,
+    PARENT_BEEF_TXID,
     parent_transaction_atomic_beef,
 )
-from tests.testabilities.testservices import MockBHS, BHSMerkleRootConfirmed
-
 
 # Test constants matching Go implementation
 DER_PREFIX = "Pr=="
@@ -64,8 +64,8 @@ class TestCreateActionJsonExactMatch:
 
         Reference: go-wallet-toolbox/pkg/storage/internal/integrationtests/internalize_create_process_test.go
         """
-        from tests.testabilities.testservices import create_in_memory_storage_provider
         from bsv_wallet_toolbox.utils.randomizer import DeterministicRandomizer
+        from tests.testabilities.testservices import create_in_memory_storage_provider
 
         # Given: Create in-memory storage provider WITH deterministic randomizer
         storage_provider, cleanup = create_in_memory_storage_provider(chain="testnet")

@@ -6,7 +6,6 @@ Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/blockHeader
 """
 
 import hashlib
-from typing import Any
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import BaseBlockHeader
 from bsv_wallet_toolbox.services.wallet_services import Chain

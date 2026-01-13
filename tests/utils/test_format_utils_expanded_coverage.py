@@ -3,7 +3,6 @@
 This module tests data formatting and conversion utilities.
 """
 
-import pytest
 
 try:
     from bsv_wallet_toolbox.utils.format_utils import Format
@@ -285,7 +284,7 @@ class TestFormatTransactionLogging:
     def test_to_log_string_transaction_basic(self) -> None:
         """Test basic transaction logging."""
         # Create a mock transaction
-        from unittest.mock import Mock, MagicMock
+        from unittest.mock import Mock
 
         tx = Mock()
         tx.id = Mock(return_value="a" * 64)  # 64 char hex txid

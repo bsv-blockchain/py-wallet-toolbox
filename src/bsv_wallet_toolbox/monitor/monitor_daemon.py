@@ -3,10 +3,8 @@
 import logging
 import threading
 import time
-from typing import Any
 
 from .monitor import Monitor
-
 
 logger = logging.getLogger(__name__)
 

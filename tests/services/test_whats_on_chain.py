@@ -7,16 +7,15 @@ Reference: wallet-toolbox/src/services/providers/__tests/WhatsOnChain.test.ts
 """
 
 import json
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 try:
+    from bsv_wallet_toolbox.errors import InvalidParameterError
     from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.services.providers import WhatsOnChain
     from bsv_wallet_toolbox.utils import TestUtils
-    from bsv_wallet_toolbox.errors import InvalidParameterError
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -359,7 +358,7 @@ class TestWhatsOnChain:
         provider, mock_client = mock_woc_provider
 
         # Mock timeout exception - use fetch.side_effect since the code calls fetch, not get
-        mock_client.fetch.side_effect = asyncio.TimeoutError("Connection timeout")
+        mock_client.fetch.side_effect = TimeoutError("Connection timeout")
 
         result = await provider.get_raw_tx(valid_txid)
         assert result is None  # Should return None on timeout
@@ -533,7 +532,7 @@ class TestWhatsOnChain:
 
         for error_scenario in network_error_responses:
             if error_scenario.get("timeout"):
-                mock_client.fetch.side_effect = asyncio.TimeoutError(error_scenario["error"])
+                mock_client.fetch.side_effect = TimeoutError(error_scenario["error"])
             else:
                 mock_response = Mock()
                 mock_response.status_code = error_scenario["status"]
@@ -566,7 +565,7 @@ class TestWhatsOnChain:
             mock_client.fetch.return_value = None
 
             if error_scenario.get("timeout"):
-                mock_client.fetch.side_effect = asyncio.TimeoutError(error_scenario["error"])
+                mock_client.fetch.side_effect = TimeoutError(error_scenario["error"])
                 # Timeout raises RuntimeError
                 with pytest.raises(RuntimeError, match="Failed to update BSV exchange rate"):
                     await provider.update_bsv_exchange_rate()

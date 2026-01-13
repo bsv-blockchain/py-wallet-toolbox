@@ -5,8 +5,6 @@ This module tests the chaintracks service and client implementations.
 
 from unittest.mock import Mock, patch
 
-import pytest
-
 
 class TestChaintracksService:
     """Test ChaintracksService."""

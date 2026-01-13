@@ -3,8 +3,9 @@
 This module provides comprehensive tests for action result aggregation.
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, AsyncMock
 
 try:
     from bsv_wallet_toolbox.utils.aggregate_results import aggregate_action_results

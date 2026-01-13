@@ -7,8 +7,6 @@ without SQLAlchemy session conflicts.
 from datetime import UTC, datetime
 from typing import Any
 
-from bsv.transaction import Transaction
-
 
 def create_test_transaction(
     *,

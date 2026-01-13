@@ -5,14 +5,14 @@ Provides bulk ingestion of blockchain headers from Project Babbage CDN.
 Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/bulk_ingestor_cdn.go
 """
 
-import logging
-from typing import List, Tuple, Callable, Any, Optional
 import asyncio
+import logging
+from collections.abc import Callable
+from typing import Any
 
-from .bulk_ingestor_interface import BulkIngestor, BulkHeaderMinimumInfo
-from .cdn_reader import CDNReader
 from ...wallet_services import Chain
-
+from .bulk_ingestor_interface import BulkHeaderMinimumInfo, BulkIngestor
+from .cdn_reader import CDNReader
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class BulkIngestorCDN(BulkIngestor):
     """Bulk ingestor that downloads headers from Project Babbage CDN."""
 
-    def __init__(self, chain: Chain, source_url: Optional[str] = None):
+    def __init__(self, chain: Chain, source_url: str | None = None):
         """Initialize CDN bulk ingestor.
 
         Args:
@@ -35,7 +35,7 @@ class BulkIngestorCDN(BulkIngestor):
 
     async def synchronize(
         self, present_height: int, range_to_fetch: Any
-    ) -> Tuple[List[BulkHeaderMinimumInfo], Callable]:
+    ) -> tuple[list[BulkHeaderMinimumInfo], Callable]:
         """Synchronize bulk headers for the given height range.
 
         Args:

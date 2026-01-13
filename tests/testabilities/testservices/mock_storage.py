@@ -8,12 +8,13 @@ Reference: go-wallet-toolbox/pkg/internal/testabilities/fixture_storage.go
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Tuple
+from typing import Any
 
-from tests.testabilities.testusers import User, ALICE
 from tests.testabilities.testservices.mock_arc import MockARC
 from tests.testabilities.testservices.mock_bhs import MockBHS
+from tests.testabilities.testusers import ALICE, User
 
 
 @dataclass
@@ -42,7 +43,7 @@ class StorageFixture:
 def create_in_memory_storage_provider(
     storage_identity_key: str | None = None,
     chain: str = "testnet",
-) -> Tuple[Any, Callable[[], None]]:
+) -> tuple[Any, Callable[[], None]]:
     """Create an in-memory SQLite storage provider for testing.
 
     Returns:
@@ -82,7 +83,7 @@ def create_in_memory_storage_provider(
 def given_storage(
     user: User = ALICE,
     chain: str = "testnet",
-) -> Tuple[StorageFixture, Callable[[], None]]:
+) -> tuple[StorageFixture, Callable[[], None]]:
     """Create a storage fixture for integration testing.
 
     This is the Python equivalent of Go's testabilities.Given(t).

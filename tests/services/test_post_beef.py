@@ -5,13 +5,12 @@ This module tests postBeef service functionality for mainnet and testnet.
 Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
-import json
-import time
+from unittest.mock import Mock, patch
 
-from bsv_wallet_toolbox.services import Services
+import pytest
+
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.services import Services
 
 
 @pytest.fixture

@@ -11,7 +11,6 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-
 SENTINEL_ENV_VARS: tuple[str, ...] = ("HOME", "PATH", "SHELL")
 
 
@@ -43,14 +42,13 @@ def load_config(env_file: str | None = None) -> dict[str, Any]:
     # Load .env file if provided or if default .env exists
     if env_file is not None:
         load_dotenv(env_file)
-    else:
-        # Skip implicit .env loading when the environment was intentionally sanitized
-        # by tests (e.g., patch.dict(..., clear=True)) to avoid leaking local secrets.
-        if not _is_sanitized_environment(environ):
-            if Path(".env").exists():
-                load_dotenv(".env")
-            else:
-                load_dotenv()
+    # Skip implicit .env loading when the environment was intentionally sanitized
+    # by tests (e.g., patch.dict(..., clear=True)) to avoid leaking local secrets.
+    elif not _is_sanitized_environment(environ):
+        if Path(".env").exists():
+            load_dotenv(".env")
+        else:
+            load_dotenv()
 
     # Extract all environment variables as configuration
     config = dict(environ)

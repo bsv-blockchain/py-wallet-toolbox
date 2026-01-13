@@ -397,7 +397,7 @@ class TestWalletListActions:
 
         # Each action should have ALL the specified labels (if any match)
         for action in result["actions"]:
-            if "labels" in action and action["labels"]:
+            if action.get("labels"):
                 # If action has labels, it should contain all specified labels
                 for required_label in args["labels"]:
                     assert required_label in action["labels"]
@@ -420,7 +420,7 @@ class TestWalletListActions:
 
         # Each action should have at least ONE of the specified labels (if any match)
         for action in result["actions"]:
-            if "labels" in action and action["labels"]:
+            if action.get("labels"):
                 # If action has labels, at least one should match the specified labels
                 has_match = any(label in action["labels"] for label in args["labels"])
                 assert has_match

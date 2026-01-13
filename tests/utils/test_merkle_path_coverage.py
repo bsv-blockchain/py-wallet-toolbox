@@ -3,7 +3,6 @@
 This module tests merkle path verification and manipulation.
 """
 
-import pytest
 
 
 class TestMerklePathUtils:

@@ -5,12 +5,10 @@ This module tests the main Chaintracks class with NoDb mode.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/__tests/Chaintracks.test.ts
 """
 
-import pytest
 
 try:
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks.options import create_default_no_db_chaintracks_options
-
     from bsv_wallet_toolbox.services.chaintracker.chaintracks import Chaintracks
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.options import create_default_no_db_chaintracks_options
 
     IMPORTS_AVAILABLE = True
 except ImportError:

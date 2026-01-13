@@ -3,9 +3,7 @@
 This module provides comprehensive test coverage for the AuthFetch class.
 """
 
-import asyncio
 from unittest.mock import AsyncMock, Mock, patch
-from typing import Any
 
 import pytest
 import requests

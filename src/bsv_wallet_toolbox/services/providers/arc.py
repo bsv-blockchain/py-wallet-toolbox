@@ -34,13 +34,13 @@ from __future__ import annotations
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
 
-from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 from bsv_wallet_toolbox.utils.merkle_path_utils import normalize_merkle_path_value
+from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 
 logger = logging.getLogger(__name__)
 
@@ -281,7 +281,7 @@ class ARC:
 
         headers = self.request_headers()
         url = f"{self.url}/v1/tx"
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         # Debug: Log authorization header (masked) and endpoint
         logger.debug(f"ARC {self.name} endpoint: {url}")
@@ -463,7 +463,7 @@ class ARC:
         """
         result = PostBeefResult(name=self.name, status="success", txid_results=[])
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
 
         def make_note(name: str, when: str) -> dict[str, str]:
             return {"name": name, "when": when}
@@ -624,7 +624,7 @@ class ARC:
         It returns the same object shape as other providers:
           {"header": {...}, "merklePath": {"blockHeight":..., "path":[...]}, "name": "...", "notes":[...]}
         """
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         result: dict[str, Any] = {"name": "ARC", "notes": []}
 
         dr = self.get_tx_data(txid)
@@ -644,13 +644,13 @@ class ARC:
             block_hash = getattr(dr, "block_hash", None)
             if isinstance(block_hash, str) and len(block_hash) == 64 and hasattr(services, "hash_to_header"):
                 header = services.hash_to_header(block_hash)
-        except Exception:  # noqa: BLE001
+        except Exception:
             header = None
 
         # Normalize merklePath into wallet-toolbox dict format.
         try:
             mp_norm = normalize_merkle_path_value(txid, mp_raw, block_height=getattr(dr, "block_height", None))
-        except Exception as exc:  # noqa: PERF203
+        except Exception as exc:
             result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathNoData", "error": str(exc)})
             return result
 
@@ -709,6 +709,6 @@ class ARC:
         except requests.exceptions.ConnectionError:
             raise RuntimeError("ARC connection error")
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"ARC network error: {str(e)}")
+            raise RuntimeError(f"ARC network error: {e!s}")
         except Exception as e:
-            raise RuntimeError(f"ARC error: {str(e)}")
+            raise RuntimeError(f"ARC error: {e!s}")

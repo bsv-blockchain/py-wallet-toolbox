@@ -8,18 +8,18 @@ Reference: BRC-100 specification and Universal Test Vectors
 import pytest
 
 from bsv_wallet_toolbox.abi.serializer import (
-    serialize_request,
-    deserialize_request,
-    serialize_response,
-    deserialize_response,
-    _serialize_dict,
     _deserialize_dict,
-    _serialize_value,
-    _deserialize_value,
-    _serialize_length,
     _deserialize_length,
-    _serialize_varint,
+    _deserialize_value,
     _deserialize_varint,
+    _serialize_dict,
+    _serialize_length,
+    _serialize_value,
+    _serialize_varint,
+    deserialize_request,
+    deserialize_response,
+    serialize_request,
+    serialize_response,
 )
 
 

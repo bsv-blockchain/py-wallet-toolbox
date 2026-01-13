@@ -5,11 +5,12 @@ network failure testing, and validation scenarios.
 Reference: wallet-toolbox/src/services/__tests/getScriptHistory.test.ts
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from bsv_wallet_toolbox.services import Services
+import pytest
+
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.services import Services
 
 
 @pytest.fixture

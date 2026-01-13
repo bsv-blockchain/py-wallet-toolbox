@@ -7,9 +7,10 @@ Reference: wallet-toolbox/src/services/providers/__tests/exchangeRates.test.ts
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest  # type: ignore[import]
+
 from bsv_wallet_toolbox.errors import InvalidParameterError
 
 try:
@@ -254,7 +255,7 @@ class TestExchangeRates:
             for error_scenario in network_error_responses:
                 if error_scenario.get("timeout"):
                     await asyncio.sleep(0.1)
-                    raise asyncio.TimeoutError(error_scenario["error"])
+                    raise TimeoutError(error_scenario["error"])
                 else:
                     raise Exception(f"HTTP {error_scenario['status']}: {error_scenario['text']}")
 
@@ -443,11 +444,11 @@ class TestExchangeRates:
         # Mock timeout
         async def mock_timeout_response(currencies, options):
             await asyncio.sleep(0.1)
-            raise asyncio.TimeoutError("Connection timeout")
+            raise TimeoutError("Connection timeout")
 
         async def mock_timeout_io(api_key):
             await asyncio.sleep(0.1)
-            raise asyncio.TimeoutError("Connection timeout")
+            raise TimeoutError("Connection timeout")
 
         with patch(
             "bsv_wallet_toolbox.services.providers.exchange_rates.get_exchange_rates_io", side_effect=mock_timeout_io
@@ -456,7 +457,7 @@ class TestExchangeRates:
                 result = asyncio.run(update_exchangeratesapi(valid_currencies, services.options))
                 # Should handle timeout gracefully
                 assert result is not None or isinstance(result, dict)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Expected timeout behavior
                 pass
 

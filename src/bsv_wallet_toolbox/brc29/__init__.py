@@ -14,7 +14,7 @@ Reference: https://brc.dev/29
 
 from .address import address_for_counterparty, address_for_self
 from .template import UnlockingScriptTemplate, lock_for_counterparty, lock_for_self, unlock
-from .types import KeyID, PROTOCOL, PROTOCOL_ID
+from .types import PROTOCOL, PROTOCOL_ID, KeyID
 
 __all__ = [
     # Types

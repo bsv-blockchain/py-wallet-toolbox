@@ -7,13 +7,12 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/gormstorage/storage_querie
 """
 
 import logging
-from typing import List, Optional, Tuple
+
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
-from ..models import LiveBlockHeader, HeightRange
 from ...chaintracks_storage import LiveHeadersModel
-
+from ..models import HeightRange, LiveBlockHeader
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ class SQLAlchemyStorageQueries:
             session: SQLAlchemy session for database operations
         """
         self.session = session
-        self._transaction_session: Optional[Session] = None
+        self._transaction_session: Session | None = None
 
     def _get_session(self) -> Session:
         """Get the current session (transactional if active)."""
@@ -43,7 +42,7 @@ class SQLAlchemyStorageQueries:
             raise RuntimeError("Transaction already started")
         self._transaction_session = self.session.begin()
 
-    def rollback(self) -> Optional[Exception]:
+    def rollback(self) -> Exception | None:
         """Rollback the current transaction.
 
         Returns:
@@ -61,7 +60,7 @@ class SQLAlchemyStorageQueries:
         finally:
             self._transaction_session = None
 
-    def commit(self) -> Optional[Exception]:
+    def commit(self) -> Exception | None:
         """Commit the current transaction.
 
         Returns:
@@ -79,7 +78,7 @@ class SQLAlchemyStorageQueries:
         finally:
             self._transaction_session = None
 
-    def live_header_exists(self, hash_str: str) -> Tuple[bool, Optional[Exception]]:
+    def live_header_exists(self, hash_str: str) -> tuple[bool, Exception | None]:
         """Check if a live header exists by hash.
 
         Args:
@@ -98,7 +97,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to check live header existence: {e}")
             return False, e
 
-    def get_live_header_by_hash(self, hash_str: str) -> Tuple[Optional[LiveBlockHeader], Optional[Exception]]:
+    def get_live_header_by_hash(self, hash_str: str) -> tuple[LiveBlockHeader | None, Exception | None]:
         """Get live header by hash.
 
         Args:
@@ -119,7 +118,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to get live header by hash: {e}")
             return None, e
 
-    def get_active_tip_live_header(self) -> Tuple[Optional[LiveBlockHeader], Optional[Exception]]:
+    def get_active_tip_live_header(self) -> tuple[LiveBlockHeader | None, Exception | None]:
         """Get the active chain tip live header.
 
         Returns:
@@ -141,7 +140,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to get active tip live header: {e}")
             return None, e
 
-    def set_chain_tip_by_id(self, header_id: int, is_chain_tip: bool) -> Optional[Exception]:
+    def set_chain_tip_by_id(self, header_id: int, is_chain_tip: bool) -> Exception | None:
         """Set chain tip status for header by ID.
 
         Args:
@@ -161,7 +160,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to set chain tip by ID: {e}")
             return e
 
-    def set_active_by_id(self, header_id: int, is_active: bool) -> Optional[Exception]:
+    def set_active_by_id(self, header_id: int, is_active: bool) -> Exception | None:
         """Set active status for header by ID.
 
         Args:
@@ -181,7 +180,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to set active by ID: {e}")
             return e
 
-    def insert_new_live_header(self, header: LiveBlockHeader) -> Optional[Exception]:
+    def insert_new_live_header(self, header: LiveBlockHeader) -> Exception | None:
         """Insert a new live header.
 
         Args:
@@ -201,7 +200,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to insert new live header: {e}")
             return e
 
-    def count_live_headers(self) -> Tuple[int, Optional[Exception]]:
+    def count_live_headers(self) -> tuple[int, Exception | None]:
         """Count total live headers.
 
         Returns:
@@ -215,7 +214,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to count live headers: {e}")
             return 0, e
 
-    def get_live_header_by_height(self, height: int) -> Tuple[Optional[LiveBlockHeader], Optional[Exception]]:
+    def get_live_header_by_height(self, height: int) -> tuple[LiveBlockHeader | None, Exception | None]:
         """Get live header by height.
 
         Args:
@@ -240,7 +239,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to get live header by height: {e}")
             return None, e
 
-    def find_live_height_range(self) -> Tuple[HeightRange, Optional[Exception]]:
+    def find_live_height_range(self) -> tuple[HeightRange, Exception | None]:
         """Find the height range covered by live headers.
 
         Returns:
@@ -264,7 +263,7 @@ class SQLAlchemyStorageQueries:
 
     def find_headers_for_height_less_than_or_equal_sorted(
         self, height: int, limit: int
-    ) -> Tuple[List[LiveBlockHeader], Optional[Exception]]:
+    ) -> tuple[list[LiveBlockHeader], Exception | None]:
         """Find headers with height <= specified height, sorted.
 
         Args:
@@ -290,7 +289,7 @@ class SQLAlchemyStorageQueries:
             logger.error(f"Failed to find headers for height less than or equal: {e}")
             return [], e
 
-    def delete_live_headers_by_ids(self, ids: List[int]) -> Optional[Exception]:
+    def delete_live_headers_by_ids(self, ids: list[int]) -> Exception | None:
         """Delete live headers by their IDs.
 
         Args:

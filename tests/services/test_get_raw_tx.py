@@ -5,15 +5,13 @@ This module tests getRawTx service functionality.
 Reference: wallet-toolbox/src/services/__tests/getRawTx.test.ts
 """
 
-from typing import Any
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 
 import pytest
 
 try:
-    from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.errors import InvalidParameterError
+    from bsv_wallet_toolbox.services import Services
 
     # Check if Services has the required method
     if hasattr(Services, "create_default_options"):

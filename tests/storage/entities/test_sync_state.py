@@ -5,8 +5,6 @@ Reference: toolbox/ts-wallet-toolbox/src/storage/schema/entities/EntitySyncState
 
 from datetime import datetime
 
-import pytest
-
 from bsv_wallet_toolbox.storage.entities import SyncState
 
 

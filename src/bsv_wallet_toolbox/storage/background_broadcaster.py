@@ -8,9 +8,8 @@ Reference: go-wallet-toolbox/pkg/storage/internal/service/background_broadcaster
 
 import asyncio
 import logging
-from typing import Any, Protocol
 from asyncio import Queue
-
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ class BackgroundBroadcaster:
         if self._task and not self._task.done():
             try:
                 await asyncio.wait_for(self._task, timeout=30.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Background broadcaster task did not complete within timeout")
                 self._task.cancel()
 

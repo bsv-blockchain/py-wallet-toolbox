@@ -25,6 +25,7 @@ Design goals:
 
 import json
 from collections.abc import Callable
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -216,14 +217,14 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
     storage.make_available()
 
     # Get or create user for seeding
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     user_id = storage.insert_user(
         {
             "identityKey": test_key_deriver._root_private_key.public_key().hex(),
             "activeStorage": "test",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
     )
 
@@ -246,8 +247,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
     )
 
@@ -273,8 +274,8 @@ def wallet_with_services(test_key_deriver: KeyDeriver) -> Wallet:
             "txid": source_txid,
             "lockingScript": locking_script,
             "spentBy": None,  # Explicitly set to None to ensure it's allocatable
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
     )
 
@@ -354,7 +355,7 @@ def wallet_with_storage(test_key_deriver: KeyDeriver) -> Wallet:
 
 def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
     """Seed test certificate data matching TypeScript test expectations."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Certificate data from TypeScript tests
     certifier_pubkey = "02cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17"
@@ -371,8 +372,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "deadbeef" * 8 + ".1",
             "signature": "test_signature_1",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         {
             "userId": user_id,
@@ -382,8 +383,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "beefdead" * 8 + ".2",
             "signature": "test_signature_2",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         {
             "userId": user_id,
@@ -393,8 +394,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "feeddead" * 8 + ".3",
             "signature": "test_signature_3",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         {
             "userId": user_id,
@@ -404,8 +405,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": certifier_pubkey,
             "revocationOutpoint": "deedbeef" * 8 + ".4",
             "signature": "test_signature_4",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
         # 1 certificate with different certifier (for multiple certifiers test)
         {
@@ -416,8 +417,8 @@ def _seed_certificate_data(storage: StorageProvider, user_id: int) -> None:
             "certifier": "03cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17",  # Different certifier
             "revocationOutpoint": "beefdeed" * 8 + ".5",
             "signature": "test_signature_5",
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         },
     ]
 

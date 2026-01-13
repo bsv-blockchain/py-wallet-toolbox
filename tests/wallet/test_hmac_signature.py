@@ -6,6 +6,7 @@ Reference: wallet-toolbox/src/Wallet.ts
 """
 
 import pytest
+
 from bsv_wallet_toolbox import Wallet
 
 
@@ -115,7 +116,7 @@ class TestWalletCreateHmac:
         Then: Handles unicode correctly
         """
         # Given
-        unicode_data = "Hello 世界 🌍".encode("utf-8")
+        unicode_data = "Hello 世界 🌍".encode()
         args = {"data": unicode_data, "protocolID": [0, "test"], "keyID": "hmac_key_1"}
 
         # When

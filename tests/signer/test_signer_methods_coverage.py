@@ -6,8 +6,7 @@ This module tests transaction signing operations and wallet signing capabilities
 from unittest.mock import Mock, patch
 
 import pytest
-from bsv.script import Script
-from bsv.transaction import Beef, Transaction, TransactionInput, TransactionOutput
+from bsv.transaction import Beef, Transaction
 
 from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 from bsv_wallet_toolbox.signer.methods import (

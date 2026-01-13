@@ -9,12 +9,11 @@ Reference: go-wallet-toolbox/pkg/internal/assembler/create_action_tx_assembler.g
 from dataclasses import dataclass, field
 from typing import Any
 
-from bsv.keys import PrivateKey
 from bsv.script import P2PKH, Script
 from bsv.transaction import Transaction, TransactionInput, TransactionOutput
-from bsv.transaction.beef import Beef, parse_beef, new_beef_from_bytes
+from bsv.transaction.beef import Beef, new_beef_from_bytes
 
-from bsv_wallet_toolbox.brc29 import KeyID, lock_for_counterparty, unlock
+from bsv_wallet_toolbox.brc29 import KeyID, unlock
 
 
 @dataclass
@@ -120,7 +119,7 @@ class StorageCreateActionResult:
         elif isinstance(input_beef_data, str):
             input_beef = bytes.fromhex(input_beef_data)
         else:
-            input_beef = bytes()
+            input_beef = b""
 
         return cls(
             inputs=inputs,
@@ -404,7 +403,6 @@ class CreateActionTransactionAssembler:
         Change outputs are locked to ourselves using BRC-29 with SELF counterparty.
         """
         from bsv.wallet import Counterparty, CounterpartyType, Protocol
-        from bsv.script import P2PKH
 
         # For change outputs, use transaction-level derivation_prefix (shared by all change outputs in this tx)
         # and output-level derivation_suffix (unique per change output)

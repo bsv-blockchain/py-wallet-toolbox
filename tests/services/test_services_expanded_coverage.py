@@ -3,12 +3,12 @@
 This module adds comprehensive tests for service coordination and provider methods.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
+from bsv_wallet_toolbox.services.wallet_services import WalletServices
 from tests.services.conftest import MockWalletServices
-from bsv_wallet_toolbox.services.wallet_services import WalletServices, Chain
 
 
 class TestWalletServicesInitialization:

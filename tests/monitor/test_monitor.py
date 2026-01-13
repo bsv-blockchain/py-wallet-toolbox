@@ -23,7 +23,6 @@ try:
         TaskReviewStatus,
         TaskSendWaiting,
     )
-
     from bsv_wallet_toolbox.storage.entities import ProvenTxReq
 
     IMPORTS_AVAILABLE = True

@@ -6,13 +6,12 @@ according to the BRC-29 specification.
 Reference: go-wallet-toolbox/pkg/brc29/brc29_template.go
 """
 
-from typing import Any
 
 from bsv.script import P2PKH, Script
 from bsv.transaction import Transaction
 
 from .types import CounterpartyPrivateKey, CounterpartyPublicKey, KeyID
-from .utils import derive_recipient_private_key, to_identity_key, to_key_deriver
+from .utils import derive_recipient_private_key
 
 
 def lock_for_counterparty(

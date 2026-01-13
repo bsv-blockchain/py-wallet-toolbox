@@ -3,8 +3,8 @@
 This module tests storage-level operations for transaction management.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock, patch
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -1413,9 +1413,8 @@ class TestGetBeefForTransaction:
         with patch(
             "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
             side_effect=AttributeError("storage missing"),
-        ) as mock_impl:
-            with pytest.raises(AttributeError, match="storage missing"):
-                get_beef_for_transaction(None, self.VALID_TXID)
+        ) as mock_impl, pytest.raises(AttributeError, match="storage missing"):
+            get_beef_for_transaction(None, self.VALID_TXID)
         mock_impl.assert_called_once_with(None, {}, self.VALID_TXID, None)
 
     def test_get_beef_for_transaction_missing_txid(self) -> None:
@@ -1489,9 +1488,8 @@ class TestGetBeefForTransaction:
         with patch(
             "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
             side_effect=WalletError("BEEF unavailable"),
-        ) as mock_impl:
-            with pytest.raises(WalletError, match="BEEF unavailable"):
-                get_beef_for_transaction(storage, self.VALID_TXID)
+        ) as mock_impl, pytest.raises(WalletError, match="BEEF unavailable"):
+            get_beef_for_transaction(storage, self.VALID_TXID)
         mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
 
     def test_get_beef_for_transaction_merge_beef(self) -> None:
@@ -1573,7 +1571,7 @@ class TestReviewStatus:
         """Test review_status with missing storage."""
         # The function doesn't validate storage, it just tries to call it
         # which raises AttributeError when storage is None
-        args = {"agedLimit": datetime.now(timezone.utc)}
+        args = {"agedLimit": datetime.now(UTC)}
         with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'review_status'"):
             review_status(None, args)
 
@@ -1581,7 +1579,7 @@ class TestReviewStatus:
         """Test review_status with missing userId."""
         storage = Mock()
         storage.review_status = Mock(side_effect=WalletError("userId is required"))
-        args = {"agedLimit": datetime.now(timezone.utc)}
+        args = {"agedLimit": datetime.now(UTC)}
         with pytest.raises(WalletError, match="userId is required"):
             review_status(storage, args)
 

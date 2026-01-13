@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -32,9 +30,10 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
         2. Serialize result to wire format
         3. Wire serialization works (ABI framework test)
         """
+        from bsv.keys import PrivateKey
+
         from bsv_wallet_toolbox.abi import serialize_response
         from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
-        from bsv.keys import PrivateKey
 
         # Create a privileged key manager for testing
         privileged_key = PrivateKey()  # Generate a random key for testing
@@ -63,7 +62,7 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
         assert isinstance(result[proof_key], list)
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}

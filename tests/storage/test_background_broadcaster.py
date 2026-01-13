@@ -5,7 +5,7 @@ This module provides comprehensive test coverage for the BackgroundBroadcaster c
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -232,7 +232,7 @@ class TestBackgroundBroadcaster:
         # Stop with short timeout should cancel the task
         with patch("bsv_wallet_toolbox.storage.background_broadcaster.logger") as mock_logger:
             # Override wait_for timeout to be short
-            with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
+            with patch("asyncio.wait_for", side_effect=TimeoutError()):
                 await bb.stop()
                 mock_logger.warning.assert_called()
 

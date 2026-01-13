@@ -7,7 +7,6 @@ Reference: wallet-toolbox/test/Wallet/get/getKnownTxids.test.ts
 Note: All tests are currently skipped as the get_known_txids API is not yet implemented.
 """
 
-import pytest
 
 from bsv_wallet_toolbox import Wallet
 

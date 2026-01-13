@@ -6,7 +6,6 @@ Go wdk.ChainTracker interface.
 Reference: go-wallet-toolbox/pkg/wdk/services.interface.go
 """
 
-from typing import Optional, Dict, Any
 
 from ..wallet_services import Chain
 
@@ -96,4 +95,3 @@ class ChaintracksChainTracker:
     def destroy(self) -> None:
         """Clean up resources."""
         # No resources to clean up in test implementation
-        pass

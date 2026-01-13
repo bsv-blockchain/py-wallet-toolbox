@@ -6,15 +6,13 @@ This module provides comprehensive tests for configuration and logging utilities
 import logging
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import patch
 
 try:
     from bsv_wallet_toolbox.utils.config import (
-        load_config,
         configure_logger,
         create_action_tx_assembler,
+        load_config,
     )
 
     IMPORT_SUCCESS = True

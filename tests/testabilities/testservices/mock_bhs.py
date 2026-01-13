@@ -6,10 +6,9 @@ specific merkle root verification responses.
 Reference: go-wallet-toolbox/pkg/internal/testabilities/testservices/
 """
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 from threading import Lock
-
+from typing import Any
 
 # Merkle root verification status constants
 BHSMerkleRootConfirmed = "confirmed"

@@ -4,7 +4,6 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/models/height_range.go
 """
 
 from __future__ import annotations
-from typing import List, Optional
 
 
 class HeightRange:
@@ -69,7 +68,7 @@ class HeightRange:
         return cls(is_empty=True)
 
     @classmethod
-    def new_height_range_from_block_headers(cls, headers: List[dict]) -> HeightRange:
+    def new_height_range_from_block_headers(cls, headers: list[dict]) -> HeightRange:
         """Create HeightRange from list of block headers.
 
         Args:

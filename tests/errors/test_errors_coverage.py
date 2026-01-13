@@ -4,18 +4,19 @@ This module tests custom error classes and error handling utilities.
 """
 
 import pytest
+
 from bsv_wallet_toolbox.errors import (
-    WalletError,
-    ValidationError,
     ConfigurationError,
-    StateError,
-    OperationError,
     FormatError,
-    InvalidParameterError,
     InsufficientFundsError,
+    InvalidParameterError,
+    OperationError,
+    ReviewActionsError,
+    StateError,
     TransactionBroadcastError,
     TransactionSizeError,
-    ReviewActionsError,
+    ValidationError,
+    WalletError,
 )
 
 

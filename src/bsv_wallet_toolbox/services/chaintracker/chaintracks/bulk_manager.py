@@ -6,13 +6,11 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/bulk_manager.go
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple, Callable
-import asyncio
+from typing import Any
 
-from .bulk_ingestor_interface import NamedBulkIngestor, BulkHeaderMinimumInfo
-from .models import HeightRanges
 from ...wallet_services import Chain
-
+from .bulk_ingestor_interface import NamedBulkIngestor
+from .models import HeightRanges
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 class BulkManager:
     """Manages bulk header synchronization from multiple sources."""
 
-    def __init__(self, chain: Chain, bulk_ingestors: List[NamedBulkIngestor]):
+    def __init__(self, chain: Chain, bulk_ingestors: list[NamedBulkIngestor]):
         """Initialize bulk manager.
 
         Args:
@@ -32,7 +30,7 @@ class BulkManager:
 
         logger.info(f"BulkManager initialized with {len(bulk_ingestors)} ingestors for {chain}")
 
-    def get_height_range(self) -> Optional[Any]:
+    def get_height_range(self) -> Any | None:
         """Get the height range covered by bulk storage.
 
         Returns:
@@ -53,7 +51,7 @@ class BulkManager:
         # TODO: Implement bulk sync logic
         logger.debug("Bulk sync requested but not yet implemented")
 
-    async def find_header_for_height(self, height: int) -> Optional[Dict[str, Any]]:
+    async def find_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Find header for specific height from bulk storage.
 
         Args:
@@ -65,7 +63,7 @@ class BulkManager:
         # TODO: Implement bulk header lookup
         return None
 
-    def files_info(self) -> Dict[str, Any]:
+    def files_info(self) -> dict[str, Any]:
         """Get information about bulk files.
 
         Returns:
@@ -74,7 +72,7 @@ class BulkManager:
         # TODO: Implement bulk files info
         return {"rootFolder": "", "jsonFilename": "", "headersPerFile": 100000, "files": []}
 
-    def get_file_data_by_index(self, index: int) -> Optional[Any]:
+    def get_file_data_by_index(self, index: int) -> Any | None:
         """Get bulk file data by index.
 
         Args:
@@ -86,7 +84,7 @@ class BulkManager:
         # TODO: Implement file data retrieval
         return None
 
-    async def migrate_from_live_headers(self, headers: List[Any]) -> None:
+    async def migrate_from_live_headers(self, headers: list[Any]) -> None:
         """Migrate live headers to bulk storage.
 
         Args:
@@ -95,7 +93,7 @@ class BulkManager:
         # TODO: Implement live to bulk migration
         logger.debug(f"Live to bulk migration requested for {len(headers)} headers")
 
-    def last_header(self) -> Tuple[Optional[Dict[str, Any]], Optional[Any]]:
+    def last_header(self) -> tuple[dict[str, Any] | None, Any | None]:
         """Get the last header from bulk storage.
 
         Returns:
@@ -106,7 +104,7 @@ class BulkManager:
 
     async def get_gap_headers_as_live(
         self, present_height: int, live_range: Any, recursion_limit: int
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get gap headers that need to be filled between bulk and live.
 
         Args:

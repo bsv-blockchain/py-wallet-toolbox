@@ -5,9 +5,8 @@ This module tests WhatsOnChain API integration for header retrieval.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/Ingest/__tests/WhatsOnChainServices.test.ts
 """
 
-import json
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+import json
 
 import pytest
 
@@ -489,8 +488,9 @@ class TestServicesErrorHandling:
         Then: Uses environment variables appropriately
         """
         try:
-            from bsv_wallet_toolbox.services import Services
             import os
+
+            from bsv_wallet_toolbox.services import Services
 
             # Test with environment variables
             original_env = dict(os.environ)

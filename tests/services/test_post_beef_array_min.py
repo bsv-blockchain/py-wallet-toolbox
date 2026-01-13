@@ -5,11 +5,11 @@ and validation scenarios for array-based BEEF posting.
 Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
 """
 
-import pytest
-from unittest.mock import patch
 
-from bsv_wallet_toolbox.services import Services
+import pytest
+
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.services import Services
 
 
 def test_post_beef_array_minimal() -> None:

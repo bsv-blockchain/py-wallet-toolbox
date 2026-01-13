@@ -6,7 +6,6 @@ Reference: wallet-toolbox/src/Wallet.ts
 """
 
 import pytest
-
 from bsv.keys import PrivateKey
 from bsv.overlay_tools import LookupResolver
 from bsv.wallet import KeyDeriver

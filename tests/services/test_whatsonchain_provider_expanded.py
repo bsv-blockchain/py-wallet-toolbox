@@ -373,7 +373,7 @@ class TestWhatsOnChainErrorHandling:
             result = await provider.subscribe_headers(mock_listener)
 
             assert isinstance(result, str)
-            assert "header_sub_123" == result
+            assert result == "header_sub_123"
 
     @pytest.mark.asyncio
     async def test_unsubscribe_returns_success_status(self, provider: WhatsOnChain) -> None:

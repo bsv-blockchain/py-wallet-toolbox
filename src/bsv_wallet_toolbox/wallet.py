@@ -4,18 +4,16 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import logging
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
-from bsv.keys import PrivateKey, PublicKey
+from bsv.keys import PublicKey
 from bsv.overlay_tools import LookupResolver, LookupResolverConfig
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
-from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol, ProtoWallet
+from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, ProtoWallet
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
     CreateSignatureResult,
@@ -41,16 +39,22 @@ from .sdk.types import (
 from .services import WalletServices
 from .signer.methods import (
     acquire_direct_certificate,
-    create_action as signer_create_action,
-    internalize_action as signer_internalize_action,
     prove_certificate,
+)
+from .signer.methods import (
+    create_action as signer_create_action,
+)
+from .signer.methods import (
+    internalize_action as signer_internalize_action,
+)
+from .signer.methods import (
     sign_action as signer_sign_action,
 )
 from .storage.methods.generate_change import MAX_POSSIBLE_SATOSHIS
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
 from .utils.random_utils import random_bytes_base64
-from .utils.ttl_cache import TTLCache
 from .utils.trace import trace
+from .utils.ttl_cache import TTLCache
 from .utils.validation import (
     validate_abort_action_args,
     validate_acquire_certificate_args,
@@ -64,7 +68,6 @@ from .utils.validation import (
     validate_prove_certificate_args,
     validate_relinquish_certificate_args,
     validate_sign_action_args,
-    validate_wallet_constructor_args,
 )
 
 if TYPE_CHECKING:
@@ -257,7 +260,7 @@ class Wallet:
         # Initialize settings manager (TS parity)
         self.settings_manager: WalletSettingsManager = settings_manager or WalletSettingsManager(self)
 
-        self.monitor: "Monitor | None" = monitor
+        self.monitor: Monitor | None = monitor
 
         # Initialize BEEF and Wave 4 attributes
         # TS: this.beef = new BeefParty([this.userParty])
@@ -634,7 +637,7 @@ class Wallet:
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
             if isinstance(protocol_id, str):
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+                raise TypeError("protocolID must be a tuple/list of [int, str], got str")
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -688,7 +691,7 @@ class Wallet:
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
             if isinstance(protocol_id, str):
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+                raise TypeError("protocolID must be a tuple/list of [int, str], got str")
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -742,7 +745,7 @@ class Wallet:
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
             if isinstance(protocol_id, str):
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+                raise TypeError("protocolID must be a tuple/list of [int, str], got str")
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -1845,7 +1848,7 @@ class Wallet:
         if ensure_default_basket and self.storage is not None and hasattr(self.storage, "find_or_insert_output_basket"):
             try:
                 self.storage.find_or_insert_output_basket(int(auth["userId"]), "default")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # Best-effort: some storages may not implement this helper; other flows create it on demand.
                 pass
         return auth
@@ -2509,12 +2512,13 @@ class Wallet:
             InvalidParameterError: If args are invalid
             RuntimeError: If certifier fails or returns invalid certificate
         """
-        from bsv.auth.master_certificate import MasterCertificate
-        from bsv.auth.certificate import Certificate
-        from bsv.keys import PublicKey
         import base64
         import json
         import os
+
+        from bsv.auth.certificate import Certificate
+        from bsv.auth.master_certificate import MasterCertificate
+        from bsv.keys import PublicKey
 
         # Validate certifierUrl is present for issuance protocol
         certifier_url = args.get("certifierUrl")
@@ -3699,7 +3703,7 @@ class Wallet:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/WalletStorageManager.ts (syncToWriter)
         """
-        from .storage.wallet_storage_manager import WalletStorageManager, AuthId
+        from .storage.wallet_storage_manager import AuthId, WalletStorageManager
 
         # Validate args
         if not isinstance(args, dict):

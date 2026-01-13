@@ -47,7 +47,6 @@ import threading
 from collections.abc import Callable
 from time import time
 from typing import Any
-from urllib.parse import urlparse
 
 from bsv.chaintracker import ChainTracker
 from bsv.transaction import Transaction
@@ -610,13 +609,13 @@ class Services(WalletServices):
         if chaintracks:
             try:
                 header = await chaintracks.find_header_for_block_hash(block_hash)
-            except Exception:  # noqa: PERF203
+            except Exception:
                 header = None
 
         if not header:
             try:
                 header = await self.whatsonchain.find_header_for_block_hash(block_hash)
-            except Exception:  # noqa: PERF203
+            except Exception:
                 header = None
 
         if not header:

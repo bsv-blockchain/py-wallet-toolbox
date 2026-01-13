@@ -11,8 +11,8 @@ from typing import Any, TypedDict
 
 from bsv.auth.verifiable_certificate import VerifiableCertificate as BsvVerifiableCertificate
 from bsv.overlay_tools.lookup_resolver import LookupError, LookupQuestion
-from bsv.transaction.pushdrop import PushDrop
 from bsv.transaction import Transaction
+from bsv.transaction.pushdrop import PushDrop
 from bsv.utils import to_utf8
 
 

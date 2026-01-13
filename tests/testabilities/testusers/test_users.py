@@ -49,8 +49,8 @@ class User:
         Returns:
             KeyDeriver: SDK KeyDeriver instance
         """
-        from bsv.wallet import KeyDeriver
         from bsv.keys import PrivateKey
+        from bsv.wallet import KeyDeriver
 
         private_key = PrivateKey.from_hex(self.priv_key)
         return KeyDeriver(private_key)

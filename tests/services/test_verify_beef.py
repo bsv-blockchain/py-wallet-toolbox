@@ -5,14 +5,16 @@ This module tests BEEF verification functionality.
 Reference: wallet-toolbox/src/services/__tests/verifyBeef.test.ts
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
+
+import pytest
 
 try:
     from bsv.transaction import Beef
-    from bsv_wallet_toolbox.services import Services
+
     from bsv_wallet_toolbox.errors import InvalidParameterError
+    from bsv_wallet_toolbox.services import Services
     from tests.test_utils import TestUtils
 
     IMPORTS_AVAILABLE = True
@@ -204,7 +206,7 @@ class TestVerifyBeef:
         # Mock chaintracker to timeout
         async def mock_timeout(*args, **kwargs):
             await asyncio.sleep(0.1)
-            raise asyncio.TimeoutError("Network timeout")
+            raise TimeoutError("Network timeout")
 
         mock_chaintracker.get_merkle_path = mock_timeout
 

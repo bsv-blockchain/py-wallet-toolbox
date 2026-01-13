@@ -3,13 +3,13 @@
 Tests service orchestration with mocked providers.
 """
 
-import asyncio
+
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
 
-from bsv_wallet_toolbox.services.services import Services, create_default_options
 from bsv_wallet_toolbox.errors.wallet_errors import InvalidParameterError
+from bsv_wallet_toolbox.services.services import Services, create_default_options
 
 
 @pytest.fixture

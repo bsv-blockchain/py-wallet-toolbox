@@ -5,12 +5,13 @@ This module tests transaction status functionality.
 Reference: wallet-toolbox/src/services/Services.ts#getTransactionStatus
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 
 try:
-    from bsv_wallet_toolbox.services import Services
     from bsv_wallet_toolbox.errors import InvalidParameterError
+    from bsv_wallet_toolbox.services import Services
 
     IMPORTS_AVAILABLE = True
 except ImportError:

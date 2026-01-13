@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from bsv_wallet_toolbox.rpc.storage_server import StorageServer, JsonRpcError
+from bsv_wallet_toolbox.rpc.storage_server import JsonRpcError, StorageServer
 
 
 class TestStorageServerInitialization:

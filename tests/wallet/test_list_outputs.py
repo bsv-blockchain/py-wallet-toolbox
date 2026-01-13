@@ -550,7 +550,7 @@ class TestWalletListOutputs:
 
         # Each output should have ALL the specified tags (if any match)
         for output in result["outputs"]:
-            if "tags" in output and output["tags"]:
+            if output.get("tags"):
                 # If output has tags, it should contain all specified tags
                 for required_tag in args["tags"]:
                     assert required_tag in output["tags"]
@@ -573,7 +573,7 @@ class TestWalletListOutputs:
 
         # Each output should have at least ONE of the specified tags (if any match)
         for output in result["outputs"]:
-            if "tags" in output and output["tags"]:
+            if output.get("tags"):
                 # If output has tags, at least one should match the specified tags
                 has_match = any(tag in output["tags"] for tag in args["tags"])
                 assert has_match

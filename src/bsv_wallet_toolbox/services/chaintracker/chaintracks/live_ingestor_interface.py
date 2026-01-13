@@ -6,7 +6,8 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/models/live_ingestor.go
 """
 
 from __future__ import annotations
-from typing import Optional, Dict, Any, Protocol
+
+from typing import Any, Protocol
 
 
 class LiveIngestor(Protocol):
@@ -27,7 +28,7 @@ class LiveIngestor(Protocol):
         """Stop listening for new block headers."""
         ...
 
-    def get_header_by_hash(self, block_hash: str) -> Optional[Dict[str, Any]]:
+    def get_header_by_hash(self, block_hash: str) -> dict[str, Any] | None:
         """Get block header by hash.
 
         Args:

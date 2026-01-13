@@ -7,8 +7,8 @@ Reference: go-wallet-toolbox/pkg/storage/internal/sync/chunk_processor.go
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class SyncChunkProcessor:
     users, baskets, transactions, outputs, labels, tags, and certificates.
     """
 
-    def __init__(self, provider: "StorageProvider", chunk: Dict[str, Any], args: Dict[str, Any]):
+    def __init__(self, provider: "StorageProvider", chunk: dict[str, Any], args: dict[str, Any]):
         """Initialize sync chunk processor.
 
         Args:
@@ -34,7 +34,7 @@ class SyncChunkProcessor:
         self.logger = logging.getLogger(f"{__name__}.SyncChunkProcessor")
         self.inserts_count = 0
         self.updates_count = 0
-        self.errors: List[str] = []
+        self.errors: list[str] = []
 
         # Validate required fields
         self._validate_chunk()
@@ -51,7 +51,7 @@ class SyncChunkProcessor:
         if from_key != self.args.get("fromStorageIdentityKey"):
             raise ValueError(f"Storage key mismatch: {from_key} != {self.args.get('fromStorageIdentityKey')}")
 
-    def process_chunk(self) -> Dict[str, Any]:
+    def process_chunk(self) -> dict[str, Any]:
         """Process the entire sync chunk.
 
         Returns:
@@ -141,7 +141,7 @@ class SyncChunkProcessor:
         ]
 
         for field in entity_fields:
-            if field in self.chunk and self.chunk[field]:
+            if self.chunk.get(field):
                 return False
 
         return True

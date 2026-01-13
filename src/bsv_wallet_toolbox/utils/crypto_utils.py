@@ -8,7 +8,6 @@ Reference: wallet-toolbox/src/CWIStyleWalletManager.ts crypto operations
 """
 
 import hashlib
-from typing import Any
 
 # PBKDF2 rounds used in CWI-style wallet authentication
 PBKDF2_NUM_ROUNDS = 7777

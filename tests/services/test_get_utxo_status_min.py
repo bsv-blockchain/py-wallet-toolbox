@@ -7,8 +7,8 @@ Reference: wallet-toolbox/src/services/__tests/getUtxoStatus.test.ts
 
 import pytest
 
-from bsv_wallet_toolbox.services import Services
 from bsv_wallet_toolbox.errors import InvalidParameterError
+from bsv_wallet_toolbox.services import Services
 
 
 def test_get_utxo_status_minimal_normal() -> None:

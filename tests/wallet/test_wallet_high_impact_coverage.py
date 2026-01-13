@@ -17,6 +17,7 @@ import pytest
 try:
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True
@@ -403,8 +404,8 @@ class TestWalletUtilityFunctions:
 
     def test_as_bytes_invalid_type(self):
         """Test _as_bytes with invalid type."""
-        from bsv_wallet_toolbox.wallet import _as_bytes
         from bsv_wallet_toolbox.errors import InvalidParameterError
+        from bsv_wallet_toolbox.wallet import _as_bytes
 
         with pytest.raises(InvalidParameterError):
             _as_bytes(123, "test_field")  # int is invalid

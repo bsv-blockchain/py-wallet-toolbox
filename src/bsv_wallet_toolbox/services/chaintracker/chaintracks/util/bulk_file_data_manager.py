@@ -5,7 +5,6 @@ Manages bulk loading and caching of block headers from CDN sources.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
 """
 
-from typing import Any
 
 from .height_range import HeightRange
 
@@ -161,7 +160,6 @@ class BulkFileDataManager:
         """
         # In production, this would fetch from the URL
         # For now, this is a no-op stub
-        pass
 
     async def load_data(self, file_index: int) -> bytes | None:
         """Load data for a specific file.

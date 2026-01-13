@@ -5,8 +5,6 @@ This module adds coverage tests for the main Wallet class to augment existing te
 
 from unittest.mock import Mock
 
-import pytest
-
 
 class TestWalletInitializationEdgeCases:
     """Test wallet initialization edge cases."""
@@ -25,9 +23,10 @@ class TestWalletInitializationEdgeCases:
 
     def test_wallet_with_custom_chain(self) -> None:
         """Test creating wallet with custom chain."""
-        from bsv_wallet_toolbox.wallet import Wallet
         from bsv.keys import PrivateKey
         from bsv.wallet import KeyDeriver
+
+        from bsv_wallet_toolbox.wallet import Wallet
 
         try:
             # Create wallet with key_deriver as required

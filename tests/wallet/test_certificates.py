@@ -5,7 +5,6 @@ These methods handle certificate acquisition, proving, relinquishing, and discov
 Reference: wallet-toolbox/src/Wallet.ts
 """
 
-from typing import Never
 
 import pytest
 
@@ -528,11 +527,11 @@ class TestWalletAcquireCertificate:
         """
         # Given
         # Create a wallet with privileged key manager
-        from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
-        from bsv_wallet_toolbox.wallet import Wallet
-
         # Create privileged key manager with test private key
         from bsv.keys import PrivateKey
+
+        from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
+        from bsv_wallet_toolbox.wallet import Wallet
 
         test_private_key = PrivateKey(0x42)
         privileged_key_manager = PrivilegedKeyManager(test_private_key)
@@ -625,9 +624,10 @@ def _make_sample_cert(subject: str) -> tuple:
 def _create_proto_wallet(certifier: str):
     """Create a ProtoWallet for certifier."""
     # For testing, create a wallet with a test key deriver
-    from bsv_wallet_toolbox import Wallet
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
+    from bsv_wallet_toolbox import Wallet
 
     # Create a test private key
     test_private_key = PrivateKey(bytes.fromhex("11" * 32))

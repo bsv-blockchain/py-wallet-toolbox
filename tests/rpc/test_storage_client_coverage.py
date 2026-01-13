@@ -4,12 +4,12 @@ This module tests the JSON-RPC 2.0 client implementation for remote storage prov
 Equivalent to TypeScript: ts-wallet-toolbox/src/storage/remoting/StorageClient.ts
 """
 
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import requests
 
-from bsv_wallet_toolbox.rpc.storage_client import StorageClient, JsonRpcError
+from bsv_wallet_toolbox.rpc.storage_client import JsonRpcError, StorageClient
 
 
 class TestJsonRpcError:

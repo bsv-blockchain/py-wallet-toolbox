@@ -9,11 +9,11 @@ Reference: go-wallet-toolbox/pkg/storage/crud/
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any, Generic, TypeVar
 
 from .provider import StorageProvider
-
 
 # Generic types for fluent interface
 T = TypeVar("T")
@@ -209,7 +209,7 @@ class EntityAccessor(ABC):
         self.paging: dict[str, Any] | None = None
 
     @abstractmethod
-    def read(self) -> "EntityReader":
+    def read(self) -> EntityReader:
         """Return a reader for building queries."""
         ...
 
@@ -238,7 +238,7 @@ class EntityReader(ABC):
         ...
 
     @abstractmethod
-    def paged(self, limit: int, offset: int, desc: bool = False) -> "EntityReader":
+    def paged(self, limit: int, offset: int, desc: bool = False) -> EntityReader:
         """Apply pagination to query."""
         ...
 

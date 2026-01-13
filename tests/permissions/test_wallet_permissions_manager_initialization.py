@@ -6,13 +6,11 @@ of WalletPermissionsManager.
 Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.initialization.test.ts
 """
 
-import asyncio
 from unittest.mock import AsyncMock, Mock
-
-import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionsManagerConfig, WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True

@@ -19,9 +19,9 @@ Reference:
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from bsv.transaction import Transaction
@@ -383,10 +383,10 @@ def generate_change(
 
     for change in selected_change:
         # Create lock record for this output
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         # Calculate expiration: default 1 hour lock timeout
         lock_timeout_seconds = 3600  # 1 hour
-        locked_until = (datetime.now(timezone.utc) + timedelta(seconds=lock_timeout_seconds)).isoformat()
+        locked_until = (datetime.now(UTC) + timedelta(seconds=lock_timeout_seconds)).isoformat()
 
         output_lock_record = {
             "txid": change.get("txid") if hasattr(change, "get") else getattr(change, "txid", ""),
@@ -1616,7 +1616,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
             {"txid": txid, "userId": user_id},
             {
                 "status": post_status,
-                "lastUpdate": datetime.now(timezone.utc).isoformat(),
+                "lastUpdate": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -1625,7 +1625,7 @@ def attempt_to_post_reqs_to_network(storage: Any, auth: dict[str, Any], txids: l
         result["results"][txid] = {
             "status": "success",
             "message": "Posted to network",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     return result
@@ -1692,7 +1692,7 @@ def review_status(storage: Any, auth: dict[str, Any], aged_limit: Any) -> dict[s
                     {"txid": txid, "userId": user_id},
                     {
                         "status": blockchain_status,
-                        "updatedAt": datetime.now(timezone.utc).isoformat(),
+                        "updatedAt": datetime.now(UTC).isoformat(),
                     },
                 )
         except Exception:
@@ -1825,7 +1825,7 @@ def purge_data(storage: Any, params: dict[str, Any]) -> dict[str, Any]:
     # Step 5: Delete old request records
     # Filter by retention period (recommend 7 days)
     retention_days = 7  # Default retention period
-    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
+    cutoff_date = (datetime.now(UTC) - timedelta(days=retention_days)).isoformat()
 
     deleted_reqs = (
         storage.delete("ProvenTxReq", {"status": {"$in": ["sent", "complete"]}, "createdAt": {"$lt": cutoff_date}}) or 0
@@ -1865,21 +1865,22 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
     Reference:
         toolbox/ts-wallet-toolbox/src/storage/methods/getSyncChunk.ts
     """
-    from sqlalchemy import select, func
+    from sqlalchemy import select
+
     from .models import (
-        User,
-        Transaction,
-        Output,
-        OutputBasket,
-        TxLabel,
-        TxLabelMap,
-        OutputTag,
-        OutputTagMap,
         Certificate,
         CertificateField,
+        Commission,
+        Output,
+        OutputBasket,
+        OutputTag,
+        OutputTagMap,
         ProvenTx,
         ProvenTxReq,
-        Commission,
+        Transaction,
+        TxLabel,
+        TxLabelMap,
+        User,
     )
 
     if not storage:

@@ -15,18 +15,18 @@ import pytest
 
 try:
     from bsv_wallet_toolbox.storage.crud import (
-        StringCondition,
-        NumericCondition,
         BoolCondition,
-        TimeCondition,
-        OutputAccessor,
-        OutputReader,
-        TxNoteAccessor,
-        TxNoteReader,
-        KnownTxAccessor,
-        KnownTxReader,
         CertifierAccessor,
         CertifierReader,
+        KnownTxAccessor,
+        KnownTxReader,
+        NumericCondition,
+        OutputAccessor,
+        OutputReader,
+        StringCondition,
+        TimeCondition,
+        TxNoteAccessor,
+        TxNoteReader,
     )
     from bsv_wallet_toolbox.storage.provider import StorageProvider
 
@@ -395,7 +395,6 @@ class TestTimeCondition:
 
     def test_time_condition_like_raises(self):
         """Test TimeCondition.like method raises NotImplementedError."""
-        from datetime import datetime
 
         parent = Mock()
         setter_calls = []
@@ -681,7 +680,6 @@ class TestCertifierReader:
         reader = CertifierReader(mock_provider)
 
         # Mock the Comparable object that gets set
-        from unittest.mock import Mock
         from bsv_wallet_toolbox.storage.specifications import Comparable
 
         mock_comparable = Comparable(operator="equals", value="certifier_a")

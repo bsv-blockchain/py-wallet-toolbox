@@ -75,10 +75,10 @@ def valid_bulk_header_files_by_file_hash():
     Returns:
         Dict mapping file hashes (base64 strings) to file info objects
     """
-    from typing import Dict, Any
+    from typing import Any, Dict
 
     if not hasattr(valid_bulk_header_files_by_file_hash, "_cache"):
-        cache: Dict[str, Any] = {}
+        cache: dict[str, Any] = {}
         for vbf in _valid_bulk_header_files:
             if vbf.get("fileHash"):
                 cache[vbf["fileHash"]] = vbf
@@ -146,20 +146,20 @@ _valid_bulk_header_files = [
 
 
 __all__ = [
-    "block_hash",
-    "deserialize_base_block_header",
-    "deserialize_base_block_headers",
-    "deserialize_block_header",
-    "genesis_buffer",
-    "serialize_base_block_header",
-    "valid_bulk_header_files_by_file_hash",
     "BlockHeader",
     "BulkFileDataManager",
     "BulkFileDataManagerOptions",
     "BulkFilesReaderStorage",
     "ChaintracksFetch",
     "ChaintracksFs",
-    "deserialize_block_headers",
     "HeightRange",
     "SingleWriterMultiReaderLock",
+    "block_hash",
+    "deserialize_base_block_header",
+    "deserialize_base_block_headers",
+    "deserialize_block_header",
+    "deserialize_block_headers",
+    "genesis_buffer",
+    "serialize_base_block_header",
+    "valid_bulk_header_files_by_file_hash",
 ]

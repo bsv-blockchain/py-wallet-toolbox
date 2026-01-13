@@ -4,13 +4,13 @@ This module provides comprehensive test coverage for the BulkIngestorWOC class,
 focusing on synchronization logic, error handling, and edge cases.
 """
 
-from unittest.mock import AsyncMock, Mock, patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
-from bsv_wallet_toolbox.services.chaintracker.chaintracks.bulk_ingestor_woc import BulkIngestorWOC
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.bulk_ingestor_interface import BulkHeaderMinimumInfo
+from bsv_wallet_toolbox.services.chaintracker.chaintracks.bulk_ingestor_woc import BulkIngestorWOC
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.util.height_range import HeightRange
-from bsv_wallet_toolbox.services.wallet_services import Chain
 
 
 class TestBulkIngestorWOCInitialization:

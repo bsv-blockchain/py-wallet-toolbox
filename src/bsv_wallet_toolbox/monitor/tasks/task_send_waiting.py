@@ -1,7 +1,7 @@
 """TaskSendWaiting implementation."""
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ..wallet_monitor_task import WalletMonitorTask
 
@@ -114,12 +114,11 @@ class TaskSendWaiting(WalletMonitorTask):
                     # Call callback
                     broadcast_result = {"status": "success", "txid": txid}
                     self.monitor.call_on_broadcasted_transaction(broadcast_result)
+                # Format error message to match test expectations
+                elif isinstance(result, dict) and "message" in result:
+                    log_messages.append(f"Broadcast failed {txid}: {result['message']}")
                 else:
-                    # Format error message to match test expectations
-                    if isinstance(result, dict) and "message" in result:
-                        log_messages.append(f"Broadcast failed {txid}: {result['message']}")
-                    else:
-                        log_messages.append(f"Failed to broadcast transaction {txid}: {result}")
+                    log_messages.append(f"Failed to broadcast transaction {txid}: {result}")
 
             except Exception as e:
                 log_messages.append(f"Error broadcasting transaction {txid}: {e!s}")

@@ -8,8 +8,8 @@ References:
 - wallet-toolbox/src/sdk/__test/PrivilegedKeyManager.test.ts
 """
 
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.errors import InvalidParameterError
@@ -346,7 +346,7 @@ class TestWalletDecrypt:
             b"Hello, World!",
             b"",
             b"A" * 1000,
-            "Unicode: 你好世界 🌍".encode("utf-8"),
+            "Unicode: 你好世界 🌍".encode(),
             bytes(range(256)),  # All byte values 0-255
         ]
 

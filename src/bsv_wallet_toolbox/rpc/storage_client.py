@@ -191,7 +191,6 @@ class StorageClient:
     def close(self) -> None:
         """Close resources (no-op for AuthFetch)."""
         # AuthFetch manages its own resources via peer connections
-        pass
 
     def _get_next_id(self) -> int:
         """Generate next request ID (thread-safe).

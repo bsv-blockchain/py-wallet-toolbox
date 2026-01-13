@@ -7,7 +7,8 @@ Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/SingleWrite
 """
 
 import asyncio
-from typing import Any, Awaitable, Callable, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 T = TypeVar("T")
 
