@@ -4,7 +4,6 @@ This module tests Bitcoin address generation and validation.
 """
 
 
-
 class TestAddressGeneration:
     """Test address generation."""
 

@@ -3,7 +3,6 @@
 This module provides comprehensive tests for transaction script offset parsing.
 """
 
-
 try:
     from bsv_wallet_toolbox.utils.parse_tx_script_offsets import (
         _read_varint,

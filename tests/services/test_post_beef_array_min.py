@@ -5,7 +5,6 @@ and validation scenarios for array-based BEEF posting.
 Reference: wallet-toolbox/src/services/__tests/postBeef.test.ts
 """
 
-
 import pytest
 
 from bsv_wallet_toolbox.errors import InvalidParameterError

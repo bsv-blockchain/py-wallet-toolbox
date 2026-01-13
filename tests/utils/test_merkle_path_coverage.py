@@ -4,7 +4,6 @@ This module tests merkle path verification and manipulation.
 """
 
 
-
 class TestMerklePathUtils:
     """Test merkle path utility functions."""
 

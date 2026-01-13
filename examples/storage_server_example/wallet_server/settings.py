@@ -15,7 +15,6 @@ Uses py-middleware package for BSV authentication.
 
 import sys
 from pathlib import Path
-from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -24,23 +23,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # This ensures we use local versions instead of installed packages
 # Try multiple locations where these packages might be
 lib_root = BASE_DIR.parent.parent.parent  # Relative to storage_server_example: ../../.. (py-lib root)
-home_py_lib = Path.home() / 'py-lib'
+home_py_lib = Path.home() / "py-lib"
 
 # Try to find py-sdk and py-middleware in common locations
 possible_sdk_paths = [
-    lib_root / 'py-sdk',  # Relative to storage_server_example: ../../../py-sdk
-    home_py_lib / 'py-sdk',  # Common development location
+    lib_root / "py-sdk",  # Relative to storage_server_example: ../../../py-sdk
+    home_py_lib / "py-sdk",  # Common development location
 ]
 
 possible_middleware_paths = [
-    lib_root / 'py-middleware',  # Relative to storage_server_example: ../../../py-middleware
-    home_py_lib / 'py-middleware',  # Common development location
+    lib_root / "py-middleware",  # Relative to storage_server_example: ../../../py-middleware
+    home_py_lib / "py-middleware",  # Common development location
 ]
 
 # Find and add py-sdk to path
 found_sdk = None
 for path in possible_sdk_paths:
-    if path.exists() and (path / 'bsv').exists():
+    if path.exists() and (path / "bsv").exists():
         found_sdk = path
         sys.path.insert(0, str(path))
         print(f"[SETTINGS] Using local py-sdk from: {path}")
@@ -49,7 +48,7 @@ for path in possible_sdk_paths:
 # Find and add py-middleware to path
 found_middleware = None
 for path in possible_middleware_paths:
-    examples_path = path / 'examples' / 'django_example'
+    examples_path = path / "examples" / "django_example"
     if examples_path.exists():
         found_middleware = path
         sys.path.insert(0, str(path))
@@ -58,27 +57,28 @@ for path in possible_middleware_paths:
 
 # Warn if local dependencies not found (will fall back to installed packages)
 if not found_sdk:
-    print(f"[SETTINGS] WARNING: Local py-sdk not found, will use installed package")
+    print("[SETTINGS] WARNING: Local py-sdk not found, will use installed package")
 if not found_middleware:
-    print(f"[SETTINGS] WARNING: Local py-middleware not found, will use installed package")
+    print("[SETTINGS] WARNING: Local py-middleware not found, will use installed package")
     # Also check if installed as editable (check .pth files or dist-info)
     try:
         import bsv_middleware
+
         middleware_file = Path(bsv_middleware.__file__)
         # For editable installs, the file might be a link or in a src directory
         # Try going up from site-packages to find the source
-        if 'site-packages' in str(middleware_file):
+        if "site-packages" in str(middleware_file):
             # Try to find the source directory
             site_packages = middleware_file.parent.parent
             # Check if there's a .pth file pointing to the source
-            for pth_file in site_packages.glob('*.pth'):
+            for pth_file in site_packages.glob("*.pth"):
                 try:
-                    with open(pth_file, 'r') as f:
+                    with open(pth_file) as f:
                         for line in f:
                             line = line.strip()
-                            if line and not line.startswith('import'):
+                            if line and not line.startswith("import"):
                                 pth_path = Path(line)
-                                if pth_path.exists() and (pth_path / 'examples' / 'django_example').exists():
+                                if pth_path.exists() and (pth_path / "examples" / "django_example").exists():
                                     sys.path.insert(0, str(pth_path))
                                     print(f"[SETTINGS] Using editable py-middleware from: {pth_path}")
                                     found_middleware = pth_path
@@ -93,28 +93,28 @@ if not found_middleware:
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-yavde1#iud62ylvl=-twwg4!(2fyyfpkbea142bbg2ml67vs8l'
+SECRET_KEY = "django-insecure-yavde1#iud62ylvl=-twwg4!(2fyyfpkbea142bbg2ml67vs8l"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 # Allow localhost for development
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # Project apps
-    'wallet_app',
+    "wallet_app",
     # Third-party apps
-    'rest_framework',
+    "rest_framework",
 ]
 
 # =============================================================================
@@ -134,50 +134,49 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     # Django standard middleware
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # ==========================================================================
     # BSV Middleware (py-middleware package)
     # BRC-104 authentication ENABLED (signature formats now compatible)
     # Production middleware from bsv_middleware.django
     # ==========================================================================
-    'bsv_middleware.django.auth_middleware.BSVAuthMiddleware',
+    "bsv_middleware.django.auth_middleware.BSVAuthMiddleware",
     # 'bsv_middleware.django.payment_middleware_complete.BSVPaymentMiddleware',  # Uncomment for payment
 ]
 
-ROOT_URLCONF = 'wallet_server.urls'
+ROOT_URLCONF = "wallet_server.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'wallet_server.wsgi.application'
+WSGI_APPLICATION = "wallet_server.wsgi.application"
 
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'django_admin.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "django_admin.sqlite3",
     }
 }
 
@@ -187,16 +186,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
 
@@ -204,9 +203,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = "UTC"
 
 USE_I18N = True
 
@@ -216,20 +215,20 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # REST Framework configuration
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
     ],
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
     ],
 }
 
@@ -246,86 +245,83 @@ REST_FRAMEWORK = {
 # This avoids circular imports during Django startup
 _server_wallet_instance = None
 
+
 def get_bsv_wallet():
     """Get or create server wallet for BSV middleware."""
     global _server_wallet_instance
     if _server_wallet_instance is None:
         from wallet_app.services import get_server_wallet
+
         _server_wallet_instance = get_server_wallet()
     return _server_wallet_instance
+
 
 # Note: BSV_MIDDLEWARE['WALLET'] will be set by the middleware on first access
 # The middleware checks for callable and calls it if needed
 BSV_MIDDLEWARE = {
     # Required: Wallet instance for authentication
     # Uses get_server_wallet() from wallet_app.services (lazy loaded)
-    'WALLET': None,  # Will be set below after definition
-    'WALLET_GETTER': get_bsv_wallet,  # Callable for lazy initialization
-
+    "WALLET": None,  # Will be set below after definition
+    "WALLET_GETTER": get_bsv_wallet,  # Callable for lazy initialization
     # Allow unauthenticated requests (for development/testing)
     # Set to False in production to require BRC-104 authentication
-    'ALLOW_UNAUTHENTICATED': False,
-
-
+    "ALLOW_UNAUTHENTICATED": False,
     # Certificate requirements for mutual authentication
-    'CERTIFICATE_REQUESTS': None,
-
+    "CERTIFICATE_REQUESTS": None,
     # Callback when certificates are received
-    'ON_CERTIFICATES_RECEIVED': None,
-
+    "ON_CERTIFICATES_RECEIVED": None,
     # Custom session manager (optional)
-    'SESSION_MANAGER': None,
-
+    "SESSION_MANAGER": None,
     # Logging configuration
-    'LOG_LEVEL': 'debug',  # 'debug', 'info', 'warn', 'error'
+    "LOG_LEVEL": "debug",  # 'debug', 'info', 'warn', 'error'
 }
 
 # =============================================================================
 # Django Logging Configuration
 # =============================================================================
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-        'file': {
-            'class': 'logging.FileHandler',
-            'filename': '/tmp/wallet_server_debug.log',
-            'formatter': 'verbose',
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
         },
     },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "file": {
+            "class": "logging.FileHandler",
+            "filename": "/tmp/wallet_server_debug.log",
+            "formatter": "verbose",
+        },
     },
-    'loggers': {
-        'wallet_app': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
+    "root": {
+        "handlers": ["console", "file"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "wallet_app": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
-        'bsv_wallet_toolbox.storage.provider': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
+        "bsv_wallet_toolbox.storage.provider": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
+        "django": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
         },
     },
 }

@@ -5,7 +5,6 @@ Manages bulk loading and caching of block headers from CDN sources.
 Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFileDataManager.ts
 """
 
-
 from .height_range import HeightRange
 
 

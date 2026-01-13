@@ -4,7 +4,6 @@ This module tests various hashing functions used in Bitcoin operations.
 """
 
 
-
 class TestSHA256Hashing:
     """Test SHA256 hashing."""
 

@@ -3,7 +3,6 @@
 This module tests data formatting and conversion utilities.
 """
 
-
 try:
     from bsv_wallet_toolbox.utils.format_utils import Format
 

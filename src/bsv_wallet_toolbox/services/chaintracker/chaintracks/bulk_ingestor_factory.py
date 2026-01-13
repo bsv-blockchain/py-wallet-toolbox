@@ -5,7 +5,6 @@ Provides functions to create configured bulk ingestors for different sources.
 Reference: go-wallet-toolbox/pkg/services/chaintracks/create_ingestors.go
 """
 
-
 from ...wallet_services import Chain
 from .bulk_ingestor_cdn import BulkIngestorCDN
 from .bulk_ingestor_interface import NamedBulkIngestor

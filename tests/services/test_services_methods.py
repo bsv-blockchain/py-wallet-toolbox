@@ -3,7 +3,6 @@
 Tests service orchestration with mocked providers.
 """
 
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

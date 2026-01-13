@@ -4,8 +4,6 @@ This module tests BEEF (BRC-62) encoding/decoding utilities.
 """
 
 
-
-
 class TestBeefUtilities:
     """Test BEEF utility functions."""
 

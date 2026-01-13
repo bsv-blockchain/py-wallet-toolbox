@@ -14,15 +14,16 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path
 from wallet_app import views
 
 urlpatterns = [
     # BRC-104 Authentication endpoint (let py-middleware handle the actual auth)
-    path('.well-known/auth', views.well_known_auth_endpoint, name='well_known_auth'),
+    path(".well-known/auth", views.well_known_auth_endpoint, name="well_known_auth"),
     # JSON-RPC endpoint at root (TypeScript StorageServer parity)
-    path('', views.json_rpc_endpoint, name='json_rpc'),
+    path("", views.json_rpc_endpoint, name="json_rpc"),
     # Admin interface
-    path('admin/', admin.site.urls),
+    path("admin/", admin.site.urls),
 ]

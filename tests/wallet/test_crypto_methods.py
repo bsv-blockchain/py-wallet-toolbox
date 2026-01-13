@@ -8,7 +8,6 @@ References:
 - wallet-toolbox/src/sdk/__test/PrivilegedKeyManager.test.ts
 """
 
-
 import pytest
 
 from bsv_wallet_toolbox import Wallet

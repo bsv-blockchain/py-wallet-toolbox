@@ -5,7 +5,6 @@ This module tests asString and asUint8Array conversion functions.
 Reference: wallet-toolbox/src/utility/__tests/utilityHelpers.noBuffer.test.ts
 """
 
-
 try:
     from bsv_wallet_toolbox.utils import as_string
     from bsv_wallet_toolbox.utils import as_uint8array as as_uint8_array

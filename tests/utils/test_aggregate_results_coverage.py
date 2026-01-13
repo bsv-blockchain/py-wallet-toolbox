@@ -3,7 +3,6 @@
 This module tests result aggregation functionality.
 """
 
-
 try:
     from bsv_wallet_toolbox.utils.aggregate_results import (
         aggregate_results,

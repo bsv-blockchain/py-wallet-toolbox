@@ -6,7 +6,6 @@ and performing BRC-42 key derivation operations for BRC-29.
 Reference: go-wallet-toolbox/pkg/brc29/brc29_utils.go
 """
 
-
 from bsv.keys import PrivateKey, PublicKey
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver
 

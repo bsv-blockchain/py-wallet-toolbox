@@ -5,7 +5,6 @@ These methods handle certificate acquisition, proving, relinquishing, and discov
 Reference: wallet-toolbox/src/Wallet.ts
 """
 
-
 import pytest
 
 from bsv_wallet_toolbox import Wallet

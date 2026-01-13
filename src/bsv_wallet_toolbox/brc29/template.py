@@ -6,7 +6,6 @@ according to the BRC-29 specification.
 Reference: go-wallet-toolbox/pkg/brc29/brc29_template.go
 """
 
-
 from bsv.script import P2PKH, Script
 from bsv.transaction import Transaction
 

@@ -3,7 +3,6 @@
 This module tests configuration loading and management functionality.
 """
 
-
 try:
     from bsv_wallet_toolbox.utils.config import (
         get_config_value,

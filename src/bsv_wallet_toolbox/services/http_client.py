@@ -27,13 +27,16 @@ class ToolboxHttpClient(HttpClient):
 
         request_timeout = aiohttp.ClientTimeout(total=timeout_value) if timeout_value is not None else None
 
-        async with aiohttp.ClientSession(timeout=request_timeout) as session, session.request(
-            method=method,
-            url=url,
-            headers=headers,
-            json=data,
-            timeout=request_timeout,
-        ) as response:
+        async with (
+            aiohttp.ClientSession(timeout=request_timeout) as session,
+            session.request(
+                method=method,
+                url=url,
+                headers=headers,
+                json=data,
+                timeout=request_timeout,
+            ) as response,
+        ):
             status = response.status
             ok = 200 <= status <= 299
 

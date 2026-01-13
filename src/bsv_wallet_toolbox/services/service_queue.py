@@ -47,15 +47,12 @@ class ServiceQueueError(Exception):
     """Base exception for service queue operations."""
 
 
-
 class EmptyResultError(ServiceQueueError):
     """Raised when service returns an empty result."""
 
 
-
 class NoServicesError(ServiceQueueError):
     """Raised when no services are registered."""
-
 
 
 class ServiceQueue(Generic[T]):

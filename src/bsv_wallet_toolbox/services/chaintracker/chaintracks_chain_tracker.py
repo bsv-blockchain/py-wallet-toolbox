@@ -6,7 +6,6 @@ Go wdk.ChainTracker interface.
 Reference: go-wallet-toolbox/pkg/wdk/services.interface.go
 """
 
-
 from ..wallet_services import Chain
 
 

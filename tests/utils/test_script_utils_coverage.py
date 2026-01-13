@@ -4,7 +4,6 @@ This module tests Bitcoin script utility functions.
 """
 
 
-
 class TestScriptUtilities:
     """Test script utility functions."""
 

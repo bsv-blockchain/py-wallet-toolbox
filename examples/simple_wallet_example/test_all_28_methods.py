@@ -16,33 +16,31 @@ Usage:
 """
 
 import os
-import sys
 from pathlib import Path
 
 os.chdir(Path(__file__).parent)
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from bsv.constants import Network
 from bsv.keys import PrivateKey
-
-from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.services import Services, create_default_options
-from bsv_wallet_toolbox.brc29 import KeyID, address_for_self
-
 from src.config import (
+    bypass_wallet_infra_auth,
     get_key_deriver,
     get_network,
-    get_storage_provider,
-    use_remote_storage,
     get_remote_storage_client,
     get_remote_storage_url,
-    use_wallet_infra,
+    get_storage_provider,
     get_wallet_infra_client,
     get_wallet_infra_url,
-    bypass_wallet_infra_auth,
+    use_remote_storage,
+    use_wallet_infra,
 )
+
+from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.brc29 import KeyID, address_for_self
+from bsv_wallet_toolbox.services import Services, create_default_options
 
 
 def test_method(name: str, func, *args, **kwargs):
@@ -65,13 +63,13 @@ def main():
     print("=" * 70)
     print("🔍 BRC-100 All 28 Methods Test")
     print("=" * 70)
-    
+
     # Initialize wallet
     network = get_network()
     key_deriver = get_key_deriver()
     options = create_default_options(network)
     services = Services(options)
-    
+
     # Check storage mode (priority: wallet-infra > remote > local)
     wallet_infra_mode = use_wallet_infra()
     bypass_auth = bypass_wallet_infra_auth()
@@ -112,7 +110,7 @@ def main():
             try:
                 print("\n🔄 Connecting to wallet-infra...")
                 infra_settings = infra_client.make_available()
-                print(f"✅ wallet-infra connection successful!")
+                print("✅ wallet-infra connection successful!")
                 print(f"   Storage Identity Key: {infra_settings.get('storageIdentityKey', 'N/A')}")
                 print(f"   Chain: {infra_settings.get('chain', 'N/A')}")
 
@@ -154,7 +152,7 @@ def main():
         try:
             print("\n🔄 Connecting to remote storage...")
             remote_settings = remote_client.make_available()
-            print(f"✅ Remote storage connection successful!")
+            print("✅ Remote storage connection successful!")
             print(f"   Storage Identity Key: {remote_settings.get('storageIdentityKey', 'N/A')}")
             print(f"   Chain: {remote_settings.get('chain', 'N/A')}")
 
@@ -206,7 +204,7 @@ def main():
         )
 
         # Generate receiver (self) address using BRC-29
-        is_testnet = (network == "test")
+        is_testnet = network == "test"
         addr_info = address_for_self(
             sender_public_key=anyone_key.hex(),
             key_id=key_id,
@@ -229,7 +227,7 @@ def main():
             print("     - https://witnessonchain.com/faucet/tbsv")
 
         input("\n⏸ Press Enter to continue tests after sending from faucet...")
-    except Exception as e:  # noqa: PERF203
+    except Exception as e:
         print(f"\n⚠️  Error occurred while displaying receiving address: {str(e)[:60]}")
 
     print(f"\n🟢 Network: {network}")
@@ -242,215 +240,206 @@ def main():
     # =========================================================================
     print("\n📋 Category 1: Basic Information")
     print("-" * 40)
-    
+
     # 1. get_network
-    results['get_network'], _ = test_method(
-        "1. get_network",
-        wallet.get_network, {}
-    )
-    
+    results["get_network"], _ = test_method("1. get_network", wallet.get_network, {})
+
     # 2. get_version
-    results['get_version'], _ = test_method(
-        "2. get_version",
-        wallet.get_version, {}
-    )
-    
+    results["get_version"], _ = test_method("2. get_version", wallet.get_version, {})
+
     # 3. is_authenticated
-    results['is_authenticated'], _ = test_method(
-        "3. is_authenticated",
-        wallet.is_authenticated, {}
-    )
-    
+    results["is_authenticated"], _ = test_method("3. is_authenticated", wallet.is_authenticated, {})
+
     # 4. wait_for_authentication
-    results['wait_for_authentication'], _ = test_method(
-        "4. wait_for_authentication",
-        wallet.wait_for_authentication, {}
+    results["wait_for_authentication"], _ = test_method(
+        "4. wait_for_authentication", wallet.wait_for_authentication, {}
     )
-    
+
     # =========================================================================
     # Category 2: Blockchain Information (2 methods)
     # =========================================================================
     print("\n📋 Category 2: Blockchain Information")
     print("-" * 40)
-    
+
     # 5. get_height
-    results['get_height'], _ = test_method(
-        "5. get_height",
-        wallet.get_height, {}
-    )
-    
+    results["get_height"], _ = test_method("5. get_height", wallet.get_height, {})
+
     # 6. get_header_for_height
-    results['get_header_for_height'], _ = test_method(
-        "6. get_header_for_height",
-        wallet.get_header_for_height, {"height": 1}
+    results["get_header_for_height"], _ = test_method(
+        "6. get_header_for_height", wallet.get_header_for_height, {"height": 1}
     )
-    
+
     # =========================================================================
     # Category 3: Key Management (3 methods)
     # =========================================================================
     print("\n📋 Category 3: Key Management")
     print("-" * 40)
-    
+
     # 7. get_public_key
-    results['get_public_key'], _ = test_method(
-        "7. get_public_key",
-        wallet.get_public_key, {"identityKey": True}
-    )
-    
+    results["get_public_key"], _ = test_method("7. get_public_key", wallet.get_public_key, {"identityKey": True})
+
     # 8. reveal_counterparty_key_linkage
     # counterparty requires an actual public key
-    pub_key = results.get('get_public_key', {})
-    if pub_key and 'publicKey' in pub_key:
-        results['reveal_counterparty_key_linkage'], _ = test_method(
+    pub_key = results.get("get_public_key", {})
+    if pub_key and "publicKey" in pub_key:
+        results["reveal_counterparty_key_linkage"], _ = test_method(
             "8. reveal_counterparty_key_linkage",
-            wallet.reveal_counterparty_key_linkage, {
-                "counterparty": pub_key['publicKey'],
-                "verifier": pub_key['publicKey'],
+            wallet.reveal_counterparty_key_linkage,
+            {
+                "counterparty": pub_key["publicKey"],
+                "verifier": pub_key["publicKey"],
                 "protocolID": [0, "test"],
                 "keyID": "1",
-            }
+            },
         )
     else:
         print("  ⏭️  8. reveal_counterparty_key_linkage (failed to get public key)")
-    
+
     # 9. reveal_specific_key_linkage
-    results['reveal_specific_key_linkage'], _ = test_method(
+    results["reveal_specific_key_linkage"], _ = test_method(
         "9. reveal_specific_key_linkage",
-        wallet.reveal_specific_key_linkage, {
+        wallet.reveal_specific_key_linkage,
+        {
             "counterparty": "self",
             "verifier": "self",
             "protocolID": [0, "test"],
             "keyID": "1",
-        }
+        },
     )
-    
+
     # =========================================================================
     # Category 4: Signatures (2 methods)
     # =========================================================================
     print("\n📋 Category 4: Signatures")
     print("-" * 40)
-    
-    test_data = list("Hello, BRC-100!".encode())
-    
+
+    test_data = list(b"Hello, BRC-100!")
+
     # 10. create_signature
     sig_result, sig_ok = test_method(
         "10. create_signature",
-        wallet.create_signature, {
+        wallet.create_signature,
+        {
             "data": test_data,
             "protocolID": [0, "test"],
             "keyID": "1",
             "counterparty": "self",
-        }
+        },
     )
-    results['create_signature'] = sig_result
-    
+    results["create_signature"] = sig_result
+
     # 11. verify_signature
     if sig_ok and sig_result:
-        results['verify_signature'], _ = test_method(
+        results["verify_signature"], _ = test_method(
             "11. verify_signature",
-            wallet.verify_signature, {
+            wallet.verify_signature,
+            {
                 "data": test_data,
-                "signature": sig_result['signature'],
+                "signature": sig_result["signature"],
                 "protocolID": [0, "test"],
                 "keyID": "1",
                 "counterparty": "self",
-            }
+            },
         )
     else:
         print("  ⏭️  11. verify_signature (skipped due to signature failure)")
-    
+
     # =========================================================================
     # Category 5: HMAC (2 methods)
     # =========================================================================
     print("\n📋 Category 5: HMAC")
     print("-" * 40)
-    
+
     # 12. create_hmac
     hmac_result, hmac_ok = test_method(
         "12. create_hmac",
-        wallet.create_hmac, {
+        wallet.create_hmac,
+        {
             "data": test_data,
             "protocolID": [0, "test"],
             "keyID": "1",
             "counterparty": "self",
-        }
+        },
     )
-    results['create_hmac'] = hmac_result
-    
+    results["create_hmac"] = hmac_result
+
     # 13. verify_hmac
     if hmac_ok and hmac_result:
-        results['verify_hmac'], _ = test_method(
+        results["verify_hmac"], _ = test_method(
             "13. verify_hmac",
-            wallet.verify_hmac, {
+            wallet.verify_hmac,
+            {
                 "data": test_data,
-                "hmac": hmac_result['hmac'],
+                "hmac": hmac_result["hmac"],
                 "protocolID": [0, "test"],
                 "keyID": "1",
                 "counterparty": "self",
-            }
+            },
         )
     else:
         print("  ⏭️  13. verify_hmac (skipped due to HMAC creation failure)")
-    
+
     # =========================================================================
     # Category 6: Encryption (2 methods)
     # =========================================================================
     print("\n📋 Category 6: Encryption")
     print("-" * 40)
-    
-    plaintext = list("Secret message!".encode())
-    
+
+    plaintext = list(b"Secret message!")
+
     # 14. encrypt
     encrypt_result, encrypt_ok = test_method(
         "14. encrypt",
-        wallet.encrypt, {
+        wallet.encrypt,
+        {
             "plaintext": plaintext,
             "protocolID": [0, "test"],
             "keyID": "1",
             "counterparty": "self",
-        }
+        },
     )
-    results['encrypt'] = encrypt_result
-    
+    results["encrypt"] = encrypt_result
+
     # 15. decrypt
     if encrypt_ok and encrypt_result:
-        results['decrypt'], _ = test_method(
+        results["decrypt"], _ = test_method(
             "15. decrypt",
-            wallet.decrypt, {
-                "ciphertext": encrypt_result['ciphertext'],
+            wallet.decrypt,
+            {
+                "ciphertext": encrypt_result["ciphertext"],
                 "protocolID": [0, "test"],
                 "keyID": "1",
                 "counterparty": "self",
-            }
+            },
         )
     else:
         print("  ⏭️  15. decrypt (skipped due to encryption failure)")
-    
+
     # =========================================================================
     # Category 7: Action Management (5 methods)
     # =========================================================================
     print("\n📋 Category 7: Action Management")
     print("-" * 40)
-    
+
     # 16. list_actions
-    results['list_actions'], _ = test_method(
-        "16. list_actions",
-        wallet.list_actions, {"labels": [], "limit": 10}
-    )
-    
+    results["list_actions"], _ = test_method("16. list_actions", wallet.list_actions, {"labels": [], "limit": 10})
+
     # 17. create_action (funds required)
-    results['create_action'], _ = test_method(
+    results["create_action"], _ = test_method(
         "17. create_action",
-        wallet.create_action, {
+        wallet.create_action,
+        {
             "description": "Test action for BRC-100 method test",
-            "outputs": [{
-                "lockingScript": "006a0568656c6c6f",  # OP_RETURN "hello"
-                "satoshis": 0,
-                "outputDescription": "Test OP_RETURN output for BRC-100 method verification",
-            }],
-        }
+            "outputs": [
+                {
+                    "lockingScript": "006a0568656c6c6f",  # OP_RETURN "hello"
+                    "satoshis": 0,
+                    "outputDescription": "Test OP_RETURN output for BRC-100 method verification",
+                }
+            ],
+        },
     )
-    
+
     # 18. sign_action
     # sign_action is needed when using custom scripts
     # Call create_action with signAndProcess=False and use the returned reference
@@ -460,32 +449,37 @@ def main():
     try:
         # Step 1: create_action with signAndProcess=False
         # This returns signableTransaction
-        signable_result = wallet.create_action({
-            "description": "Test for sign_action - signable transaction",
-            "outputs": [{
-                "lockingScript": "006a0b7369676e5f616374696f6e",  # OP_RETURN "sign_action"
-                "satoshis": 0,
-                "outputDescription": "Test output for sign_action",
-            }],
-            "options": {
-                "signAndProcess": False,  # ← This returns signableTransaction
+        signable_result = wallet.create_action(
+            {
+                "description": "Test for sign_action - signable transaction",
+                "outputs": [
+                    {
+                        "lockingScript": "006a0b7369676e5f616374696f6e",  # OP_RETURN "sign_action"
+                        "satoshis": 0,
+                        "outputDescription": "Test output for sign_action",
+                    }
+                ],
+                "options": {
+                    "signAndProcess": False,  # ← This returns signableTransaction
+                },
             }
-        })
-        
+        )
+
         if signable_result and signable_result.get("signableTransaction"):
             st = signable_result["signableTransaction"]
             reference = st.get("reference")
-            
+
             if reference:
                 # Step 2: Call sign_action
                 # In this case, spends can be empty since wallet provides inputs
-                results['sign_action'], sign_ok = test_method(
+                results["sign_action"], sign_ok = test_method(
                     "18. sign_action",
-                    wallet.sign_action, {
+                    wallet.sign_action,
+                    {
                         "reference": reference,
                         "spends": {},  # Wallet inputs are auto-signed
-                        "options": {"acceptDelayedBroadcast": True}
-                    }
+                        "options": {"acceptDelayedBroadcast": True},
+                    },
                 )
             else:
                 print("  ⚠️  18. sign_action: signableTransaction has no reference")
@@ -493,131 +487,131 @@ def main():
             print("  ⚠️  18. sign_action: signableTransaction not returned even with signAndProcess=False")
     except Exception as e:
         print(f"  ⚠️  18. sign_action: {str(e)[:60]}")
-    
+
     # 19. abort_action
     # abort_action needs an unsigned action to test
     # Call create_action with signAndProcess=False, then abort without calling sign_action
     try:
         # Step 1: Create a new unsigned action for abort_action testing
-        abort_test_result = wallet.create_action({
-            "description": "Test for abort_action - will be aborted",
-            "outputs": [{
-                "lockingScript": "006a0c61626f72745f616374696f6e",  # OP_RETURN "abort_action"
-                "satoshis": 0,
-                "outputDescription": "Test output for abort_action",
-            }],
-            "options": {
-                "signAndProcess": False,  # ← Stop in unsigned state
+        abort_test_result = wallet.create_action(
+            {
+                "description": "Test for abort_action - will be aborted",
+                "outputs": [
+                    {
+                        "lockingScript": "006a0c61626f72745f616374696f6e",  # OP_RETURN "abort_action"
+                        "satoshis": 0,
+                        "outputDescription": "Test output for abort_action",
+                    }
+                ],
+                "options": {
+                    "signAndProcess": False,  # ← Stop in unsigned state
+                },
             }
-        })
-        
+        )
+
         if abort_test_result and abort_test_result.get("signableTransaction"):
             abort_reference = abort_test_result["signableTransaction"].get("reference")
-            
+
             if abort_reference:
                 # Step 2: Abort this unsigned action
-                results['abort_action'], _ = test_method(
-                    "19. abort_action",
-                    wallet.abort_action, {"reference": abort_reference}
+                results["abort_action"], _ = test_method(
+                    "19. abort_action", wallet.abort_action, {"reference": abort_reference}
                 )
             else:
                 print("  ⚠️  19. abort_action: signableTransaction has no reference")
         else:
             # If no signableTransaction, look for unsigned actions from list_actions
             actions_for_abort = wallet.list_actions({"labels": [], "limit": 10})
-            unsigned_for_abort = [a for a in actions_for_abort.get('actions', []) if a.get('status') == 'unsigned']
-            if unsigned_for_abort and unsigned_for_abort[0].get('reference'):
-                results['abort_action'], _ = test_method(
-                    "19. abort_action",
-                    wallet.abort_action, {"reference": unsigned_for_abort[0]['reference']}
+            unsigned_for_abort = [a for a in actions_for_abort.get("actions", []) if a.get("status") == "unsigned"]
+            if unsigned_for_abort and unsigned_for_abort[0].get("reference"):
+                results["abort_action"], _ = test_method(
+                    "19. abort_action", wallet.abort_action, {"reference": unsigned_for_abort[0]["reference"]}
                 )
             else:
                 print("  ⏭️  19. abort_action (could not create unsigned action)")
     except Exception as e:
         print(f"  ⚠️  19. abort_action: {str(e)[:60]}")
-    
+
     # 20. internalize_action
     # Test using already internalized tx (duplicate internalize causes error, but method itself works)
     from src.transaction_management import _build_atomic_beef_for_txid
+
     test_txid = "8e609cd401cdec648c71f6a5ec09a395f87567e71421b04fe6389adf6552bde7"
     try:
         atomic_beef = _build_atomic_beef_for_txid(network, test_txid)
-        results['internalize_action'], _ = test_method(
+        results["internalize_action"], _ = test_method(
             "20. internalize_action",
-            wallet.internalize_action, {
+            wallet.internalize_action,
+            {
                 "tx": atomic_beef,
-                "outputs": [{
-                    "outputIndex": 0,
-                    "protocol": "basket insertion",
-                    "insertionRemittance": {"basket": "default"},
-                }],
+                "outputs": [
+                    {
+                        "outputIndex": 0,
+                        "protocol": "basket insertion",
+                        "insertionRemittance": {"basket": "default"},
+                    }
+                ],
                 "description": "Test internalize action",
-            }
+            },
         )
     except Exception as e:
         print(f"  ⚠️  20. internalize_action: {str(e)[:60]}")
-    
+
     # =========================================================================
     # Category 8: Output Management (3 methods)
     # =========================================================================
     print("\n📋 Category 8: Output Management")
     print("-" * 40)
-    
+
     # 21. list_outputs
-    results['list_outputs'], _ = test_method(
-        "21. list_outputs",
-        wallet.list_outputs, {"basket": "default", "limit": 10}
+    results["list_outputs"], _ = test_method(
+        "21. list_outputs", wallet.list_outputs, {"basket": "default", "limit": 10}
     )
-    
+
     # 21b. balance (using specOpWalletBalance)
-    results['balance'], _ = test_method(
-        "21b. balance (get balance)",
-        wallet.balance
-    )
-    
+    results["balance"], _ = test_method("21b. balance (get balance)", wallet.balance)
+
     # 22. relinquish_output
-    results['relinquish_output'], _ = test_method(
+    results["relinquish_output"], _ = test_method(
         "22. relinquish_output",
-        wallet.relinquish_output, {
-            "basket": "default",
-            "output": "0000000000000000000000000000000000000000000000000000000000000000.0"
-        }
+        wallet.relinquish_output,
+        {"basket": "default", "output": "0000000000000000000000000000000000000000000000000000000000000000.0"},
     )
-    
+
     # =========================================================================
     # Category 9: Certificate Management (4 methods)
     # =========================================================================
     print("\n📋 Category 9: Certificate Management")
     print("-" * 40)
-    
+
     # 23. list_certificates
-    results['list_certificates'], _ = test_method(
-        "23. list_certificates",
-        wallet.list_certificates, {"certifiers": [], "types": [], "limit": 10}
+    results["list_certificates"], _ = test_method(
+        "23. list_certificates", wallet.list_certificates, {"certifiers": [], "types": [], "limit": 10}
     )
-    
+
     # 24. acquire_certificate
     # Direct acquisition requires a complete pre-signed certificate
     # For testing, we create a self-signed certificate using the wallet's own key
-    if pub_key and 'publicKey' in pub_key:
+    if pub_key and "publicKey" in pub_key:
         import base64
         import os
-        
+
         # Generate test certificate data
-        test_serial = base64.b64encode(os.urandom(32)).decode('utf-8')
+        test_serial = base64.b64encode(os.urandom(32)).decode("utf-8")
         test_type = "dGVzdC1jZXJ0aWZpY2F0ZQ=="  # base64 of "test-certificate"
-        
+
         # For direct acquisition, we need:
         # - type, certifier, subject, serialNumber (required)
         # - revocationOutpoint, signature, fields, keyringForSubject (optional but recommended)
         # Since we don't have a real certifier, we use placeholder values
         # Note: This will skip signature verification since signature is not valid
-        results['acquire_certificate'], _ = test_method(
+        results["acquire_certificate"], _ = test_method(
             "24. acquire_certificate",
-            wallet.acquire_certificate, {
+            wallet.acquire_certificate,
+            {
                 "type": test_type,
-                "certifier": pub_key['publicKey'],  # Self-signed for testing
-                "subject": pub_key['publicKey'],
+                "certifier": pub_key["publicKey"],  # Self-signed for testing
+                "subject": pub_key["publicKey"],
                 "serialNumber": test_serial,
                 "revocationOutpoint": "0000000000000000000000000000000000000000000000000000000000000000.0",
                 "signature": "",  # Empty signature - verification will be skipped
@@ -625,26 +619,27 @@ def main():
                 "keyringForSubject": {},
                 "keyringRevealer": "certifier",
                 "acquisitionProtocol": "direct",
-            }
+            },
         )
     else:
         print("  ⏭️  24. acquire_certificate (failed to get public key)")
-    
+
     # 25. prove_certificate
     # prove_certificate requires stored certificate, verifier public key, and valid keyring
     # Note: prove_certificate requires a certificate with valid keyring to decrypt/re-encrypt
     # Since our test certificate has empty keyring, this will fail
     # In production, certificates would be acquired from a real certifier with proper encryption
-    if results.get('acquire_certificate') and pub_key and 'publicKey' in pub_key:
-        cert_data = results['acquire_certificate']
+    if results.get("acquire_certificate") and pub_key and "publicKey" in pub_key:
+        cert_data = results["acquire_certificate"]
         # Check if certificate has valid keyring (fields and keyring must match)
         has_valid_keyring = bool(cert_data.get("fields")) and len(cert_data.get("fields", {})) > 0
-        
+
         if has_valid_keyring:
             try:
-                results['prove_certificate'], _ = test_method(
+                results["prove_certificate"], _ = test_method(
                     "25. prove_certificate",
-                    wallet.prove_certificate, {
+                    wallet.prove_certificate,
+                    {
                         "certificate": {
                             "type": cert_data.get("type"),
                             "serialNumber": cert_data.get("serialNumber"),
@@ -654,79 +649,102 @@ def main():
                             "signature": cert_data.get("signature"),
                             "fields": cert_data.get("fields", {}),
                         },
-                        "verifier": pub_key['publicKey'],
+                        "verifier": pub_key["publicKey"],
                         "fieldsToReveal": list(cert_data.get("fields", {}).keys()),
-                    }
+                    },
                 )
             except Exception as e:
                 print(f"  ⚠️  25. prove_certificate: {str(e)[:60]}")
         else:
-            print("  ⏭️  25. prove_certificate (valid keyring required - use certificate obtained via issuance protocol)")
-        else:
-            print("  ⏭️  25. prove_certificate (valid certificate required)")
-    
+            print(
+                "  ⏭️  25. prove_certificate (valid keyring required - use certificate obtained via issuance protocol)"
+            )
+    else:
+        print("  ⏭️  25. prove_certificate (valid certificate required)")
+
     # 26. relinquish_certificate
-    if pub_key and 'publicKey' in pub_key:
-        results['relinquish_certificate'], _ = test_method(
+    if pub_key and "publicKey" in pub_key:
+        results["relinquish_certificate"], _ = test_method(
             "26. relinquish_certificate",
-            wallet.relinquish_certificate, {
+            wallet.relinquish_certificate,
+            {
                 "type": "dGVzdC1jZXJ0aWZpY2F0ZQ==",  # base64 of "test-certificate"
-                "certifier": pub_key['publicKey'],
-                "serialNumber": "ZHVtbXktc2VyaWFs"  # base64 of "dummy-serial"
-            }
+                "certifier": pub_key["publicKey"],
+                "serialNumber": "ZHVtbXktc2VyaWFs",  # base64 of "dummy-serial"
+            },
         )
     else:
         print("  ⏭️  26. relinquish_certificate (failed to get public key)")
-    
+
     # =========================================================================
     # Category 10: Discovery (2 methods)
     # =========================================================================
     print("\n📋 Category 10: Discovery")
     print("-" * 40)
-    
+
     # 27. discover_by_identity_key
-    results['discover_by_identity_key'], _ = test_method(
+    results["discover_by_identity_key"], _ = test_method(
         "27. discover_by_identity_key",
-        wallet.discover_by_identity_key, {
+        wallet.discover_by_identity_key,
+        {
             "identityKey": "0250d7462e60bcf4523b0e783c9bac2300000000000000000000000000000000",
             "limit": 5,
-        }
+        },
     )
-    
+
     # 28. discover_by_attributes
-    results['discover_by_attributes'], _ = test_method(
+    results["discover_by_attributes"], _ = test_method(
         "28. discover_by_attributes",
-        wallet.discover_by_attributes, {
+        wallet.discover_by_attributes,
+        {
             "attributes": {"name": "Test"},
             "limit": 5,
-        }
+        },
     )
-    
+
     # =========================================================================
     # Results Summary
     # =========================================================================
     print("\n" + "=" * 70)
     print("📊 Results Summary")
     print("=" * 70)
-    
+
     # Count results
     tested = 0
     passed = 0
     skipped = 0
-    
+
     method_names = [
-        "get_network", "get_version", "is_authenticated", "wait_for_authentication",
-        "get_height", "get_header_for_height",
-        "get_public_key", "reveal_counterparty_key_linkage", "reveal_specific_key_linkage",
-        "create_signature", "verify_signature",
-        "create_hmac", "verify_hmac",
-        "encrypt", "decrypt",
-        "list_actions", "create_action", "sign_action", "abort_action", "internalize_action",
-        "list_outputs", "relinquish_output",
-        "list_certificates", "acquire_certificate", "prove_certificate", "relinquish_certificate",
-        "discover_by_identity_key", "discover_by_attributes"
+        "get_network",
+        "get_version",
+        "is_authenticated",
+        "wait_for_authentication",
+        "get_height",
+        "get_header_for_height",
+        "get_public_key",
+        "reveal_counterparty_key_linkage",
+        "reveal_specific_key_linkage",
+        "create_signature",
+        "verify_signature",
+        "create_hmac",
+        "verify_hmac",
+        "encrypt",
+        "decrypt",
+        "list_actions",
+        "create_action",
+        "sign_action",
+        "abort_action",
+        "internalize_action",
+        "list_outputs",
+        "relinquish_output",
+        "list_certificates",
+        "acquire_certificate",
+        "prove_certificate",
+        "relinquish_certificate",
+        "discover_by_identity_key",
+        "discover_by_attributes",
     ]
-    
+
     for name in method_names:
         if name in results:
             tested += 1
@@ -734,12 +752,12 @@ def main():
                 passed += 1
         else:
             skipped += 1
-    
+
     print(f"\n  Tests run: {tested}/28")
     print(f"  Successful: {passed}")
     print(f"  Skipped: {skipped} (funds/valid data required)")
     print(f"  Errors: {tested - passed}")
-    
+
     print("\n" + "=" * 70)
     print("✅ BRC-100 Method Tests Completed")
     print("=" * 70)
@@ -747,4 +765,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

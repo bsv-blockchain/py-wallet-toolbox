@@ -5,7 +5,6 @@ This module tests bitrails merkle proof verification and conversion.
 Reference: wallet-toolbox/src/services/__tests/bitrails.test.ts
 """
 
-
 try:
     from bsv_wallet_toolbox.services import Services, convert_proof_to_merkle_path
     from bsv_wallet_toolbox.services.providers import Bitails

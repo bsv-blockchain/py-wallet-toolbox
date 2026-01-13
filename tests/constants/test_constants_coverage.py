@@ -4,7 +4,6 @@ This module tests constant values and configuration settings.
 """
 
 
-
 class TestNetworkConstants:
     """Test network-related constants."""
 

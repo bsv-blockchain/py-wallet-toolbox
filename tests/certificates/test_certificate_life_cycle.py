@@ -5,7 +5,6 @@ This module tests complete flows for MasterCertificate and VerifiableCertificate
 Reference: wallet-toolbox/src/sdk/__test/CertificateLifeCycle.test.ts
 """
 
-
 import base64
 
 try:

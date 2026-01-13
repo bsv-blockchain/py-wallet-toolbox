@@ -8,7 +8,6 @@ Note: All tests are currently skipped as the error API is not yet implemented.
 """
 
 
-
 class TestTransactionError:
     """Test suite for TransactionError.
 

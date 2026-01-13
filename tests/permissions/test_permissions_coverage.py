@@ -3,7 +3,6 @@
 This module tests permission checking and role management.
 """
 
-
 import pytest
 
 

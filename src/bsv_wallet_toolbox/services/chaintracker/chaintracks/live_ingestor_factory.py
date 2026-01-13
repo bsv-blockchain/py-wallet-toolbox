@@ -5,7 +5,6 @@ Provides functions to create configured live ingestors for different sources.
 Reference: go-wallet-toolbox/pkg/services/chaintracks/create_ingestors.go
 """
 
-
 from ...wallet_services import Chain
 from .live_ingestor_interface import NamedLiveIngestor
 from .live_ingestor_woc_poll import LiveIngestorWocPoll

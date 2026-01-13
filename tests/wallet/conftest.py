@@ -20,7 +20,6 @@ def wallet_with_mocked_create_action(test_key_deriver) -> tuple[Wallet, StorageP
     that bypass complex transaction building while capturing argument handling.
     """
 
-
     engine = create_engine_from_url("sqlite:///:memory:")
     Base.metadata.create_all(engine)
 

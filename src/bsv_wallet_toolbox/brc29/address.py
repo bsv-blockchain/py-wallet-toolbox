@@ -6,7 +6,6 @@ the BRC-29 specification.
 Reference: go-wallet-toolbox/pkg/brc29/brc29_address.go
 """
 
-
 from bsv.constants import Network
 
 from .types import PROTOCOL, CounterpartyPrivateKey, CounterpartyPublicKey, KeyID

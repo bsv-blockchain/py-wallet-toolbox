@@ -1410,10 +1410,13 @@ class TestGetBeefForTransaction:
 
     def test_get_beef_for_transaction_missing_storage(self) -> None:
         """Wrapper should propagate errors when storage is missing."""
-        with patch(
-            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
-            side_effect=AttributeError("storage missing"),
-        ) as mock_impl, pytest.raises(AttributeError, match="storage missing"):
+        with (
+            patch(
+                "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+                side_effect=AttributeError("storage missing"),
+            ) as mock_impl,
+            pytest.raises(AttributeError, match="storage missing"),
+        ):
             get_beef_for_transaction(None, self.VALID_TXID)
         mock_impl.assert_called_once_with(None, {}, self.VALID_TXID, None)
 
@@ -1485,10 +1488,13 @@ class TestGetBeefForTransaction:
     def test_get_beef_for_transaction_beef_unavailable(self) -> None:
         """WalletError from implementation should propagate."""
         storage = Mock()
-        with patch(
-            "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
-            side_effect=WalletError("BEEF unavailable"),
-        ) as mock_impl, pytest.raises(WalletError, match="BEEF unavailable"):
+        with (
+            patch(
+                "bsv_wallet_toolbox.storage.methods_impl.get_beef_for_transaction",
+                side_effect=WalletError("BEEF unavailable"),
+            ) as mock_impl,
+            pytest.raises(WalletError, match="BEEF unavailable"),
+        ):
             get_beef_for_transaction(storage, self.VALID_TXID)
         mock_impl.assert_called_once_with(storage, {}, self.VALID_TXID, None)
 

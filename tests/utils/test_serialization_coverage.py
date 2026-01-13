@@ -4,7 +4,6 @@ This module tests serialization and deserialization of Bitcoin structures.
 """
 
 
-
 class TestTransactionSerialization:
     """Test transaction serialization."""
 
