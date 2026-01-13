@@ -31,9 +31,7 @@ class TestUniversalVectorsProveCertificate:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("proveCertificate-simple")
-
-        wallet = wallet_with_services
+        _args_data, result_data = load_test_vectors("proveCertificate-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         # For testing ABI serialization, use the expected result from test vectors

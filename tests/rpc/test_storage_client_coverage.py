@@ -70,7 +70,7 @@ class TestStorageClient:
         """Test creating a StorageClient with certificate requirements."""
         mock_certs = Mock()
         with patch("bsv_wallet_toolbox.rpc.storage_client.AuthFetch") as MockAuthFetch:
-            client = StorageClient(
+            StorageClient(
                 wallet=mock_wallet,
                 endpoint_url="https://example.com/rpc",
                 requested_certificates=mock_certs,

@@ -548,7 +548,7 @@ class TestTxNoteReader:
         reader.spec = {"note": "test"}
         reader.paging = {"limit": 10, "offset": 5, "desc": False}
 
-        result = reader.find()
+        reader.find()
 
         expected_query = {"partial": {"note": "test"}, "limit": 10, "offset": 5, "desc": False}
         mock_provider._find_generic.assert_called_once_with("tx_note", expected_query)
@@ -682,7 +682,7 @@ class TestCertifierReader:
         # Mock the Comparable object that gets set
         from bsv_wallet_toolbox.storage.specifications import Comparable
 
-        mock_comparable = Comparable(operator="equals", value="certifier_a")
+        Comparable(operator="equals", value="certifier_a")
         reader.certifier().equals("certifier_a")
 
         mock_provider.find_certificates.return_value = [

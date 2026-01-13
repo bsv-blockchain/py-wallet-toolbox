@@ -1316,10 +1316,7 @@ class TestEdgeCases:
 
     def test_generate_change_empty_inputs(self) -> None:
         """Test generate_change with empty inputs."""
-        storage = Mock()
-        auth = {"userId": "user123"}
-        inputs = []
-        total_output_amount = 1000
+        Mock()
 
     def test_generate_change_exact_match_insufficient(self) -> None:
         """Test generate_change with exact match but insufficient funds."""

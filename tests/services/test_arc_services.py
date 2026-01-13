@@ -205,7 +205,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Raises appropriate errors
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         for invalid_beef in invalid_beef_data:
             with pytest.raises((ValueError, TypeError, InvalidParameterError)):
@@ -275,7 +275,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Handles rate limiting appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return rate limited response (since valid_arc_config only sets arcUrl)
         mock_arc_result = Mock()
@@ -321,7 +321,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Handles malformed requests appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         malformed_requests = [
             {"beef": "invalid_hex_data", "extraField": "unexpected"},
@@ -342,7 +342,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Handles double spend detection
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return double spend result
         mock_arc_result = Mock()
@@ -362,7 +362,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Handles insufficient funds error
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return insufficient funds result
         mock_arc_result = Mock()
@@ -422,7 +422,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Uses fallback provider successfully
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return success result
         mock_arc_result = Mock()
@@ -441,7 +441,7 @@ class TestArcServices:
         When: Call post_beef_array with ARC
         Then: Raises appropriate errors
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         invalid_inputs = [
             None,  # None
@@ -462,7 +462,7 @@ class TestArcServices:
         When: Call post_beef_array with ARC
         Then: Handles empty list appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         result = services.post_beef_array([])
         assert isinstance(result, list)
@@ -474,7 +474,7 @@ class TestArcServices:
         When: Call post_beef_array with ARC
         Then: Handles partial failures appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Mock ARC responses for different array elements
         mock_results = [
@@ -500,7 +500,7 @@ class TestArcServices:
         When: Call post_beef with ARC
         Then: Handles large payload appropriately
         """
-        services, _, mock_client = mock_services
+        services, _, _mock_client = mock_services
 
         # Create large BEEF data (simulate large transaction)
         large_beef = "00" * 100000  # 100KB of data

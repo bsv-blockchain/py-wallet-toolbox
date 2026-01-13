@@ -195,7 +195,7 @@ class ChaintracksCoreService:
             self.live_ingestors = create_live_ingestors(self.chain)
 
             # Create bulk ingestors
-            bulk_ingestors = create_bulk_ingestors(self.chain)
+            create_bulk_ingestors(self.chain)
 
             # TODO: Initialize bulk manager
             # self.bulk_mgr = ...
@@ -349,10 +349,10 @@ class ChaintracksCoreService:
         """Process incoming live headers and manage synchronization."""
         try:
             # Get present height
-            present_height = await self.get_present_height()
+            await self.get_present_height()
 
             # Get available ranges
-            ranges = await self.get_available_height_ranges()
+            await self.get_available_height_ranges()
 
             # Process queued headers
             headers_processed = 0

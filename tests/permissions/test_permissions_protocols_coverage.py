@@ -121,8 +121,7 @@ class TestDPACPMethods:
         )
 
         # Verify permissions cache has the entry
-        cache_key = f"dpacp:{originator}:{protocol_id.get('protocolName')}:None"
-        has_permission = cache_key in permissions_manager._permissions
+        f"dpacp:{originator}:{protocol_id.get('protocolName')}:None"
 
         # Then revoke it (cache key includes counterparty=None)
         result = permissions_manager.revoke_dpacp_permission(
@@ -341,7 +340,7 @@ class TestDSAPMethods:
         assert token.get("originator") == originator
 
         # Check that permissions cache contains the entry
-        has_dsap_key = any(k.startswith(f"dsap:{originator}") for k in permissions_manager._permissions.keys())
+        has_dsap_key = any(k.startswith(f"dsap:{originator}") for k in permissions_manager._permissions)
         assert has_dsap_key or len(permissions_manager._permissions) > 0
 
     def test_verify_dsap_permission_not_found(self, permissions_manager):

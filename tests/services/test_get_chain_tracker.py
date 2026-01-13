@@ -243,7 +243,7 @@ def test_get_chain_tracker_memory_management() -> None:
 
     # Create multiple trackers
     trackers = []
-    for i in range(10):
+    for _i in range(10):
         tracker = services.get_chain_tracker()
         trackers.append(tracker)
 

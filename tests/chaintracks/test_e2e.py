@@ -136,7 +136,7 @@ class TestChaintracksE2E:
             received_events.append(event)
 
         # When
-        send_callback, unsubscribe = service.subscribe_reorgs()
+        send_callback, _unsubscribe = service.subscribe_reorgs()
 
         # Send a test event
         test_reorg = {"oldTip": "old_hash", "newTip": "new_hash"}

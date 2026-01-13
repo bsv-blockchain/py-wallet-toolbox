@@ -194,7 +194,7 @@ class Wallet:
     # Version constant (matches TypeScript's hardcoded return value)
     VERSION = "1.0.0"  # Updated to match Universal Test Vectors
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         chain: Chain,
         services: WalletServices | None = None,

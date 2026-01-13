@@ -98,13 +98,13 @@ class TestReadVarint:
         """Test reading varint at various offsets."""
         data = [0x00, 0x00, 0x42, 0x00, 0x00]
 
-        value1, bytes_read1 = _read_varint(data, 0)
+        value1, _bytes_read1 = _read_varint(data, 0)
         assert value1 == 0
 
-        value2, bytes_read2 = _read_varint(data, 2)
+        value2, _bytes_read2 = _read_varint(data, 2)
         assert value2 == 0x42
 
-        value3, bytes_read3 = _read_varint(data, 4)
+        value3, _bytes_read3 = _read_varint(data, 4)
         assert value3 == 0
 
     def test_read_varint_all_byte_values_covered(self) -> None:

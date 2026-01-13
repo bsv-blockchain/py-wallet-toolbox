@@ -663,7 +663,7 @@ class ARC:
         result["notes"].append({"name": "ARC", "when": now, "what": "getMerklePathSuccess"})
         return result
 
-    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status for a given txid (TS-compatible response shape).
 
         Args:

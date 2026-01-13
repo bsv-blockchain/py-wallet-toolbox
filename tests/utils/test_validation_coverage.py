@@ -265,7 +265,7 @@ class TestErrorMessages:
         """Test originator validation error message."""
         try:
             validate_originator("a" * 251)
-            assert False, "Should have raised"
+            raise AssertionError("Should have raised")
         except InvalidParameterError as e:
             assert "originator" in str(e).lower()
 
@@ -273,7 +273,7 @@ class TestErrorMessages:
         """Test satoshis validation error message."""
         try:
             validate_satoshis("invalid")  # type: ignore
-            assert False, "Should have raised"
+            raise AssertionError("Should have raised")
         except (InvalidParameterError, TypeError) as e:
             # Error message should be informative
             assert len(str(e)) > 0

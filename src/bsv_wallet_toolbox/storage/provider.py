@@ -2713,7 +2713,7 @@ class StorageProvider:
                 return GenerateChangeSdkFundingInput(output_id=output_id, satoshis=satoshis)
             return None
 
-        def release_cb(output_id: int):
+        def release_cb(output_id: int) -> None:
             session = self.SessionLocal()
             try:
                 stmt = select(Output).where(Output.output_id == output_id)
@@ -3092,7 +3092,6 @@ class StorageProvider:
                 # )
 
                 status = "failed"
-                note: dict[str, Any] = {"txid": txid, "status": "error"}
                 broadcast_ok = False
                 message: str | None = None
 
@@ -4278,7 +4277,7 @@ class StorageProvider:
             reference = args[0]
         elif len(args) == 2:
             # New signature: abort_action(auth, args)
-            auth, args_dict = args
+            _auth, args_dict = args
             reference = args_dict.get("reference", "")
         else:
             raise InvalidParameterError("args", "invalid number of arguments")
@@ -4557,13 +4556,13 @@ class StorageProvider:
 
             if params.get("purgeSpent"):
                 cutoff = _cutoff("purgeSpentAge")
-                proof_txids = set(
+                proof_txids = {
                     txid
                     for txid in session.execute(
                         select(Output.txid).where(Output.spendable.is_(True), Output.txid.is_not(None))
                     ).scalars()
                     if txid
-                )
+                }
                 proof_txids.update(
                     txid
                     for txid in session.execute(
@@ -5940,7 +5939,7 @@ class InternalizeActionContext:
 
     def _merge_wallet_payment_for_output(self, _transaction_id: int, payment: dict[str, Any], session: Any) -> None:
         """Merge wallet payment into existing output. (TS lines 415-430)"""
-        now = datetime.now(UTC)
+        datetime.now(UTC)
         output_record = payment["eo"]
         output_record.basket_id = self.change_basket.basket_id
         output_record.type = "P2PKH"

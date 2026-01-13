@@ -900,7 +900,7 @@ class TestTaskUnFail:
         mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": {"some": "path"}}
 
         task = TaskUnFail(mock_monitor)
-        result = task.run_task()
+        task.run_task()
 
         # Should only process the valid request
         assert mock_monitor.services.get_merkle_path_for_transaction.call_count == 1

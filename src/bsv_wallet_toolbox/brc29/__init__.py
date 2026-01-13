@@ -17,16 +17,16 @@ from .template import UnlockingScriptTemplate, lock_for_counterparty, lock_for_s
 from .types import PROTOCOL, PROTOCOL_ID, KeyID
 
 __all__ = [
-    # Types
-    "KeyID",
     "PROTOCOL",
     "PROTOCOL_ID",
+    # Types
+    "KeyID",
+    "UnlockingScriptTemplate",
+    "address_for_counterparty",
     # Address functions
     "address_for_self",
-    "address_for_counterparty",
+    "lock_for_counterparty",
     # Template functions
     "lock_for_self",
-    "lock_for_counterparty",
     "unlock",
-    "UnlockingScriptTemplate",
 ]

@@ -103,7 +103,7 @@ def normalize_merkle_path_value(
     # JSON string → object
     if isinstance(mp, str):
         s = mp.strip()
-        if s.startswith("{") or s.startswith("["):
+        if s.startswith(("{", "[")):
             try:
                 mp = json.loads(s)
             except Exception:

@@ -28,7 +28,7 @@ class TestUniversalVectorsCreateSignature:
         Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
-        args_data, result_data = load_test_vectors("createSignature-simple")
+        args_data, _result_data = load_test_vectors("createSignature-simple")
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
@@ -59,7 +59,7 @@ class TestUniversalVectorsCreateSignature:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("createSignature-simple")
+        args_data, _result_data = load_test_vectors("createSignature-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 

@@ -245,7 +245,7 @@ class TestWalletPermissionsManagerProxying:
         )
 
         # When
-        result = manager.list_actions({}, "user.com")
+        manager.list_actions({}, "user.com")
 
         # Then
         assert mock_underlying_wallet.list_actions.call_count == 1

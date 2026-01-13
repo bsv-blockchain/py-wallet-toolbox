@@ -43,7 +43,7 @@ class PubSubEvents(Generic[T]):
         async with self._lock:
             queue = asyncio.Queue(maxsize=10)  # Buffered queue
 
-            def unsubscribe():
+            def unsubscribe() -> None:
                 """Unsubscribe from events."""
                 asyncio.create_task(self._unsubscribe(queue))
 

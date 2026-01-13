@@ -34,7 +34,7 @@ def xor_bytes(a: bytes | list[int], b: bytes | list[int]) -> list[int]:
     """XOR two byte arrays."""
     a_bytes = bytes(a) if isinstance(a, (list, bytes)) else a.encode()
     b_bytes = bytes(b) if isinstance(b, (list, bytes)) else b.encode()
-    return list(x ^ y for x, y in zip(a_bytes, b_bytes, strict=False))
+    return [x ^ y for x, y in zip(a_bytes, b_bytes, strict=False)]
 
 
 def create_random_private_key() -> PrivateKey:
@@ -985,7 +985,7 @@ class TestPrivilegedKeyManager:
         """
         # Given
         wallet = PrivilegedKeyManager(lambda reason="": create_random_private_key())
-        initial_decoys = len(wallet._decoy_prop_names_remain)
+        len(wallet._decoy_prop_names_remain)
 
         # When
         await wallet.get_privileged_key()

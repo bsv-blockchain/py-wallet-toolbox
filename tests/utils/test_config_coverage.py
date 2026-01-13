@@ -221,8 +221,8 @@ class TestConfigAdvanced:
                 for key, val in config2.items():
                     set_config_value(merged, key, val)
 
-                assert "key1" in merged or True
-                assert "key2" in merged or True
+                assert True
+                assert True
         except (NameError, TypeError):
             pass
 

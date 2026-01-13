@@ -184,7 +184,7 @@ def get_beef_for_transaction(
         - wallet-toolbox/src/storage/methods/getBeefForTransaction.ts
         - go-wallet-toolbox/pkg/storage/internal/actions/get_beef.go
     """
-    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl  # noqa: PLC0415
+    from bsv_wallet_toolbox.storage.methods_impl import get_beef_for_transaction as _impl
 
     return _impl(storage, auth or {}, txid, options)
 

@@ -465,10 +465,10 @@ class TestSignAction:
         auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
-        with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage") as mock_recover:
+        with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage"):
             with patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
                 with patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef:
-                    with patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify:
+                    with patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts"):
                         prior = Mock()
                         prior.args = {"inputs": []}
                         prior.tx = Mock()
@@ -520,7 +520,6 @@ class TestInternalizeAction:
                     "protocol": "wallet payment",
                     "outputIndex": 0,
                     "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"},
-                    "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"},
                 }
             ],
             "description": "Test transaction description",
@@ -529,7 +528,7 @@ class TestInternalizeAction:
         with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage") as mock_recover:
             with patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
                 with patch("bsv_wallet_toolbox.signer.methods.parse_beef_ex") as mock_parse_beef_ex:
-                    with patch("bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output") as mock_setup:
+                    with patch("bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output"):
                         mock_recover.return_value = Mock()
                         mock_process.return_value = {"txid": "internalized_txid"}
                         beef_mock = Mock()

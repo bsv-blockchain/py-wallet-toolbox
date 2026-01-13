@@ -126,7 +126,7 @@ class TestWalletInitializationExceptionHandling:
         key_deriver = KeyDeriver(root_key)
 
         # Create wallet without services
-        wallet = Wallet(
+        Wallet(
             chain="test", services=None, key_deriver=key_deriver, storage_provider=mock_storage, monitor=mock_monitor
         )
 

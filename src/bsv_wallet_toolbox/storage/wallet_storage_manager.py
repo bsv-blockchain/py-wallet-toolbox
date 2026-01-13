@@ -357,7 +357,7 @@ class WalletStorageManager:
 
         backups: list[ManagedStorage] = []
 
-        for i, store in enumerate(self._stores):
+        for _i, store in enumerate(self._stores):
             if not store.is_available or not store.settings or not store.user:
                 # Make store available
                 store.settings_dict = store.storage.make_available()

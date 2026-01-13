@@ -716,7 +716,7 @@ class TestProviderMethodsMiscellaneous:
 
     def test_update_output_basket_via_generic(self, storage_provider, user_with_basket):
         """Test updating output basket via update method."""
-        user_id = user_with_basket["userId"]
+        user_with_basket["userId"]
         basket_id = user_with_basket["basketId"]
 
         patch = {
@@ -743,7 +743,7 @@ class TestProcessActionOperations:
         user_id = user_with_basket["userId"]
 
         # Create an unsigned transaction
-        tx_id = storage_provider.insert_transaction(
+        storage_provider.insert_transaction(
             {
                 "userId": user_id,
                 "reference": "process_action_test",

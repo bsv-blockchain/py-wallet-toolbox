@@ -221,7 +221,7 @@ class ChaintracksService:
                 return {"error": str(e)}
 
         # Start server in background thread
-        def run_server():
+        def run_server() -> None:
             uvicorn.run(app, host="0.0.0.0", port=port)
 
         self._server_thread = threading.Thread(target=run_server, daemon=True)

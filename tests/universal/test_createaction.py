@@ -30,7 +30,7 @@ class TestUniversalVectorsCreateAction:
         Then: Result has expected structure (structural validation instead of exact match)
         """
         # Given
-        args_data, result_data = load_test_vectors("createAction-1-out")
+        args_data, _result_data = load_test_vectors("createAction-1-out")
 
         # When
         result = wallet_with_services.create_action(args_data["json"], originator=None)
@@ -77,7 +77,7 @@ class TestUniversalVectorsCreateAction:
         Then: Result has expected structure (returns signableTransaction instead of direct tx)
         """
         # Given
-        args_data, result_data = load_test_vectors("createAction-no-signAndProcess")
+        args_data, _result_data = load_test_vectors("createAction-no-signAndProcess")
 
         # When
         result = wallet_with_services.create_action(args_data["json"], originator=None)

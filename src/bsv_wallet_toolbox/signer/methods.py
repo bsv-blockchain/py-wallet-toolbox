@@ -496,7 +496,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 if locker_pub:
                     from bsv.keys import PublicKey as PubKey
 
-                    locker_pub_key = PublicKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
+                    locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
                     counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
                     logger.debug(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
                 else:
@@ -625,7 +625,7 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, amount=prior.amount)
 
         # Build signable transaction
-        tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
+        _tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
         trace(
             logger,
             "signer.process_action.build_signable_transaction.result",
@@ -1461,7 +1461,7 @@ def _setup_wallet_payment_for_output(
         else:
             current_script = output.get("lockingScript", "")
 
-        if isinstance(current_script, Script) or isinstance(current_script, bytes):
+        if isinstance(current_script, (Script, bytes)):
             current_script_hex = current_script.hex()
         elif isinstance(current_script, str):
             current_script_hex = current_script

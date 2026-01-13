@@ -125,7 +125,7 @@ class MockBHS:
         # Return the highest configured height, or a default
         with self._lock:
             if self._responses:
-                return max(h for (h, _) in self._responses.keys())
+                return max(h for (h, _) in self._responses)
         return 800000  # Default mock height
 
     def clear(self) -> None:

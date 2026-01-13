@@ -258,7 +258,7 @@ class TestWalletVerifyHmac:
         # Given
         verify_args = {
             "data": hmac_test_data["data"],
-            "hmac": [i for i in range(32)],  # Wrong HMAC (just counting bytes)
+            "hmac": list(range(32)),  # Wrong HMAC (just counting bytes)
             "protocolID": hmac_test_data["protocolID"],
             "keyID": hmac_test_data["keyID"],
         }

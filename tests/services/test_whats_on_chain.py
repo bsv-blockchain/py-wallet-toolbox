@@ -324,7 +324,7 @@ class TestWhatsOnChain:
         When: Call get_raw_tx with invalid txids
         Then: Handles invalid formats appropriately
         """
-        provider, mock_client = mock_woc_provider
+        provider, _mock_client = mock_woc_provider
 
         for invalid_txid in invalid_txids:
             # Should handle invalid txid formats gracefully

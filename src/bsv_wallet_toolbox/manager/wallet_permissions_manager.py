@@ -1035,7 +1035,7 @@ class WalletPermissionsManager:
                     if asyncio.iscoroutinefunction(callback):
                         # Create a new event loop if needed for async callbacks
                         try:
-                            loop = asyncio.get_running_loop()
+                            asyncio.get_running_loop()
                             # If we're already in an event loop, we can't run another
                             # Just call the function directly (for testing)
                             callback(data)
@@ -1229,10 +1229,7 @@ class WalletPermissionsManager:
             return False
 
         tokens = self._permissions[cache_key]
-        for token in tokens:
-            if not self._is_token_expired(token):
-                return True
-        return False
+        return any(not self._is_token_expired(token) for token in tokens)
 
     def _cache_permission(self, cache_key: str, expiry: int | None) -> None:
         """Cache a permission with expiry."""
@@ -1348,7 +1345,7 @@ class WalletPermissionsManager:
                     # For test compatibility, run async callback synchronously
                     try:
                         # Try to get current loop
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # If we get here, loop is running, create task and wait a bit
                         task = asyncio.create_task(callback(request))
                         # Wait for the task to complete (with timeout for tests)
@@ -1459,7 +1456,7 @@ class WalletPermissionsManager:
                     # For test compatibility, run async callback synchronously
                     try:
                         # Try to get current loop
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # If we get here, loop is running, create task and wait a bit
                         task = asyncio.create_task(callback(request))
                         # Wait for the task to complete (with timeout for tests)
@@ -1569,7 +1566,7 @@ class WalletPermissionsManager:
 
         # Check for admin-only protocols (BRC-100: starts with 'admin' or 'p ')
         protocol_name = protocol_id.get("protocolName", "") if isinstance(protocol_id, dict) else ""
-        if protocol_name.startswith("admin") or protocol_name.startswith("p "):
+        if protocol_name.startswith(("admin", "p ")):
             raise ValueError(f"Protocol '{protocol_name}' is admin-only")
 
         # Check config flags based on usage type (matching TypeScript ensureProtocolPermission)
@@ -1615,7 +1612,7 @@ class WalletPermissionsManager:
         # Check for admin-only baskets (BRC-100: starts with 'admin', 'p ', or is 'default')
         if basket == "default":
             raise ValueError(f"Basket '{basket}' is admin-only")
-        if basket.startswith("admin") or basket.startswith("p "):
+        if basket.startswith(("admin", "p ")):
             raise ValueError(f"Basket '{basket}' is admin-only")
 
         # Check config flags
@@ -1792,7 +1789,7 @@ class WalletPermissionsManager:
                     # For test compatibility, run async callback synchronously
                     try:
                         # Try to get current loop
-                        loop = asyncio.get_running_loop()
+                        asyncio.get_running_loop()
                         # If we get here, loop is running, create task and wait a bit
                         task = asyncio.create_task(callback(permission_request))
                         # Wait for the task to complete (with timeout for tests)
@@ -1800,15 +1797,14 @@ class WalletPermissionsManager:
                         while not task.done() and (time.time() - start_time) < 1.0:  # 1 second timeout
                             time.sleep(0.01)
                         if task.done():
-                            result = task.result()
+                            task.result()
                         else:
-                            result = None  # Timeout
+                            pass  # Timeout
                     except RuntimeError:
                         # No running loop, create new one
                         asyncio.run(callback(permission_request))
-                        result = None
                 else:
-                    result = callback(permission_request)
+                    callback(permission_request)
 
                     # Check if permission was granted via grant_permission/deny_permission
                     if request_id in self._pending_requests:
@@ -2073,7 +2069,7 @@ class WalletPermissionsManager:
                 callback = callbacks[0]
                 try:
                     # Execute callback
-                    result = callback(grouped_request)
+                    callback(grouped_request)
 
                     # Check if permissions were granted
                     request_id = grouped_request["requestID"]
@@ -2846,7 +2842,7 @@ class WalletPermissionsManager:
 
         if inspect.iscoroutine(result_or_coro):
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Can't use run_until_complete in existing loop
                 raise RuntimeError("Cannot await in sync context")
             except RuntimeError:
@@ -2970,7 +2966,7 @@ class WalletPermissionsManager:
 
         if inspect.iscoroutine(result_or_coro):
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Can't use run_until_complete in existing loop
                 # For sync context in tests, just raise
                 raise RuntimeError("Cannot await in sync context")
@@ -3012,7 +3008,7 @@ class WalletPermissionsManager:
 
         if inspect.iscoroutine(result_or_coro):
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 # Can't use run_until_complete in existing loop
                 raise RuntimeError("Cannot await in sync context")
             except RuntimeError:
@@ -3135,7 +3131,7 @@ class WalletPermissionsManager:
             # Handle async if needed
             if inspect.iscoroutine(result_or_coro):
                 try:
-                    loop = asyncio.get_running_loop()
+                    asyncio.get_running_loop()
                     # If we're in an event loop, we can't use run_until_complete
                     # For sync context in tests, just return plaintext
                     return plaintext
@@ -3192,7 +3188,7 @@ class WalletPermissionsManager:
             # Handle async if needed
             if inspect.iscoroutine(result_or_coro):
                 try:
-                    loop = asyncio.get_running_loop()
+                    asyncio.get_running_loop()
                     # If we're in an event loop, we can't use run_until_complete
                     # For sync context in tests, just return ciphertext
                     return ciphertext

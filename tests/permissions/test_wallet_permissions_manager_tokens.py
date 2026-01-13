@@ -171,7 +171,7 @@ class TestWalletPermissionsManagerTokens:
         counterparty = "self"
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dpacp_permission(
+        permissions_manager.grant_dpacp_permission(
             originator=originator, protocol_id=protocol_id, counterparty=counterparty
         )
 
@@ -200,7 +200,7 @@ class TestWalletPermissionsManagerTokens:
         basket = "myBasket"
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dbap_permission(originator=originator, basket=basket)
+        permissions_manager.grant_dbap_permission(originator=originator, basket=basket)
 
         # When
         permissions = permissions_manager.list_dbap_permissions(originator)
@@ -226,9 +226,7 @@ class TestWalletPermissionsManagerTokens:
         verifier = "02abc"
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dcap_permission(
-            originator=originator, cert_type=cert_type, verifier=verifier
-        )
+        permissions_manager.grant_dcap_permission(originator=originator, cert_type=cert_type, verifier=verifier)
 
         # When
         permissions = permissions_manager.list_dcap_permissions(originator)
@@ -254,7 +252,7 @@ class TestWalletPermissionsManagerTokens:
         satoshis = 10000
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dsap_permission(originator=originator, satoshis=satoshis)
+        permissions_manager.grant_dsap_permission(originator=originator, satoshis=satoshis)
 
         # When
         permissions = permissions_manager.list_dsap_permissions(originator)

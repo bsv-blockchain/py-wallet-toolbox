@@ -266,13 +266,13 @@ class CommissionReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[CommissionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
 
         return NumericCondition(self, setter)
 
     def amount(self) -> NumericCondition[CommissionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["amount"] = spec
 
         return NumericCondition(self, setter)
@@ -314,19 +314,19 @@ class TransactionReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[TransactionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
 
         return NumericCondition(self, setter)
 
     def txid(self) -> StringCondition[TransactionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["txid"] = spec
 
         return StringCondition(self, setter)
 
     def status(self) -> StringCondition[TransactionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["status"] = spec
 
         return StringCondition(self, setter)
@@ -368,13 +368,13 @@ class UserReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def identity_key(self) -> StringCondition[UserReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["identityKey"] = spec
 
         return StringCondition(self, setter)
 
     def active_storage(self) -> StringCondition[UserReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["activeStorage"] = spec
 
         return StringCondition(self, setter)
@@ -416,13 +416,13 @@ class OutputBasketReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[OutputBasketReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
 
         return NumericCondition(self, setter)
 
     def name(self) -> StringCondition[OutputBasketReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["name"] = spec
 
         return StringCondition(self, setter)
@@ -464,19 +464,19 @@ class OutputReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[OutputReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
 
         return NumericCondition(self, setter)
 
     def transaction_id(self) -> NumericCondition[OutputReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["transactionId"] = spec
 
         return NumericCondition(self, setter)
 
     def spendable(self) -> BoolCondition[OutputReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["spendable"] = spec
 
         return BoolCondition(self, setter)
@@ -518,13 +518,13 @@ class TxNoteReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def transaction_id(self) -> NumericCondition[TxNoteReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["transactionId"] = spec
 
         return NumericCondition(self, setter)
 
     def note(self) -> StringCondition[TxNoteReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["note"] = spec
 
         return StringCondition(self, setter)
@@ -568,7 +568,7 @@ class KnownTxReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def txid(self) -> StringCondition[KnownTxReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["txid"] = spec
 
         return StringCondition(self, setter)
@@ -613,7 +613,7 @@ class CertifierReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def certifier(self) -> StringCondition[CertifierReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["certifier"] = spec
 
         return StringCondition(self, setter)

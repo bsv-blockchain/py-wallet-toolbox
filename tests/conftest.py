@@ -163,7 +163,7 @@ class MockWalletServices(Services):
         """
         return self._height
 
-    def get_header_for_height(self, height: int) -> bytes:  # noqa: ARG002
+    def get_header_for_height(self, height: int) -> bytes:
         """Get mock block header (overrides Services.get_header_for_height).
 
         Args:
@@ -551,7 +551,7 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             - Add a new URL branch inside fetch() and return a canned object following TS contracts
         """
 
-        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:  # noqa: ARG002
+        async def fetch(self, url: str, request_options: dict[str, Any]) -> Resp:
             """Return a recorded response for supported WhatsOnChain/Chaintracks URLs.
 
             Covered endpoints:

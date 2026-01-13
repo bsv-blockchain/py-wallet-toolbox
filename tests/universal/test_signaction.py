@@ -35,7 +35,7 @@ class TestUniversalVectorsSignAction:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("signAction-simple")
+        args_data, _result_data = load_test_vectors("signAction-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet_with_storage.sign_action(args_data["json"], originator=None)

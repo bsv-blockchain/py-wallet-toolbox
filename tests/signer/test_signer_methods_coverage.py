@@ -713,7 +713,7 @@ class TestSignerMethodsHighImpactCoverage:
         with (
             patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef,
             patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
-            patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify,
+            patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts"),
         ):
 
             mock_beef = Mock(spec=Beef)
@@ -724,7 +724,7 @@ class TestSignerMethodsHighImpactCoverage:
             mock_complete.return_value = mock_tx
 
             try:
-                result = sign_action(mock_wallet, mock_auth, args)
+                sign_action(mock_wallet, mock_auth, args)
                 # The main goal is to exercise the BEEF parsing and merging code paths (lines 107-108)
                 # If we get here without exceptions, the code paths were exercised
             except (AttributeError, KeyError, TypeError, WalletError):
@@ -768,7 +768,7 @@ class TestSignerMethodsHighImpactCoverage:
             }
 
             try:
-                result = create_action(mock_wallet, mock_auth, vargs)
+                create_action(mock_wallet, mock_auth, vargs)
                 # Input sorting logic should be exercised during transaction building
             except (AttributeError, KeyError, TypeError, WalletError):
                 # Expected - the main goal is to exercise the input sorting code path
@@ -874,7 +874,7 @@ class TestSignerMethodsHighImpactCoverage:
             }
 
             try:
-                result = sign_action(mock_wallet, mock_auth, args)
+                sign_action(mock_wallet, mock_auth, args)
                 # BEEF transaction source processing should be exercised
             except (AttributeError, KeyError, TypeError, WalletError):
                 # Expected - the main goal is to exercise the BEEF transaction source path

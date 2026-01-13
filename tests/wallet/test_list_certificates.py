@@ -367,7 +367,6 @@ class TestWalletListCertificates:
         Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
-        invalid_types = ["string", [], {}, True, 45.67]
 
         # Note: True is coerced to 1 in Python isinstance check
         invalid_types_for_limit = ["string", [], {}, 45.67]

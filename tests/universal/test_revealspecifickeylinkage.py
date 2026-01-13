@@ -40,7 +40,7 @@ class TestUniversalVectorsRevealSpecificKeyLinkage:
         privileged_key_manager = PrivilegedKeyManager(lambda reason: privileged_key)
 
         # Given
-        args_data, result_data = load_test_vectors("revealSpecificKeyLinkage-simple")
+        args_data, _result_data = load_test_vectors("revealSpecificKeyLinkage-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver, privileged_key_manager=privileged_key_manager)
 

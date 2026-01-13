@@ -259,7 +259,7 @@ def test_post_beef_array_consecutive_calls() -> None:
     services = Services(options)
 
     # Make multiple consecutive calls
-    for i in range(3):
+    for _i in range(3):
         result = services.post_beef_array(["00", "11"])
         assert isinstance(result, list)
         assert len(result) == 2

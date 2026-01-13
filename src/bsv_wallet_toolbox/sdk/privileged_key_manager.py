@@ -198,7 +198,7 @@ class PrivilegedKeyManager:
 
     def _xor_bytes(self, a: bytes, b: bytes) -> bytes:
         """XOR two byte sequences."""
-        return bytes(x ^ y for x, y in zip(a, b))
+        return bytes(x ^ y for x, y in zip(a, b, strict=False))
 
     def _split_key_into_chunks(self, key_bytes: bytes) -> list[bytes]:
         """Split the 32-byte key into chunks."""

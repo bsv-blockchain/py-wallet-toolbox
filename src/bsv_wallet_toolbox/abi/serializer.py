@@ -141,7 +141,7 @@ def serialize_response(result: dict[str, Any]) -> bytes:
         return bytes([0x00, 0x00])  # Mock wire format for getNetwork
     elif "signature" in result:
         # Return mock signature bytes
-        return bytes([0x00] + result["signature"][:10])  # Simplified
+        return bytes([0, *result["signature"][:10]])  # Simplified
     else:
         return bytes([0x00, 0x00])  # Default mock response
 

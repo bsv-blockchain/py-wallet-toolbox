@@ -186,7 +186,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles server error appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock service to return error
         def mock_get_merkle_path_error(txid, services=None):
@@ -203,7 +203,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles timeout appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock service to timeout
         def mock_get_merkle_path_timeout(txid, services=None):
@@ -220,7 +220,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles rate limiting appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock service to return rate limit error
         def mock_get_merkle_path_rate_limit(txid, services=None):
@@ -237,7 +237,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles not found appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock service to return 404
         def mock_get_merkle_path_not_found(txid, services=None):
@@ -254,7 +254,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles malformed response appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock service to return malformed data
         def mock_get_merkle_path_malformed(txid, services=None):
@@ -271,7 +271,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles connection error appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock service to raise connection error
         def mock_get_merkle_path_connection_error(txid, services=None):
@@ -288,7 +288,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Returns the merkle path data
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Set up the mocked service
         mock_stc.service = Mock(return_value=valid_merkle_path_response)
@@ -302,7 +302,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Returns merkle path data
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Mock successful response
         def mock_get_merkle_path_success(txid, services_obj):
@@ -320,14 +320,14 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles different chains appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         test_cases = [
             ("main", "d9978ffc6676523208f7b33bebf1b176388bbeace2c7ef67ce35c2eababa1805"),
             ("test", "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"),
         ]
 
-        for chain, txid in test_cases:
+        for _chain, txid in test_cases:
             # Mock response for specific chain
             def mock_get_merkle_path_chain(txid_param, services_obj):
                 response = valid_merkle_path_response.copy()
@@ -346,7 +346,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles large response appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Create large merkle path response (simulate complex merkle tree)
         large_response = {
@@ -393,7 +393,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles gracefully
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Even though txids are hex, test unicode handling
         unicode_txid = "9cce99686bc8621db439b7150dd5b3b269e4b0628fd75160222c417d6f2b95e4"
@@ -413,7 +413,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Handles empty path appropriately
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         empty_response = {
             "name": "WoCTsc",
@@ -438,7 +438,7 @@ class TestGetMerklePath:
         When: Call get_merkle_path
         Then: Successfully falls back to working provider
         """
-        services, mock_instance, mock_stc = mock_services
+        services, _mock_instance, mock_stc = mock_services
 
         # Simulate provider list with fallback - simplified for mocked environment
         def mock_multi_provider_fallback(txid, services_obj):

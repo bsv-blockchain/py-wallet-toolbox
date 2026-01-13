@@ -240,7 +240,7 @@ class PermissionTokenManager:
             import asyncio
 
             try:
-                loop = asyncio.get_running_loop()
+                asyncio.get_running_loop()
                 raise RuntimeError("Cannot handle async result in sync context")
             except RuntimeError:
                 result = asyncio.run(result)

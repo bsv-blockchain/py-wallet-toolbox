@@ -54,7 +54,7 @@ class TestUniversalVectorsGetPublicKey:
             This is a py-sdk issue that needs to be addressed for full compatibility.
         """
         # Given
-        args_data, result_data = load_test_vectors("getPublicKey-simple")
+        args_data, _result_data = load_test_vectors("getPublicKey-simple")
         wallet = wallet_with_key_deriver
 
         # When

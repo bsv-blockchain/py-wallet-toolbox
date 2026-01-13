@@ -248,7 +248,7 @@ class TestExchangeRates:
         When: Call update_exchange_rates
         Then: Handles network failures appropriately
         """
-        services, mock_instance = mock_services
+        services, _mock_instance = mock_services
 
         # Mock the update_exchangeratesapi function
         async def mock_update_exchangeratesapi(currencies, options):
@@ -260,14 +260,13 @@ class TestExchangeRates:
                     raise Exception(f"HTTP {error_scenario['status']}: {error_scenario['text']}")
 
         # Replace the function temporarily
-        original_func = update_exchangeratesapi
         try:
             # Mock at module level
             with patch(
                 "bsv_wallet_toolbox.services.providers.exchange_rates.update_exchangeratesapi",
                 side_effect=mock_update_exchangeratesapi,
             ):
-                for error_scenario in network_error_responses:
+                for _error_scenario in network_error_responses:
                     try:
                         result = await update_exchangeratesapi(valid_currencies, services.options)
                         # Should handle errors gracefully
@@ -302,7 +301,7 @@ class TestExchangeRates:
         When: Call update_exchange_rates
         Then: Returns exchange rate data
         """
-        services, mock_instance = mock_services
+        services, _mock_instance = mock_services
         scenario = exchange_rate_responses[scenario_id]
         response_scenario = scenario["response"]
 

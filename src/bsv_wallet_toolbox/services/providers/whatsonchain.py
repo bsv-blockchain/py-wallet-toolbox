@@ -858,6 +858,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         # Chaintracks-like endpoint (tests will mock this)
         base_url = "https://mainnet-chaintracks.babbage.systems/getUtxoStatus"
+        # Extract parameters from args/kwargs
+        output = args[0] if args else kwargs.get("output", "")
+        output_format = kwargs.get("outputFormat")
+        outpoint = kwargs.get("outpoint")
         params = {"output": output}
         if output_format:
             params["outputFormat"] = output_format
@@ -929,7 +933,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
         """
         return await self._get_transaction_status(txid, use_next)
 
-    async def _get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:  # noqa: ARG002
+    async def _get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Internal implementation of get_transaction_status."""
         request_options = {"method": "GET", "headers": WhatsOnChainTracker.get_headers(self)}
         base_url = "https://mainnet-chaintracks.babbage.systems/getTransactionStatus"

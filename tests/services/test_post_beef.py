@@ -172,7 +172,7 @@ def test_post_beef_network_failure_500_error(mock_services, valid_beef_data) -> 
     When: Call post_beef
     Then: Handles error appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return error result
     if services.arc_taal:
@@ -195,7 +195,7 @@ def test_post_beef_network_timeout_error(mock_services, valid_beef_data) -> None
     When: Call post_beef
     Then: Handles timeout appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to raise timeout exception
     if services.arc_taal:
@@ -213,7 +213,7 @@ def test_post_beef_rate_limiting_429_error(mock_services, valid_beef_data) -> No
     When: Call post_beef
     Then: Handles rate limiting appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return rate limited result
     if services.arc_taal:
@@ -236,7 +236,7 @@ def test_post_beef_malformed_json_response(mock_services, valid_beef_data) -> No
     When: Call post_beef
     Then: Handles malformed response appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to raise JSON error
     if services.arc_taal:
@@ -253,7 +253,7 @@ def test_post_beef_empty_response(mock_services, valid_beef_data) -> None:
     When: Call post_beef
     Then: Handles empty response appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to raise empty response error
     if services.arc_taal:
@@ -270,7 +270,7 @@ def test_post_beef_service_unavailable_503_error(mock_services, valid_beef_data)
     When: Call post_beef
     Then: Handles service unavailable appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return error result
     if services.arc_taal:
@@ -292,7 +292,7 @@ def test_post_beef_unauthorized_401_error(mock_services, valid_beef_data) -> Non
     When: Call post_beef
     Then: Handles authentication error appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return error result
     if services.arc_taal:
@@ -314,7 +314,7 @@ def test_post_beef_forbidden_403_error(mock_services, valid_beef_data) -> None:
     When: Call post_beef
     Then: Handles forbidden error appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return error result
     if services.arc_taal:
@@ -391,7 +391,7 @@ def test_post_beef_success_response(mock_services, valid_beef_data) -> None:
     When: Call post_beef
     Then: Returns successful result
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return success result
     if services.arc_taal:
@@ -415,7 +415,7 @@ def test_post_beef_double_spend_detection(mock_services) -> None:
     When: Call post_beef twice with same data
     Then: Second call detects double spend
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     beef_data = "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff0100f2052a01000000434104b0bd634234abbb1ba1e986e884185c61cf43e001f9137f23c2c409273eb16e65a9147c233e4c945cf877e6c7e25dfaa0816208673ef48b89b8002c06ba4d3c396f60a3cac000000000"
 
@@ -470,7 +470,7 @@ def test_post_beef_unicode_in_response(mock_services, valid_beef_data) -> None:
     When: Call post_beef
     Then: Handles unicode correctly
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to return error with unicode message
     if services.arc_taal:
@@ -492,7 +492,7 @@ def test_post_beef_provider_fallback_simulation(mock_services, valid_beef_data) 
     When: Call post_beef
     Then: Uses fallback provider successfully
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC TAAL provider to return success result
     if services.arc_taal:
@@ -515,7 +515,7 @@ def test_post_beef_connection_error_handling(mock_services, valid_beef_data) -> 
     When: Call post_beef
     Then: Handles connection error appropriately
     """
-    services, mock_instance = mock_services
+    services, _mock_instance = mock_services
 
     # Mock ARC provider to raise connection error
     if services.arc_taal:

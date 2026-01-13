@@ -1929,7 +1929,7 @@ def get_sync_chunk(storage: Any, args: dict[str, Any]) -> dict[str, Any]:
         def get_offset(name: str) -> int:
             return offset_map.get(name, 0)
 
-        def add_entities(name: str, query, to_dict_fn, result_key: str, max_divider: int = 1):
+        def add_entities(name: str, query, to_dict_fn, result_key: str, max_divider: int = 1) -> None:
             nonlocal items_left, rough_size
             offset = get_offset(name)
             limit = min(items_left, max(10, max_items // max_divider))

@@ -82,7 +82,7 @@ def to_trace_value(value: Any) -> Any:
                 filtered_dict[str(k)] = to_trace_value(v)
 
         if len(filtered_dict) > MAX_DICT_ITEMS:
-            items = {k: v for k, v in list(filtered_dict.items())[:MAX_DICT_ITEMS]}
+            items = dict(list(filtered_dict.items())[:MAX_DICT_ITEMS])
             return {
                 "type": "dict",
                 "len": len(value),

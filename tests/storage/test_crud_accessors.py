@@ -81,7 +81,7 @@ class TestCertifierAccessor:
         accessor = CertifierAccessor(provider)
 
         # Should work
-        reader = accessor.read()
+        accessor.read()
 
         # Should raise NotImplementedError
         with pytest.raises(NotImplementedError):

@@ -185,7 +185,6 @@ class TaskCheckForProofs(WalletMonitorTask):
             # use the bump_bytes we created
             if merkle_path_obj:
                 bump_bytes = merkle_path_obj.to_binary()
-                index = 0  # Extract from BUMP if possible
             # else: bump_bytes was set above
 
             update_args = {

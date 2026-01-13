@@ -346,7 +346,7 @@ class TestGetRawTx:
             ("test", "c3b6ee8b83a4261771ede9b0d2590d2f65853239ee34f84cdda36524ce317d76"),
         ]
 
-        for chain, txid in test_cases:
+        for _chain, txid in test_cases:
             # Mock response for specific chain
             # Note: get_raw_tx service is called with only txid (not chain) - see services.py line 784
             def mock_get_raw_tx_chain(txid_param):

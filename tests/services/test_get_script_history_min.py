@@ -106,7 +106,7 @@ def test_get_script_history_different_chains(mock_services) -> None:
     mock_service_to_call.service = mock_get_script_history_chain
     mock_instance.service_to_call = mock_service_to_call
 
-    for chain in chains:
+    for _chain in chains:
         result = services.get_script_history("aa" * 32)
         assert isinstance(result, dict)
         assert "confirmed" in result

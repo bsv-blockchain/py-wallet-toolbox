@@ -216,7 +216,7 @@ class TestSimpleWalletManagerErrorHandling:
             if hasattr(manager, "authenticate"):
                 try:
                     manager.authenticate(None, None)  # Should fail
-                    assert False, "Should require primary key"
+                    raise AssertionError("Should require primary key")
                 except (ValueError, TypeError, AttributeError):
                     pass  # Expected
         except (TypeError, AttributeError):

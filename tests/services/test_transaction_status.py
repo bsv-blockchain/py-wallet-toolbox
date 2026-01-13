@@ -430,7 +430,7 @@ def test_get_transaction_status_different_chains(mock_services) -> None:
         ("test", "b2c3d4e5f6abcdef1234567890abcdef1234567890abcdef1234567890abcdef"),
     ]
 
-    for chain, txid in test_cases:
+    for _chain, txid in test_cases:
         # Note: get_transaction_status service is called with txid and use_next - see services.py line 1279
         def mock_get_transaction_status_chain(txid_param, use_next=None):
             return {

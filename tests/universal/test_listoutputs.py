@@ -31,7 +31,7 @@ class TestUniversalVectorsListOutputs:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("listOutputs-simple")
+        args_data, _result_data = load_test_vectors("listOutputs-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet_with_services.list_outputs(args_data["json"], originator=None)

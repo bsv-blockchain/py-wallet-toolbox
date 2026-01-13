@@ -256,7 +256,7 @@ class ChaintracksStorage:
         except Exception as e:
             raise WalletError(f"Failed to get height: {e!s}")
 
-    def insert_header(  # noqa: PLR0913
+    def insert_header(
         self,
         height: int,
         header_hash: str,
@@ -430,7 +430,6 @@ class ChaintracksStorage:
                     # 3. Trigger reorg recovery if needed
 
                     # TODO: Implement full reorg detection comparing hashes
-                    reorg_detected = False  # Placeholder
                     return {
                         "lastSyncedHeight": sync_state.last_synced_height,
                         "lastSyncedHash": sync_state.last_synced_hash,

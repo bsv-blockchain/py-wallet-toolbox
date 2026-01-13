@@ -773,7 +773,7 @@ class TestWalletProveCertificate:
         }
 
         # Store the certificate in the wallet
-        acquire_result = wallet_with_services.acquire_certificate(acquire_args)
+        wallet_with_services.acquire_certificate(acquire_args)
 
         # Now prove the certificate with nested args format (what validation expects)
         # Note: The current implementation has a mismatch between validation (expects nested)

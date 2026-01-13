@@ -177,7 +177,7 @@ class TestSerializeResponse:
         data = serialize_response(result)
 
         # Then
-        assert data == bytes([0x00] + list(range(10)))  # First 10 bytes
+        assert data == bytes([0, *list(range(10))])  # First 10 bytes
 
     def test_serialize_unknown_response(self) -> None:
         """Given: Response with unknown structure

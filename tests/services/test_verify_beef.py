@@ -158,6 +158,8 @@ class TestVerifyBeef:
         assert ok is True
 
         # When/Then - Get BEEF from storage
+        from bsv_wallet_toolbox.utils import verify_truthy
+
         beef = verify_truthy(storage.get_valid_beef_for_txid(get_beef_for_txid, None, None, None, None, 1))
         chaintracker = services.get_chain_tracker()
         ok = beef.verify(chaintracker, True)
@@ -169,7 +171,7 @@ class TestVerifyBeef:
         When: Attempt to verify BEEF
         Then: Raises appropriate errors
         """
-        services, mock_instance = mock_services
+        services, _mock_instance = mock_services
 
         # Mock get_chain_tracker method to avoid network calls (though validation should fail before this)
         mock_chaintracker = Mock()

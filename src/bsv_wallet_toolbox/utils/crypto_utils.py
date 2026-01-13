@@ -56,7 +56,7 @@ def xor_bytes(a: bytes, b: bytes) -> bytes:
         # Repeat a to match b's length
         a = (a * ((len(b) // len(a)) + 1))[: len(b)]
 
-    return bytes(x ^ y for x, y in zip(a, b))
+    return bytes(x ^ y for x, y in zip(a, b, strict=False))
 
 
 def sha256_hash(data: bytes) -> bytes:

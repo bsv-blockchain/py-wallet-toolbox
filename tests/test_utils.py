@@ -33,12 +33,7 @@ class TestUtils:
         ]
 
         # If any env var is set, environment IS configured
-        for env_var in env_vars_to_check:
-            if os.environ.get(env_var):
-                return False
-
-        # No env vars set = environment NOT configured = skip test
-        return True
+        return all(not os.environ.get(env_var) for env_var in env_vars_to_check)
 
 
 class Setup:

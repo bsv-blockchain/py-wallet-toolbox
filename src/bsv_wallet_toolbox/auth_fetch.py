@@ -151,7 +151,7 @@ def _patch_requests_for_auth_interop(debug: bool) -> Any:
         is_auth = parsed.path.rstrip("/") == "/.well-known/auth"
         base_url = f"{parsed.scheme}://{parsed.netloc}"
         headers = kwargs.get("headers") or {}
-        is_general_auth = bool(headers) and any(str(k).lower().startswith("x-bsv-auth-") for k in headers.keys())
+        is_general_auth = bool(headers) and any(str(k).lower().startswith("x-bsv-auth-") for k in headers)
 
         if is_auth:
             data = kwargs.get("data")

@@ -119,9 +119,9 @@ class TestPubSubEvents:
         """Test multiple subscribe and unsubscribe operations."""
         pubsub = PubSubEvents[str]()
 
-        queue1, unsub1 = await pubsub.subscribe()
+        queue1, _unsub1 = await pubsub.subscribe()
         queue2, unsub2 = await pubsub.subscribe()
-        queue3, unsub3 = await pubsub.subscribe()
+        queue3, _unsub3 = await pubsub.subscribe()
 
         assert len(pubsub.subscribers) == 3
 

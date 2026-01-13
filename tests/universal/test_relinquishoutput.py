@@ -32,7 +32,7 @@ class TestUniversalVectorsRelinquishOutput:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("relinquishOutput-simple")
+        args_data, _result_data = load_test_vectors("relinquishOutput-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet_with_storage.relinquish_output(args_data["json"], originator=None)

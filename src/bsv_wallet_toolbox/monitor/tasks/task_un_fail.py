@@ -110,7 +110,7 @@ class TaskUnFail(WalletMonitorTask):
         log_lines.append(f"transaction {txid} status is now 'unproven'")
 
         # Parse transaction to check inputs
-        bsvtx = BsvTransaction.from_hex(raw_tx.hex())  # py-sdk Transaction usually takes hex or bytes? check.
+        BsvTransaction.from_hex(raw_tx.hex())  # py-sdk Transaction usually takes hex or bytes? check.
         # Assuming from_hex or similar. provider.py uses Transaction.from_hex(beef).
         # Actually BsvTransaction (py-sdk) constructor might handle bytes directly or use from_hex.
         # Let's use hex to be safe as observed in other codes.
@@ -120,7 +120,7 @@ class TaskUnFail(WalletMonitorTask):
 
         # Update outputs (spendable)
         outputs = self.monitor.storage.find_outputs({"transactionId": tx_id})
-        for o in outputs:
+        for _o in outputs:
             # Validate locking script - simplified
             # Check UTXO status
             # ... (omitted)

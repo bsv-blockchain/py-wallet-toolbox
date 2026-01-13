@@ -282,7 +282,7 @@ class TestBulkIngestorWOCEdgeCases:
         ]
 
         with patch.object(ingestor, "_fetch_bulk_header_files_info", return_value=mock_file_infos):
-            file_infos, downloader = await ingestor.synchronize(present_height, range_to_fetch)
+            file_infos, _downloader = await ingestor.synchronize(present_height, range_to_fetch)
 
             assert len(file_infos) == 1
             assert file_infos[0].file_name == "mainNet_0.headers"

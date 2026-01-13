@@ -119,7 +119,7 @@ class TestSessionScope:
         engine = create_engine_from_url("sqlite:///:memory:")
         session_factory = create_session_factory(engine)
 
-        with pytest.raises(ValueError), session_scope(session_factory) as session:
+        with pytest.raises(ValueError), session_scope(session_factory):
             # This should cause rollback
             raise ValueError("Test exception")
 

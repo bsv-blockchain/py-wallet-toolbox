@@ -222,7 +222,7 @@ _async_runner: _AsyncRunner | None = None
 _parent_pid = os.getpid()
 
 
-def _reset_async_runner_after_fork():
+def _reset_async_runner_after_fork() -> None:
     """Reset async runner in child process after fork."""
     global _async_runner, _parent_pid
     current_pid = os.getpid()

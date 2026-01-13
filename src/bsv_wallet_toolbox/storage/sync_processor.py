@@ -8,7 +8,10 @@ Reference: go-wallet-toolbox/pkg/storage/internal/sync/chunk_processor.go
 
 import logging
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .provider import StorageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -140,11 +143,7 @@ class SyncChunkProcessor:
             "commissions",
         ]
 
-        for field in entity_fields:
-            if self.chunk.get(field):
-                return False
-
-        return True
+        return all(not self.chunk.get(field) for field in entity_fields)
 
     def _process_user(self) -> None:
         """Process user data from chunk."""

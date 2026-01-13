@@ -35,7 +35,7 @@ class TestUniversalVectorsInternalizeAction:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("internalizeAction-simple")
+        args_data, _result_data = load_test_vectors("internalizeAction-simple")
 
         # When - Use JSON args since wire deserialization is incomplete
         result = wallet_with_storage.internalize_action(args_data["json"], originator=None)
