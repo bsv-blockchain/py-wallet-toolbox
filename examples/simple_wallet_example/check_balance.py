@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ウォレットの残高とUTXOを確認するスクリプト"""
+"""Script to check wallet balance and UTXOs"""
 
 import os
 from pathlib import Path
@@ -28,21 +28,21 @@ FAUCET_DERIVATION_PREFIX = "faucet-prefix-01"
 FAUCET_DERIVATION_SUFFIX = "faucet-suffix-01"
 
 def main():
-    # スクリプトのあるディレクトリに移動
+    # Change to script directory
     os.chdir(Path(__file__).parent)
     load_dotenv()
     
     print("=" * 70)
-    print("💰 ウォレット残高チェッカー")
+    print("💰 Wallet Balance Checker")
     print("=" * 70)
 
-    # ウォレット初期化
+    # Wallet initialization
     chain = get_network()
     key_deriver = get_key_deriver()
     options = create_default_options(chain)
     services = Services(options)
     
-    # ストレージモード判定（優先度: wallet-infra > remote > local）
+    # Storage mode selection (priority: wallet-infra > remote > local)
     wallet_infra_mode = use_wallet_infra()
     bypass_auth = bypass_wallet_infra_auth()
     remote_storage_mode = use_remote_storage()
@@ -50,41 +50,41 @@ def main():
     wallet = None
 
     if wallet_infra_mode:
-        print(f"\n🏗️  wallet-infraモード: {get_wallet_infra_url()}")
+        print(f"\n🏗️  wallet-infra mode: {get_wallet_infra_url()}")
         local_storage = get_storage_provider(chain)
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=local_storage)
         infra_client = get_wallet_infra_client(wallet)
         if bypass_auth:
-            print("🔄 wallet-infra (認証バイパス)")
+            print("🔄 wallet-infra (auth bypass)")
             wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=infra_client)
         else:
             try:
                 infra_client.make_available()
-                print("✅ wallet-infra接続成功")
+                print("✅ wallet-infra connection successful")
                 wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=infra_client)
             except Exception as e:
-                print(f"⚠️  wallet-infra接続失敗: {e}")
+                print(f"⚠️  wallet-infra connection failed: {e}")
                 wallet_infra_mode = False
 
     if not wallet_infra_mode and remote_storage_mode:
-        print(f"\n🌐 リモートストレージモード: {get_remote_storage_url(chain)}")
+        print(f"\n🌐 Remote storage mode: {get_remote_storage_url(chain)}")
         local_storage = get_storage_provider(chain)
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=local_storage)
         remote_client = get_remote_storage_client(wallet, chain)
         try:
             remote_client.make_available()
-            print("✅ リモートストレージ接続成功")
+            print("✅ Remote storage connection successful")
             wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=remote_client)
         except Exception as e:
-            print(f"❌ リモートストレージ接続失敗: {e}")
+            print(f"❌ Remote storage connection failed: {e}")
             remote_storage_mode = False
 
     if not wallet_infra_mode and not remote_storage_mode:
-        print("\n💾 ローカルストレージモード")
+        print("\n💾 Local storage mode")
         storage = get_storage_provider(chain)
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=storage)
 
-    print(f"🟢 ネットワーク: {chain}")
+    print(f"🟢 Network: {chain}")
     try:
         identity_key = key_deriver.identity_key().hex()
     except Exception:
@@ -100,7 +100,7 @@ def main():
     except Exception:
         pass
 
-    # Faucet デモと同じ BRC-29 派生アドレスを表示
+    # Display BRC-29 derived address same as Faucet demo
     try:
         if root_priv:
             key_id = KeyID(
@@ -118,16 +118,16 @@ def main():
     except Exception:
         pass
     
-    # 1. 残高確認
+    # 1. Check balance
     try:
         balance_result = wallet.balance()
         total_sats = balance_result.get("total") or balance_result.get("total_satoshis", 0)
-        print(f"\n💵 現在の残高: {total_sats} satoshis")
+        print(f"\n💵 Current balance: {total_sats} satoshis")
     except Exception as e:
-        print(f"\n❌ 残高取得エラー: {e}")
+        print(f"\n❌ Balance retrieval error: {e}")
 
-    # 2. UTXO一覧確認
-    print("\n🔍 有効なUTXO一覧 (spendable):")
+    # 2. Check UTXO list
+    print("\n🔍 List of valid UTXOs (spendable):")
     try:
         outputs_result = wallet.list_outputs({
             "basket": "default",
@@ -138,15 +138,15 @@ def main():
         spendable_outputs = [o for o in outputs if not o.get("spent") and o.get("spendable") is not False]
         
         if not spendable_outputs:
-            print("   (なし)")
+            print("   (none)")
         else:
             for i, out in enumerate(spendable_outputs):
-                # デバッグ用に全フィールドを表示
+                # Display all fields for debugging
                 print(f"   --- Output {i+1} ---")
                 pprint(out)
                 
     except Exception as e:
-        print(f"❌ UTXO一覧取得エラー: {e}")
+        print(f"❌ UTXO list retrieval error: {e}")
 
     print("\n" + "=" * 70)
 

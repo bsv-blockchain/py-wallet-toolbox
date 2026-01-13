@@ -43,37 +43,37 @@ def _init_wallet() -> Wallet:
     wallet: Wallet | None = None
 
     if wallet_infra_mode:
-        print(f"\n🏗️  wallet-infraモード: {get_wallet_infra_url()}")
+        print(f"\n🏗️  wallet-infra mode: {get_wallet_infra_url()}")
         local_storage = get_storage_provider(chain)
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=local_storage)
         infra_client = get_wallet_infra_client(wallet)
         if bypass_auth:
-            print("🔄 wallet-infra (認証バイパス)")
+            print("🔄 wallet-infra (auth bypass)")
             wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=infra_client)
         else:
             try:
                 infra_client.make_available()
-                print("✅ wallet-infra接続成功")
+                print("✅ wallet-infra connection successful")
                 wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=infra_client)
             except Exception as exc:  # noqa: BLE001
-                print(f"⚠️  wallet-infra接続失敗: {exc}")
+                print(f"⚠️  wallet-infra connection failed: {exc}")
                 wallet_infra_mode = False
 
     if not wallet_infra_mode and remote_storage_mode:
-        print(f"\n🌐 リモートストレージモード: {get_remote_storage_url(chain)}")
+        print(f"\n🌐 Remote storage mode: {get_remote_storage_url(chain)}")
         local_storage = get_storage_provider(chain)
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=local_storage)
         remote_client = get_remote_storage_client(wallet, chain)
         try:
             remote_client.make_available()
-            print("✅ リモートストレージ接続成功")
+            print("✅ Remote storage connection successful")
             wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=remote_client)
         except Exception as exc:  # noqa: BLE001
-            print(f"❌ リモートストレージ接続失敗: {exc}")
+            print(f"❌ Remote storage connection failed: {exc}")
             remote_storage_mode = False
 
     if not wallet_infra_mode and not remote_storage_mode:
-        print("\n💾 ローカルストレージモード")
+        print("\n💾 Local storage mode")
         storage = get_storage_provider(chain)
         wallet = Wallet(chain=chain, services=services, key_deriver=key_deriver, storage_provider=storage)
 
@@ -82,7 +82,7 @@ def _init_wallet() -> Wallet:
 
 def _set_change_params(wallet: Wallet, desired_utxos: int, min_value: int) -> None:
     """Call SpecOp to update change basket preferences."""
-    print(f"🔧 change設定を更新: numberOfDesiredUTXOs={desired_utxos}, minimumDesiredUTXOValue={min_value}")
+    print(f"🔧 Updating change settings: numberOfDesiredUTXOs={desired_utxos}, minimumDesiredUTXOValue={min_value}")
     wallet.list_outputs(
         {
             "basket": "specOpSetWalletChangeParams",
@@ -93,7 +93,7 @@ def _set_change_params(wallet: Wallet, desired_utxos: int, min_value: int) -> No
 
 def _trigger_split_action(wallet: Wallet, description: str, accept_delayed: bool) -> None:
     """Send a zero-sat OP_RETURN action to force change regeneration."""
-    print("🚀 change再生成用の create_action を実行します…")
+    print("🚀 Executing create_action for change regeneration…")
     action = wallet.create_action(
         {
             "description": description,
@@ -109,35 +109,35 @@ def _trigger_split_action(wallet: Wallet, description: str, accept_delayed: bool
             },
         }
     )
-    print("✅ create_action 完了")
+    print("✅ create_action completed")
     if action.get("txid"):
         print(f"   txid: {action['txid']}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ウォレット内のUTXOを複数に分割します。")
+    parser = argparse.ArgumentParser(description="Split UTXOs in wallet into multiple pieces.")
     parser.add_argument(
         "--count",
         type=int,
         default=10,
-        help="作成したいUTXO数（default: 10）",
+        help="Number of UTXOs to create (default: 10)",
     )
     parser.add_argument(
         "--min-value",
         type=int,
         default=5000,
-        help="1つあたりの最小UTXO額（sats, default: 5000）",
+        help="Minimum UTXO value per piece (sats, default: 5000)",
     )
     parser.add_argument(
         "--accept-delayed",
         action="store_true",
-        help="Delayed broadcast を許可する（デフォルトは即時ブロードキャスト）",
+        help="Allow delayed broadcast (default is immediate broadcast)",
     )
     parser.add_argument(
         "--description",
         type=str,
         default="Split local change UTXOs",
-        help="create_action の説明文",
+        help="Description for create_action",
     )
     args = parser.parse_args()
 
@@ -146,30 +146,30 @@ def main() -> None:
 
     wallet = _init_wallet()
     balance = wallet.balance().get("total") or 0
-    print(f"💵 現在の残高: {balance} satoshis")
+    print(f"💵 Current balance: {balance} satoshis")
 
     if balance <= 0:
-        raise SystemExit("残高が無いため分割できません。faucet から受金してください。")
+        raise SystemExit("Cannot split due to zero balance. Please receive funds from faucet.")
 
     if args.count <= 0:
-        raise SystemExit("--count は 1 以上を指定してください。")
+        raise SystemExit("Please specify --count as 1 or greater.")
 
     min_value = max(1, args.min_value)
     estimated_required = args.count * min_value
 
     if balance < estimated_required:
         print(
-            f"⚠️  残高 {balance} sats では指定値 ({args.count} x {min_value} sats) を満たせません。"
-            " なるべく小さい min-value を指定してください。"
+            f"⚠️  Balance {balance} sats cannot satisfy the specified value ({args.count} x {min_value} sats)."
+            " Please specify a smaller min-value."
         )
 
     _set_change_params(wallet, desired_utxos=args.count, min_value=min_value)
     _trigger_split_action(wallet, args.description, args.accept_delayed)
 
-    # 確認
+    # Verification
     outputs = wallet.list_outputs({"basket": "default", "limit": 100}).get("outputs", [])
     spendable = [o for o in outputs if not o.get("spent") and o.get("spendable") is not False]
-    print("\n🔍 再生成後のUTXO一覧（上位100件）:")
+    print("\n🔍 UTXO list after regeneration (top 100):")
     for idx, out in enumerate(spendable, start=1):
         print(f"  {idx:02d}: {out.get('outpoint')} → {out.get('satoshis', 0)} sats")
 

@@ -1311,11 +1311,11 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
                 raise WalletError(f"Transaction {txid} script verification failed")
         except ValueError as verify_val_err:
             # py-sdk Transaction.verify may raise ValueError when source transactions or
-            # merkle proofs are missing for inputs. これは「検証に必要な追加コンテキストが無い」
-            # だけであり、ウォレット内部で生成したトランザクションに対しては致命的ではない。
+            # merkle proofs are missing for inputs. This means "missing additional context required for verification"
+            # and is not fatal for transactions generated internally by the wallet.
             msg = str(verify_val_err)
             if "missing an associated source transaction" in msg:
-                # ベストエフォート検証: ここでは追加エラーにせずスキップする。
+                # Best-effort verification: skip without raising additional error here.
                 pass
             else:
                 raise WalletError(f"Script verification error: {verify_val_err!s}")
@@ -1323,7 +1323,7 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
             # If verify() fails due to other reasons, fall back only for clearly benign cases.
             err_str = str(verify_err).lower()
             if "coroutine" in err_str:
-                # Event loop / coroutine 絡みの実行環境エラーは無視してよい（テスト環境など）
+                # Event loop / coroutine-related runtime errors can be ignored (test environments, etc.)
                 pass
             else:
                 raise WalletError(f"Script verification error: {verify_err!s}")
