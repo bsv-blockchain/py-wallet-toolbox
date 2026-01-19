@@ -9,10 +9,9 @@ Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.encryption.test.t
 import base64
 from unittest.mock import AsyncMock, MagicMock, Mock
 
-import pytest
-
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True
@@ -217,7 +216,7 @@ class TestWalletPermissionsManagerEncryptionIntegration:
 
         Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.encryption.test.ts
                    test('should not encrypt metadata if encryptWalletMetadata=false, storing and retrieving plaintext')
-        
+
         Note: Test expects decrypt.call_count == 3 even when encryptWalletMetadata=False,
               which seems inconsistent. Skipping until behavior is clarified.
         """

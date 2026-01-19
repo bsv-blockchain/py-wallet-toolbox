@@ -40,11 +40,10 @@ Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/Chain
 
 from __future__ import annotations
 
-import asyncio
 import json
+import logging
 import threading
 import time
-import logging
 from typing import Any, TypedDict
 
 from bsv_wallet_toolbox.errors import WalletError
@@ -160,17 +159,19 @@ class ChaintracksService:
         self.port = port
 
         # Initialize chaintracks if not available
-        if self.chaintracks and hasattr(self.chaintracks, 'make_available'):
+        if self.chaintracks and hasattr(self.chaintracks, "make_available"):
             # Note: make_available is async in TypeScript, sync here for simplicity
             pass
 
         # Create FastAPI app for reference implementation
         try:
+            import uvicorn
             from fastapi import FastAPI
             from fastapi.middleware.cors import CORSMiddleware
-            import uvicorn
         except ImportError:
-            raise RuntimeError("FastAPI and uvicorn required for HTTP server. Install with: pip install fastapi uvicorn")
+            raise RuntimeError(
+                "FastAPI and uvicorn required for HTTP server. Install with: pip install fastapi uvicorn"
+            )
 
         app = FastAPI(title="ChainTracks API", version="1.0.0")
 
@@ -195,7 +196,7 @@ class ChaintracksService:
             try:
                 header = self.chaintracks.find_header_for_height(height) if self.chaintracks else None
                 return header or {"error": "Header not found"}
-            except Exception as e:
+            except Exception:
                 logging.exception("Error in /header/height/{height} endpoint")
                 return {"error": "An internal server error occurred."}
 
@@ -220,7 +221,7 @@ class ChaintracksService:
                 return {"error": str(e)}
 
         # Start server in background thread
-        def run_server():
+        def run_server() -> None:
             uvicorn.run(app, host="0.0.0.0", port=port)
 
         self._server_thread = threading.Thread(target=run_server, daemon=True)
@@ -235,7 +236,7 @@ class ChaintracksService:
         Reference: toolbox/ts-wallet-toolbox/src/services/chaintracker/chaintracks/ChaintracksService.ts
         """
         # Stop FastAPI server if running
-        if hasattr(self, '_server_thread') and self._server_thread.is_alive():
+        if hasattr(self, "_server_thread") and self._server_thread.is_alive():
             # Note: uvicorn doesn't provide clean shutdown from thread
             # In production, use proper server lifecycle management
             pass

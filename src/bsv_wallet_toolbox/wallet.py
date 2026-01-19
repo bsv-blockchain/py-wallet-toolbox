@@ -4,18 +4,16 @@ Reference: ts-wallet-toolbox/src/Wallet.ts
 """
 
 import asyncio
-import hashlib
-import hmac
 import json
 import logging
 import time
 from typing import TYPE_CHECKING, Any, Literal
 
-from bsv.keys import PrivateKey, PublicKey
+from bsv.keys import PublicKey
 from bsv.overlay_tools import LookupResolver, LookupResolverConfig
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
-from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, Protocol, ProtoWallet
+from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, ProtoWallet
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
     CreateSignatureResult,
@@ -41,16 +39,22 @@ from .sdk.types import (
 from .services import WalletServices
 from .signer.methods import (
     acquire_direct_certificate,
-    create_action as signer_create_action,
-    internalize_action as signer_internalize_action,
     prove_certificate,
+)
+from .signer.methods import (
+    create_action as signer_create_action,
+)
+from .signer.methods import (
+    internalize_action as signer_internalize_action,
+)
+from .signer.methods import (
     sign_action as signer_sign_action,
 )
 from .storage.methods.generate_change import MAX_POSSIBLE_SATOSHIS
 from .utils.identity_utils import query_overlay, transform_verifiable_certificates_with_trust
 from .utils.random_utils import random_bytes_base64
-from .utils.ttl_cache import TTLCache
 from .utils.trace import trace
+from .utils.ttl_cache import TTLCache
 from .utils.validation import (
     validate_abort_action_args,
     validate_acquire_certificate_args,
@@ -64,7 +68,6 @@ from .utils.validation import (
     validate_prove_certificate_args,
     validate_relinquish_certificate_args,
     validate_sign_action_args,
-    validate_wallet_constructor_args,
 )
 
 if TYPE_CHECKING:
@@ -191,7 +194,7 @@ class Wallet:
     # Version constant (matches TypeScript's hardcoded return value)
     VERSION = "1.0.0"  # Updated to match Universal Test Vectors
 
-    def __init__(  # noqa: PLR0913
+    def __init__(
         self,
         chain: Chain,
         services: WalletServices | None = None,
@@ -239,7 +242,7 @@ class Wallet:
             raise ValueError("key_deriver is required")
 
         # Validate key_deriver parameter
-        if key_deriver is not None and not hasattr(key_deriver, 'derive_public_key'):
+        if key_deriver is not None and not hasattr(key_deriver, "derive_public_key"):
             raise ValueError("key_deriver must implement the KeyDeriver interface")
 
         self.chain: Chain = chain
@@ -257,7 +260,7 @@ class Wallet:
         # Initialize settings manager (TS parity)
         self.settings_manager: WalletSettingsManager = settings_manager or WalletSettingsManager(self)
 
-        self.monitor: "Monitor | None" = monitor
+        self.monitor: Monitor | None = monitor
 
         # Initialize BEEF and Wave 4 attributes
         # TS: this.beef = new BeefParty([this.userParty])
@@ -282,7 +285,7 @@ class Wallet:
         except Exception:
             # Fallback if Beef initialization fails
             self.beef = None
-        
+
         # Fallback list for known txids when BEEF isn't available
         self._known_txids: list[str] = []
 
@@ -310,7 +313,7 @@ class Wallet:
         if self.key_deriver is not None:
             try:
                 # Access the root private key from KeyDeriver
-                root_key = getattr(self.key_deriver, '_root_private_key', None)
+                root_key = getattr(self.key_deriver, "_root_private_key", None)
                 if root_key is not None:
                     self.proto = ProtoWallet(root_key, permission_callback=lambda _: True)
             except Exception:
@@ -442,7 +445,7 @@ class Wallet:
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         proto_args: dict[str, Any] = {}
 
         # Convert standardized protocolID to py-sdk expectation
@@ -471,15 +474,9 @@ class Wallet:
                         proto_args["counterparty"] = {"type": CounterpartyType.ANYONE}
                 else:
                     # Hex string - convert to dict format
-                    proto_args["counterparty"] = {
-                        "type": CounterpartyType.OTHER,
-                        "counterparty": counterparty
-                    }
+                    proto_args["counterparty"] = {"type": CounterpartyType.OTHER, "counterparty": counterparty}
             elif isinstance(counterparty, PublicKey):
-                proto_args["counterparty"] = {
-                    "type": CounterpartyType.OTHER,
-                    "counterparty": counterparty.hex()
-                }
+                proto_args["counterparty"] = {"type": CounterpartyType.OTHER, "counterparty": counterparty.hex()}
             else:
                 proto_args["counterparty"] = counterparty
 
@@ -512,7 +509,7 @@ class Wallet:
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         proto_args = self._convert_signature_args_to_proto_format(args)
 
         # Convert hashToDirectlyVerify -> hash_to_directly_verify
@@ -542,7 +539,7 @@ class Wallet:
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         proto_args: dict[str, Any] = {}
 
         # Pass through identityKey
@@ -621,7 +618,7 @@ class Wallet:
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         plaintext = args.get("plaintext")
         if plaintext is not None:
             plaintext = _as_bytes(plaintext, "plaintext")
@@ -640,7 +637,7 @@ class Wallet:
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
             if isinstance(protocol_id, str):
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+                raise TypeError("protocolID must be a tuple/list of [int, str], got str")
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -651,7 +648,9 @@ class Wallet:
                 else:
                     result["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
+                raise TypeError(
+                    f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}"
+                ) from e
 
         if key_id is not None:
             result["keyID"] = key_id
@@ -675,7 +674,7 @@ class Wallet:
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         ciphertext = args.get("ciphertext")
         if ciphertext is not None:
             ciphertext = _as_bytes(ciphertext, "ciphertext")
@@ -692,7 +691,7 @@ class Wallet:
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
             if isinstance(protocol_id, str):
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+                raise TypeError("protocolID must be a tuple/list of [int, str], got str")
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -703,7 +702,9 @@ class Wallet:
                 else:
                     result["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
+                raise TypeError(
+                    f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}"
+                ) from e
 
         if key_id is not None:
             result["keyID"] = key_id
@@ -727,7 +728,7 @@ class Wallet:
         """
         # Validate protocol parameters first (camelCase enforcement)
         args = _validate_protocol_args(args)
-        
+
         data = args.get("data")
         if data is not None:
             data = _as_bytes(data, "data")
@@ -744,7 +745,7 @@ class Wallet:
         if protocol_id is not None:
             # Validate protocolID format - must be tuple/list, not string
             if isinstance(protocol_id, str):
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got str")
+                raise TypeError("protocolID must be a tuple/list of [int, str], got str")
             try:
                 # py-sdk expects protocolID as dict with securityLevel and protocol
                 if isinstance(protocol_id, (list, tuple)) and len(protocol_id) == 2:
@@ -755,7 +756,9 @@ class Wallet:
                 else:
                     result["protocolID"] = protocol_id
             except (TypeError, IndexError) as e:
-                raise TypeError(f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}") from e
+                raise TypeError(
+                    f"protocolID must be a tuple/list of [int, str], got {type(protocol_id).__name__}"
+                ) from e
 
         if key_id is not None:
             result["keyID"] = key_id
@@ -1017,7 +1020,7 @@ class Wallet:
             for txid in new_known_txids:
                 if txid not in self._known_txids:
                     self._known_txids.append(txid)
-        
+
         if not self.beef:
             # Return sorted fallback list when BEEF not available
             return sorted(self._known_txids)
@@ -1106,11 +1109,11 @@ class Wallet:
             toolbox/ts-wallet-toolbox/src/Wallet.ts
         """
         from bsv_wallet_toolbox.utils.validation import validate_list_outputs_args
-        
+
         # Validate parameters
         self._validate_originator(originator)
         validate_list_outputs_args(args)
-        
+
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
         auth = args.get("auth")
@@ -1130,20 +1133,20 @@ class Wallet:
 
     def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List certificates with optional filters.
-        
+
         Args:
             args: Input dict with optional filters (certifiers, types, limit, etc.)
             originator: Optional originator domain string (<250 bytes).
-            
+
         Returns:
             Dict with keys: totalCertificates, certificates.
-            
+
         Raises:
             InvalidParameterError: If originator or args are invalid.
             RuntimeError: If storage provider is not configured.
         """
         from bsv_wallet_toolbox.utils.validation import validate_list_certificates_args
-        
+
         # Validate parameters
         self._validate_originator(originator)
         validate_list_certificates_args(args)
@@ -1407,7 +1410,12 @@ class Wallet:
         # Delegate to signer layer for BRC-100 compliant result (TS: await createAction(this, auth, vargs))
         try:
             signer_result = signer_create_action(self, auth, vargs)
-            trace(logger, "wallet.create_action.signer_result", originator=originator, signer_result=getattr(signer_result, "__dict__", signer_result))
+            trace(
+                logger,
+                "wallet.create_action.signer_result",
+                originator=originator,
+                signer_result=getattr(signer_result, "__dict__", signer_result),
+            )
         except Exception as e:
             trace(logger, "wallet.create_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
             raise
@@ -1518,7 +1526,7 @@ class Wallet:
         except Exception as e:
             trace(logger, "wallet.sign_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
             raise
-        
+
         # Convert to BRC-100 SignActionResult format
         # Remove internal fields (sendWithResults, notDelayedResults) - not part of BRC-100 spec
         result = {}
@@ -1526,7 +1534,9 @@ class Wallet:
             result["txid"] = signer_result["txid"]
         if signer_result.get("tx") is not None:
             # Convert tx bytes to list[int] for JSON compatibility (BRC-100 spec)
-            result["tx"] = _to_byte_list(signer_result["tx"]) if isinstance(signer_result["tx"], bytes) else signer_result["tx"]
+            result["tx"] = (
+                _to_byte_list(signer_result["tx"]) if isinstance(signer_result["tx"], bytes) else signer_result["tx"]
+            )
         # sendWithResults and notDelayedResults are internal - not included in BRC-100 result
 
         # Wave 4 Enhancement - Pending action tracking & BEEF integration (TS parity)
@@ -1637,7 +1647,13 @@ class Wallet:
             result = signer_internalize_action(self, auth, args)
             trace(logger, "wallet.internalize_action.result", originator=originator, result=result)
         except Exception as e:
-            trace(logger, "wallet.internalize_action.error", originator=originator, error=str(e), exc_type=type(e).__name__)
+            trace(
+                logger,
+                "wallet.internalize_action.error",
+                originator=originator,
+                error=str(e),
+                exc_type=type(e).__name__,
+            )
             raise
 
         # Wave 4 Enhancement - Error handling & validation & BEEF integration
@@ -1832,7 +1848,7 @@ class Wallet:
         if ensure_default_basket and self.storage is not None and hasattr(self.storage, "find_or_insert_output_basket"):
             try:
                 self.storage.find_or_insert_output_basket(int(auth["userId"]), "default")
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # Best-effort: some storages may not implement this helper; other flows create it on demand.
                 pass
         return auth
@@ -2453,10 +2469,7 @@ class Wallet:
             return self._acquire_issuance_certificate(auth, args, originator)
 
         else:
-            raise InvalidParameterError(
-                "acquisitionProtocol",
-                f"'direct' or 'issuance', got '{acquisition_protocol}'"
-            )
+            raise InvalidParameterError("acquisitionProtocol", f"'direct' or 'issuance', got '{acquisition_protocol}'")
 
     def _acquire_issuance_certificate(
         self,
@@ -2499,12 +2512,13 @@ class Wallet:
             InvalidParameterError: If args are invalid
             RuntimeError: If certifier fails or returns invalid certificate
         """
-        from bsv.auth.master_certificate import MasterCertificate
-        from bsv.auth.certificate import Certificate
-        from bsv.keys import PublicKey
         import base64
         import json
         import os
+
+        from bsv.auth.certificate import Certificate
+        from bsv.auth.master_certificate import MasterCertificate
+        from bsv.keys import PublicKey
 
         # Validate certifierUrl is present for issuance protocol
         certifier_url = args.get("certifierUrl")
@@ -2548,12 +2562,14 @@ class Wallet:
                 requested_certs=RequestedCertificateSet(certifiers=[], certificate_types=[]),
             )
 
-            request_body = json.dumps({
-                "clientNonce": client_nonce,
-                "type": cert_type,
-                "fields": certificate_fields,
-                "masterKeyring": master_keyring,
-            }).encode("utf-8")
+            request_body = json.dumps(
+                {
+                    "clientNonce": client_nonce,
+                    "type": cert_type,
+                    "fields": certificate_fields,
+                    "masterKeyring": master_keyring,
+                }
+            ).encode("utf-8")
 
             response = auth_client.fetch(
                 f"{certifier_url}/signCertificate",
@@ -2572,9 +2588,7 @@ class Wallet:
             # Check response headers for certifier identity
             response_certifier = response.headers.get("x-bsv-auth-identity-key", "")
             if response_certifier != certifier:
-                raise RuntimeError(
-                    f"Invalid certifier! Expected: {certifier}, Received: {response_certifier}"
-                )
+                raise RuntimeError(f"Invalid certifier! Expected: {certifier}, Received: {response_certifier}")
 
             response_data = response.json()
             certificate = response_data.get("certificate")
@@ -2941,11 +2955,11 @@ class Wallet:
             # Convert args from py-wallet-toolbox format (camelCase) to py-sdk format (snake_case)
             proto_args = self._convert_signature_args_to_proto_format(args)
             result = self.proto.create_signature(proto_args, originator)
-            
+
             # Handle error response from proto
             if "error" in result:
                 raise RuntimeError(f"create_signature failed: {result['error']}")
-            
+
             # Convert signature to list[int] format for consistency
             signature = result.get("signature", b"")
             if isinstance(signature, bytes):
@@ -3030,10 +3044,10 @@ class Wallet:
                     type(args.get("signature")),
                     len(args.get("signature")) if args.get("signature") else 0,
                 )
-            
+
             # Convert args from py-wallet-toolbox format (camelCase) to py-sdk format (snake_case)
             proto_args = self._convert_verify_signature_args_to_proto_format(args)
-            
+
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug("[Wallet.verify_signature] After conversion proto_args keys: %s", list(proto_args.keys()))
                 logger.debug(
@@ -3048,7 +3062,7 @@ class Wallet:
                 )
                 logger.debug("[Wallet.verify_signature] About to call self.proto.verify_signature")
                 logger.debug("[Wallet.verify_signature] self.proto type=%s", type(self.proto))
-            
+
             try:
                 result = self.proto.verify_signature(proto_args, originator)
                 if logger.isEnabledFor(logging.DEBUG):
@@ -3056,11 +3070,11 @@ class Wallet:
             except Exception as e:
                 logger.error("[Wallet.verify_signature] proto.verify_signature raised exception: %s", e)
                 raise
-            
+
             # Handle error response from proto
             if "error" in result:
                 raise RuntimeError(f"verify_signature failed: {result['error']}")
-            
+
             return {"valid": bool(result.get("valid", False))}
 
         # proto is required - no fallback implementation
@@ -3410,7 +3424,9 @@ class Wallet:
 
                     offset += len(outputs)
 
-                trace(logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=outputs_count)
+                trace(
+                    logger, "wallet.balance.specop.fallback.result", computedTotal=computed, outputsCount=outputs_count
+                )
                 return {"total": computed}
             except Exception as e:
                 trace(logger, "wallet.balance.specop.fallback.error", error=str(e), exc_type=type(e).__name__)
@@ -3657,7 +3673,7 @@ class Wallet:
         if limit is not None:
             result = {
                 "totalCertificates": result["totalCertificates"],  # Keep original total
-                "certificates": result["certificates"][:limit]     # Slice certificates
+                "certificates": result["certificates"][:limit],  # Slice certificates
             }
 
         return result
@@ -3687,8 +3703,8 @@ class Wallet:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/WalletStorageManager.ts (syncToWriter)
         """
-        from .storage.wallet_storage_manager import WalletStorageManager, AuthId
-        
+        from .storage.wallet_storage_manager import AuthId, WalletStorageManager
+
         # Validate args
         if not isinstance(args, dict):
             raise InvalidParameterError("args must be a dictionary")
@@ -3707,7 +3723,7 @@ class Wallet:
             raise InvalidParameterError("writer cannot be None")
 
         # Validate writer type (only string or storage objects allowed)
-        if not isinstance(writer, str) and not hasattr(writer, 'sync_to_writer'):
+        if not isinstance(writer, str) and not hasattr(writer, "sync_to_writer"):
             raise InvalidParameterError(f"writer must be a string or storage object, got {type(writer).__name__}")
 
         # Validate options exists in args
@@ -3746,37 +3762,28 @@ class Wallet:
 
         # Get progress logging function
         prog_log = options.get("progLog")
-        
+
         # Use WalletStorageManager for actual sync
-        if hasattr(self, 'storage') and self.storage:
+        if hasattr(self, "storage") and self.storage:
             # Create a manager with local storage as active
             manager = WalletStorageManager(
-                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
-                active=self.storage
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "", active=self.storage
             )
-            
+
             # Create auth ID
             auth = AuthId(
                 identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
-                user_id=getattr(self, '_user_id', None),
-                is_active=True
+                user_id=getattr(self, "_user_id", None),
+                is_active=True,
             )
-            
+
             # Perform sync
             result = manager.sync_to_writer(auth, writer, "", prog_log)
-            
-            return {
-                "inserts": result.inserts,
-                "updates": result.updates,
-                "log": result.log
-            }
+
+            return {"inserts": result.inserts, "updates": result.updates, "log": result.log}
         else:
             # Fallback stub implementation
-            return {
-                "inserts": 0,
-                "updates": 0,
-                "log": "No local storage available for sync"
-            }
+            return {"inserts": 0, "updates": 0, "log": "No local storage available for sync"}
 
     def sync_from_reader(self, args: dict[str, Any]) -> dict[str, Any]:
         """Sync wallet data from a reader storage provider.
@@ -3803,7 +3810,7 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/storage/WalletStorageManager.ts (syncFromReader)
         """
         from .storage.wallet_storage_manager import WalletStorageManager
-        
+
         # Validate args
         if not isinstance(args, dict):
             raise InvalidParameterError("args must be a dictionary")
@@ -3819,35 +3826,24 @@ class Wallet:
             options = {}
         if not isinstance(options, dict):
             raise InvalidParameterError(f"options must be a dictionary, got {type(options).__name__}")
-        
+
         # Get progress logging function
         prog_log = options.get("progLog")
-        
+
         # Use WalletStorageManager for actual sync
-        if hasattr(self, 'storage') and self.storage:
+        if hasattr(self, "storage") and self.storage:
             identity_key = self._key_deriver.root_key.public_key.hex() if self._key_deriver else ""
-            
+
             # Create a manager with local storage as active
-            manager = WalletStorageManager(
-                identity_key=identity_key,
-                active=self.storage
-            )
-            
+            manager = WalletStorageManager(identity_key=identity_key, active=self.storage)
+
             # Perform sync from reader to local
             result = manager.sync_from_reader(identity_key, reader, "", prog_log)
-            
-            return {
-                "inserts": result.inserts,
-                "updates": result.updates,
-                "log": result.log
-            }
+
+            return {"inserts": result.inserts, "updates": result.updates, "log": result.log}
         else:
             # Fallback stub implementation
-            return {
-                "inserts": 0,
-                "updates": 0,
-                "log": "No local storage available for sync"
-            }
+            return {"inserts": 0, "updates": 0, "log": "No local storage available for sync"}
 
     def update_backups(self, args: dict[str, Any] | None = None) -> dict[str, Any]:
         """Sync current active storage to all configured backup storage providers.
@@ -3867,30 +3863,27 @@ class Wallet:
             - toolbox/ts-wallet-toolbox/src/storage/WalletStorageManager.ts (updateBackups)
         """
         from .storage.wallet_storage_manager import WalletStorageManager
-        
+
         args = args or {}
-        
+
         # Validate args
         if not isinstance(args, dict):
             raise InvalidParameterError("args must be a dictionary")
-        
+
         # Get progress logging function
         prog_log = args.get("progLog")
-        
+
         # Use WalletStorageManager for actual sync
-        if hasattr(self, 'storage') and self.storage:
+        if hasattr(self, "storage") and self.storage:
             identity_key = self._key_deriver.root_key.public_key.hex() if self._key_deriver else ""
-            
+
             # Create a manager with local storage as active
             # Note: In full implementation, backups would be passed from wallet config
-            manager = WalletStorageManager(
-                identity_key=identity_key,
-                active=self.storage
-            )
-            
+            manager = WalletStorageManager(identity_key=identity_key, active=self.storage)
+
             # Perform backup sync
             log = manager.update_backups(prog_log)
-            
+
             return {"log": log}
         else:
             return {"log": "No local storage available for backup"}
@@ -3936,7 +3929,9 @@ class Wallet:
         if isinstance(storage, str) and storage == "":
             raise InvalidParameterError("storage cannot be empty")
         if not isinstance(storage, str):
-            raise InvalidParameterError(f"storage must be a string (storage identity key), got {type(storage).__name__}")
+            raise InvalidParameterError(
+                f"storage must be a string (storage identity key), got {type(storage).__name__}"
+            )
 
         # Validate backupFirst - required parameter
         if "backup_first" in args:
@@ -3950,12 +3945,12 @@ class Wallet:
             raise InvalidParameterError("backupFirst", "must be a boolean")
 
         # Use WalletStorageManager for storage switching
-        if hasattr(self, 'storage') and self.storage:
+        if hasattr(self, "storage") and self.storage:
             # Create a manager with current storage as active
             from .storage.wallet_storage_manager import WalletStorageManager
+
             manager = WalletStorageManager(
-                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "",
-                active=self.storage
+                identity_key=self.key_deriver.identity_key().hex() if self.key_deriver else "", active=self.storage
             )
 
             # Add other available storages as backups
@@ -4101,10 +4096,7 @@ class Wallet:
             raise InvalidParameterError("satoshis must be a positive integer")
 
         # Use listOutputs with specOpSetWalletChangeParams basket and tags
-        args = {
-            "basket": specOpSetWalletChangeParams,
-            "tags": [str(count), str(satoshis)]
-        }
+        args = {"basket": specOpSetWalletChangeParams, "tags": [str(count), str(satoshis)]}
 
         self.list_outputs(args, originator)
 
@@ -4350,4 +4342,3 @@ def _throw_dummy_review_actions() -> None:
         tx=None,  # Would be beef.toBinaryAtomic(txid)
         no_send_change=[f"{txid}.0"],
     )
-

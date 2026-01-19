@@ -116,9 +116,7 @@ def demo_relinquish_certificate(wallet: Wallet) -> None:
             certifier = cert.get("certifier", "self")
             serial = cert.get("serialNumber", "")
 
-            wallet.relinquish_certificate(
-                {"type": cert_type, "certifier": certifier, "serialNumber": serial}
-            )
+            wallet.relinquish_certificate({"type": cert_type, "certifier": certifier, "serialNumber": serial})
 
             print("\n✅ Certificate relinquished")
             print(f"   Type     : {cert_type}")
@@ -131,4 +129,3 @@ def demo_relinquish_certificate(wallet: Wallet) -> None:
         import traceback
 
         traceback.print_exc()
-

@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -32,16 +30,17 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
         2. Serialize result to wire format
         3. Wire serialization works (ABI framework test)
         """
+        from bsv.keys import PrivateKey
+
         from bsv_wallet_toolbox.abi import serialize_response
         from bsv_wallet_toolbox.sdk.privileged_key_manager import PrivilegedKeyManager
-        from bsv.keys import PrivateKey
 
         # Create a privileged key manager for testing
         privileged_key = PrivateKey()  # Generate a random key for testing
         privileged_key_manager = PrivilegedKeyManager(lambda reason: privileged_key)
 
         # Given
-        args_data, result_data = load_test_vectors("revealCounterpartyKeyLinkage-simple")
+        args_data, _result_data = load_test_vectors("revealCounterpartyKeyLinkage-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver, privileged_key_manager=privileged_key_manager)
 
@@ -63,17 +62,17 @@ class TestUniversalVectorsRevealCounterpartyKeyLinkage:
         assert isinstance(result[proof_key], list)
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
         wire_request = serialize_request("revealCounterpartyKeyLinkage", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "revealCounterpartyKeyLinkage"
         assert isinstance(parsed_args, dict)
-        
-        # Test response serialization  
+
+        # Test response serialization
         result = {"test": "data"}
         wire_response = serialize_response(result)
         assert isinstance(wire_response, bytes)

@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -30,7 +28,7 @@ class TestUniversalVectorsCreateSignature:
         Then: Result matches Universal Test Vector output (JSON)
         """
         # Given
-        args_data, result_data = load_test_vectors("createSignature-simple")
+        args_data, _result_data = load_test_vectors("createSignature-simple")
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
         # When
@@ -61,7 +59,7 @@ class TestUniversalVectorsCreateSignature:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("createSignature-simple")
+        args_data, _result_data = load_test_vectors("createSignature-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
@@ -81,4 +79,3 @@ class TestUniversalVectorsCreateSignature:
         # evolving. Python should wait for TS to stabilize ABI parsing before implementing.
         # See: ts-wallet-toolbox/src/abi/ and BRC-100 specification section on wire format.
         # assert wire_output == bytes.fromhex(result_data["wire"])
-

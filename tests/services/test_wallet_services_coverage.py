@@ -3,8 +3,6 @@
 This module tests the wallet services layer that integrates various service providers.
 """
 
-from unittest.mock import Mock
-
 import pytest
 
 
@@ -15,6 +13,7 @@ class TestWalletServices:
         """Test importing WalletServices."""
         try:
             from bsv_wallet_toolbox.services.wallet_services import WalletServices
+
             assert WalletServices is not None
         except ImportError:
             pass
@@ -23,7 +22,7 @@ class TestWalletServices:
         """Test creating WalletServices instance."""
         try:
             from bsv_wallet_toolbox.services.wallet_services import WalletServices
-            
+
             services = WalletServices()
             assert services is not None
         except (ImportError, TypeError):
@@ -33,7 +32,7 @@ class TestWalletServices:
         """Test creating services with specific chain."""
         try:
             from bsv_wallet_toolbox.services.wallet_services import WalletServices
-            
+
             services = WalletServices(chain="main")
             assert services is not None
         except (ImportError, TypeError):
@@ -47,6 +46,7 @@ class TestWalletServicesOptions:
         """Test importing options."""
         try:
             from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
+
             assert WalletServicesOptions is not None
         except ImportError:
             pass
@@ -55,7 +55,7 @@ class TestWalletServicesOptions:
         """Test creating options."""
         try:
             from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
-            
+
             options = WalletServicesOptions()
             assert options is not None
         except (ImportError, TypeError):
@@ -65,7 +65,7 @@ class TestWalletServicesOptions:
         """Test options with configuration."""
         try:
             from bsv_wallet_toolbox.services.wallet_services_options import WalletServicesOptions
-            
+
             options = WalletServicesOptions(
                 chain="main",
                 arc_url="https://arc.example.com",
@@ -127,6 +127,7 @@ class TestChainType:
         """Test importing Chain type."""
         try:
             from bsv_wallet_toolbox.services.wallet_services import Chain
+
             assert Chain is not None
         except ImportError:
             pass
@@ -135,13 +136,12 @@ class TestChainType:
         """Test using Chain type values."""
         try:
             from bsv_wallet_toolbox.services.wallet_services import WalletServices
-            
+
             # Chain is a Literal type, test by using valid values
             services1 = WalletServices(chain="main")
             services2 = WalletServices(chain="test")
-            
+
             assert services1 is not None
             assert services2 is not None
         except (ImportError, TypeError):
             pass
-

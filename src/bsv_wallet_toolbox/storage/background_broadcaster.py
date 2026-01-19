@@ -8,9 +8,8 @@ Reference: go-wallet-toolbox/pkg/storage/internal/service/background_broadcaster
 
 import asyncio
 import logging
-from typing import Any, Protocol
 from asyncio import Queue
-
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ class BackgroundBroadcaster:
         if self._task and not self._task.done():
             try:
                 await asyncio.wait_for(self._task, timeout=30.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Background broadcaster task did not complete within timeout")
                 self._task.cancel()
 
@@ -97,11 +96,7 @@ class BackgroundBroadcaster:
             raise RuntimeError("Background broadcaster is not running")
 
         try:
-            await self.queue.put({
-                "beef": beef,
-                "txids": txids,
-                "timestamp": asyncio.get_event_loop().time()
-            })
+            await self.queue.put({"beef": beef, "txids": txids, "timestamp": asyncio.get_event_loop().time()})
         except asyncio.QueueFull:
             logger.error("Broadcast queue is full, dropping request for txids: %s", txids)
 
@@ -113,10 +108,7 @@ class BackgroundBroadcaster:
                 shutdown_task = asyncio.create_task(self._shutdown_event.wait())
                 queue_task = asyncio.create_task(self.queue.get())
 
-                done, pending = await asyncio.wait(
-                    [shutdown_task, queue_task],
-                    return_when=asyncio.FIRST_COMPLETED
-                )
+                done, pending = await asyncio.wait([shutdown_task, queue_task], return_when=asyncio.FIRST_COMPLETED)
 
                 # Cancel pending tasks
                 for task in pending:
@@ -151,8 +143,7 @@ class BackgroundBroadcaster:
             if result.get("success"):
                 logger.info("Successfully broadcast transactions: %s", txids)
             else:
-                logger.error("Failed to broadcast transactions %s: %s",
-                           txids, result.get("error", "Unknown error"))
+                logger.error("Failed to broadcast transactions %s: %s", txids, result.get("error", "Unknown error"))
 
         except Exception as e:
             logger.error("Exception during broadcast of %s: %s", txids, e)

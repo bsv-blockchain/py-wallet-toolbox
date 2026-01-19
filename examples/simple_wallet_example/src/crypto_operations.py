@@ -157,4 +157,3 @@ def demo_encrypt_decrypt(wallet: Wallet) -> None:
         import traceback
 
         traceback.print_exc()
-

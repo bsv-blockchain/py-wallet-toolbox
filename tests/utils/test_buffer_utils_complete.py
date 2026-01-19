@@ -22,7 +22,7 @@ class TestAsBuffer:
 
     def test_as_buffer_with_list(self) -> None:
         """Test as_buffer with list input."""
-        data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         result = as_buffer(data)
         assert result == b"Hello"
 
@@ -113,19 +113,19 @@ class TestAsString:
 
     def test_as_string_list_to_hex(self) -> None:
         """Test as_string converts list to hex."""
-        data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         result = as_string(data, enc="hex", return_enc="hex")
         assert result == "48656c6c6f"
 
     def test_as_string_list_to_utf8(self) -> None:
         """Test as_string converts list to utf8."""
-        data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         result = as_string(data, enc="hex", return_enc="utf8")
         assert result == "Hello"
 
     def test_as_string_list_to_base64(self) -> None:
         """Test as_string converts list to base64."""
-        data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         result = as_string(data, enc="hex", return_enc="base64")
         assert result == base64.b64encode(b"Hello").decode("ascii")
 
@@ -152,34 +152,34 @@ class TestAsArray:
 
     def test_as_array_with_list(self) -> None:
         """Test as_array with list input."""
-        data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         result = as_array(data)
-        assert result == [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        assert result == [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         assert isinstance(result, list)
 
     def test_as_array_with_bytes(self) -> None:
         """Test as_array with bytes input."""
         data = b"Hello"
         result = as_array(data)
-        assert result == [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        assert result == [0x48, 0x65, 0x6C, 0x6C, 0x6F]
 
     def test_as_array_with_hex_string(self) -> None:
         """Test as_array with hex string."""
         data = "48656c6c6f"
         result = as_array(data, encoding="hex")
-        assert result == [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        assert result == [0x48, 0x65, 0x6C, 0x6C, 0x6F]
 
     def test_as_array_with_utf8_string(self) -> None:
         """Test as_array with utf8 string."""
         data = "Hello"
         result = as_array(data, encoding="utf8")
-        assert result == [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        assert result == [0x48, 0x65, 0x6C, 0x6C, 0x6F]
 
     def test_as_array_with_base64_string(self) -> None:
         """Test as_array with base64 string."""
         data = base64.b64encode(b"Hello").decode("ascii")
         result = as_array(data, encoding="base64")
-        assert result == [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        assert result == [0x48, 0x65, 0x6C, 0x6C, 0x6F]
 
     def test_as_array_with_invalid_type(self) -> None:
         """Test as_array with invalid type raises TypeError."""
@@ -205,7 +205,7 @@ class TestAsUint8Array:
 
     def test_as_uint8array_with_list(self) -> None:
         """Test as_uint8array with list input."""
-        data = [0x48, 0x65, 0x6c, 0x6c, 0x6f]
+        data = [0x48, 0x65, 0x6C, 0x6C, 0x6F]
         result = as_uint8array(data)
         assert result == b"Hello"
 
@@ -244,17 +244,17 @@ class TestEdgeCases:
     def test_round_trip_conversions(self) -> None:
         """Test round-trip conversions maintain data integrity."""
         original = b"Test Data 123!"
-        
+
         # bytes -> hex -> bytes
         hex_str = as_string(original, enc="hex", return_enc="hex")
         recovered = as_buffer(hex_str, encoding="hex")
         assert recovered == original
-        
+
         # bytes -> base64 -> bytes
         b64_str = as_string(original, enc="hex", return_enc="base64")
         recovered = as_buffer(b64_str, encoding="base64")
         assert recovered == original
-        
+
         # bytes -> list -> bytes
         arr = as_array(original)
         recovered = as_buffer(arr)
@@ -270,16 +270,15 @@ class TestEdgeCases:
     def test_large_data(self) -> None:
         """Test with large data."""
         large_data = bytes(range(256)) * 100  # 25.6KB
-        
+
         # Test as_array
         arr = as_array(large_data)
         assert len(arr) == 25600
-        
+
         # Test as_string
         hex_str = as_string(large_data, enc="hex", return_enc="hex")
         assert len(hex_str) == 51200  # 2 chars per byte
-        
+
         # Test round-trip
         recovered = as_buffer(hex_str, encoding="hex")
         assert recovered == large_data
-

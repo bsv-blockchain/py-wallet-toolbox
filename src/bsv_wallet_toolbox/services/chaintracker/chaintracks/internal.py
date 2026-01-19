@@ -7,9 +7,10 @@ Reference: toolbox/go-wallet-toolbox/pkg/services/chaintracks/internal/
 
 import asyncio
 import logging
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
+from typing import Generic, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class PubSubEvents(Generic[T]):
         async with self._lock:
             queue = asyncio.Queue(maxsize=10)  # Buffered queue
 
-            def unsubscribe():
+            def unsubscribe() -> None:
                 """Unsubscribe from events."""
                 asyncio.create_task(self._unsubscribe(queue))
 
@@ -97,9 +98,7 @@ class CacheableWithTTL(Generic[T]):
         import time
 
         now = time.time()
-        if (self._value is None or
-            self._last_updated is None or
-            now - self._last_updated > self.ttl_seconds):
+        if self._value is None or self._last_updated is None or now - self._last_updated > self.ttl_seconds:
 
             self._value = self.fetcher()
             self._last_updated = now

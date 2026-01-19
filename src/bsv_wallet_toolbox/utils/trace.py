@@ -80,9 +80,9 @@ def to_trace_value(value: Any) -> Any:
                 filtered_dict[str(k)] = filtered_inputs
             else:
                 filtered_dict[str(k)] = to_trace_value(v)
-        
+
         if len(filtered_dict) > MAX_DICT_ITEMS:
-            items = {k: v for k, v in list(filtered_dict.items())[:MAX_DICT_ITEMS]}
+            items = dict(list(filtered_dict.items())[:MAX_DICT_ITEMS])
             return {
                 "type": "dict",
                 "len": len(value),
@@ -91,7 +91,7 @@ def to_trace_value(value: Any) -> Any:
             }
         return filtered_dict
     # Common SDK objects: PublicKey has `.hex()`
-    if hasattr(value, "hex") and callable(getattr(value, "hex")):
+    if hasattr(value, "hex") and callable(value.hex):
         try:
             return {"type": type(value).__name__, "hex": value.hex()}
         except Exception:
@@ -109,6 +109,3 @@ def trace(logger: logging.Logger, event: str, **fields: Any) -> None:
         return
     payload = {"event": event, **{k: to_trace_value(v) for k, v in fields.items()}}
     logger.debug("AUTH_TRACE %s", json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True))
-
-
-

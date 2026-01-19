@@ -3,7 +3,7 @@
 This module provides services for ingesting blockchain data from various sources.
 """
 
-from .whats_on_chain_services import WhatsOnChainServices
 from .bulk_ingestor_cdn_babbage import BulkIngestorCDNBabbage
+from .whats_on_chain_services import WhatsOnChainServices
 
-__all__ = ["WhatsOnChainServices", "BulkIngestorCDNBabbage"]
+__all__ = ["BulkIngestorCDNBabbage", "WhatsOnChainServices"]

@@ -23,7 +23,6 @@ try:
         TaskReviewStatus,
         TaskSendWaiting,
     )
-
     from bsv_wallet_toolbox.storage.entities import ProvenTxReq
 
     IMPORTS_AVAILABLE = True
@@ -38,9 +37,11 @@ try:
         mock_merkle_path_services_as_callback,
         mock_post_services_as_callback,
     )
+
     UTILS_AVAILABLE = True
 except ImportError:
     UTILS_AVAILABLE = False
+
     # Create dummy functions if utils failed
     def create_sqlite_test_setup_1_wallet(*args, **kwargs):
         pytest.skip("Utility functions not available")
@@ -253,18 +254,14 @@ class TestMonitor:
         # When
         task = TaskNewHeader(monitor)
         monitor._tasks.append(task)
-        
+
         # Create a TaskCheckForProofs instance to verify check_now is set
         check_proofs_task = TaskCheckForProofs(monitor)
         monitor._tasks.append(check_proofs_task)
         assert check_proofs_task.check_now is False
 
         # Set a mock header for the monitor to process
-        monitor.last_new_header = {
-            "height": 1000,
-            "hash": "a" * 64,
-            "merkleRoot": "b" * 64
-        }
+        monitor.last_new_header = {"height": 1000, "hash": "a" * 64, "merkleRoot": "b" * 64}
 
         # Set check_now to trigger the task
         task.check_now = True
@@ -564,15 +561,10 @@ class TestMonitor:
         if not reqs:
             # Create minimal test data if none exists
             txid = "a" * 64
-            proven_tx_req_data = {
-                "txid": txid,
-                "rawTx": b"test_raw_tx",
-                "status": "unmined",
-                "history": "created"
-            }
+            proven_tx_req_data = {"txid": txid, "rawTx": b"test_raw_tx", "status": "unmined", "history": "created"}
             req_id = storage.insert_proven_tx_req(proven_tx_req_data)
             reqs = storage.find_proven_tx_reqs({"partial": {"status": "unmined"}})
-        
+
         if reqs:
             # Access dict key, not attribute
             req_id = reqs[0].get("provenTxReqId") or reqs[0].get("provenTxReqId")

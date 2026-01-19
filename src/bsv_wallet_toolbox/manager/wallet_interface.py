@@ -20,11 +20,7 @@ class WalletInterface(Protocol):
     Reference: @bsv/sdk WalletInterface
     """
 
-    def create_action(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def create_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Create a wallet action (transaction).
 
         Args:
@@ -36,11 +32,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def sign_action(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def sign_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Sign a wallet action.
 
         Args:
@@ -52,11 +44,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def abort_action(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def abort_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Abort a wallet action.
 
         Args:
@@ -68,11 +56,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def list_actions(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def list_actions(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List wallet actions.
 
         Args:
@@ -84,11 +68,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def list_outputs(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def list_outputs(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List wallet outputs.
 
         Args:
@@ -100,11 +80,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def relinquish_output(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def relinquish_output(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Relinquish (spend) an output.
 
         Args:
@@ -116,11 +92,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def internalize_action(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def internalize_action(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Internalize an action (add to wallet).
 
         Args:
@@ -132,11 +104,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def create_signature(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def create_signature(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Create a cryptographic signature.
 
         Args:
@@ -148,11 +116,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def verify_signature(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def verify_signature(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Verify a cryptographic signature.
 
         Args:
@@ -164,11 +128,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def encrypt(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def encrypt(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Encrypt data.
 
         Args:
@@ -180,11 +140,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def decrypt(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def decrypt(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Decrypt data.
 
         Args:
@@ -196,11 +152,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def create_hmac(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def create_hmac(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Create HMAC.
 
         Args:
@@ -212,11 +164,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def verify_hmac(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def verify_hmac(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Verify HMAC.
 
         Args:
@@ -228,11 +176,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def get_public_key(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def get_public_key(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Get public key.
 
         Args:
@@ -244,11 +188,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def reveal_counterparty_key_linkage(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def reveal_counterparty_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Reveal counterparty key linkage.
 
         Args:
@@ -260,11 +200,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def reveal_specific_key_linkage(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def reveal_specific_key_linkage(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Reveal specific key linkage.
 
         Args:
@@ -276,11 +212,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def acquire_certificate(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def acquire_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Acquire certificate.
 
         Args:
@@ -292,11 +224,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def list_certificates(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def list_certificates(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """List certificates.
 
         Args:
@@ -308,11 +236,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def prove_certificate(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def prove_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Prove certificate.
 
         Args:
@@ -324,11 +248,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def disclose_certificate(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def disclose_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Disclose certificate.
 
         Args:
@@ -340,11 +260,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def relinquish_certificate(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def relinquish_certificate(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Relinquish certificate.
 
         Args:
@@ -356,11 +272,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def discover_by_identity_key(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def discover_by_identity_key(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Discover by identity key.
 
         Args:
@@ -372,11 +284,7 @@ class WalletInterface(Protocol):
         """
         ...
 
-    def discover_by_attributes(
-        self,
-        args: dict[str, Any],
-        originator: str | None = None
-    ) -> dict[str, Any]:
+    def discover_by_attributes(self, args: dict[str, Any], originator: str | None = None) -> dict[str, Any]:
         """Discover by attributes.
 
         Args:

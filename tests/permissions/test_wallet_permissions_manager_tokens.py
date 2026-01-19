@@ -11,6 +11,7 @@ import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import (
         PermissionRequest,
         PermissionToken,
@@ -38,10 +39,7 @@ def mock_wallet():
 @pytest.fixture
 def permissions_manager(mock_wallet):
     """Fixture providing a WalletPermissionsManager instance."""
-    manager = WalletPermissionsManager(
-        underlying_wallet=mock_wallet,
-        admin_originator="admin.domain.com"
-    )
+    manager = WalletPermissionsManager(underlying_wallet=mock_wallet, admin_originator="admin.domain.com")
 
     # Mock the token manager methods to avoid actual blockchain operations
     manager._token_manager.create_token_transaction = Mock(return_value="mock_txid")
@@ -73,9 +71,7 @@ class TestWalletPermissionsManagerTokens:
 
         # When
         token = permissions_manager.grant_dpacp_permission(
-            originator=originator,
-            protocol_id=protocol_id,
-            counterparty=counterparty
+            originator=originator, protocol_id=protocol_id, counterparty=counterparty
         )
 
         # Then
@@ -102,10 +98,7 @@ class TestWalletPermissionsManagerTokens:
         basket = "someBasket"
 
         # When
-        token = permissions_manager.grant_dbap_permission(
-            originator=originator,
-            basket=basket
-        )
+        token = permissions_manager.grant_dbap_permission(originator=originator, basket=basket)
 
         # Then
         assert token is not None
@@ -129,11 +122,7 @@ class TestWalletPermissionsManagerTokens:
         verifier = "02abcdef..."
 
         # When
-        token = permissions_manager.grant_dcap_permission(
-            originator=originator,
-            cert_type=cert_type,
-            verifier=verifier
-        )
+        token = permissions_manager.grant_dcap_permission(originator=originator, cert_type=cert_type, verifier=verifier)
 
         # Then
         assert token is not None
@@ -158,10 +147,7 @@ class TestWalletPermissionsManagerTokens:
         satoshis = 5000
 
         # When
-        token = permissions_manager.grant_dsap_permission(
-            originator=originator,
-            satoshis=satoshis
-        )
+        token = permissions_manager.grant_dsap_permission(originator=originator, satoshis=satoshis)
 
         # Then
         assert token is not None
@@ -185,10 +171,8 @@ class TestWalletPermissionsManagerTokens:
         counterparty = "self"
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dpacp_permission(
-            originator=originator,
-            protocol_id=protocol_id,
-            counterparty=counterparty
+        permissions_manager.grant_dpacp_permission(
+            originator=originator, protocol_id=protocol_id, counterparty=counterparty
         )
 
         # When
@@ -216,10 +200,7 @@ class TestWalletPermissionsManagerTokens:
         basket = "myBasket"
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dbap_permission(
-            originator=originator,
-            basket=basket
-        )
+        permissions_manager.grant_dbap_permission(originator=originator, basket=basket)
 
         # When
         permissions = permissions_manager.list_dbap_permissions(originator)
@@ -245,11 +226,7 @@ class TestWalletPermissionsManagerTokens:
         verifier = "02abc"
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dcap_permission(
-            originator=originator,
-            cert_type=cert_type,
-            verifier=verifier
-        )
+        permissions_manager.grant_dcap_permission(originator=originator, cert_type=cert_type, verifier=verifier)
 
         # When
         permissions = permissions_manager.list_dcap_permissions(originator)
@@ -275,10 +252,7 @@ class TestWalletPermissionsManagerTokens:
         satoshis = 10000
 
         # Grant permission first
-        granted_token = permissions_manager.grant_dsap_permission(
-            originator=originator,
-            satoshis=satoshis
-        )
+        permissions_manager.grant_dsap_permission(originator=originator, satoshis=satoshis)
 
         # When
         permissions = permissions_manager.list_dsap_permissions(originator)
@@ -305,15 +279,14 @@ class TestWalletPermissionsManagerTokens:
 
         # Create initial token
         initial_token = permissions_manager.grant_dpacp_permission(
-            originator=originator,
-            protocol_id=protocol_id,
-            counterparty=counterparty
+            originator=originator, protocol_id=protocol_id, counterparty=counterparty
         )
 
         initial_expiry = initial_token["expiry"]
 
         # Small delay to ensure different timestamps
         import time
+
         time.sleep(0.01)
 
         # When
@@ -325,7 +298,9 @@ class TestWalletPermissionsManagerTokens:
         assert renewed_token["originator"] == initial_token["originator"]
         assert renewed_token["expiry"] >= initial_expiry  # Expiry should be updated or same
 
-    def test_renew_dsap_permission_updates_authorized_amount(self, permissions_manager: WalletPermissionsManager) -> None:
+    def test_renew_dsap_permission_updates_authorized_amount(
+        self, permissions_manager: WalletPermissionsManager
+    ) -> None:
         """Given: Manager with existing DSAP token
            When: Renew spending token with updated amount
            Then: Creates new token with updated authorized amount
@@ -338,10 +313,7 @@ class TestWalletPermissionsManagerTokens:
         initial_amount = 10000
 
         # Create initial DSAP token
-        initial_token = permissions_manager.grant_dsap_permission(
-            originator=originator,
-            satoshis=initial_amount
-        )
+        initial_token = permissions_manager.grant_dsap_permission(originator=originator, satoshis=initial_amount)
 
         # When - Renew with new amount
         renewed_token = permissions_manager.renew_permission_token(initial_token)
@@ -366,10 +338,7 @@ class TestWalletPermissionsManagerTokens:
         basket = "testBasket"
 
         # Create and grant permission
-        token_to_revoke = permissions_manager.grant_dbap_permission(
-            originator=originator,
-            basket=basket
-        )
+        token_to_revoke = permissions_manager.grant_dbap_permission(originator=originator, basket=basket)
 
         # Verify token exists
         permissions_before = permissions_manager.list_dbap_permissions(originator)
@@ -400,9 +369,7 @@ class TestWalletPermissionsManagerTokens:
 
         # Create and grant permission
         token_to_revoke = permissions_manager.grant_dpacp_permission(
-            originator=originator,
-            protocol_id=protocol_id,
-            counterparty=counterparty
+            originator=originator, protocol_id=protocol_id, counterparty=counterparty
         )
 
         # Verify token exists in listing

@@ -187,7 +187,7 @@ class TestConstants:
         """Test MAX_SATOSHIS represents 21 million Bitcoin."""
         btc_supply = 21_000_000
         satoshis_per_btc = 100_000_000
-        assert MAX_SATOSHIS == btc_supply * satoshis_per_btc
+        assert btc_supply * satoshis_per_btc == MAX_SATOSHIS
 
 
 class TestEdgeCases:

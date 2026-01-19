@@ -22,12 +22,12 @@ class TestVarintLen:
         # Script size <= 252: varint is 1 byte
         assert transaction_input_size(100) == 40 + 100 + 1  # 141
         assert transaction_input_size(252) == 40 + 252 + 1  # 293
-        
+
         # Script size <= 0xFFFF: varint is 3 bytes
         assert transaction_input_size(253) == 40 + 253 + 3  # 296
         assert transaction_input_size(1000) == 40 + 1000 + 3  # 1043
         assert transaction_input_size(0xFFFF) == 40 + 0xFFFF + 3  # 65578
-        
+
         # Script size <= 0xFFFFFFFF: varint is 5 bytes
         assert transaction_input_size(0x10000) == 40 + 0x10000 + 5  # 65581
         assert transaction_input_size(0xFFFFFFFF) == 40 + 0xFFFFFFFF + 5  # 4294967340
@@ -123,7 +123,7 @@ class TestTransactionSize:
         inputs = [100] * 300  # 300 inputs
         outputs = [25] * 300  # 300 outputs
         size = transaction_size(inputs, outputs)
-        
+
         # 8 (envelope)
         # + 3 (varint for 300 inputs, since 300 > 252)
         # + 300 * (40 + 100 + 1)
@@ -152,23 +152,23 @@ class TestInputsOutputsSizes:
         """Test basic inputs and outputs sizes."""
         unlocking = [100, 150]
         locking = [25, 30]
-        
+
         input_sizes, output_sizes = inputs_outputs_sizes(unlocking, locking)
-        
+
         assert input_sizes == [141, 191]  # 40+100+1, 40+150+1
-        assert output_sizes == [34, 39]   # 8+25+1, 8+30+1
+        assert output_sizes == [34, 39]  # 8+25+1, 8+30+1
 
     def test_inputs_outputs_sizes_empty(self) -> None:
         """Test inputs_outputs_sizes with empty lists."""
         input_sizes, output_sizes = inputs_outputs_sizes([], [])
-        
+
         assert input_sizes == []
         assert output_sizes == []
 
     def test_inputs_outputs_sizes_single(self) -> None:
         """Test inputs_outputs_sizes with single values."""
         input_sizes, output_sizes = inputs_outputs_sizes([100], [25])
-        
+
         assert input_sizes == [141]
         assert output_sizes == [34]
 
@@ -176,9 +176,9 @@ class TestInputsOutputsSizes:
         """Test inputs_outputs_sizes with large script sizes."""
         unlocking = [1000, 2000]
         locking = [500, 1000]
-        
+
         input_sizes, output_sizes = inputs_outputs_sizes(unlocking, locking)
-        
+
         # varint for 1000 is 3 bytes, varint for 2000 is 3 bytes
         assert input_sizes == [1043, 2043]  # 40+1000+3, 40+2000+3
         # varint for 500 is 3 bytes, varint for 1000 is 3 bytes
@@ -187,7 +187,7 @@ class TestInputsOutputsSizes:
     def test_inputs_outputs_sizes_converts_to_int(self) -> None:
         """Test that inputs_outputs_sizes converts floats to int."""
         input_sizes, output_sizes = inputs_outputs_sizes([100.7], [25.3])
-        
+
         assert input_sizes == [141]  # Same as [100]
         assert output_sizes == [34]  # Same as [25]
 
@@ -199,13 +199,13 @@ class TestEdgeCases:
         """Test varint length at boundaries."""
         # At 252: varint is 1 byte
         assert transaction_input_size(252) == 40 + 252 + 1
-        
+
         # At 253: varint is 3 bytes
         assert transaction_input_size(253) == 40 + 253 + 3
-        
+
         # At 0xFFFF: varint is still 3 bytes
         assert transaction_input_size(0xFFFF) == 40 + 0xFFFF + 3
-        
+
         # At 0x10000: varint is 5 bytes
         assert transaction_input_size(0x10000) == 40 + 0x10000 + 5
 
@@ -214,7 +214,7 @@ class TestEdgeCases:
         # 1 input with ~107-byte unlocking script
         # 2 outputs with 25-byte locking scripts (P2PKH)
         size = transaction_size([107], [25, 25])
-        
+
         # 8 + 1 + (40+107+1) + 1 + (8+25+1) + (8+25+1)
         expected = 8 + 1 + 148 + 1 + 34 + 34  # 226 bytes
         assert size == expected
@@ -224,9 +224,9 @@ class TestEdgeCases:
         # 1000 inputs, 1000 outputs
         inputs = [100] * 1000
         outputs = [25] * 1000
-        
+
         size = transaction_size(inputs, outputs)
-        
+
         # With 1000 items, varint is 3 bytes
         # 8 + 3 + 1000*(40+100+1) + 3 + 1000*(8+25+1)
         expected = 8 + 3 + (1000 * 141) + 3 + (1000 * 34)  # 175014
@@ -235,8 +235,7 @@ class TestEdgeCases:
     def test_zero_script_sizes(self) -> None:
         """Test transaction with zero-length scripts."""
         size = transaction_size([0], [0])
-        
+
         # 8 + 1 + (40+0+1) + 1 + (8+0+1)
         expected = 8 + 1 + 41 + 1 + 9  # 60
         assert size == expected
-

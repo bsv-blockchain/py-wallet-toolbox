@@ -4,6 +4,7 @@ This module provides comprehensive test coverage for CDN-related classes and met
 """
 
 from unittest.mock import Mock, patch
+
 import pytest
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.cdn_reader import (
@@ -28,7 +29,7 @@ class TestBulkHeaderFileInfo:
             "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
             "lastHash": "0000000000000000000000000000000000000000000000000000000000000001",
             "fileHash": b"hash",
-            "chain": "main"
+            "chain": "main",
         }
 
         info = BulkHeaderFileInfo(data)
@@ -51,7 +52,7 @@ class TestBulkHeaderFileInfo:
             "prevHash": "0000000000000000000000000000000000000000000000000000000000000000",
             "lastHash": "0000000000000000000000000000000000000000000000000000000000000001",
             "fileHash": b"hash",
-            "chain": "main"
+            "chain": "main",
         }
 
         info = BulkHeaderFileInfo(data)
@@ -73,19 +74,9 @@ class TestBulkHeaderFilesInfo:
             "jsonFilename": "files.json",
             "headersPerFile": 1000,
             "files": [
-                {
-                    "firstHeight": 0,
-                    "count": 1000,
-                    "fileName": "file1.txt",
-                    "sourceUrl": "url1"
-                },
-                {
-                    "firstHeight": 1000,
-                    "count": 1000,
-                    "fileName": "file2.txt",
-                    "sourceUrl": "url2"
-                }
-            ]
+                {"firstHeight": 0, "count": 1000, "fileName": "file1.txt", "sourceUrl": "url1"},
+                {"firstHeight": 1000, "count": 1000, "fileName": "file2.txt", "sourceUrl": "url2"},
+            ],
         }
 
         info = BulkHeaderFilesInfo(data)
@@ -107,16 +98,7 @@ class TestBulkHeaderFilesInfo:
 
     def test_files_property(self) -> None:
         """Test that files property contains BulkHeaderFileInfo objects."""
-        data = {
-            "files": [
-                {
-                    "firstHeight": 0,
-                    "count": 1000,
-                    "fileName": "file1.txt",
-                    "sourceUrl": "url1"
-                }
-            ]
-        }
+        data = {"files": [{"firstHeight": 0, "count": 1000, "fileName": "file1.txt", "sourceUrl": "url1"}]}
 
         info = BulkHeaderFilesInfo(data)
 
@@ -155,7 +137,7 @@ class TestCDNReader:
                     "firstHeight": 0,
                     "count": 1000,
                     "fileName": "bitcoin-headers-0-1000.txt",
-                    "sourceUrl": "https://cdn.com/file1.txt"
+                    "sourceUrl": "https://cdn.com/file1.txt",
                 }
             ]
         }
@@ -243,6 +225,7 @@ class TestCDNReader:
         filename = "large-file.txt"
 
         import requests
+
         with patch.object(reader.session, "get", side_effect=requests.Timeout("Request timeout")):
             with pytest.raises(Exception, match="Failed to download bulk header file"):
                 reader.download_bulk_header_file(filename)

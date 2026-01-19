@@ -73,4 +73,3 @@ class LocalKVStore:
 
     def _make_full_key(self, key: str) -> str:
         return f"{self.context}:{key}"
-

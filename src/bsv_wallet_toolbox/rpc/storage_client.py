@@ -57,18 +57,18 @@ logger = logging.getLogger(__name__)
 
 def normalize_url_for_brc104(endpoint_url: str) -> str:
     """Normalize URL path for BRC-104 signature compatibility.
-    
+
     IMPORTANT (BRC-104 signature compatibility):
     If the URL has an empty path (e.g. "http://host:port"), different stacks may
     canonicalize it as "" vs "/". That can change the signed payload for the
     authenticated request and cause server-side "Invalid signature".
-    
+
     This function ensures empty paths are normalized to "/" to maintain consistent
     signature computation across different URL parsing implementations.
-    
+
     Args:
         endpoint_url: The endpoint URL to normalize
-        
+
     Returns:
         The normalized URL with empty path replaced by "/"
     """
@@ -191,7 +191,6 @@ class StorageClient:
     def close(self) -> None:
         """Close resources (no-op for AuthFetch)."""
         # AuthFetch manages its own resources via peer connections
-        pass
 
     def _get_next_id(self) -> int:
         """Generate next request ID (thread-safe).
@@ -318,7 +317,14 @@ class StorageClient:
         }
 
         try:
-            trace(logger, "rpc.request", method=method, id=request_id, endpoint=self.endpoint_url, params=request_body.get("params"))
+            trace(
+                logger,
+                "rpc.request",
+                method=method,
+                id=request_id,
+                endpoint=self.endpoint_url,
+                params=request_body.get("params"),
+            )
             logger.debug(
                 f"RPC call: {method} (id={request_id})",
                 extra={"endpoint": self.endpoint_url, "paramsCount": len(params)},
@@ -801,4 +807,3 @@ class StorageClient:
 
 # Backward compatibility alias
 JsonRpcClient = StorageClient
-

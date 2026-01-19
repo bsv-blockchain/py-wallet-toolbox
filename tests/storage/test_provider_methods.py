@@ -3,11 +3,12 @@
 Tests the core storage functionality using in-memory SQLite database.
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from bsv_wallet_toolbox.storage.provider import StorageProvider
+import pytest
+
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
+from bsv_wallet_toolbox.storage.provider import StorageProvider
 
 
 @pytest.fixture
@@ -67,8 +68,8 @@ class TestStorageProviderTransactionOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([1, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
 
         tx_id = storage_provider.insert_transaction(tx_data)
@@ -91,8 +92,8 @@ class TestStorageProviderTransactionOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([2, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
         storage_provider.insert_transaction(tx_data)
 
@@ -117,8 +118,8 @@ class TestStorageProviderTransactionOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([3, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
         tx_id = storage_provider.insert_transaction(tx_data)
 
@@ -146,8 +147,8 @@ class TestStorageProviderOutputOperations:
             "numberOfDesiredUTXOs": 10,
             "minimumDesiredUTXOValue": 1000,
             "isDeleted": False,
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
         basket_id = storage_provider.insert_output_basket(basket_data)
 
@@ -163,8 +164,8 @@ class TestStorageProviderOutputOperations:
             "version": 1,
             "lockTime": 0,
             "rawTx": bytes([4, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
         tx_id = storage_provider.insert_transaction(tx_data)
 
@@ -181,9 +182,9 @@ class TestStorageProviderOutputOperations:
             "purpose": "change",
             "type": "change",
             "txid": "d" * 64,
-            "lockingScript": bytes([0x76, 0xa9, 0x14] + [0] * 20 + [0x88, 0xac]),  # P2PKH
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "lockingScript": bytes([0x76, 0xA9, 0x14] + [0] * 20 + [0x88, 0xAC]),  # P2PKH
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
 
         output_id = storage_provider.insert_output(output_data)
@@ -223,8 +224,8 @@ class TestStorageProviderCertificateOperations:
             "revocationOutpoint": "e" * 64 + ".0",
             "signature": "f" * 128,
             "isDeleted": False,
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
 
         cert_id = storage_provider.insert_certificate(cert_data)
@@ -250,12 +251,12 @@ class TestStorageProviderProvenTxOperations:
             "txid": "f" * 64,
             "height": 100000,
             "index": 0,
-            "merklePath": json.dumps({"path": [], "blockHeight": 100000}).encode('utf-8'),
+            "merklePath": json.dumps({"path": [], "blockHeight": 100000}).encode("utf-8"),
             "rawTx": bytes([5, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
             "blockHash": "g" * 64,
             "merkleRoot": "h" * 64,
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
 
         proven_tx_id = storage_provider.insert_proven_tx(proven_tx_data)
@@ -274,8 +275,8 @@ class TestStorageProviderProvenTxOperations:
             "status": "unmined",
             "rawTx": bytes([6, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
             "attempts": 0,
-            "createdAt": datetime.now(timezone.utc),
-            "updatedAt": datetime.now(timezone.utc),
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
         }
 
         req_id = storage_provider.insert_proven_tx_req(req_data)

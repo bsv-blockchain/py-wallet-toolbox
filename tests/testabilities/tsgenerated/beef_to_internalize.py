@@ -124,7 +124,7 @@ SENDER_IDENTITY_KEY = "0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815
 
 def parent_beef_bytes() -> bytes:
     """Get the parent BEEF as bytes.
-    
+
     Returns:
         bytes: The BEEF raw bytes
     """
@@ -133,26 +133,26 @@ def parent_beef_bytes() -> bytes:
 
 def parent_transaction_atomic_beef() -> bytes:
     """Get the parent transaction as AtomicBEEF bytes.
-    
+
     This is equivalent to Go's ParentTransactionAtomicBeef(t) function.
     It converts the BEEF V2 format to AtomicBEEF format for the target transaction.
-    
+
     Returns:
         bytes: The AtomicBEEF bytes for internalization
-        
+
     Note:
         This imports bsv lazily to avoid circular imports.
     """
     from bsv.transaction.beef import new_beef_from_bytes
-    
+
     beef_bytes = parent_beef_bytes()
     beef = new_beef_from_bytes(beef_bytes)
-    
+
     # Find the parent transaction
     beef_tx = beef.find_transaction(PARENT_BEEF_TXID)
     if beef_tx is None:
         raise ValueError(f"Parent transaction {PARENT_BEEF_TXID} not found in BEEF")
-    
+
     # Convert to AtomicBEEF format for the target transaction
     atomic_bytes = beef.to_binary_atomic(PARENT_BEEF_TXID)
     return atomic_bytes
@@ -165,4 +165,3 @@ EXPECTED_INTERNALIZE_RESULT = {
     "txid": PARENT_BEEF_TXID,
     "satoshis": 99904,
 }
-

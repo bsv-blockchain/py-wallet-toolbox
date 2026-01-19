@@ -4,13 +4,22 @@ This module provides exhaustive test coverage for all functions and edge cases
 in the signer methods module, targeting the 168 missing lines.
 """
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
 
+from bsv_wallet_toolbox.errors.wallet_errors import WalletError
 from bsv_wallet_toolbox.signer.methods import (
     CreateActionResultX,
-    PendingSignAction,
-    PendingStorageInput,
+    _create_new_tx,
+    _make_change_lock,
+    _make_signable_transaction_beef,
+    _make_signable_transaction_result,
+    _merge_prior_options,
+    _recover_action_from_storage,
+    _remove_unlock_scripts,
+    _setup_wallet_payment_for_output,
+    _verify_unlock_scripts,
     acquire_direct_certificate,
     build_signable_transaction,
     complete_signed_transaction,
@@ -19,17 +28,7 @@ from bsv_wallet_toolbox.signer.methods import (
     process_action,
     prove_certificate,
     sign_action,
-    _create_new_tx,
-    _make_signable_transaction_result,
-    _make_signable_transaction_beef,
-    _remove_unlock_scripts,
-    _make_change_lock,
-    _verify_unlock_scripts,
-    _merge_prior_options,
-    _setup_wallet_payment_for_output,
-    _recover_action_from_storage,
 )
-from bsv_wallet_toolbox.errors.wallet_errors import WalletError
 
 
 class TestCreateAction:
@@ -44,7 +43,7 @@ class TestCreateAction:
             "txid": "test_txid",
             "tx": Mock(),
             "amount": 100000,
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         return wallet
 
@@ -53,7 +52,7 @@ class TestCreateAction:
         auth = {"identityKey": "test_key"}
         vargs = {"description": "test action", "outputs": [], "isNewTx": False}
 
-        with patch('bsv_wallet_toolbox.signer.methods.process_action') as mock_process:
+        with patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
             mock_process.return_value = {"sendWithResults": [], "notDelayedResults": []}
 
             result = create_action(mock_wallet, auth, vargs)
@@ -66,7 +65,7 @@ class TestCreateAction:
         auth = {"identityKey": "test_key"}
         vargs = {"description": "test action", "isNewTx": True}
 
-        with patch('bsv_wallet_toolbox.signer.methods._create_new_tx') as mock_create_tx:
+        with patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx:
             mock_create_tx.side_effect = Exception("Wallet error")
 
             with pytest.raises(Exception, match="Wallet error"):
@@ -88,7 +87,7 @@ class TestBuildSignableTransaction:
         dctr = {"inputs": [], "outputs": []}
         args = {"description": "test"}
 
-        with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
             mock_tx = Mock()
             mock_tx_class.return_value = mock_tx
 
@@ -102,23 +101,25 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
-            "storageInputs": [{
-                "vin": 0,
-                "type": "P2PKH",
-                "derivationPrefix": "m/44'/0'/0'/0",
-                "derivationSuffix": "0",
-                "senderIdentityKey": "key",
-                "sourceSatoshis": 2000,
-                "sourceLockingScript": "script",
-                "sourceTxid": "txid",
-                "sourceVout": 0,
-                "sourceTransaction": "deadbeef"
-            }]
+            "storageInputs": [
+                {
+                    "vin": 0,
+                    "type": "P2PKH",
+                    "derivationPrefix": "m/44'/0'/0'/0",
+                    "derivationSuffix": "0",
+                    "senderIdentityKey": "key",
+                    "sourceSatoshis": 2000,
+                    "sourceLockingScript": "script",
+                    "sourceTxid": "txid",
+                    "sourceVout": 0,
+                    "sourceTransaction": "deadbeef",
+                }
+            ],
         }
         args = {"description": "test"}
 
-        with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
-            with patch('bsv_wallet_toolbox.signer.methods.Script') as mock_script_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
+            with patch("bsv_wallet_toolbox.signer.methods.Script") as mock_script_class:
                 mock_tx = Mock()
                 mock_script_class.return_value = Mock()
                 mock_tx_class.return_value = mock_tx
@@ -135,18 +136,20 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}],
-            "storageInputs": [{
-                "vin": 0,
-                "type": "P2PKH",
-                "derivationPrefix": "invalid",
-                "derivationSuffix": "0",
-                "senderIdentityKey": "key",
-                "sourceSatoshis": 2000,
-                "sourceLockingScript": "script",
-                "sourceTxid": "txid",
-                "sourceVout": 0,
-                "sourceTransaction": "deadbeef"
-            }]
+            "storageInputs": [
+                {
+                    "vin": 0,
+                    "type": "P2PKH",
+                    "derivationPrefix": "invalid",
+                    "derivationSuffix": "0",
+                    "senderIdentityKey": "key",
+                    "sourceSatoshis": 2000,
+                    "sourceLockingScript": "script",
+                    "sourceTxid": "txid",
+                    "sourceVout": 0,
+                    "sourceTransaction": "deadbeef",
+                }
+            ],
         }
         args = {"description": "test"}
 
@@ -160,18 +163,20 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}],
-            "storageInputs": [{
-                "vin": 0,
-                "type": "UNSUPPORTED_TYPE",
-                "derivationPrefix": "prefix",
-                "derivationSuffix": "suffix",
-                "senderIdentityKey": "key",
-                "sourceSatoshis": 1000,
-                "sourceLockingScript": "script",
-                "sourceTxid": "txid",
-                "sourceVout": 0,
-                "sourceTransaction": "deadbeef"
-            }]
+            "storageInputs": [
+                {
+                    "vin": 0,
+                    "type": "UNSUPPORTED_TYPE",
+                    "derivationPrefix": "prefix",
+                    "derivationSuffix": "suffix",
+                    "senderIdentityKey": "key",
+                    "sourceSatoshis": 1000,
+                    "sourceLockingScript": "script",
+                    "sourceTxid": "txid",
+                    "sourceVout": 0,
+                    "sourceTransaction": "deadbeef",
+                }
+            ],
         }
         args = {"description": "test"}
 
@@ -183,14 +188,12 @@ class TestBuildSignableTransaction:
         dctr = {
             "inputs": [],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
-            "storageOutputs": [
-                {"purpose": "change", "satoshis": 500, "vout": 1}
-            ]
+            "storageOutputs": [{"purpose": "change", "satoshis": 500, "vout": 1}],
         }
         args = {"description": "test"}
 
-        with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
-            with patch('bsv_wallet_toolbox.signer.methods.validate_satoshis') as mock_validate:
+        with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
+            with patch("bsv_wallet_toolbox.signer.methods.validate_satoshis") as mock_validate:
                 mock_validate.return_value = 2000
                 mock_tx = Mock()
                 mock_tx_class.return_value = mock_tx
@@ -205,12 +208,12 @@ class TestBuildSignableTransaction:
         """Test build_signable_transaction with input BEEF."""
         dctr = {
             "inputs": [{"beef": "input_beef_data"}],
-            "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}]
+            "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
         }
         args = {"inputBeef": "hex_beef_data", "isSignAction": True}
 
-        with patch('bsv_wallet_toolbox.signer.methods.parse_beef') as mock_parse_beef:
-            with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef:
+            with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
                 mock_beef = Mock()
                 mock_beef.find_txid.return_value = {"tx": "found_tx"}
                 mock_parse_beef.return_value = mock_beef
@@ -225,14 +228,11 @@ class TestBuildSignableTransaction:
 
     def test_build_signable_transaction_input_beef_txid_not_found(self, mock_wallet: Mock) -> None:
         """Test build_signable_transaction with input BEEF but txid not found."""
-        dctr = {
-            "inputs": [{"beef": "input_beef_data"}],
-            "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}]
-        }
+        dctr = {"inputs": [{"beef": "input_beef_data"}], "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}]}
         args = {"inputBeef": "hex_beef_data", "isSignAction": True}
 
-        with patch('bsv_wallet_toolbox.signer.methods.parse_beef') as mock_parse_beef:
-            with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef:
+            with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
                 mock_beef = Mock()
                 mock_beef.find_txid.return_value = None
                 mock_parse_beef.return_value = mock_beef
@@ -264,13 +264,10 @@ class TestCompleteSignedTransaction:
         prior.pdi = []
 
         spends = {
-            0: {
-                "unlockingScript": "deadbeef",  # 8 hex chars = 4 bytes, within limit
-                "sequenceNumber": 0xFFFFFFFF
-            }
+            0: {"unlockingScript": "deadbeef", "sequenceNumber": 0xFFFFFFFF}  # 8 hex chars = 4 bytes, within limit
         }
 
-        with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
             mock_tx = Mock()
             mock_tx_class.return_value = mock_tx
 
@@ -326,12 +323,7 @@ class TestCompleteSignedTransaction:
         prior.args = {"inputs": [{"unlockingScriptLength": 10}]}
         prior.pdi = []
 
-        spends = {
-            0: {
-                "unlockingScript": "deadbeef",
-                "sequenceNumber": 12345
-            }
-        }
+        spends = {0: {"unlockingScript": "deadbeef", "sequenceNumber": 12345}}
 
         result = complete_signed_transaction(prior, spends, mock_wallet)
 
@@ -344,20 +336,11 @@ class TestCompleteSignedTransaction:
         input_mock1 = Mock()
         input_mock2 = Mock()
         prior.tx.inputs = [input_mock1, input_mock2]
-        prior.inputs = [
-            Mock(unlocking_script_length=10),
-            Mock(unlocking_script_length=15)
-        ]
-        prior.args = {"inputs": [
-            {"unlockingScriptLength": 10},
-            {"unlockingScriptLength": 15}
-        ]}
+        prior.inputs = [Mock(unlocking_script_length=10), Mock(unlocking_script_length=15)]
+        prior.args = {"inputs": [{"unlockingScriptLength": 10}, {"unlockingScriptLength": 15}]}
         prior.pdi = []
 
-        spends = {
-            0: {"unlockingScript": "deadbeef"},
-            1: {"unlockingScript": "beefdead"}
-        }
+        spends = {0: {"unlockingScript": "deadbeef"}, 1: {"unlockingScript": "beefdead"}}
 
         result = complete_signed_transaction(prior, spends, mock_wallet)
 
@@ -396,14 +379,14 @@ class TestProcessAction:
         # Mock the storage process_action call to return a dict
         mock_wallet.storage.process_action.return_value = {"status": "success", "txid": "tx123"}
 
-        with patch('bsv_wallet_toolbox.signer.methods._create_new_tx') as mock_create_tx:
+        with patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx:
             mock_prior = Mock()
             mock_prior.txid = "tx123"
             mock_prior.reference = "ref456"
             mock_create_tx.return_value = mock_prior
 
-            with patch('bsv_wallet_toolbox.signer.methods.build_signable_transaction') as mock_build:
-                with patch('bsv_wallet_toolbox.signer.methods.complete_signed_transaction') as mock_complete:
+            with patch("bsv_wallet_toolbox.signer.methods.build_signable_transaction") as mock_build:
+                with patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete:
                     mock_build.return_value = (Mock(), 1000, [], "log")
                     mock_complete.return_value = Mock()
 
@@ -461,7 +444,7 @@ class TestProcessAction:
         auth = {"identityKey": "test_key"}
         vargs = {"description": "test"}
 
-        with patch('bsv_wallet_toolbox.signer.methods._create_new_tx') as mock_create_tx:
+        with patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx:
             mock_create_tx.side_effect = Exception("Creation error")
 
             with pytest.raises(Exception, match="Creation error"):
@@ -482,10 +465,10 @@ class TestSignAction:
         auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
-        with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
-            with patch('bsv_wallet_toolbox.signer.methods.process_action') as mock_process:
-                with patch('bsv_wallet_toolbox.signer.methods.parse_beef') as mock_parse_beef:
-                    with patch('bsv_wallet_toolbox.signer.methods._verify_unlock_scripts') as mock_verify:
+        with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage"):
+            with patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
+                with patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef:
+                    with patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts"):
                         prior = Mock()
                         prior.args = {"inputs": []}
                         prior.tx = Mock()
@@ -508,7 +491,7 @@ class TestSignAction:
         auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
-        with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
+        with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage") as mock_recover:
             mock_recover.return_value = None
 
             with pytest.raises(Exception):  # Should raise error for missing prior
@@ -530,14 +513,22 @@ class TestInternalizeAction:
         args = {
             "reference": "test_ref",
             "tx": b"test_beef_data",
-            "outputs": [{"amount": 1000, "script": "test_script", "protocol": "wallet payment", "outputIndex": 0, "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"}, "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"}}],
-            "description": "Test transaction description"
+            "outputs": [
+                {
+                    "amount": 1000,
+                    "script": "test_script",
+                    "protocol": "wallet payment",
+                    "outputIndex": 0,
+                    "paymentRemittance": {"derivationPrefix": "dGVzdA==", "derivationSuffix": "c3VmZml4"},
+                }
+            ],
+            "description": "Test transaction description",
         }
 
-        with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
-            with patch('bsv_wallet_toolbox.signer.methods.process_action') as mock_process:
-                with patch('bsv_wallet_toolbox.signer.methods.parse_beef_ex') as mock_parse_beef_ex:
-                    with patch('bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output') as mock_setup:
+        with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage") as mock_recover:
+            with patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
+                with patch("bsv_wallet_toolbox.signer.methods.parse_beef_ex") as mock_parse_beef_ex:
+                    with patch("bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output"):
                         mock_recover.return_value = Mock()
                         mock_process.return_value = {"txid": "internalized_txid"}
                         beef_mock = Mock()
@@ -559,7 +550,7 @@ class TestInternalizeAction:
         auth = {"identityKey": "test_key"}
         args = {"reference": "test_ref"}
 
-        with patch('bsv_wallet_toolbox.signer.methods._recover_action_from_storage') as mock_recover:
+        with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage") as mock_recover:
             mock_recover.return_value = None
 
             with pytest.raises(Exception):  # Should raise error for missing prior
@@ -580,7 +571,7 @@ class TestAcquireDirectCertificate:
         auth = {"identityKey": "test_key", "userId": "test_user"}
         vargs = {"type": "identity", "fields": {}, "subject": "test_subject", "certifier": "test_certifier"}
 
-        with patch('bsv_wallet_toolbox.signer.methods.create_action') as mock_create:
+        with patch("bsv_wallet_toolbox.signer.methods.create_action") as mock_create:
             mock_create.return_value = {"txid": "cert_txid"}
 
             result = acquire_direct_certificate(mock_wallet, auth, vargs)
@@ -612,7 +603,7 @@ class TestProveCertificate:
         auth = {"identityKey": "test_key"}
         vargs = {"certificateTxid": "cert_txid"}
 
-        with patch('bsv_wallet_toolbox.signer.methods.create_action') as mock_create:
+        with patch("bsv_wallet_toolbox.signer.methods.create_action") as mock_create:
             mock_create.return_value = {"txid": "proof_txid"}
             mock_wallet.storage.list_certificates.return_value = {"certificates": [{"id": 1, "type": "test"}]}
 
@@ -641,7 +632,7 @@ class TestHelperFunctions:
             "inputs": [
                 {"unlockingScript": "script1", "otherField": "value1"},
                 {"unlockingScript": "script2", "otherField": "value2"},
-                {"otherField": "value3"}  # No unlocking_script
+                {"otherField": "value3"},  # No unlocking_script
             ]
         }
 
@@ -655,12 +646,7 @@ class TestHelperFunctions:
 
     def test_remove_unlock_scripts_none_values(self) -> None:
         """Test _remove_unlock_scripts with None values."""
-        args = {
-            "inputs": [
-                {"unlockingScript": None},
-                {"unlockingScript": "valid_script"}
-            ]
-        }
+        args = {"inputs": [{"unlockingScript": None}, {"unlockingScript": "valid_script"}]}
 
         result = _remove_unlock_scripts(args)
 
@@ -686,11 +672,13 @@ class TestHelperFunctions:
         change_keys = Mock()
         wallet = Mock()
 
-        with patch('bsv_wallet_toolbox.signer.methods.Script') as mock_script_class, \
-             patch('bsv_wallet_toolbox.signer.methods.Protocol') as mock_protocol_class, \
-             patch('bsv_wallet_toolbox.signer.methods.Counterparty') as mock_counterparty_class, \
-             patch('bsv_wallet_toolbox.signer.methods.CounterpartyType') as mock_counterparty_type_class, \
-             patch('bsv_wallet_toolbox.signer.methods.P2PKH') as mock_p2pkh_class:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods.Script") as mock_script_class,
+            patch("bsv_wallet_toolbox.signer.methods.Protocol") as mock_protocol_class,
+            patch("bsv_wallet_toolbox.signer.methods.Counterparty") as mock_counterparty_class,
+            patch("bsv_wallet_toolbox.signer.methods.CounterpartyType") as mock_counterparty_type_class,
+            patch("bsv_wallet_toolbox.signer.methods.P2PKH") as mock_p2pkh_class,
+        ):
             mock_script = Mock()
             mock_script_class.return_value = mock_script
 
@@ -729,11 +717,13 @@ class TestHelperFunctions:
         change_keys = Mock()
         wallet = Mock()
 
-        with patch('bsv_wallet_toolbox.signer.methods.Script') as mock_script_class, \
-             patch('bsv_wallet_toolbox.signer.methods.Protocol') as mock_protocol_class, \
-             patch('bsv_wallet_toolbox.signer.methods.Counterparty') as mock_counterparty_class, \
-             patch('bsv_wallet_toolbox.signer.methods.CounterpartyType') as mock_counterparty_type_class, \
-             patch('bsv_wallet_toolbox.signer.methods.P2PKH') as mock_p2pkh_class:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods.Script") as mock_script_class,
+            patch("bsv_wallet_toolbox.signer.methods.Protocol") as mock_protocol_class,
+            patch("bsv_wallet_toolbox.signer.methods.Counterparty") as mock_counterparty_class,
+            patch("bsv_wallet_toolbox.signer.methods.CounterpartyType") as mock_counterparty_type_class,
+            patch("bsv_wallet_toolbox.signer.methods.P2PKH") as mock_p2pkh_class,
+        ):
             mock_script = Mock()
             mock_script_class.return_value = mock_script
 
@@ -764,6 +754,7 @@ class TestHelperFunctions:
     def test_verify_unlock_scripts_success(self) -> None:
         """Test _verify_unlock_scripts success."""
         from unittest.mock import AsyncMock
+
         txid = "test_txid"
         beef = Mock()
 
@@ -779,7 +770,7 @@ class TestHelperFunctions:
         beef_tx.tx_obj = mock_tx
         beef.txs = {txid: beef_tx}
 
-        with patch('bsv_wallet_toolbox.signer.methods.Beef') as mock_beef_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Beef") as mock_beef_class:
             mock_beef_instance = Mock()
             mock_beef_class.return_value = mock_beef_instance
             mock_beef_instance.verify_txid.return_value = True
@@ -792,7 +783,7 @@ class TestHelperFunctions:
         txid = "test_txid"
         beef = Mock()
 
-        with patch('bsv_wallet_toolbox.signer.methods.Beef') as mock_beef_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Beef") as mock_beef_class:
             mock_beef_instance = Mock()
             mock_beef_class.return_value = mock_beef_instance
             mock_beef_instance.verify_txid.return_value = False
@@ -829,7 +820,10 @@ class TestHelperFunctions:
 
     def test_setup_wallet_payment_for_output_success(self) -> None:
         """Test _setup_wallet_payment_for_output success."""
-        output_spec = {"satoshis": 1000, "paymentRemittance": {"derivationPrefix": "m/44'/0'/0'/1", "derivationSuffix": "0"}}
+        output_spec = {
+            "satoshis": 1000,
+            "paymentRemittance": {"derivationPrefix": "m/44'/0'/0'/1", "derivationSuffix": "0"},
+        }
         tx = Mock()
         tx.outputs = [Mock()]
         # Set locking_script as a string to avoid isinstance check with mocked Script
@@ -838,10 +832,12 @@ class TestHelperFunctions:
         brc29_protocol_id = ["protocol1"]
 
         # Don't patch Script - it's used in isinstance() checks and needs to be a real type
-        with patch('bsv_wallet_toolbox.signer.methods.Protocol') as mock_protocol_class, \
-             patch('bsv_wallet_toolbox.signer.methods.Counterparty') as mock_counterparty_class, \
-             patch('bsv_wallet_toolbox.signer.methods.CounterpartyType') as mock_counterparty_type_class, \
-             patch('bsv_wallet_toolbox.signer.methods.P2PKH') as mock_p2pkh_class:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods.Protocol") as mock_protocol_class,
+            patch("bsv_wallet_toolbox.signer.methods.Counterparty") as mock_counterparty_class,
+            patch("bsv_wallet_toolbox.signer.methods.CounterpartyType") as mock_counterparty_type_class,
+            patch("bsv_wallet_toolbox.signer.methods.P2PKH") as mock_p2pkh_class,
+        ):
             mock_script = Mock()
             mock_script.hex.return_value = "test_script_hex"
 
@@ -898,7 +894,7 @@ class TestHelperFunctions:
         wallet.storage.find.return_value = [tx_record]
 
         # Mock the Transaction import inside the function
-        with patch('bsv.transaction.Transaction') as mock_transaction:
+        with patch("bsv.transaction.Transaction") as mock_transaction:
             mock_tx = Mock()
             mock_tx.txid.return_value = "test_txid"
             mock_transaction.from_bytes.return_value = mock_tx
@@ -906,7 +902,7 @@ class TestHelperFunctions:
             result = _recover_action_from_storage(wallet, auth, reference)
 
         assert result is not None
-        assert hasattr(result, 'tx')
+        assert hasattr(result, "tx")
         wallet.storage.find.assert_called_once()
 
     def test_recover_action_from_storage_not_found(self) -> None:
@@ -945,12 +941,7 @@ class TestTransactionHelpers:
         args = {"description": "test"}
 
         # Mock wallet.storage.create_action
-        mock_result = {
-            "txid": "tx123",
-            "reference": "ref456",
-            "inputs": [],
-            "outputs": []
-        }
+        mock_result = {"txid": "tx123", "reference": "ref456", "inputs": [], "outputs": []}
         wallet.storage.create_action.return_value = mock_result
 
         # Mock wallet methods
@@ -973,7 +964,7 @@ class TestTransactionHelpers:
         wallet.pending_sign_actions = {}
         args = {}
 
-        with patch('bsv_wallet_toolbox.signer.methods._make_signable_transaction_beef') as mock_beef:
+        with patch("bsv_wallet_toolbox.signer.methods._make_signable_transaction_beef") as mock_beef:
             mock_beef.return_value = b"test_beef_bytes"
 
             result = _make_signable_transaction_result(prior, wallet, args)
@@ -986,8 +977,8 @@ class TestTransactionHelpers:
         tx.inputs = []
         input_beef = b"beef_data"
 
-        with patch('bsv_wallet_toolbox.signer.methods.Beef') as mock_beef_class:
-            with patch('bsv_wallet_toolbox.signer.methods.Transaction') as mock_tx_class:
+        with patch("bsv_wallet_toolbox.signer.methods.Beef") as mock_beef_class:
+            with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
                 mock_beef = Mock()
                 mock_beef.to_binary_atomic.return_value = b"combined_beef"
                 mock_beef_class.return_value = mock_beef

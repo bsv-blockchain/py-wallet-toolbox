@@ -5,12 +5,9 @@ import os
 from pathlib import Path
 from pprint import pprint
 
-from dotenv import load_dotenv
-from bsv.keys import PrivateKey
 from bsv.constants import Network
-from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.brc29 import KeyID, address_for_self
-from bsv_wallet_toolbox.services import Services, create_default_options
+from bsv.keys import PrivateKey
+from dotenv import load_dotenv
 from src.config import (
     bypass_wallet_infra_auth,
     get_key_deriver,
@@ -24,14 +21,19 @@ from src.config import (
     use_wallet_infra,
 )
 
+from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.brc29 import KeyID, address_for_self
+from bsv_wallet_toolbox.services import Services, create_default_options
+
 FAUCET_DERIVATION_PREFIX = "faucet-prefix-01"
 FAUCET_DERIVATION_SUFFIX = "faucet-suffix-01"
+
 
 def main():
     # Change to script directory
     os.chdir(Path(__file__).parent)
     load_dotenv()
-    
+
     print("=" * 70)
     print("💰 Wallet Balance Checker")
     print("=" * 70)
@@ -41,7 +43,7 @@ def main():
     key_deriver = get_key_deriver()
     options = create_default_options(chain)
     services = Services(options)
-    
+
     # Storage mode selection (priority: wallet-infra > remote > local)
     wallet_infra_mode = use_wallet_infra()
     bypass_auth = bypass_wallet_infra_auth()
@@ -117,7 +119,7 @@ def main():
             print(f"📥 Faucet demo address (BRC-29): {brc29_addr.get('address_string')}")
     except Exception:
         pass
-    
+
     # 1. Check balance
     try:
         balance_result = wallet.balance()
@@ -129,14 +131,16 @@ def main():
     # 2. Check UTXO list
     print("\n🔍 List of valid UTXOs (spendable):")
     try:
-        outputs_result = wallet.list_outputs({
-            "basket": "default",
-            "limit": 100,
-        })
-        
+        outputs_result = wallet.list_outputs(
+            {
+                "basket": "default",
+                "limit": 100,
+            }
+        )
+
         outputs = outputs_result.get("outputs", [])
         spendable_outputs = [o for o in outputs if not o.get("spent") and o.get("spendable") is not False]
-        
+
         if not spendable_outputs:
             print("   (none)")
         else:
@@ -144,11 +148,12 @@ def main():
                 # Display all fields for debugging
                 print(f"   --- Output {i+1} ---")
                 pprint(out)
-                
+
     except Exception as e:
         print(f"❌ UTXO list retrieval error: {e}")
 
     print("\n" + "=" * 70)
+
 
 if __name__ == "__main__":
     main()

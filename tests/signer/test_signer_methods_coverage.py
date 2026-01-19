@@ -6,8 +6,7 @@ This module tests transaction signing operations and wallet signing capabilities
 from unittest.mock import Mock, patch
 
 import pytest
-from bsv.script import Script
-from bsv.transaction import Beef, Transaction, TransactionInput, TransactionOutput
+from bsv.transaction import Beef, Transaction
 
 from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 from bsv_wallet_toolbox.signer.methods import (
@@ -111,7 +110,7 @@ class TestCreateAction:
             "inputs": [],
             "outputs": [],
             "txid": "test_txid",
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         mock_wallet.get_client_change_key_pair.return_value = Mock()
 
@@ -129,7 +128,7 @@ class TestCreateAction:
             "inputs": [],
             "outputs": [],
             "txid": "test_txid",
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         mock_wallet.get_client_change_key_pair.return_value = Mock()
 
@@ -385,7 +384,7 @@ class TestCreateActionAdvanced:
             "outputs": [
                 {"satoshis": 1000, "script": "script1"},
                 {"satoshis": 2000, "script": "script2"},
-            ]
+            ],
         }
 
         try:
@@ -407,7 +406,7 @@ class TestCreateActionAdvanced:
             "inputs": [],
             "outputs": [],
             "txid": "test_txid",
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         mock_wallet.get_client_change_key_pair.return_value = Mock()
 
@@ -427,7 +426,7 @@ class TestCreateActionAdvanced:
             "inputs": [],
             "outputs": [],
             "txid": "test_txid",
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         mock_wallet.get_client_change_key_pair.return_value = Mock()
 
@@ -455,9 +454,7 @@ class TestSignActionAdvanced:
     def test_sign_action_with_spends(self, mock_wallet, mock_auth) -> None:
         """Test sign_action with spend information."""
         args = {
-            "spends": {
-                "0": {"satoshis": 1000, "unlockingScript": "script"}
-            },
+            "spends": {"0": {"satoshis": 1000, "unlockingScript": "script"}},
             "reference": "test_ref",
         }
 
@@ -607,7 +604,7 @@ class TestSignerMethodsIntegration:
             "inputs": [],
             "outputs": [],
             "txid": "test_txid",
-            "reference": "test_ref"
+            "reference": "test_ref",
         }
         wallet.get_client_change_key_pair.return_value = Mock()
 
@@ -711,14 +708,13 @@ class TestSignerMethodsHighImpactCoverage:
         # Mock wallet.pending_sign_actions
         mock_wallet.pending_sign_actions = {"testRef": mock_pending}
 
-        args = {
-            "reference": "test_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"reference": "test_ref", "options": {"returnTxidOnly": False}}
 
-        with patch('bsv_wallet_toolbox.signer.methods.parse_beef') as mock_parse_beef, \
-             patch('bsv_wallet_toolbox.signer.methods.complete_signed_transaction') as mock_complete, \
-             patch('bsv_wallet_toolbox.signer.methods._verify_unlock_scripts') as mock_verify:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef,
+            patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
+            patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts"),
+        ):
 
             mock_beef = Mock(spec=Beef)
             mock_beef.txs = {"testTxid": Mock()}  # Mock the txs dict for verification
@@ -728,7 +724,7 @@ class TestSignerMethodsHighImpactCoverage:
             mock_complete.return_value = mock_tx
 
             try:
-                result = sign_action(mock_wallet, mock_auth, args)
+                sign_action(mock_wallet, mock_auth, args)
                 # The main goal is to exercise the BEEF parsing and merging code paths (lines 107-108)
                 # If we get here without exceptions, the code paths were exercised
             except (AttributeError, KeyError, TypeError, WalletError):
@@ -738,16 +734,14 @@ class TestSignerMethodsHighImpactCoverage:
     def test_internalize_action_vout_mismatch_error(self, mock_wallet, mock_auth) -> None:
         """Test internalize_action vout mismatch error (line 173)."""
         # Mock storage outputs with mismatched vout to exercise the error path
-        mock_wallet.storage.list_outputs = Mock(return_value=[
-            {"vout": 1, "satoshis": 1000, "providedBy": "user", "purpose": "output"}
-        ])
+        mock_wallet.storage.list_outputs = Mock(
+            return_value=[{"vout": 1, "satoshis": 1000, "providedBy": "user", "purpose": "output"}]
+        )
 
         args = {
             "tx": b"\x01\x00\x00\x00",
-            "outputs": [
-                {"vout": 0, "satoshis": 1000, "basket": "default"}
-            ],
-            "description": "Test transaction"
+            "outputs": [{"vout": 0, "satoshis": 1000, "basket": "default"}],
+            "description": "Test transaction",
         }
 
         # Exercise the vout validation logic
@@ -760,7 +754,7 @@ class TestSignerMethodsHighImpactCoverage:
     def test_sign_action_input_sorting(self, mock_wallet, mock_auth) -> None:
         """Test sign_action input sorting logic (lines 196-198)."""
         # Mock internalize_action to exercise input sorting in create_action
-        with patch('bsv_wallet_toolbox.signer.methods.internalize_action') as mock_internalize:
+        with patch("bsv_wallet_toolbox.signer.methods.internalize_action") as mock_internalize:
             mock_internalize.return_value = {"txid": "internalized_txid"}
 
             # Test create_action with inputs that would trigger sorting
@@ -770,11 +764,11 @@ class TestSignerMethodsHighImpactCoverage:
                 "inputs": [
                     {"outpoint": {"txid": "tx1", "vout": 1}, "unlockingScript": "script1"},
                     {"outpoint": {"txid": "tx0", "vout": 0}, "unlockingScript": "script0"},
-                ]
+                ],
             }
 
             try:
-                result = create_action(mock_wallet, mock_auth, vargs)
+                create_action(mock_wallet, mock_auth, vargs)
                 # Input sorting logic should be exercised during transaction building
             except (AttributeError, KeyError, TypeError, WalletError):
                 # Expected - the main goal is to exercise the input sorting code path
@@ -782,11 +776,7 @@ class TestSignerMethodsHighImpactCoverage:
 
     def test_sign_action_user_supplied_inputs(self, mock_wallet, mock_auth) -> None:
         """Test sign_action with user supplied inputs (lines 207-232)."""
-        mock_create_result = {
-            "storageInputs": [],
-            "storageOutputs": [],
-            "result": "create_data"
-        }
+        mock_create_result = {"storageInputs": [], "storageOutputs": [], "result": "create_data"}
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
@@ -798,10 +788,10 @@ class TestSignerMethodsHighImpactCoverage:
                 {
                     "outpoint": {"txid": "input_txid", "vout": 0},
                     "unlockingScript": "script_hex",
-                    "sequenceNumber": 0xFFFFFFFF
+                    "sequenceNumber": 0xFFFFFFFF,
                 }
             ],
-            "options": {"returnTxidOnly": False}
+            "options": {"returnTxidOnly": False},
         }
 
         try:
@@ -825,21 +815,17 @@ class TestSignerMethodsHighImpactCoverage:
                     "sourceSatoshis": 50000,
                     "sourceLockingScript": "script_hex",
                     "sourceTxid": "source_txid",
-                    "sourceVout": 0
+                    "sourceVout": 0,
                 }
             ],
             "storageOutputs": [],
-            "result": "create_data"
+            "result": "create_data",
         }
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "test_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "test_ref", "options": {"returnTxidOnly": False}}
 
         try:
             result = sign_action(mock_wallet, mock_auth, args)
@@ -872,8 +858,10 @@ class TestSignerMethodsHighImpactCoverage:
     def test_sign_action_with_beef_input_transaction_source(self, mock_wallet, mock_auth) -> None:
         """Test sign_action with BEEF input transaction source (lines 216-221)."""
         # Exercise BEEF transaction source lookup through create_action
-        with patch('bsv_wallet_toolbox.signer.methods.create_action') as mock_create, \
-             patch('bsv_wallet_toolbox.signer.methods.internalize_action') as mock_internalize:
+        with (
+            patch("bsv_wallet_toolbox.signer.methods.create_action") as mock_create,
+            patch("bsv_wallet_toolbox.signer.methods.internalize_action") as mock_internalize,
+        ):
 
             mock_create.return_value = CreateActionResultX(txid="test_txid")
             mock_internalize.return_value = {"txid": "internalized"}
@@ -882,11 +870,11 @@ class TestSignerMethodsHighImpactCoverage:
                 "spends": {},
                 "reference": "test_ref",
                 "inputs": [{"outpoint": {"txid": "beef_txid", "vout": 0}}],
-                "isSignAction": True
+                "isSignAction": True,
             }
 
             try:
-                result = sign_action(mock_wallet, mock_auth, args)
+                sign_action(mock_wallet, mock_auth, args)
                 # BEEF transaction source processing should be exercised
             except (AttributeError, KeyError, TypeError, WalletError):
                 # Expected - the main goal is to exercise the BEEF transaction source path
@@ -947,10 +935,7 @@ class TestSignerMethodsHighImpactCoverage:
 
     def test_prove_certificate_basic(self, mock_wallet, mock_auth) -> None:
         """Test prove_certificate function (lines 474-491)."""
-        args = {
-            "certificate": "cert_data",
-            "fields": ["field1", "field2"]
-        }
+        args = {"certificate": "cert_data", "fields": ["field1", "field2"]}
 
         try:
             result = prove_certificate(mock_wallet, mock_auth, args)
@@ -962,22 +947,14 @@ class TestSignerMethodsHighImpactCoverage:
 
     def test_sign_action_transaction_finalization(self, mock_wallet, mock_auth) -> None:
         """Test sign_action transaction finalization (lines 777-780)."""
-        mock_create_result = {
-            "storageInputs": [],
-            "storageOutputs": [],
-            "result": "create_data"
-        }
+        mock_create_result = {"storageInputs": [], "storageOutputs": [], "result": "create_data"}
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "test_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "test_ref", "options": {"returnTxidOnly": False}}
 
-        with patch('bsv_wallet_toolbox.signer.methods.complete_signed_transaction') as mock_complete:
+        with patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete:
             mock_tx = Mock()
             mock_tx.txid.return_value = "final_txid"
             mock_complete.return_value = mock_tx
@@ -1004,7 +981,7 @@ class TestSignerMethodsHighImpactCoverage:
                     "sourceSatoshis": 25000,
                     "sourceLockingScript": "script_0",
                     "sourceTxid": "txid_0",
-                    "sourceVout": 0
+                    "sourceVout": 0,
                 },
                 {
                     "vin": 1,
@@ -1015,8 +992,8 @@ class TestSignerMethodsHighImpactCoverage:
                     "sourceSatoshis": 35000,
                     "sourceLockingScript": "script_1",
                     "sourceTxid": "txid_1",
-                    "sourceVout": 1
-                }
+                    "sourceVout": 1,
+                },
             ],
             "storageOutputs": [
                 {
@@ -1024,20 +1001,16 @@ class TestSignerMethodsHighImpactCoverage:
                     "satoshis": 50000,
                     "providedBy": "storage",
                     "purpose": "change",
-                    "lockingScript": "change_script"
+                    "lockingScript": "change_script",
                 }
             ],
-            "result": "create_data"
+            "result": "create_data",
         }
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "complex_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "complex_ref", "options": {"returnTxidOnly": False}}
 
         try:
             result = sign_action(mock_wallet, mock_auth, args)
@@ -1069,20 +1042,12 @@ class TestSignerMethodsHighImpactCoverage:
 
     def test_sign_action_advanced_signing_logic(self, mock_wallet, mock_auth) -> None:
         """Test sign_action advanced signing logic (lines 877-896)."""
-        mock_create_result = {
-            "storageInputs": [],
-            "storageOutputs": [],
-            "result": "create_data"
-        }
+        mock_create_result = {"storageInputs": [], "storageOutputs": [], "result": "create_data"}
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "advanced_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "advanced_ref", "options": {"returnTxidOnly": False}}
 
         try:
             result = sign_action(mock_wallet, mock_auth, args)
@@ -1094,20 +1059,12 @@ class TestSignerMethodsHighImpactCoverage:
 
     def test_sign_action_result_processing(self, mock_wallet, mock_auth) -> None:
         """Test sign_action result processing (lines 900-901, 914)."""
-        mock_create_result = {
-            "storageInputs": [],
-            "storageOutputs": [],
-            "result": "create_data"
-        }
+        mock_create_result = {"storageInputs": [], "storageOutputs": [], "result": "create_data"}
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "result_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "result_ref", "options": {"returnTxidOnly": False}}
 
         try:
             result = sign_action(mock_wallet, mock_auth, args)
@@ -1132,28 +1089,17 @@ class TestSignerMethodsHighImpactCoverage:
                     "sourceLockingScript": "locking_script_hex",
                     "sourceTxid": "source_txid_123",
                     "sourceVout": 0,
-                    "sourceTransaction": "source_tx_hex"
+                    "sourceTransaction": "source_tx_hex",
                 }
             ],
-            "storageOutputs": [
-                {
-                    "vout": 0,
-                    "satoshis": 95000,
-                    "providedBy": "storage",
-                    "purpose": "change"
-                }
-            ],
-            "result": "create_data"
+            "storageOutputs": [{"vout": 0, "satoshis": 95000, "providedBy": "storage", "purpose": "change"}],
+            "result": "create_data",
         }
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "complex_ops_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "complex_ops_ref", "options": {"returnTxidOnly": False}}
 
         try:
             result = sign_action(mock_wallet, mock_auth, args)
@@ -1165,20 +1111,12 @@ class TestSignerMethodsHighImpactCoverage:
 
     def test_sign_action_final_result_processing(self, mock_wallet, mock_auth) -> None:
         """Test sign_action final result processing (lines 1019, 1026, 1038-1083)."""
-        mock_create_result = {
-            "storageInputs": [],
-            "storageOutputs": [],
-            "result": "create_data"
-        }
+        mock_create_result = {"storageInputs": [], "storageOutputs": [], "result": "create_data"}
         mock_wallet.storage.create_action = Mock(return_value=mock_create_result)
         mock_wallet.storage.list_outputs = Mock(return_value=[])
         mock_wallet.storage.list_actions = Mock(return_value=[])
 
-        args = {
-            "spends": {},
-            "reference": "final_processing_ref",
-            "options": {"returnTxidOnly": False}
-        }
+        args = {"spends": {}, "reference": "final_processing_ref", "options": {"returnTxidOnly": False}}
 
         try:
             result = sign_action(mock_wallet, mock_auth, args)

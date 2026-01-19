@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
+from pprint import pprint
 from typing import Any
 
-from pprint import pprint
 from bsv.merkle_path import MerklePath as PyMerklePath
 from bsv.transaction.beef import BEEF_V2, Beef
 from bsv.transaction.beef_builder import merge_bump, merge_raw_tx
 from bsv.transaction.beef_serialize import to_binary_atomic
+
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.services import Services
 from bsv_wallet_toolbox.utils.merkle_path_utils import convert_proof_to_merkle_path
@@ -40,7 +40,7 @@ def demo_internalize_action(wallet: Wallet, chain: Chain) -> None:
             return
         try:
             atomic_beef = _build_atomic_beef_for_txid(chain, txid)
-        except Exception as err:  # noqa: BLE001 - surfacing informative message is fine
+        except Exception as err:
             print(f"❌ Failed to download Atomic BEEF: {err}")
             return
 
@@ -92,7 +92,7 @@ def demo_internalize_action(wallet: Wallet, chain: Chain) -> None:
     try:
 
         result = wallet.internalize_action(internalize_args)
-    except Exception as err:  # noqa: BLE001
+    except Exception as err:
         print(f"❌ InternalizeAction failed: {err}")
         return
 
@@ -173,4 +173,3 @@ def _convert_merkle_result(txid: str, result: dict[str, Any] | None) -> PyMerkle
     tsc_proof = {"height": height, "index": index, "nodes": nodes}
     mp_dict = convert_proof_to_merkle_path(txid, tsc_proof)
     return PyMerklePath(mp_dict["blockHeight"], mp_dict["path"])
-

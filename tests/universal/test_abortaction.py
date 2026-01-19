@@ -43,7 +43,7 @@ class TestUniversalVectorsAbortAction:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors(1-simple)
+        args_data, _result_data = load_test_vectors("abortAction-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
@@ -54,7 +54,7 @@ class TestUniversalVectorsAbortAction:
         # Then - Just verify the ABI serialization works
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Given - simplified test that verifies ABI functions work
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
@@ -63,15 +63,15 @@ class TestUniversalVectorsAbortAction:
         args = {}
         wire_request = serialize_request("abortAction", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "abortAction"
         assert isinstance(parsed_args, dict)
-        
+
         # Test basic method call and response serialization
         try:
             # For methods that exist, try to call them
-            if hasattr(wallet, 'abortAction'.lower().replace('get', 'get_')):
-                method = getattr(wallet, 'abortAction'.lower().replace('get', 'get_'))
+            if hasattr(wallet, "abortAction".lower().replace("get", "get_")):
+                method = getattr(wallet, "abortAction".lower().replace("get", "get_"))
                 result = method(args, originator=None)
                 wire_response = serialize_response(result)
                 assert isinstance(wire_response, bytes)

@@ -1,8 +1,6 @@
 """TaskFailAbandoned implementation."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Any
-
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -36,7 +34,7 @@ class TaskFailAbandoned(WalletMonitorTask):
     def run_task(self) -> str:
         """Fail abandoned transactions."""
         log_lines: list[str] = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         abandoned_time = now - timedelta(milliseconds=self.abandoned_msecs)
 
         # Find transactions with statuses that can be abandoned
@@ -68,7 +66,7 @@ class TaskFailAbandoned(WalletMonitorTask):
 
             # Ensure timezone awareness for comparison
             if updated_at_dt.tzinfo is None:
-                updated_at_dt = updated_at_dt.replace(tzinfo=timezone.utc)
+                updated_at_dt = updated_at_dt.replace(tzinfo=UTC)
 
             if updated_at_dt < abandoned_time:
                 tx_id = tx.get("transactionId")
@@ -83,4 +81,3 @@ class TaskFailAbandoned(WalletMonitorTask):
         if log_lines:
             return "\n".join(log_lines)
         return ""
-

@@ -5,7 +5,6 @@ of manager/wallet_permissions_manager.py from 60.37% towards 80%+. Focuses on me
 not covered by existing tests.
 """
 
-import asyncio
 import time
 from unittest.mock import Mock
 
@@ -58,10 +57,7 @@ def mock_underlying_wallet():
 @pytest.fixture
 def permissions_manager(mock_underlying_wallet):
     """Create a WalletPermissionsManager instance."""
-    return WalletPermissionsManager(
-        underlying_wallet=mock_underlying_wallet,
-        admin_originator="admin.test.com"
-    )
+    return WalletPermissionsManager(underlying_wallet=mock_underlying_wallet, admin_originator="admin.test.com")
 
 
 class TestGroupedPermissions:
@@ -77,9 +73,7 @@ class TestGroupedPermissions:
         # Disable grouped permissions
         permissions_manager._config["seekGroupedPermission"] = False
 
-        requests = [
-            {"type": "protocol", "originator": "test.com", "protocolID": {"protocolName": "sign"}}
-        ]
+        requests = [{"type": "protocol", "originator": "test.com", "protocolID": {"protocolName": "sign"}}]
 
         result = permissions_manager.request_grouped_permissions(requests)
         # Should return empty list when disabled and no individual permissions
@@ -98,14 +92,8 @@ class TestNetSpentCalculations:
     def test_calculate_net_spent_with_inputs_outputs(self, permissions_manager):
         """Test calculating net spent with inputs and outputs."""
         args = {
-            "inputs": [
-                {"sourceSatoshis": 1000},
-                {"sourceSatoshis": 2000}
-            ],
-            "outputs": [
-                {"satoshis": 500},
-                {"satoshis": 1500}
-            ]
+            "inputs": [{"sourceSatoshis": 1000}, {"sourceSatoshis": 2000}],
+            "outputs": [{"satoshis": 500}, {"satoshis": 1500}],
         }
         result = permissions_manager._calculate_net_spent(args)
         assert result == 2000  # 3000 - 1000 = 2000

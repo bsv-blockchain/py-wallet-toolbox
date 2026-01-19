@@ -6,11 +6,9 @@ the BRC-29 specification.
 Reference: go-wallet-toolbox/pkg/brc29/brc29_address.go
 """
 
-from typing import Any
-
 from bsv.constants import Network
 
-from .types import CounterpartyPrivateKey, CounterpartyPublicKey, KeyID, PROTOCOL
+from .types import PROTOCOL, CounterpartyPrivateKey, CounterpartyPublicKey, KeyID
 from .utils import derive_recipient_private_key, to_identity_key, to_key_deriver
 
 
@@ -18,7 +16,7 @@ def address_for_self(
     sender_public_key: CounterpartyPublicKey,
     key_id: KeyID,
     recipient_private_key: CounterpartyPrivateKey,
-    testnet: bool = False
+    testnet: bool = False,
 ) -> dict[str, str]:
     """Generate a blockchain address according to BRC-29 specification (recipient side).
 
@@ -70,7 +68,7 @@ def address_for_counterparty(
     sender_private_key: CounterpartyPrivateKey,
     key_id: KeyID,
     recipient_public_key: CounterpartyPublicKey,
-    testnet: bool = False
+    testnet: bool = False,
 ) -> dict[str, str]:
     """Generate a blockchain address according to BRC-29 specification (sender side).
 
@@ -115,16 +113,11 @@ def address_for_counterparty(
     # Derive public key for the recipient using sender's key deriver
     try:
         from bsv.wallet import Counterparty, CounterpartyType
-        counterparty = Counterparty(
-            type=CounterpartyType.OTHER,
-            counterparty=recipient_identity_key
-        )
+
+        counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=recipient_identity_key)
 
         derived_pub_key = sender_key_deriver.derive_public_key(
-            protocol=PROTOCOL,
-            key_id=str(key_id),
-            counterparty=counterparty,
-            for_self=False
+            protocol=PROTOCOL, key_id=str(key_id), counterparty=counterparty, for_self=False
         )
 
         # Generate address from the derived public key

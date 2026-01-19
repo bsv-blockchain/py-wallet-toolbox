@@ -13,13 +13,13 @@ Reference: toolbox/ts-wallet-toolbox/src/sdk/WalletServices.interfaces.ts
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Literal
 
 from bsv.chaintracker import ChainTracker
 
 
 class Chain(Enum):
     """Blockchain network enumeration."""
+
     MAIN = "main"
     TEST = "test"
 

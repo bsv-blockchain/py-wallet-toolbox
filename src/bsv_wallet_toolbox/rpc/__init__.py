@@ -75,12 +75,8 @@ from bsv_wallet_toolbox.rpc.storage_server import (
 )
 
 __all__ = [
-    # New names (TS parity)
-    "StorageClient",
-    "StorageServer",
     # Backward compatibility aliases
     "JsonRpcClient",
-    "JsonRpcServer",
     # Error classes
     "JsonRpcError",
     "JsonRpcInternalError",
@@ -88,5 +84,9 @@ __all__ = [
     "JsonRpcInvalidRequestError",
     "JsonRpcMethodNotFoundError",
     "JsonRpcParseError",
+    "JsonRpcServer",
     "JsonRpcServerError",
+    # New names (TS parity)
+    "StorageClient",
+    "StorageServer",
 ]

@@ -196,7 +196,7 @@ class TestEdgeCases:
         assert satoshi_from(-MAX_SATOSHIS) == -MAX_SATOSHIS
         assert satoshi_add(MAX_SATOSHIS, 0) == MAX_SATOSHIS
         assert satoshi_subtract(MAX_SATOSHIS, 0) == MAX_SATOSHIS
-        
+
         # These should overflow
         with pytest.raises(OverflowError):
             satoshi_add(MAX_SATOSHIS, 1)
@@ -215,4 +215,3 @@ class TestEdgeCases:
         gen = (i * 100 for i in range(1, 6))
         result = satoshi_sum(gen)
         assert result == 1500  # 100 + 200 + 300 + 400 + 500
-

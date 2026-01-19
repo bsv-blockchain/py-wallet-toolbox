@@ -4,7 +4,6 @@ This module provides comprehensive test coverage for all classes and methods
 in the models_new.py file.
 """
 
-import pytest
 from unittest.mock import Mock
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.models_new import (
@@ -29,7 +28,7 @@ class TestFiatExchangeRates:
         rates: FiatExchangeRates = {
             "timestamp": "2023-01-01T00:00:00Z",
             "rates": {"USD": 50000.0, "EUR": 45000.0},
-            "base": "BTC"
+            "base": "BTC",
         }
 
         assert rates["timestamp"] == "2023-01-01T00:00:00Z"
@@ -38,11 +37,7 @@ class TestFiatExchangeRates:
 
     def test_fiat_exchange_rates_optional_fields(self) -> None:
         """Test that all fields are accessible."""
-        rates: FiatExchangeRates = {
-            "timestamp": "2023-01-01T00:00:00Z",
-            "rates": {},
-            "base": "BTC"
-        }
+        rates: FiatExchangeRates = {"timestamp": "2023-01-01T00:00:00Z", "rates": {}, "base": "BTC"}
 
         # Test that we can access all expected fields
         assert "timestamp" in rates
@@ -76,7 +71,7 @@ class TestLiveBlockHeader:
             is_chain_tip=True,
             is_active=True,
             header_id=42,
-            previous_header_id=41
+            previous_header_id=41,
         )
 
         assert header.chain_block_header == chain_block_header
@@ -284,20 +279,27 @@ class TestStorageQueries:
     def test_protocol_definition(self) -> None:
         """Test that StorageQueries is a Protocol."""
         from typing import Protocol
+
         # Check if it's a Protocol (works across Python versions)
         assert getattr(StorageQueries, "_is_protocol", False) or issubclass(StorageQueries, Protocol)
 
     def test_protocol_methods_exist(self) -> None:
         """Test that all expected methods are defined in the protocol."""
         expected_methods = [
-            "begin", "rollback", "commit",
-            "live_header_exists", "get_live_header_by_hash",
-            "get_active_tip_live_header", "set_chain_tip_by_id",
-            "set_active_by_id", "insert_new_live_header",
-            "count_live_headers", "get_live_header_by_height",
+            "begin",
+            "rollback",
+            "commit",
+            "live_header_exists",
+            "get_live_header_by_hash",
+            "get_active_tip_live_header",
+            "set_chain_tip_by_id",
+            "set_active_by_id",
+            "insert_new_live_header",
+            "count_live_headers",
+            "get_live_header_by_height",
             "find_live_height_range",
             "find_headers_for_height_less_than_or_equal_sorted",
-            "delete_live_headers_by_ids"
+            "delete_live_headers_by_ids",
         ]
 
         for method in expected_methods:
@@ -315,7 +317,7 @@ class TestInfoResponse:
             height_live=1100,
             storage="sqlite",
             bulk_ingestors=["cdn", "woc"],
-            live_ingestors=["poll"]
+            live_ingestors=["poll"],
         )
 
         assert response.chain == "main"
@@ -328,12 +330,7 @@ class TestInfoResponse:
     def test_init_empty_lists(self) -> None:
         """Test initialization with empty lists."""
         response = InfoResponse(
-            chain="test",
-            height_bulk=0,
-            height_live=0,
-            storage="memory",
-            bulk_ingestors=[],
-            live_ingestors=[]
+            chain="test", height_bulk=0, height_live=0, storage="memory", bulk_ingestors=[], live_ingestors=[]
         )
 
         assert response.chain == "test"
@@ -355,17 +352,17 @@ class TestBlockHeader:
             "previousHash": "prev123",
             "merkleRoot": "merkle456",
             "time": 1234567890,
-            "bits": 0x1d00ffff,
+            "bits": 0x1D00FFFF,
             "nonce": 12345,
             "height": 100,
-            "hash": "header789"
+            "hash": "header789",
         }
 
         assert header["version"] == 1
         assert header["previousHash"] == "prev123"
         assert header["merkleRoot"] == "merkle456"
         assert header["time"] == 1234567890
-        assert header["bits"] == 0x1d00ffff
+        assert header["bits"] == 0x1D00FFFF
         assert header["nonce"] == 12345
         assert header["height"] == 100
         assert header["hash"] == "header789"
@@ -377,10 +374,10 @@ class TestBlockHeader:
             "previousHash": "abc",
             "merkleRoot": "def",
             "time": 1000000,
-            "bits": 0x2000ffff,
+            "bits": 0x2000FFFF,
             "nonce": 54321,
             "height": 200,
-            "hash": "ghi"
+            "hash": "ghi",
         }
 
         # Test that we can access all expected fields

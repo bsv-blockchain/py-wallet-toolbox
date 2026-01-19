@@ -18,19 +18,17 @@ if TYPE_CHECKING:
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import ChaintracksClientApi
 
 try:
+    from bsv_wallet_toolbox.services.chaintracker import ChaintracksService
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks import Chaintracks
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import BaseBlockHeader, ChaintracksClientApi
+    from bsv_wallet_toolbox.services.chaintracker.chaintracks.options import create_default_no_db_chaintracks_options
     from bsv_wallet_toolbox.services.chaintracker.chaintracks.util import (
         block_hash,
         deserialize_base_block_headers,
         genesis_buffer,
         serialize_base_block_header,
     )
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import BaseBlockHeader
     from bsv_wallet_toolbox.services.wallet_services import Chain
-
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks import Chaintracks
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks.options import create_default_no_db_chaintracks_options
-    from bsv_wallet_toolbox.services.chaintracker import ChaintracksService
-    from bsv_wallet_toolbox.services.chaintracker.chaintracks.api import ChaintracksClientApi
 
     IMPORTS_AVAILABLE = True
 except ImportError:

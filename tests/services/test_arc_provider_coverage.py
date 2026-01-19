@@ -97,7 +97,7 @@ class TestArcProviderErrorHandling:
         """Test Arc provider handles network errors."""
         try:
             provider = ARC(url="https://invalid.example.com")
-            
+
             with patch("requests.post", side_effect=Exception("Network error")):
                 try:
                     provider.post_beef(b"beef_data", ["txid1"])
@@ -111,7 +111,7 @@ class TestArcProviderErrorHandling:
         """Test Arc provider handles timeouts."""
         try:
             provider = ARC(url="https://slow.example.com")
-            
+
             with patch("requests.post", side_effect=TimeoutError("Request timeout")):
                 try:
                     provider.post_beef(b"beef_data", ["txid1"])
@@ -119,4 +119,3 @@ class TestArcProviderErrorHandling:
                     pass
         except TypeError:
             pass
-

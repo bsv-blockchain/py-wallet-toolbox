@@ -5,7 +5,7 @@ This module provides comprehensive test coverage for the BackgroundBroadcaster c
 
 import asyncio
 from typing import Any
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -21,6 +21,7 @@ class TestBroadcasterProtocol:
     def test_protocol_definition(self) -> None:
         """Test that BroadcasterProtocol is a Protocol."""
         from typing import Protocol
+
         # Check if it's a Protocol (works across Python versions)
         assert getattr(BroadcasterProtocol, "_is_protocol", False) or issubclass(BroadcasterProtocol, Protocol)
 
@@ -113,9 +114,7 @@ class TestBackgroundBroadcaster:
             await broadcaster.enqueue(b"beef", ["txid1"])
 
     @pytest.mark.asyncio
-    async def test_enqueue_and_process(
-        self, mock_broadcaster: MockBroadcaster
-    ) -> None:
+    async def test_enqueue_and_process(self, mock_broadcaster: MockBroadcaster) -> None:
         """Test enqueue and process a broadcast request."""
         bb = BackgroundBroadcaster(mock_broadcaster, max_queue_size=10)
 
@@ -136,9 +135,7 @@ class TestBackgroundBroadcaster:
         assert mock_broadcaster.broadcast_calls[0] == (b"beef_data", ["txid1", "txid2"])
 
     @pytest.mark.asyncio
-    async def test_enqueue_multiple_requests(
-        self, mock_broadcaster: MockBroadcaster
-    ) -> None:
+    async def test_enqueue_multiple_requests(self, mock_broadcaster: MockBroadcaster) -> None:
         """Test enqueue multiple broadcast requests."""
         bb = BackgroundBroadcaster(mock_broadcaster, max_queue_size=10)
 
@@ -235,7 +232,7 @@ class TestBackgroundBroadcaster:
         # Stop with short timeout should cancel the task
         with patch("bsv_wallet_toolbox.storage.background_broadcaster.logger") as mock_logger:
             # Override wait_for timeout to be short
-            with patch("asyncio.wait_for", side_effect=asyncio.TimeoutError()):
+            with patch("asyncio.wait_for", side_effect=TimeoutError()):
                 await bb.stop()
                 mock_logger.warning.assert_called()
 
@@ -255,4 +252,3 @@ class TestBackgroundBroadcaster:
             mock_logger.info.assert_called()
 
         await bb.stop()
-

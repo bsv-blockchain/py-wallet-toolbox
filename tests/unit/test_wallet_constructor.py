@@ -5,11 +5,10 @@ This module tests wallet initialization and basic functionality.
 Reference: wallet-toolbox/test/wallet/construct/Wallet.constructor.test.ts
 """
 
-import pytest
-
 try:
     from bsv.keys import PrivateKey
     from bsv.wallet import KeyDeriver
+
     from bsv_wallet_toolbox.storage import StorageProvider
     from bsv_wallet_toolbox.storage.db import create_engine_from_url
     from bsv_wallet_toolbox.storage.models import Base
@@ -51,7 +50,7 @@ class TestWalletConstructor:
         storage = StorageProvider(engine=engine, chain="test", storage_identity_key="test_wallet")
         root_key = PrivateKey(bytes.fromhex("2" * 64))
         key_deriver = KeyDeriver(root_key)
-        
+
         # When - Create wallet and ensure initialized (creates default basket)
         wallet = Wallet(chain="test", storage_provider=storage, key_deriver=key_deriver)
         auth = wallet.ensure_initialized(ensure_default_basket=True)

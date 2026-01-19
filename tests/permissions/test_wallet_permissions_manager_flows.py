@@ -13,6 +13,7 @@ import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True

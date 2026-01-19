@@ -19,13 +19,8 @@ import base64
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
 from bsv.keys import PrivateKey
-from bsv_wallet_toolbox import Wallet
-from bsv_wallet_toolbox.errors import ReviewActionsError
-from bsv_wallet_toolbox.services import Services, create_default_options
-
+from dotenv import load_dotenv
 from src.config import (
     bypass_wallet_infra_auth,
     get_key_deriver,
@@ -40,6 +35,9 @@ from src.config import (
 )
 from src.transaction_management import _build_atomic_beef_for_txid
 
+from bsv_wallet_toolbox import Wallet
+from bsv_wallet_toolbox.errors import ReviewActionsError
+from bsv_wallet_toolbox.services import Services, create_default_options
 
 # BRC-29 derivation info for faucet (same values as test_all_28_methods.py)
 FAUCET_DERIVATION_PREFIX = "faucet-prefix-01"
@@ -127,7 +125,7 @@ def main() -> None:
                     storage_provider=infra_client,
                 )
                 print("✅ wallet-infra wallet instance created successfully!")
-            except Exception as err:  # noqa: BLE001
+            except Exception as err:
                 print(f"⚠️  wallet-infra authentication failed: {err}")
                 print("   This is a known issue with Python SDK. Continuing with local storage...")
                 print("   Note: wallet-infra authentication is not currently supported in Python.")
@@ -165,7 +163,7 @@ def main() -> None:
                 storage_provider=remote_client,
             )
             print("✅ Remote storage wallet instance created successfully!")
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             print(f"❌ Remote storage connection failed: {err}")
             print("   Continuing with local storage...")
             remote_storage_mode = False
@@ -208,10 +206,7 @@ def main() -> None:
         return
 
     # Input vout to internalize (0 if not specified)
-    vout_raw = input(
-        "\n🔧 Enter output index to internalize (default 0)\n"
-        "outputIndex: "
-    ).strip()
+    vout_raw = input("\n🔧 Enter output index to internalize (default 0)\n" "outputIndex: ").strip()
     if not vout_raw:
         output_index = DEFAULT_OUTPUT_INDEX
     else:
@@ -226,7 +221,7 @@ def main() -> None:
 
     try:
         atomic_beef = _build_atomic_beef_for_txid(chain, txid)
-    except Exception as err:  # noqa: BLE001
+    except Exception as err:
         print(f"\n❌ Failed to retrieve Atomic BEEF: {err}")
         return
 
@@ -262,7 +257,7 @@ def main() -> None:
 
     try:
         internalize_result = wallet.internalize_action(internalize_args)
-    except Exception as err:  # noqa: BLE001
+    except Exception as err:
         print(f"\n❌ Error occurred in internalize_action: {err}")
         return
 
@@ -281,10 +276,14 @@ def main() -> None:
     print(f"   satoshis: {internalize_result.get('satoshis', 'n/a')}")
 
     # ---- 2) Execute create_action once using internalized funds ----------------
-    answer = input(
-        "\n💡 Using the internalized funds, create a simple OP_RETURN action\n"
-        "   (only 0 sat OP_RETURN output) once? [y/N]: "
-    ).strip().lower()
+    answer = (
+        input(
+            "\n💡 Using the internalized funds, create a simple OP_RETURN action\n"
+            "   (only 0 sat OP_RETURN output) once? [y/N]: "
+        )
+        .strip()
+        .lower()
+    )
 
     if not answer.startswith("y"):
         print("\n⏹ Exiting without executing create_action.")
@@ -322,9 +321,7 @@ def main() -> None:
         try:
             if getattr(err, "tx", None):
                 tx_field = err.tx
-                if isinstance(tx_field, (bytes, bytearray)):
-                    tx_bytes = bytes(tx_field)
-                elif isinstance(tx_field, list):
+                if isinstance(tx_field, (bytes, bytearray)) or isinstance(tx_field, list):
                     tx_bytes = bytes(tx_field)
         except Exception:
             tx_bytes = None
@@ -335,7 +332,7 @@ def main() -> None:
                 raw_hex = services.get_raw_tx(err.txid) or ""
                 if isinstance(raw_hex, str) and raw_hex:
                     tx_bytes = bytes.fromhex(raw_hex)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         # 3) If obtained, display HEX (can be used for manual posting to ARC, etc.)
@@ -346,7 +343,7 @@ def main() -> None:
                 print(raw_tx_hex)
 
         return
-    except Exception as err:  # noqa: BLE001
+    except Exception as err:
         print(f"\n❌ Unexpected error occurred in create_action: {err}")
         return
 
@@ -361,7 +358,7 @@ def main() -> None:
         if raw_tx_hex:
             print("\n🔎 Raw transaction hex (for manual broadcast):")
             print(raw_tx_hex)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
     print("\n🎉 Demo completed: Using faucet receipts in internalize → create_action.")
@@ -369,4 +366,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

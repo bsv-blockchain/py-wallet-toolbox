@@ -198,4 +198,3 @@ class TestExtractRawTxs:
         assert len(result) == 2
         assert result[0] == tx1
         assert result[1] == tx2
-

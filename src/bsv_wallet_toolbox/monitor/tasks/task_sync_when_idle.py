@@ -51,4 +51,3 @@ class TaskSyncWhenIdle(WalletMonitorTask):
     def run_task(self) -> str:
         """Run the monitor task."""
         return ""
-

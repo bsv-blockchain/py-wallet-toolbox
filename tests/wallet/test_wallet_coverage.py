@@ -5,8 +5,6 @@ This module adds coverage tests for the main Wallet class to augment existing te
 
 from unittest.mock import Mock
 
-import pytest
-
 
 class TestWalletInitializationEdgeCases:
     """Test wallet initialization edge cases."""
@@ -14,6 +12,7 @@ class TestWalletInitializationEdgeCases:
     def test_wallet_without_storage(self) -> None:
         """Test creating wallet without storage."""
         from bsv_wallet_toolbox.wallet import Wallet
+
         try:
             wallet = Wallet()
             # Might use in-memory storage or raise
@@ -24,13 +23,14 @@ class TestWalletInitializationEdgeCases:
 
     def test_wallet_with_custom_chain(self) -> None:
         """Test creating wallet with custom chain."""
-        from bsv_wallet_toolbox.wallet import Wallet
         from bsv.keys import PrivateKey
         from bsv.wallet import KeyDeriver
 
+        from bsv_wallet_toolbox.wallet import Wallet
+
         try:
             # Create wallet with key_deriver as required
-            root_key = PrivateKey(bytes.fromhex('a' * 64))
+            root_key = PrivateKey(bytes.fromhex("a" * 64))
             key_deriver = KeyDeriver(root_key)
             wallet = Wallet(chain="test", key_deriver=key_deriver)
             assert wallet is not None
@@ -176,11 +176,13 @@ class TestWalletActionMethods:
                 )
                 if create_result and "reference" in create_result:
                     # Sign the action
-                    sign_result = wallet_with_storage.sign_action({
-                        "reference": create_result["reference"],
-                        "rawTx": "01000000" + "00" * 8,
-                        "spends": {},
-                    })
+                    sign_result = wallet_with_storage.sign_action(
+                        {
+                            "reference": create_result["reference"],
+                            "rawTx": "01000000" + "00" * 8,
+                            "spends": {},
+                        }
+                    )
                     assert sign_result is not None
         except (AttributeError, Exception):
             pass
@@ -189,11 +191,13 @@ class TestWalletActionMethods:
         """Test internalizing an action."""
         try:
             if hasattr(wallet_with_storage, "internalize_action"):
-                result = wallet_with_storage.internalize_action({
-                    "txid": "a" * 64,
-                    "rawTx": "01000000" + "00" * 8,
-                    "outputIndex": 0,
-                })
+                result = wallet_with_storage.internalize_action(
+                    {
+                        "txid": "a" * 64,
+                        "rawTx": "01000000" + "00" * 8,
+                        "outputIndex": 0,
+                    }
+                )
                 assert result is not None
         except (AttributeError, Exception):
             pass
@@ -275,6 +279,7 @@ class TestWalletErrorHandling:
     def test_wallet_invalid_storage(self) -> None:
         """Test wallet with invalid storage."""
         from bsv_wallet_toolbox.wallet import Wallet
+
         try:
             wallet = Wallet(storage="invalid")
             # Might reject or accept
@@ -285,6 +290,7 @@ class TestWalletErrorHandling:
     def test_wallet_operation_without_initialization(self) -> None:
         """Test wallet operations without proper initialization."""
         from bsv_wallet_toolbox.wallet import Wallet
+
         try:
             wallet = Wallet()
             if hasattr(wallet, "get_balance"):
@@ -418,10 +424,7 @@ class TestWalletUtxoMethods:
         """Test relinquishing output with valid parameters."""
         try:
             if hasattr(wallet_with_storage, "relinquish_output"):
-                result = wallet_with_storage.relinquish_output({
-                    "basket": "default",
-                    "output": "c" * 64 + ".1"
-                })
+                result = wallet_with_storage.relinquish_output({"basket": "default", "output": "c" * 64 + ".1"})
                 assert isinstance(result, dict) or result is None
         except (AttributeError, Exception):
             pass
@@ -537,11 +540,7 @@ class TestWalletCertificateAdvanced:
         try:
             if hasattr(wallet_with_storage, "acquire_certificate"):
                 cert = wallet_with_storage.acquire_certificate(
-                    args={
-                        "type": "test_cert",
-                        "certifier": "test_certifier",
-                        "fields": {"name": "Test", "age": "30"}
-                    }
+                    args={"type": "test_cert", "certifier": "test_certifier", "fields": {"name": "Test", "age": "30"}}
                 )
                 assert cert is not None
         except (AttributeError, Exception):
@@ -622,9 +621,7 @@ class TestWalletKeyLinkageMethods:
         """Test revealing counterparty key linkage."""
         try:
             if hasattr(wallet_with_storage, "reveal_counterparty_key_linkage"):
-                result = wallet_with_storage.reveal_counterparty_key_linkage(
-                    {"counterparty": "test_counterparty"}
-                )
+                result = wallet_with_storage.reveal_counterparty_key_linkage({"counterparty": "test_counterparty"})
                 assert isinstance(result, dict) or result is None
         except (AttributeError, Exception):
             pass
@@ -680,4 +677,3 @@ class TestWalletInternalMethods:
                 assert True
         except (AttributeError, Exception):
             pass
-

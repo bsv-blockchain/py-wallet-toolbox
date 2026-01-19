@@ -17,14 +17,14 @@ from .single_writer_multi_reader_lock import SingleWriterMultiReaderLock
 # Stub implementations for missing classes
 class BulkFilesReaderStorage:
     """Stub implementation of BulkFilesReaderStorage for testing.
-    
+
     Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/BulkFilesReader.ts
                class BulkFilesReaderStorage extends BulkFilesReader
     """
 
     def __init__(self, range_obj=None):
         """Initialize with optional range.
-        
+
         Args:
             range_obj: HeightRange object (optional)
         """
@@ -34,12 +34,12 @@ class BulkFilesReaderStorage:
     @classmethod
     async def from_storage(cls, storage, fetch, range_obj):
         """Create instance from storage, fetch, and range.
-        
+
         Args:
             storage: ChaintracksStorageBase instance
             fetch: ChaintracksFetchApi instance
             range_obj: HeightRange object (optional)
-        
+
         Returns:
             BulkFilesReaderStorage instance with range property
         """
@@ -75,10 +75,10 @@ def valid_bulk_header_files_by_file_hash():
     Returns:
         Dict mapping file hashes (base64 strings) to file info objects
     """
-    from typing import Dict, Any
+    from typing import Any, Dict
 
     if not hasattr(valid_bulk_header_files_by_file_hash, "_cache"):
-        cache: Dict[str, Any] = {}
+        cache: dict[str, Any] = {}
         for vbf in _valid_bulk_header_files:
             if vbf.get("fileHash"):
                 cache[vbf["fileHash"]] = vbf
@@ -101,7 +101,7 @@ _valid_bulk_header_files = [
         "lastChainWork": "000000000000000000000000000000000000000000000000004143c00b3d47b8",
         "prevChainWork": "0000000000000000000000000000000000000000000000000000000000000000",
         "chain": "test",
-        "validated": True
+        "validated": True,
     },
     {
         "sourceUrl": "https://cdn.projectbabbage.com/blockheaders",
@@ -114,7 +114,7 @@ _valid_bulk_header_files = [
         "lastChainWork": "00000000000000000000000000000000000000000000000461063a8389300d36",
         "prevChainWork": "0000000000000000000000000000000000000000000000040da9d61d8e129a53",
         "chain": "test",
-        "validated": True
+        "validated": True,
     },
     {
         "sourceUrl": "https://cdn.projectbabbage.com/blockheaders",
@@ -127,7 +127,7 @@ _valid_bulk_header_files = [
         "lastChainWork": "000000000000000000000000000000000000000000000156c3b84396da4e60b9",
         "prevChainWork": "00000000000000000000000000000000000000000000011bed7ab81a56a65cbc",
         "chain": "test",
-        "validated": True
+        "validated": True,
     },
     {
         "sourceUrl": "https://cdn.projectbabbage.com/blockheaders",
@@ -140,27 +140,26 @@ _valid_bulk_header_files = [
         "lastChainWork": "000000000000000000000000000000000000000000005a795f5d6ede10bc6d60",
         "prevChainWork": "00000000000000000000000000000000000000000000001ac0479f335782cb80",
         "chain": "main",
-        "validated": True
-    }
+        "validated": True,
+    },
 ]
 
 
 __all__ = [
-    "block_hash",
-    "deserialize_base_block_header",
-    "deserialize_base_block_headers",
-    "deserialize_block_header",
-    "genesis_buffer",
-    "serialize_base_block_header",
-    "valid_bulk_header_files_by_file_hash",
     "BlockHeader",
     "BulkFileDataManager",
     "BulkFileDataManagerOptions",
     "BulkFilesReaderStorage",
     "ChaintracksFetch",
     "ChaintracksFs",
-    "deserialize_block_headers",
     "HeightRange",
     "SingleWriterMultiReaderLock",
+    "block_hash",
+    "deserialize_base_block_header",
+    "deserialize_base_block_headers",
+    "deserialize_block_header",
+    "deserialize_block_headers",
+    "genesis_buffer",
+    "serialize_base_block_header",
+    "valid_bulk_header_files_by_file_hash",
 ]
-

@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from bsv_wallet_toolbox.rpc.storage_server import StorageServer, JsonRpcError
+from bsv_wallet_toolbox.rpc.storage_server import JsonRpcError, StorageServer
 
 
 class TestStorageServerInitialization:
@@ -57,12 +57,7 @@ class TestStorageServerMethods:
 
     def test_handle_request_basic(self, mock_server) -> None:
         """Test handling basic RPC request."""
-        request = {
-            "jsonrpc": "2.0",
-            "method": "getinfo",
-            "params": [],
-            "id": 1
-        }
+        request = {"jsonrpc": "2.0", "method": "getinfo", "params": [], "id": 1}
 
         try:
             if hasattr(mock_server, "handle_request"):
@@ -85,6 +80,7 @@ class TestStorageServerMethods:
 
     def test_register_method(self, mock_server) -> None:
         """Test registering custom method."""
+
         def custom_method(*args, **kwargs):
             return {"result": "success"}
 
@@ -129,11 +125,7 @@ class TestJsonRpcError:
     def test_json_rpc_error_with_data(self) -> None:
         """Test JSON RPC error with additional data."""
         try:
-            error = JsonRpcError(
-                code=-32602,
-                message="Invalid params",
-                data={"field": "missing_parameter"}
-            )
+            error = JsonRpcError(code=-32602, message="Invalid params", data={"field": "missing_parameter"})
             assert error.code == -32602
             assert error.data == {"field": "missing_parameter"}
         except (NameError, TypeError, AttributeError):
@@ -157,12 +149,7 @@ class TestStorageServerMethodHandling:
 
     def test_handle_getbalance_method(self, mock_server) -> None:
         """Test handling getbalance RPC method."""
-        request = {
-            "jsonrpc": "2.0",
-            "method": "getbalance",
-            "params": [],
-            "id": 1
-        }
+        request = {"jsonrpc": "2.0", "method": "getbalance", "params": [], "id": 1}
 
         try:
             if hasattr(mock_server, "handle_request"):
@@ -178,7 +165,7 @@ class TestStorageServerMethodHandling:
             "jsonrpc": "2.0",
             "method": "createaction",
             "params": {"description": "test", "outputs": []},
-            "id": 2
+            "id": 2,
         }
 
         try:
@@ -191,12 +178,7 @@ class TestStorageServerMethodHandling:
 
     def test_handle_unknown_method(self, mock_server) -> None:
         """Test handling unknown RPC method."""
-        request = {
-            "jsonrpc": "2.0",
-            "method": "unknown_method",
-            "params": [],
-            "id": 3
-        }
+        request = {"jsonrpc": "2.0", "method": "unknown_method", "params": [], "id": 3}
 
         try:
             if hasattr(mock_server, "handle_request"):
@@ -313,10 +295,7 @@ class TestStorageServerEdgeCases:
 
             if hasattr(server, "handle_request"):
                 # Simulate concurrent requests
-                requests = [
-                    {"jsonrpc": "2.0", "method": "getinfo", "id": i}
-                    for i in range(10)
-                ]
+                requests = [{"jsonrpc": "2.0", "method": "getinfo", "id": i} for i in range(10)]
 
                 responses = []
                 for req in requests:
@@ -339,10 +318,5 @@ class TestBackwardCompatibility:
     def test_json_rpc_server_alias(self) -> None:
         """Test that JsonRpcServer is an alias for StorageServer."""
         from bsv_wallet_toolbox.rpc.storage_server import JsonRpcServer
+
         assert JsonRpcServer is StorageServer
-
-
-
-
-
-

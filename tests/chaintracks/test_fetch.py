@@ -12,7 +12,7 @@ try:
         ChaintracksFetch,
         valid_bulk_header_files_by_file_hash,
     )
-    from bsv_wallet_toolbox.utils import sha256_hash, as_array, as_string
+    from bsv_wallet_toolbox.utils import as_array, as_string, sha256_hash
 
     IMPORTS_AVAILABLE = True
 except ImportError:
@@ -34,7 +34,7 @@ class TestChaintracksFetch:
 
         Reference: wallet-toolbox/src/services/chaintracker/chaintracks/util/__tests/ChaintracksFetch.test.ts
                    test('0 fetchJson')
-        
+
         Note: Requires network access to cdn.projectbabbage.com
         """
         # Given

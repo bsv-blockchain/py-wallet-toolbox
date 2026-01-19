@@ -3,9 +3,9 @@
 Reference: wallet-toolbox/test/storage/count.test.ts
 """
 
+import re
 from collections.abc import Callable
 from datetime import datetime
-import re
 from typing import Any
 
 

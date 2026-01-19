@@ -2,8 +2,11 @@
 
 import logging
 import time
-from typing import Any, Callable, ClassVar
+from collections.abc import Callable
+from datetime import UTC
+from typing import Any, ClassVar
 
+from ..services.chaintracker.chaintracks.api import ChaintracksClientApi
 from ..services.services import Services
 from ..services.wallet_services import Chain
 from ..storage.provider import StorageProvider
@@ -22,7 +25,6 @@ from .tasks import (
     TaskUnFail,
 )
 from .wallet_monitor_task import WalletMonitorTask
-from ..services.chaintracker.chaintracks.api import ChaintracksClientApi
 
 logger = logging.getLogger(__name__)
 
@@ -229,9 +231,9 @@ class Monitor:
             details: Optional details string.
         """
         if hasattr(self.storage, "insert_monitor_event"):
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             try:
                 self.storage.insert_monitor_event(
                     {
@@ -298,9 +300,11 @@ class Monitor:
         if callback:
             try:
                 import inspect
+
                 if inspect.iscoroutinefunction(callback):
                     # If callback is async, create a task to run it
                     import asyncio
+
                     asyncio.create_task(callback(broadcast_result))
                 else:
                     callback(broadcast_result)
@@ -318,6 +322,7 @@ class Monitor:
             try:
                 import asyncio
                 import inspect
+
                 if inspect.iscoroutinefunction(callback):
                     # If callback is async, create a task to run it
                     asyncio.create_task(callback(tx_status))

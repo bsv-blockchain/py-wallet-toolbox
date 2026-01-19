@@ -91,4 +91,3 @@ def demo_list_actions(wallet: Wallet) -> None:
                 print()
     except Exception as err:
         print(f"❌ Failed to list actions: {err}")
-

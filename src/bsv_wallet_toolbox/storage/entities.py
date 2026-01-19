@@ -785,9 +785,9 @@ class Transaction:
         if storage:
             finder = None
             if hasattr(storage, "find_outputs"):
-                finder = getattr(storage, "find_outputs")
+                finder = storage.find_outputs
             elif hasattr(storage, "findOutputs"):
-                finder = getattr(storage, "findOutputs")
+                finder = storage.findOutputs
 
             if callable(finder):
                 outputs = finder({"spentBy": self.transaction_id})
@@ -805,9 +805,9 @@ class Transaction:
             return None
         finder = None
         if hasattr(storage, "find_proven_tx"):
-            finder = getattr(storage, "find_proven_tx")
+            finder = storage.find_proven_tx
         elif hasattr(storage, "findProvenTx"):
-            finder = getattr(storage, "findProvenTx")
+            finder = storage.findProvenTx
         if finder is None:
             return None
         proven_tx_dict = finder(self.proven_tx_id)
@@ -1197,7 +1197,11 @@ class ProvenTxReq:
         if not storage:
             return None
         inserter = _get_callable(
-            storage, "insert_or_merge_proven_tx_req", "insertOrMergeProvenTxReq", "insert_proven_tx_req", "insertProvenTxReq"
+            storage,
+            "insert_or_merge_proven_tx_req",
+            "insertOrMergeProvenTxReq",
+            "insert_proven_tx_req",
+            "insertProvenTxReq",
         )
         if inserter:
             return inserter(self.to_api())

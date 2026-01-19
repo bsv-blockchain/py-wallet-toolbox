@@ -65,4 +65,3 @@ def demo_reveal_specific_key_linkage(wallet: Wallet) -> None:
         import traceback
 
         traceback.print_exc()
-

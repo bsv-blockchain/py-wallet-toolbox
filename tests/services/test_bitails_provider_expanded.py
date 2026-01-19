@@ -51,10 +51,7 @@ class TestBitailsInitialization:
 
         headers = bitails.get_http_headers()
 
-        expected = {
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
+        expected = {"Content-Type": "application/json", "Accept": "application/json"}
         assert headers == expected
 
     def test_get_http_headers_with_api_key(self) -> None:
@@ -64,19 +61,12 @@ class TestBitailsInitialization:
 
         headers = bitails.get_http_headers()
 
-        expected = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-            "Authorization": "test_key_123"
-        }
+        expected = {"Content-Type": "application/json", "Accept": "application/json", "Authorization": "test_key_123"}
         assert headers == expected
 
     def test_get_http_headers_with_custom_headers(self) -> None:
         """Test get_http_headers with custom headers."""
-        config = BitailsConfig(
-            api_key="key123",
-            headers={"X-Custom": "value", "User-Agent": "test"}
-        )
+        config = BitailsConfig(api_key="key123", headers={"X-Custom": "value", "User-Agent": "test"})
         bitails = Bitails(config=config)
 
         headers = bitails.get_http_headers()
@@ -86,7 +76,7 @@ class TestBitailsInitialization:
             "Accept": "application/json",
             "Authorization": "key123",
             "X-Custom": "value",
-            "User-Agent": "test"
+            "User-Agent": "test",
         }
         assert headers == expected
 
@@ -116,10 +106,7 @@ class TestBitailsPostBeef:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "success": True,
-            "txids": ["txid1", "txid2"]
-        }
+        mock_response.json.return_value = {"success": True, "txids": ["txid1", "txid2"]}
 
         with patch("requests.post", return_value=mock_response) as mock_post:
             result = bitails.post_beef(mock_beef, txids)
@@ -144,7 +131,7 @@ class TestBitailsPostBeef:
         mock_response.text = "Bad Request"
         mock_response.raise_for_status.side_effect = requests.HTTPError("400 Bad Request")
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             result = bitails.post_beef(mock_beef, txids)
 
             assert isinstance(result, PostBeefResult)
@@ -156,7 +143,7 @@ class TestBitailsPostBeef:
         mock_beef = {"format": "BEEF"}
         txids = ["txid1"]
 
-        with patch("requests.post", side_effect=requests.ConnectionError("Network error")) as mock_post:
+        with patch("requests.post", side_effect=requests.ConnectionError("Network error")):
             result = bitails.post_beef(mock_beef, txids)
 
             assert isinstance(result, PostBeefResult)
@@ -168,7 +155,7 @@ class TestBitailsPostBeef:
         mock_beef = {"format": "BEEF"}
         txids = ["txid1"]
 
-        with patch("requests.post", side_effect=requests.Timeout("Request timeout")) as mock_post:
+        with patch("requests.post", side_effect=requests.Timeout("Request timeout")):
             result = bitails.post_beef(mock_beef, txids)
 
             assert isinstance(result, PostBeefResult)
@@ -184,7 +171,7 @@ class TestBitailsPostBeef:
         mock_response.status_code = 200
         mock_response.json.side_effect = ValueError("Invalid JSON")
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             result = bitails.post_beef(mock_beef, txids)
 
             assert isinstance(result, PostBeefResult)
@@ -200,7 +187,7 @@ class TestBitailsPostBeef:
         mock_response.status_code = 200
         mock_response.json.return_value = {"success": True, "txids": []}
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             result = bitails.post_beef(mock_beef, txids)
 
             assert isinstance(result, PostBeefResult)
@@ -223,12 +210,9 @@ class TestBitailsPostRaws:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"txid": "txid1", "success": True},
-            {"txid": "txid2", "success": True}
-        ]
+        mock_response.json.return_value = [{"txid": "txid1", "success": True}, {"txid": "txid2", "success": True}]
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
             assert len(results) == 2
@@ -246,10 +230,10 @@ class TestBitailsPostRaws:
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {"txid": "txid1", "success": True},
-            {"error": "Invalid transaction", "success": False}
+            {"error": "Invalid transaction", "success": False},
         ]
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
             assert len(results) == 2
@@ -263,11 +247,9 @@ class TestBitailsPostRaws:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"txid": "inferred_txid", "success": True}
-        ]
+        mock_response.json.return_value = [{"txid": "inferred_txid", "success": True}]
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws)
 
             assert len(results) == 1
@@ -283,7 +265,7 @@ class TestBitailsPostRaws:
         mock_response.status_code = 200
         mock_response.json.return_value = [{"success": True}]
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
             # Should still work but txids might not match up properly
@@ -298,7 +280,7 @@ class TestBitailsPostRaws:
         mock_response.status_code = 200
         mock_response.json.return_value = []
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
             assert len(results) == 0
@@ -313,7 +295,7 @@ class TestBitailsPostRaws:
         mock_response.text = "Internal Server Error"
         mock_response.raise_for_status.side_effect = requests.HTTPError("500 Internal Server Error")
 
-        with patch("requests.post", return_value=mock_response) as mock_post:
+        with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
             assert len(results) == 1
@@ -325,7 +307,7 @@ class TestBitailsPostRaws:
         raws = ["deadbeef"]
         txids = ["txid1"]
 
-        with patch("requests.post", side_effect=requests.ConnectionError("Network down")) as mock_post:
+        with patch("requests.post", side_effect=requests.ConnectionError("Network down")):
             results = bitails.post_raws(raws, txids)
 
             assert len(results) == 1
@@ -348,12 +330,9 @@ class TestBitailsGetMerklePath:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "merklePath": {"some": "path_data"},
-            "header": {"hash": "block_hash"}
-        }
+        mock_response.json.return_value = {"merklePath": {"some": "path_data"}, "header": {"hash": "block_hash"}}
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
+        with patch("requests.get", return_value=mock_response):
             result = bitails.get_merkle_path(txid, mock_services)
 
             assert isinstance(result, GetMerklePathResult)
@@ -370,7 +349,7 @@ class TestBitailsGetMerklePath:
         mock_response.status_code = 404
         mock_response.text = "Transaction not found"
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
+        with patch("requests.get", return_value=mock_response):
             result = bitails.get_merkle_path(txid, mock_services)
 
             assert isinstance(result, GetMerklePathResult)
@@ -383,7 +362,7 @@ class TestBitailsGetMerklePath:
         txid = "test_txid"
         mock_services = Mock()
 
-        with patch("requests.get", side_effect=requests.HTTPError("403 Forbidden")) as mock_get:
+        with patch("requests.get", side_effect=requests.HTTPError("403 Forbidden")):
             result = bitails.get_merkle_path(txid, mock_services)
 
             assert isinstance(result, GetMerklePathResult)
@@ -395,7 +374,7 @@ class TestBitailsGetMerklePath:
         txid = "test_txid"
         mock_services = Mock()
 
-        with patch("requests.get", side_effect=requests.ConnectionError("Network timeout")) as mock_get:
+        with patch("requests.get", side_effect=requests.ConnectionError("Network timeout")):
             result = bitails.get_merkle_path(txid, mock_services)
 
             assert isinstance(result, GetMerklePathResult)
@@ -411,7 +390,7 @@ class TestBitailsGetMerklePath:
         mock_response.status_code = 200
         mock_response.json.side_effect = ValueError("Invalid JSON")
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
+        with patch("requests.get", return_value=mock_response):
             result = bitails.get_merkle_path(txid, mock_services)
 
             assert isinstance(result, GetMerklePathResult)
@@ -433,13 +412,9 @@ class TestBitailsGetTransactionStatus:
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "txid": "test_txid",
-            "confirmations": 6,
-            "blockHeight": 800000
-        }
+        mock_response.json.return_value = {"txid": "test_txid", "confirmations": 6, "blockHeight": 800000}
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
+        with patch("requests.get", return_value=mock_response):
             result = bitails.get_transaction_status(txid)
 
             assert isinstance(result, dict)
@@ -455,7 +430,7 @@ class TestBitailsGetTransactionStatus:
         mock_response.status_code = 404
         mock_response.json.return_value = {"error": "Transaction not found"}
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
+        with patch("requests.get", return_value=mock_response):
             result = bitails.get_transaction_status(txid)
 
             assert isinstance(result, dict)
@@ -466,7 +441,7 @@ class TestBitailsGetTransactionStatus:
         """Test get_transaction_status with HTTP error."""
         txid = "test_txid"
 
-        with patch("requests.get", side_effect=requests.HTTPError("500 Internal Server Error")) as mock_get:
+        with patch("requests.get", side_effect=requests.HTTPError("500 Internal Server Error")):
             result = bitails.get_transaction_status(txid)
 
             assert isinstance(result, dict)
@@ -477,7 +452,7 @@ class TestBitailsGetTransactionStatus:
         """Test get_transaction_status with connection error."""
         txid = "test_txid"
 
-        with patch("requests.get", side_effect=requests.ConnectionError("Network error")) as mock_get:
+        with patch("requests.get", side_effect=requests.ConnectionError("Network error")):
             result = bitails.get_transaction_status(txid)
 
             assert isinstance(result, dict)
@@ -492,7 +467,7 @@ class TestBitailsGetTransactionStatus:
         mock_response.status_code = 200
         mock_response.json.side_effect = ValueError("Invalid JSON")
 
-        with patch("requests.get", return_value=mock_response) as mock_get:
+        with patch("requests.get", return_value=mock_response):
             result = bitails.get_transaction_status(txid)
 
             assert isinstance(result, dict)
@@ -546,11 +521,7 @@ class TestBitailsDataClasses:
 
     def test_bitails_post_raws_result_custom_values(self) -> None:
         """Test BitailsPostRawsResult with custom values."""
-        result = BitailsPostRawsResult(
-            txid="test_txid",
-            success=True,
-            error_message="some error"
-        )
+        result = BitailsPostRawsResult(txid="test_txid", success=True, error_message="some error")
 
         assert result.txid == "test_txid"
         assert result.success is True
@@ -566,11 +537,7 @@ class TestBitailsDataClasses:
 
     def test_post_beef_result_custom_values(self) -> None:
         """Test PostBeefResult with custom values."""
-        result = PostBeefResult(
-            success=True,
-            txids=["tx1", "tx2"],
-            error_message="partial success"
-        )
+        result = PostBeefResult(success=True, txids=["tx1", "tx2"], error_message="partial success")
 
         assert result.success is True
         assert result.txids == ["tx1", "tx2"]
@@ -588,10 +555,7 @@ class TestBitailsDataClasses:
     def test_get_merkle_path_result_custom_values(self) -> None:
         """Test GetMerklePathResult with custom values."""
         result = GetMerklePathResult(
-            success=True,
-            merkle_path={"path": "data"},
-            header={"hash": "block_hash"},
-            error_message="some error"
+            success=True, merkle_path={"path": "data"}, header={"hash": "block_hash"}, error_message="some error"
         )
 
         assert result.success is True

@@ -1,7 +1,7 @@
 """WalletMonitorTask base class."""
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .monitor import Monitor
@@ -37,7 +37,6 @@ class WalletMonitorTask(ABC):
         Equivalent to asyncSetup() in TS, but synchronous for Python implementation.
         Override this method to perform initialization before task execution.
         """
-        pass
 
     def trigger(self, now: int) -> dict[str, bool]:
         """Determine if the task should run based on current time.
@@ -49,4 +48,3 @@ class WalletMonitorTask(ABC):
             dict: {'run': bool} indicating if task should run.
         """
         return {"run": True}
-

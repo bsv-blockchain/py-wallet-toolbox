@@ -3,8 +3,9 @@
 Provides mocked implementations of wallet managers for testing.
 """
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 
 class MockSimpleWalletManager:

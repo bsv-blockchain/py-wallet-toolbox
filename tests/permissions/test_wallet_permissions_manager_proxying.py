@@ -12,6 +12,7 @@ import pytest
 
 try:
     from bsv.wallet.wallet_interface import WalletInterface
+
     from bsv_wallet_toolbox.manager.wallet_permissions_manager import PermissionsManagerConfig, WalletPermissionsManager
 
     IMPORTS_AVAILABLE = True
@@ -27,7 +28,7 @@ class TestWalletPermissionsManagerProxying:
 
     Reference: wallet-toolbox/src/__tests/WalletPermissionsManager.proxying.test.ts
                describe('WalletPermissionsManager - Regression & Integration with Underlying Wallet')
-    
+
     Note: Some tests may still fail or be skipped due to missing:
     - Full token system implementation (DPACP, DSAP, DBAP, DCAP)
     - Complete permission callback mechanism
@@ -50,9 +51,7 @@ class TestWalletPermissionsManagerProxying:
             return_value={"signableTransaction": {"tx": [0xDE, 0xAD], "reference": "test-ref"}}
         )
         # Mock encrypt for metadata encryption
-        mock_underlying_wallet.encrypt = AsyncMock(
-            return_value={"ciphertext": [0xAB, 0xCD, 0xEF]}
-        )
+        mock_underlying_wallet.encrypt = AsyncMock(return_value={"ciphertext": [0xAB, 0xCD, 0xEF]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -229,7 +228,7 @@ class TestWalletPermissionsManagerProxying:
         """
         # Given
         import base64
-        
+
         mock_underlying_wallet = Mock(spec=WalletInterface)
         # Use valid base64 for encrypted_data
         encrypted_desc = base64.b64encode(b"encrypted_data").decode()
@@ -237,9 +236,7 @@ class TestWalletPermissionsManagerProxying:
             return_value={"actions": [{"txid": "tx1", "description": encrypted_desc}]}
         )
         # decrypt should return proper structure with plaintext as bytes
-        mock_underlying_wallet.decrypt = AsyncMock(
-            return_value={"plaintext": [ord(c) for c in "decrypted_data"]}
-        )
+        mock_underlying_wallet.decrypt = AsyncMock(return_value={"plaintext": [ord(c) for c in "decrypted_data"]})
 
         manager = WalletPermissionsManager(
             underlying_wallet=mock_underlying_wallet,
@@ -248,7 +245,7 @@ class TestWalletPermissionsManagerProxying:
         )
 
         # When
-        result = manager.list_actions({}, "user.com")
+        manager.list_actions({}, "user.com")
 
         # Then
         assert mock_underlying_wallet.list_actions.call_count == 1

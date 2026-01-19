@@ -18,7 +18,7 @@ from __future__ import annotations
 import base64
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bsv.auth.master_certificate import MasterCertificate
@@ -28,12 +28,12 @@ from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.atomic_beef_utils import (
     AtomicBeefBuildResult,
     build_internalize_atomic_beef,
 )
 from bsv_wallet_toolbox.utils.trace import trace
-from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
 
 logger = logging.getLogger(__name__)
@@ -318,12 +318,9 @@ def build_signable_transaction(
             # IMPORTANT (TS parity):
             # When args_input is present, this input is already added. Do NOT add a second placeholder input.
             continue
-        else:
-            # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
-            if storage_input.get("type") != "P2PKH":
-                raise WalletError(
-                    f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported'
-                )
+        # Type 2: SABPPP protocol inputs (wallet-managed change / internalized outputs)
+        elif storage_input.get("type") != "P2PKH":
+            raise WalletError(f'vin {storage_input.get("vin")}, "{storage_input.get("type")}" is not supported')
 
         # ---- Storage-provided (wallet-managed) input ----
         # StorageCreateTransactionSdkInput uses camelCase keys (TS parity / @wallet-infra).
@@ -358,7 +355,11 @@ def build_signable_transaction(
         source_tx_raw = storage_input.get("sourceTransaction")
         if isinstance(source_tx_raw, list):
             source_tx_raw = bytes(source_tx_raw)
-        source_tx = Transaction.from_hex(source_tx_raw) if isinstance(source_tx_raw, (bytes, bytearray, str)) and source_tx_raw else None
+        source_tx = (
+            Transaction.from_hex(source_tx_raw)
+            if isinstance(source_tx_raw, (bytes, bytearray, str)) and source_tx_raw
+            else None
+        )
 
         # Create a TransactionInput placeholder; unlocking_script will be filled later via BRC-29 template
         tx_input = TransactionInput(
@@ -374,7 +375,7 @@ def build_signable_transaction(
         if isinstance(ls_hex, str) and ls_hex:
             try:
                 tx_input.locking_script = Script(ls_hex)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 # Debug-only: locking script parse failure should surface as WalletError later if critical
                 pass
 
@@ -431,8 +432,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
 
         if unlock_script_len_bytes > expected_length:
             raise WalletError(
-                f"spend unlockingScript length {unlock_script_len_bytes} "
-                f"exceeds expected length {expected_length}"
+                f"spend unlockingScript length {unlock_script_len_bytes} " f"exceeds expected length {expected_length}"
             )
 
         # Apply unlocking script and optional sequence number to the underlying TransactionInput
@@ -483,7 +483,9 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     logger.debug(f"  derivation_suffix: {pdi.derivation_suffix!r} (len={len(pdi.derivation_suffix)})")
                     logger.debug(f"  key_id: {key_id!r} (len={len(key_id)})")
                     logger.debug(f"  unlocker_pub_key: {locker_pub[:30] if locker_pub else None}...")
-                    logger.debug(f"  source_locking_script: {pdi.locking_script[:50] if pdi.locking_script else None}...")
+                    logger.debug(
+                        f"  source_locking_script: {pdi.locking_script[:50] if pdi.locking_script else None}..."
+                    )
 
                 if not key_id:
                     raise WalletError(
@@ -494,43 +496,52 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                 if locker_pub:
                     from bsv.keys import PublicKey as PubKey
 
-                    locker_pub_key = PublicKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
+                    locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
                     counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
                     logger.debug(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
                 else:
                     counterparty = Counterparty(type=CounterpartyType.SELF)
-                    logger.debug(f"  Using CounterpartyType.SELF (no senderIdentityKey)")
+                    logger.debug("  Using CounterpartyType.SELF (no senderIdentityKey)")
 
                 # Derive private key for this input
-                logger.debug(f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}")
+                logger.debug(
+                    f"  Deriving key with protocol={brc29_protocol}, key_id={key_id!r}, counterparty={counterparty.type}"
+                )
                 derived_private_key = wallet.key_deriver.derive_private_key(brc29_protocol, key_id, counterparty)
-                
+
                 # Verify the derived key matches the locking script
                 derived_pub_key = derived_private_key.public_key()
                 derived_pub_key_hash = derived_pub_key.hash160()
                 from bsv.script import P2PKH
+
                 p2pkh = P2PKH()
                 expected_locking_script = p2pkh.lock(derived_pub_key_hash)
                 expected_locking_script_hex = expected_locking_script.hex()
-                
+
                 # Get the actual locking script from the input
-                actual_locking_script_hex = pdi.locking_script if isinstance(pdi.locking_script, str) else pdi.locking_script.hex() if hasattr(pdi.locking_script, 'hex') else ""
-                
+                actual_locking_script_hex = (
+                    pdi.locking_script
+                    if isinstance(pdi.locking_script, str)
+                    else pdi.locking_script.hex() if hasattr(pdi.locking_script, "hex") else ""
+                )
+
                 logger.debug(f"  Derived public key: {derived_pub_key.to_hex()}")
                 logger.debug(f"  Derived public key hash160: {derived_pub_key_hash.hex()}")
                 logger.debug(f"  Expected locking script: {expected_locking_script_hex}")
                 logger.debug(f"  Actual locking script: {actual_locking_script_hex}")
-                
+
                 if expected_locking_script_hex != actual_locking_script_hex:
-                    logger.error(f"  ❌ MISMATCH: Derived key does not match locking script!")
+                    logger.error("  ❌ MISMATCH: Derived key does not match locking script!")
                     logger.error(f"    Expected hash160: {derived_pub_key_hash.hex()}")
-                    logger.error(f"    Actual hash160:   {actual_locking_script_hex[6:46] if len(actual_locking_script_hex) >= 46 else 'N/A'}")
+                    logger.error(
+                        f"    Actual hash160:   {actual_locking_script_hex[6:46] if len(actual_locking_script_hex) >= 46 else 'N/A'}"
+                    )
                     logger.error(f"    Expected script:  {expected_locking_script_hex}")
                     logger.error(f"    Actual script:    {actual_locking_script_hex}")
-                    logger.error(f"    This will cause script evaluation errors!")
-                    logger.error(f"    Check: keyID format, counterparty type, or identity key")
+                    logger.error("    This will cause script evaluation errors!")
+                    logger.error("    Check: keyID format, counterparty type, or identity key")
                 else:
-                    logger.debug(f"  ✅ Derived key matches locking script")
+                    logger.debug("  ✅ Derived key matches locking script")
 
                 # Step 2: Create P2PKH unlock template
                 p2pkh = P2PKH()
@@ -614,7 +625,7 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
         trace(logger, "signer.process_action.no_prior.created", reference=prior.reference, amount=prior.amount)
 
         # Build signable transaction
-        tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
+        _tx, amount, pending_inputs, log = build_signable_transaction(prior.dcr, prior.args, wallet)
         trace(
             logger,
             "signer.process_action.build_signable_transaction.result",
@@ -625,7 +636,12 @@ def process_action(prior: PendingSignAction | None, wallet: Any, auth: Any, varg
 
         # Complete signed transaction
         prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
-        trace(logger, "signer.process_action.complete_signed_transaction.ok", txid=prior.tx.txid(), rawTx=prior.tx.serialize())
+        trace(
+            logger,
+            "signer.process_action.complete_signed_transaction.ok",
+            txid=prior.tx.txid(),
+            rawTx=prior.tx.serialize(),
+        )
 
     raw_tx_value = _normalize_raw_tx(prior.tx.serialize())
 
@@ -693,7 +709,13 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     # Complete transaction with signatures
     prior.tx = complete_signed_transaction(prior, vargs.get("spends", {}), wallet)
-    trace(logger, "signer.sign_action.complete_signed_transaction.ok", reference=reference, txid=prior.tx.txid(), rawTx=prior.tx.serialize())
+    trace(
+        logger,
+        "signer.sign_action.complete_signed_transaction.ok",
+        reference=reference,
+        txid=prior.tx.txid(),
+        rawTx=prior.tx.serialize(),
+    )
 
     # Process the action
     process_result = process_action(prior, wallet, auth, vargs)
@@ -758,7 +780,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
                 subject_txid=subject_txid,
                 has_subject_tx=bool(subject_tx),
             )
-        except Exception as exc:  # noqa: PERF203
+        except Exception as exc:
             trace(logger, "signer.internalize_action.parse_beef.error", error=str(exc), exc_type=type(exc).__name__)
             raise WalletError("tx is not valid AtomicBEEF") from exc
     else:
@@ -789,7 +811,7 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
         try:
             services = wallet.get_services()
             build_result = build_internalize_atomic_beef(services, tx, txid)
-        except Exception:  # noqa: BLE001
+        except Exception:
             build_result = None
     if build_result is None:
         normalized_atomic = bytes(tx_bytes) if tx_bytes else ab.to_binary()
@@ -860,7 +882,6 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
                     error=str(e),
                     exc_type=type(e).__name__,
                 )
-            pass
         else:
             trace(logger, "signer.internalize_action.output.unexpected_protocol", protocol=protocol)
             raise WalletError(f"unexpected protocol {protocol}")
@@ -918,7 +939,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
         ValueError: If required fields are missing
         WalletError: If certificate verification fails
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     user_id = auth.get("userId") if isinstance(auth, dict) else getattr(auth, "userId", None)
 
     # Validate required fields before processing
@@ -965,6 +986,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
         except Exception as e:
             # Log warning but don't fail - signature might be in different format
             import logging
+
             logging.getLogger(__name__).warning(f"Certificate verification warning: {e}")
 
     # Step 2: Optionally verify fields can be decrypted (TypeScript parity)
@@ -978,9 +1000,7 @@ def acquire_direct_certificate(wallet: Any, auth: Any, vargs: dict[str, Any]) ->
         "userId": user_id,
         "type": cert_type,
         "subject": subject,
-        "verifier": (
-            certifier if vargs.get("keyringRevealer") == "certifier" else vargs.get("keyringRevealer")
-        ),
+        "verifier": (certifier if vargs.get("keyringRevealer") == "certifier" else vargs.get("keyringRevealer")),
         "serialNumber": serial_number,
         "certifier": certifier,
         "revocationOutpoint": revocation_outpoint,
@@ -1138,9 +1158,7 @@ def _make_signable_transaction_result(
 
     result = CreateActionResultX()
     result.no_send_change = (
-        [f"{txid}.{vout}" for vout in prior.dcr.get("noSendChangeOutputVouts", [])]
-        if args.get("isNoSend")
-        else None
+        [f"{txid}.{vout}" for vout in prior.dcr.get("noSendChangeOutputVouts", [])] if args.get("isNoSend") else None
     )
     result.signable_transaction = {
         "reference": prior.dcr.get("reference"),
@@ -1257,12 +1275,12 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
     try:
         # Step 1: Find the transaction in the BEEF
         # Beef.txs is a dict mapping txid to BeefTx objects
-        if not hasattr(beef, 'txs') or txid not in beef.txs:
+        if not hasattr(beef, "txs") or txid not in beef.txs:
             raise WalletError(f"Transaction {txid} not found in BEEF")
 
         beef_tx = beef.txs[txid]
-        transaction = beef_tx.tx_obj if hasattr(beef_tx, 'tx_obj') else None
-        
+        transaction = beef_tx.tx_obj if hasattr(beef_tx, "tx_obj") else None
+
         if not transaction:
             raise WalletError(f"Transaction {txid} has no tx_obj in BEEF")
 
@@ -1272,18 +1290,18 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
 
             # Check that unlocking script exists
             # TransactionInput is an object, not a dict - use attribute access
-            unlock_script = getattr(inp, 'unlocking_script', None)
+            unlock_script = getattr(inp, "unlocking_script", None)
             if not unlock_script:
                 raise WalletError(f"Transaction {txid} input {vin} missing unlocking script")
 
             # Check that source transaction is available for script verification
-            source_tx = getattr(inp, 'source_transaction', None)
+            source_tx = getattr(inp, "source_transaction", None)
             if not source_tx:
                 # Try to find source transaction in BEEF
-                source_txid = getattr(inp, 'source_txid', None)
+                source_txid = getattr(inp, "source_txid", None)
                 if source_txid and source_txid in beef.txs:
                     beef_source = beef.txs[source_txid]
-                    inp.source_transaction = beef_source.tx_obj if hasattr(beef_source, 'tx_obj') else None
+                    inp.source_transaction = beef_source.tx_obj if hasattr(beef_source, "tx_obj") else None
 
         # Step 3: Full script verification using Transaction.verify()
         # This mirrors TS Spend.validate() and Go spv.VerifyScripts()
@@ -1400,22 +1418,31 @@ def _setup_wallet_payment_for_output(
         # Go validation does: keyID := brc29.KeyID{DerivationPrefix: string(payment.DerivationPrefix), ...}
         # where payment.DerivationPrefix is primitives.Base64String (just a string type, not decoded)
         # Then keyID.String() returns: k.DerivationPrefix + " " + k.DerivationSuffix (base64 strings)
-        derivation_prefix_b64 = payment_remittance.get("derivationPrefix") or payment_remittance.get("derivationPrefix", "")
-        derivation_suffix_b64 = payment_remittance.get("derivationSuffix") or payment_remittance.get("derivationSuffix", "")
-        
+        derivation_prefix_b64 = payment_remittance.get("derivationPrefix") or payment_remittance.get(
+            "derivationPrefix", ""
+        )
+        derivation_suffix_b64 = payment_remittance.get("derivationSuffix") or payment_remittance.get(
+            "derivationSuffix", ""
+        )
+
         # Use base64 strings directly in keyID (matches Go/TS behavior - they don't decode before using in keyID)
         # NOTE: Do NOT strip() - keyID format must match exactly: "prefix suffix"
         key_id = f"{derivation_prefix_b64} {derivation_suffix_b64}"
 
         # Step 3: Get sender identity key for key derivation
-        sender_identity_key = payment_remittance.get("senderIdentityKey") or payment_remittance.get("senderIdentityKey", "")
+        sender_identity_key = payment_remittance.get("senderIdentityKey") or payment_remittance.get(
+            "senderIdentityKey", ""
+        )
 
         # Step 4: Derive private key using BRC-29 protocol
         brc29_protocol = Protocol(security_level=2, protocol="3241645161d8")
 
         if sender_identity_key:
             from bsv.keys import PublicKey as PubKey
-            sender_pub_key = PubKey(sender_identity_key) if isinstance(sender_identity_key, str) else sender_identity_key
+
+            sender_pub_key = (
+                PubKey(sender_identity_key) if isinstance(sender_identity_key, str) else sender_identity_key
+            )
             counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=sender_pub_key)
         else:
             counterparty = Counterparty(type=CounterpartyType.SELF)
@@ -1429,14 +1456,12 @@ def _setup_wallet_payment_for_output(
 
         # Step 6: Validate output script matches expected
         # Handle both TransactionOutput object and dict
-        if hasattr(output, 'locking_script'):
+        if hasattr(output, "locking_script"):
             current_script = output.locking_script
         else:
             current_script = output.get("lockingScript", "")
-        
-        if isinstance(current_script, Script):
-            current_script_hex = current_script.hex()
-        elif isinstance(current_script, bytes):
+
+        if isinstance(current_script, (Script, bytes)):
             current_script_hex = current_script.hex()
         elif isinstance(current_script, str):
             current_script_hex = current_script
@@ -1541,6 +1566,7 @@ def _recover_action_from_storage(wallet: Any, auth: Any, reference: str) -> Pend
 
         # Parse transaction
         from bsv.transaction import Transaction
+
         tx = Transaction.from_bytes(raw_tx)
 
         # Build minimal dcr (delayed create result) from storage

@@ -6,7 +6,7 @@ of storage/provider.py from 50.84% towards 75%+.
 
 import base64
 import secrets
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import update
@@ -17,13 +17,11 @@ from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import (
     Base,
-    Certificate,
-    Output,
-    OutputBasket,
-    ProvenTx,
     ProvenTxReq,
-    Transaction as TransactionModel,
     User,
+)
+from bsv_wallet_toolbox.storage.models import (
+    Transaction as TransactionModel,
 )
 from bsv_wallet_toolbox.storage.provider import StorageProvider
 
@@ -331,16 +329,15 @@ class TestGenericCRUDOperations:
     def test_model_to_dict_conversion(self, storage_provider, test_user) -> None:
         """Test converting model instance to dict."""
         # Get a user model
-        with storage_provider.engine.connect() as conn:
-            with Session(conn) as session:
-                user = session.query(User).filter_by(user_id=test_user).first()
+        with storage_provider.engine.connect() as conn, Session(conn) as session:
+            user = session.query(User).filter_by(user_id=test_user).first()
 
-                if user:
-                    result = storage_provider._model_to_dict(user)
+            if user:
+                result = storage_provider._model_to_dict(user)
 
-                    assert isinstance(result, dict)
-                    # Result may have either camelCase or snake_case keys
-                    assert "userId" in result or "user_id" in result
+                assert isinstance(result, dict)
+                # Result may have either camelCase or snake_case keys
+                assert "userId" in result or "user_id" in result
 
 
 class TestErrorHandling:
@@ -745,12 +742,10 @@ class TestProvenTransactionOperations:
     def test_find_or_insert_proven_tx_new(self, storage_provider) -> None:
         """Test inserting new proven transaction."""
         # This method requires more complex setup, skip for basic coverage
-        pass
 
     def test_find_or_insert_proven_tx_existing(self, storage_provider) -> None:
         """Test finding existing proven transaction."""
         # This method requires more complex setup, skip for basic coverage
-        pass
 
     def test_get_raw_tx_of_known_valid_transaction(self, storage_provider) -> None:
         """Test getting raw tx of known valid transaction."""
@@ -1128,12 +1123,7 @@ class TestTransactionMethods:
             storage_provider.insert_transaction(tx_data)
 
             auth = {"userId": test_user}
-            args = {
-                "reference": ref,
-                "txid": txid,
-                "rawTx": [0, 1, 2],  # Invalid but tests status logic
-                **flags
-            }
+            args = {"reference": ref, "txid": txid, "rawTx": [0, 1, 2], **flags}  # Invalid but tests status logic
 
             try:
                 result = storage_provider.process_action(auth, args)
@@ -1177,13 +1167,8 @@ class TestCreateAction:
         auth = {"userId": test_user}
         args = {
             "description": "Test action",
-            "outputs": [
-                {
-                    "satoshis": 1000,
-                    "lockingScript": "76a914000000000000000000000000000000000000000088ac"
-                }
-            ],
-            "labels": ["test"]
+            "outputs": [{"satoshis": 1000, "lockingScript": "76a914000000000000000000000000000000000000000088ac"}],
+            "labels": ["test"],
         }
 
         try:
@@ -1199,15 +1184,8 @@ class TestCreateAction:
         auth = {"userId": test_user}
         args = {
             "description": "Test with change",
-            "outputs": [
-                {
-                    "satoshis": 500,
-                    "lockingScript": "76a914000000000000000000000000000000000000000088ac"
-                }
-            ],
-            "options": {
-                "acceptDelayedBroadcast": True
-            }
+            "outputs": [{"satoshis": 500, "lockingScript": "76a914000000000000000000000000000000000000000088ac"}],
+            "options": {"acceptDelayedBroadcast": True},
         }
 
         try:
@@ -1234,12 +1212,7 @@ class TestInternalizeAction:
         storage_provider.insert_transaction(tx_data)
 
         auth = {"userId": test_user}
-        args = {
-            "txid": "a" * 64,
-            "rawTx": [0, 1, 2, 3],  # Simplified for testing
-            "inputs": [],
-            "outputs": []
-        }
+        args = {"txid": "a" * 64, "rawTx": [0, 1, 2, 3], "inputs": [], "outputs": []}  # Simplified for testing
 
         try:
             result = storage_provider.internalize_action(auth, args)
@@ -1270,7 +1243,7 @@ class TestCertificateOperationsExtended:
         args = {
             "type": base64.b64encode(b"relinquish_test").decode(),
             "serialNumber": base64.b64encode(b"rel123").decode(),
-            "certifier": "certifier"
+            "certifier": "certifier",
         }
 
         result = storage_provider.relinquish_certificate(auth, args)
@@ -1319,13 +1292,15 @@ class TestBeefOperationsExtended:
     def test_get_beef_for_transaction(self, storage_provider) -> None:
         """Test getting BEEF for a transaction."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.errors import WalletError
+
         # BEEF operations require Services to be set
         mock_services = Mock()
         mock_services.get_raw_tx = Mock(return_value=None)
         mock_services.get_merkle_path = Mock(return_value=None)
         storage_provider.set_services(mock_services)
-        
+
         txid = "0" * 64
         # When get_raw_tx returns None, a WalletError is expected for unknown txid
         try:
@@ -1338,13 +1313,15 @@ class TestBeefOperationsExtended:
     def test_get_valid_beef_for_known_txid(self, storage_provider) -> None:
         """Test getting valid BEEF for known txid."""
         from unittest.mock import Mock
+
         from bsv_wallet_toolbox.errors import WalletError
+
         # BEEF operations require Services to be set
         mock_services = Mock()
         mock_services.get_raw_tx = Mock(return_value=None)
         mock_services.get_merkle_path = Mock(return_value=None)
         storage_provider.set_services(mock_services)
-        
+
         txid = "0" * 64
         # When get_raw_tx returns None, a WalletError is expected for unknown txid
         try:
@@ -1719,22 +1696,16 @@ class TestReviewAndPurge:
             session.execute(
                 update(TransactionModel)
                 .where(
-                    TransactionModel.transaction_id.in_(
-                        [completed_tx_id, failed_tx_id, spent_tx_id, protected_tx_id]
-                    )
+                    TransactionModel.transaction_id.in_([completed_tx_id, failed_tx_id, spent_tx_id, protected_tx_id])
                 )
                 .values(updated_at=old_timestamp)
             )
             session.execute(
-                update(ProvenTxReq)
-                .where(ProvenTxReq.proven_tx_req_id == req_id)
-                .values(updated_at=old_timestamp)
+                update(ProvenTxReq).where(ProvenTxReq.proven_tx_req_id == req_id).values(updated_at=old_timestamp)
             )
             session.commit()
 
-        result = storage_provider.purge_data(
-            {"purgeCompleted": True, "purgeFailed": True, "purgeSpent": True}
-        )
+        result = storage_provider.purge_data({"purgeCompleted": True, "purgeFailed": True, "purgeSpent": True})
 
         completed_tx = storage_provider.find_transactions({"reference": "purge_completed"})[0]
         assert completed_tx["rawTx"] is None
@@ -1756,12 +1727,7 @@ class TestProvenTxOperationsExtended:
 
         # Create a ProvenTxReq first
         txid = "a" * 64
-        proven_tx_req_data = {
-            "txid": txid,
-            "rawTx": b"test_raw_tx",
-            "status": "pending",
-            "history": "created"
-        }
+        proven_tx_req_data = {"txid": txid, "rawTx": b"test_raw_tx", "status": "pending", "history": "created"}
         proven_tx_req_id = storage_provider.insert_proven_tx_req(proven_tx_req_data)
 
         # Now test updating it with proven tx
@@ -1773,7 +1739,7 @@ class TestProvenTxOperationsExtended:
             "merklePath": b"test_merkle_path",
             "rawTx": b"test_raw_tx",
             "blockHash": "b" * 64,
-            "merkleRoot": "c" * 64
+            "merkleRoot": "c" * 64,
         }
 
         result = storage_provider.update_proven_tx_req_with_new_proven_tx(args)
@@ -1834,4 +1800,3 @@ class TestGenericCRUDOperationsExtended:
         """Test getting model by table name."""
         model = storage_provider._get_model("user")
         assert model is not None
-

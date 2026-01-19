@@ -4,7 +4,6 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/models/height_range.go
 """
 
 from __future__ import annotations
-from typing import List, Optional
 
 
 class HeightRange:
@@ -54,8 +53,7 @@ class HeightRange:
         if min_height > max_height:
             if not allow_empty_on_invalid:
                 raise ValueError(
-                    f"Invalid height range: min_height ({min_height}) "
-                    f"is greater than max_height ({max_height})"
+                    f"Invalid height range: min_height ({min_height}) " f"is greater than max_height ({max_height})"
                 )
             return cls.new_empty_height_range()
         return cls(min_height, max_height)
@@ -70,7 +68,7 @@ class HeightRange:
         return cls(is_empty=True)
 
     @classmethod
-    def new_height_range_from_block_headers(cls, headers: List[dict]) -> HeightRange:
+    def new_height_range_from_block_headers(cls, headers: list[dict]) -> HeightRange:
         """Create HeightRange from list of block headers.
 
         Args:
@@ -282,11 +280,12 @@ class HeightRange:
         """
         if not isinstance(other, HeightRange):
             return False
-        return (self.min_height == other.min_height and
-                self.max_height == other.max_height and
-                self.is_empty == other.is_empty)
+        return (
+            self.min_height == other.min_height
+            and self.max_height == other.max_height
+            and self.is_empty == other.is_empty
+        )
 
     def __repr__(self) -> str:
         """String representation for debugging."""
         return f"HeightRange(min_height={self.min_height}, max_height={self.max_height}, is_empty={self.is_empty})"
-

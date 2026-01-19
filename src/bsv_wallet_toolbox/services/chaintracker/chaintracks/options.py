@@ -51,4 +51,3 @@ def create_default_chaintracks_options(chain: str = "main", storage_path: str | 
         "maxCachedHeaders": 10000,
         "useRemoteHeaders": True,
     }
-

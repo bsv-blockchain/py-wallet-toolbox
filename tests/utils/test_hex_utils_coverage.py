@@ -13,10 +13,10 @@ class TestHexConversion:
         """Test converting bytes to hex string."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import bytes_to_hex
-            
+
             data = b"\x00\x01\x02\x03"
             hex_str = bytes_to_hex(data)
-            
+
             assert isinstance(hex_str, str)
             assert hex_str == "00010203"
         except (ImportError, AttributeError):
@@ -26,10 +26,10 @@ class TestHexConversion:
         """Test converting hex string to bytes."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import hex_to_bytes
-            
+
             hex_str = "00010203"
             data = hex_to_bytes(hex_str)
-            
+
             assert isinstance(data, bytes)
             assert data == b"\x00\x01\x02\x03"
         except (ImportError, AttributeError):
@@ -39,11 +39,11 @@ class TestHexConversion:
         """Test hex conversion roundtrip."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import bytes_to_hex, hex_to_bytes
-            
+
             original = b"\xde\xad\xbe\xef"
             hex_str = bytes_to_hex(original)
             result = hex_to_bytes(hex_str)
-            
+
             assert result == original
         except (ImportError, AttributeError):
             pass
@@ -56,7 +56,7 @@ class TestHexValidation:
         """Test checking if string is valid hex."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import is_valid_hex
-            
+
             assert is_valid_hex("deadbeef") is True
             assert is_valid_hex("DEADBEEF") is True
             assert is_valid_hex("not_hex") is False
@@ -68,11 +68,11 @@ class TestHexValidation:
         """Test validating hex string length."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import validate_hex_length
-            
+
             # Even length should be valid
             result = validate_hex_length("deadbeef")
             assert result is True or result is not None
-            
+
             # Odd length might be invalid
             result = validate_hex_length("abc")
             assert result is False or result is not None
@@ -87,10 +87,10 @@ class TestHexFormatting:
         """Test formatting hex with 0x prefix."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import format_hex
-            
+
             hex_str = "deadbeef"
             formatted = format_hex(hex_str, prefix=True)
-            
+
             assert formatted.startswith("0x") or formatted == hex_str
         except (ImportError, AttributeError, TypeError):
             pass
@@ -99,7 +99,7 @@ class TestHexFormatting:
         """Test stripping 0x prefix from hex."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import strip_hex_prefix
-            
+
             assert strip_hex_prefix("0xdeadbeef") == "deadbeef"
             assert strip_hex_prefix("deadbeef") == "deadbeef"
         except (ImportError, AttributeError):
@@ -109,7 +109,7 @@ class TestHexFormatting:
         """Test normalizing hex string."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import normalize_hex
-            
+
             # Should handle uppercase, lowercase, with/without prefix
             assert normalize_hex("0xDEADBEEF") in ["deadbeef", "DEADBEEF", "0xdeadbeef"]
             assert normalize_hex("deadbeef") in ["deadbeef", "DEADBEEF"]
@@ -124,7 +124,7 @@ class TestHexEdgeCases:
         """Test handling empty hex string."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import hex_to_bytes
-            
+
             result = hex_to_bytes("")
             assert result == b"" or result is None
         except (ImportError, AttributeError, Exception):
@@ -134,7 +134,7 @@ class TestHexEdgeCases:
         """Test handling odd-length hex string."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import hex_to_bytes
-            
+
             with pytest.raises((ValueError, Exception)):
                 hex_to_bytes("abc")
         except (ImportError, AttributeError):
@@ -144,9 +144,8 @@ class TestHexEdgeCases:
         """Test handling invalid hex characters."""
         try:
             from bsv_wallet_toolbox.utils.hex_utils import hex_to_bytes
-            
+
             with pytest.raises((ValueError, Exception)):
                 hex_to_bytes("xyz123")
         except (ImportError, AttributeError):
             pass
-

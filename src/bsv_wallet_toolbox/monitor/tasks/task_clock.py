@@ -2,7 +2,7 @@
 
 import math
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ..wallet_monitor_task import WalletMonitorTask
 
@@ -21,7 +21,7 @@ class TaskClock(WalletMonitorTask):
 
     def __init__(self, monitor: "Monitor", trigger_msecs: int | None = None) -> None:
         """Initialize TaskClock.
-        
+
         Args:
             monitor: Monitor instance
             trigger_msecs: Optional trigger interval in milliseconds (defaults to 1 second)
@@ -29,6 +29,7 @@ class TaskClock(WalletMonitorTask):
         super().__init__(monitor, "Clock")
         # Import Monitor here to avoid circular import
         from ..monitor import Monitor as MonitorClass
+
         if trigger_msecs is None:
             trigger_msecs = 1 * MonitorClass.ONE_SECOND
         self.trigger_msecs = trigger_msecs
@@ -36,12 +37,13 @@ class TaskClock(WalletMonitorTask):
 
     def get_next_minute(self) -> int:
         """Calculate next minute timestamp.
-        
+
         Returns:
             int: Next minute timestamp in milliseconds (rounded up)
         """
         # Import Monitor here to avoid circular import
         from ..monitor import Monitor as MonitorClass
+
         return math.ceil(time.time() * 1000 / MonitorClass.ONE_MINUTE) * MonitorClass.ONE_MINUTE
 
     def trigger(self, now: int) -> dict[str, bool]:
@@ -65,4 +67,3 @@ class TaskClock(WalletMonitorTask):
         log = f"{time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime(self.next_minute / 1000))}"
         self.next_minute = self.get_next_minute()
         return log
-

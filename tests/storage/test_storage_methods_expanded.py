@@ -4,22 +4,17 @@ This module provides more comprehensive tests for storage methods,
 focusing on edge cases, error conditions, and actual logic testing.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
-from datetime import datetime, timezone, timedelta
 
 from bsv_wallet_toolbox.errors import WalletError
 from bsv_wallet_toolbox.storage.methods import (
+    attempt_to_post_reqs_to_network,
+    get_beef_for_transaction,
     get_sync_chunk,
     purge_data,
     review_status,
-    attempt_to_post_reqs_to_network,
-    get_beef_for_transaction,
-    StorageProcessActionArgs,
-    StorageProcessActionResults,
-    GenerateFundingInput,
-    ListActionsArgs,
-    ListOutputsArgs,
 )
 
 
@@ -43,17 +38,19 @@ class TestGetSyncChunk:
         storage = Mock()
 
         # Mock storage.get_sync_chunk to return expected structure
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {},
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {},
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 1,
+            }
+        )
 
         args = {"userId": "test_user"}
         result = get_sync_chunk(storage, args)
@@ -89,17 +86,19 @@ class TestGetSyncChunk:
             "lastSyncTimestamp": "2023-01-01T00:00:00Z",
             "syncVersion": 5,
         }
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": mock_sync_state,
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 5
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": mock_sync_state,
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 5,
+            }
+        )
 
         args = {"userId": "test_user"}
         result = get_sync_chunk(storage, args)
@@ -124,17 +123,19 @@ class TestGetSyncChunk:
             }
         ]
 
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {},
-            "transactions": mock_transactions,
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {},
+                "transactions": mock_transactions,
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 1,
+            }
+        )
 
         args = {"userId": "test_user"}
         result = get_sync_chunk(storage, args)
@@ -150,17 +151,19 @@ class TestGetSyncChunk:
         """Test get_sync_chunk with custom chunk size and offset."""
         storage = Mock()
 
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {},
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": True,
-            "nextChunkId": 75,  # chunkOffset (25) + chunkSize (50)
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {},
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": True,
+                "nextChunkId": 75,  # chunkOffset (25) + chunkSize (50)
+                "syncVersion": 1,
+            }
+        )
 
         args = {
             "userId": "test_user",
@@ -178,17 +181,19 @@ class TestGetSyncChunk:
         storage = Mock()
 
         sync_from = "2023-01-01T00:00:00Z"
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {},
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {},
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 1,
+            }
+        )
 
         args = {
             "userId": "test_user",
@@ -204,17 +209,19 @@ class TestGetSyncChunk:
         """Test get_sync_chunk creates new sync state when none exists."""
         storage = Mock()
 
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {"userId": "test_user", "syncVersion": 1},
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {"userId": "test_user", "syncVersion": 1},
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 1,
+            }
+        )
 
         args = {"userId": "test_user"}
         result = get_sync_chunk(storage, args)
@@ -228,21 +235,19 @@ class TestGetSyncChunk:
         """Test get_sync_chunk updates existing sync state."""
         storage = Mock()
 
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {
-                "userId": "test_user",
-                "lastSyncTimestamp": "2023-01-02T00:00:00Z",
-                "syncVersion": 4
-            },
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 4
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {"userId": "test_user", "lastSyncTimestamp": "2023-01-02T00:00:00Z", "syncVersion": 4},
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 4,
+            }
+        )
 
         args = {"userId": "test_user"}
         result = get_sync_chunk(storage, args)
@@ -274,17 +279,19 @@ class TestGetSyncChunk:
             }
         ]
 
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {},
-            "transactions": [],
-            "outputs": mock_outputs,
-            "certificates": mock_certificates,
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {},
+                "transactions": [],
+                "outputs": mock_outputs,
+                "certificates": mock_certificates,
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 1,
+            }
+        )
 
         args = {"userId": "test_user"}
         result = get_sync_chunk(storage, args)
@@ -315,14 +322,16 @@ class TestPurgeData:
         """Test purge_data with completed transaction purging."""
         storage = Mock()
 
-        storage.purge_data = Mock(return_value={
-            "deletedTransactions": 0,
-            "deletedOutputs": 0,
-            "deletedCertificates": 0,
-            "deletedRequests": 0,
-            "deletedLabels": 0,
-            "log": ""
-        })
+        storage.purge_data = Mock(
+            return_value={
+                "deletedTransactions": 0,
+                "deletedOutputs": 0,
+                "deletedCertificates": 0,
+                "deletedRequests": 0,
+                "deletedLabels": 0,
+                "log": "",
+            }
+        )
 
         params = {"agedBeforeDate": "2023-01-01T00:00:00Z"}  # With date parameter
         result = purge_data(storage, params)
@@ -341,14 +350,16 @@ class TestPurgeData:
         """Test purge_data with multiple purge flags enabled."""
         storage = Mock()
 
-        storage.purge_data = Mock(return_value={
-            "deletedTransactions": 0,
-            "deletedOutputs": 0,
-            "deletedCertificates": 0,
-            "deletedRequests": 0,
-            "deletedLabels": 0,
-            "log": ""
-        })
+        storage.purge_data = Mock(
+            return_value={
+                "deletedTransactions": 0,
+                "deletedOutputs": 0,
+                "deletedCertificates": 0,
+                "deletedRequests": 0,
+                "deletedLabels": 0,
+                "log": "",
+            }
+        )
 
         params = {
             "purgeCompleted": True,
@@ -369,14 +380,16 @@ class TestPurgeData:
         """Test purge_data with empty parameters."""
         storage = Mock()
 
-        storage.purge_data = Mock(return_value={
-            "deletedTransactions": 0,
-            "deletedOutputs": 0,
-            "deletedCertificates": 0,
-            "deletedRequests": 0,
-            "deletedLabels": 0,
-            "log": ""
-        })
+        storage.purge_data = Mock(
+            return_value={
+                "deletedTransactions": 0,
+                "deletedOutputs": 0,
+                "deletedCertificates": 0,
+                "deletedRequests": 0,
+                "deletedLabels": 0,
+                "log": "",
+            }
+        )
 
         params = {}
         result = purge_data(storage, params)
@@ -397,11 +410,7 @@ class TestReviewStatus:
         """Test basic review_status flow."""
         storage = Mock()
 
-        storage.review_status = Mock(return_value={
-            "updatedCount": 1,
-            "agedCount": 0,
-            "log": ""
-        })
+        storage.review_status = Mock(return_value={"updatedCount": 1, "agedCount": 0, "log": ""})
 
         args = {"agedLimit": 3600}
         result = review_status(storage, args)
@@ -415,11 +424,7 @@ class TestReviewStatus:
         """Test review_status with no aged limit."""
         storage = Mock()
 
-        storage.review_status = Mock(return_value={
-            "updatedCount": 0,
-            "agedCount": 0,
-            "log": ""
-        })
+        storage.review_status = Mock(return_value={"updatedCount": 0, "agedCount": 0, "log": ""})
 
         args = {}
         result = review_status(storage, args)
@@ -431,11 +436,7 @@ class TestReviewStatus:
         """Test review_status identifies aged requests correctly."""
         storage = Mock()
 
-        storage.review_status = Mock(return_value={
-            "updatedCount": 1,
-            "agedCount": 1,
-            "log": ""
-        })
+        storage.review_status = Mock(return_value={"updatedCount": 1, "agedCount": 1, "log": ""})
 
         args = {"agedLimit": 3600}  # 1 hour limit
         result = review_status(storage, args)
@@ -449,17 +450,16 @@ class TestAttemptToPostReqsToNetwork:
 
     def test_attempt_to_post_reqs_to_network_requires_storage(self) -> None:
         """Test that attempt_to_post_reqs_to_network requires storage parameter."""
-        with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'attempt_to_post_reqs_to_network'"):
+        with pytest.raises(
+            AttributeError, match="'NoneType' object has no attribute 'attempt_to_post_reqs_to_network'"
+        ):
             attempt_to_post_reqs_to_network(None, [])
 
     def test_attempt_to_post_reqs_to_network_empty_txids(self) -> None:
         """Test attempt_to_post_reqs_to_network with empty reqs list."""
         storage = Mock()
 
-        storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 0,
-            "failed": 0
-        })
+        storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 0, "failed": 0})
 
         reqs = []
         result = attempt_to_post_reqs_to_network(storage, reqs)
@@ -478,10 +478,7 @@ class TestAttemptToPostReqsToNetwork:
             {"id": 2, "txid": "tx2", "status": "unproven", "beef": "beef2"},
         ]
 
-        storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 2,
-            "failed": 0
-        })
+        storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 2, "failed": 0})
 
         result = attempt_to_post_reqs_to_network(storage, mock_reqs)
 
@@ -582,17 +579,19 @@ class TestStorageMethodIntegration:
         storage = Mock()
 
         # Setup sync chunk data
-        storage.get_sync_chunk = Mock(return_value={
-            "syncState": {"userId": "test_user", "syncVersion": 1},
-            "transactions": [],
-            "outputs": [],
-            "certificates": [],
-            "labels": [],
-            "baskets": [],
-            "hasMore": False,
-            "nextChunkId": None,
-            "syncVersion": 1
-        })
+        storage.get_sync_chunk = Mock(
+            return_value={
+                "syncState": {"userId": "test_user", "syncVersion": 1},
+                "transactions": [],
+                "outputs": [],
+                "certificates": [],
+                "labels": [],
+                "baskets": [],
+                "hasMore": False,
+                "nextChunkId": None,
+                "syncVersion": 1,
+            }
+        )
 
         # Get initial sync chunk
         args = {"userId": "test_user"}
@@ -602,14 +601,16 @@ class TestStorageMethodIntegration:
         assert sync_result["syncVersion"] == 1
 
         # Now test purge (should work with the created sync state)
-        storage.purge_data = Mock(return_value={
-            "deletedTransactions": 0,
-            "deletedOutputs": 0,
-            "deletedCertificates": 0,
-            "deletedRequests": 0,
-            "deletedLabels": 0,
-            "log": ""
-        })
+        storage.purge_data = Mock(
+            return_value={
+                "deletedTransactions": 0,
+                "deletedOutputs": 0,
+                "deletedCertificates": 0,
+                "deletedRequests": 0,
+                "deletedLabels": 0,
+                "log": "",
+            }
+        )
 
         purge_result = purge_data(storage, {"purgeCompleted": True})
 
@@ -622,20 +623,13 @@ class TestStorageMethodIntegration:
         storage = Mock()
 
         # Setup review status
-        storage.review_status = Mock(return_value={
-            "updatedCount": 0,
-            "agedCount": 0,
-            "log": ""
-        })
+        storage.review_status = Mock(return_value={"updatedCount": 0, "agedCount": 0, "log": ""})
 
         args = {"agedLimit": 3600}
         review_result = review_status(storage, args)
 
         # Setup post reqs
-        storage.attempt_to_post_reqs_to_network = Mock(return_value={
-            "posted": 0,
-            "failed": 0
-        })
+        storage.attempt_to_post_reqs_to_network = Mock(return_value={"posted": 0, "failed": 0})
 
         reqs = []
         post_result = attempt_to_post_reqs_to_network(storage, reqs)

@@ -12,12 +12,7 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 @pytest.fixture
 def valid_list_certificates_args():
     """Fixture providing valid list certificates arguments."""
-    return {
-        "certifiers": [],
-        "types": [],
-        "limit": 10,
-        "offset": 0
-    }
+    return {"certifiers": [], "types": [], "limit": 10, "offset": 0}
 
 
 @pytest.fixture
@@ -26,19 +21,14 @@ def list_certificates_with_filters():
     return {
         "certifiers": ["02cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17"],
         "types": ["exOl3KM0dIJ04EW5pZgbZmPag6MdJXd3/a1enmUU/BA="],
-        "limit": 5
+        "limit": 5,
     }
 
 
 @pytest.fixture
 def list_certificates_pagination():
     """Fixture providing list certificates arguments with pagination."""
-    return {
-        "certifiers": [],
-        "types": [],
-        "limit": 5,
-        "offset": 10
-    }
+    return {"certifiers": [], "types": [], "limit": 5, "offset": 10}
 
 
 @pytest.fixture
@@ -50,7 +40,6 @@ def invalid_list_certificates_cases():
         {"certifiers": ["invalid-hex-characters-!@#$"], "types": []},
         {"certifiers": ["too-short"], "types": []},
         {"certifiers": ["a" * 100], "types": []},  # Too long
-
         # Wrong types
         {"certifiers": None, "types": []},  # None certifiers
         {"certifiers": "not_a_list", "types": []},  # Wrong certifiers type
@@ -58,7 +47,6 @@ def invalid_list_certificates_cases():
         {"certifiers": [], "types": None},  # None types
         {"certifiers": [], "types": "not_a_list"},  # Wrong types type
         {"certifiers": [], "types": [123, "valid"]},  # Wrong type types in list
-
         # Invalid limits/offsets
         {"certifiers": [], "types": [], "limit": 0},  # Zero limit
         {"certifiers": [], "types": [], "limit": -1},  # Negative limit
@@ -192,8 +180,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_none_certifiers_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with None certifiers
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"certifiers": None, "types": []}
@@ -204,8 +192,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_wrong_certifiers_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong certifiers type
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, {}, True, 45.67, "string"]
@@ -219,8 +207,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_wrong_certifier_types_in_list_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong types in certifiers list
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid certifier types in list
         invalid_certifier_types = [
@@ -240,8 +228,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_empty_certifier_strings_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with empty certifier strings
-           When: Call list_certificates
-           Then: Raises InvalidParameterError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError
         """
         # Given - Various empty/whitespace certifier strings
         empty_certifiers = ["", "   ", "\t", "\n", " \t \n "]
@@ -255,8 +243,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_invalid_hex_certifiers_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with invalid hex certifier strings
-           When: Call list_certificates
-           Then: Raises InvalidParameterError for invalid hex or odd length
+        When: Call list_certificates
+        Then: Raises InvalidParameterError for invalid hex or odd length
         """
         # Given - Only invalid hex chars and odd length raise errors
         invalid_hex_certifiers = [
@@ -273,8 +261,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_certifier_too_long_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with certifier exceeding length limits
-           When: Call list_certificates
-           Then: Returns result (only format is validated, not length)
+        When: Call list_certificates
+        Then: Returns result (only format is validated, not length)
         """
         # Given - Certifier too long (but valid hex format)
         too_long_certifier = "a" * 200  # Much longer than valid key but valid hex
@@ -288,8 +276,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_none_types_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with None types
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given
         invalid_args = {"certifiers": [], "types": None}
@@ -300,8 +288,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_wrong_types_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong types type
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
         invalid_types = [123, {}, True, 45.67, "string"]
@@ -315,8 +303,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_wrong_type_types_in_list_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong types in types list
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid type types in list
         invalid_type_types = [
@@ -336,8 +324,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_empty_type_strings_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with empty type strings
-           When: Call list_certificates
-           Then: Raises InvalidParameterError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError
         """
         # Given - Various empty/whitespace type strings
         empty_types = ["", "   ", "\t", "\n", " \t \n "]
@@ -351,8 +339,8 @@ class TestWalletListCertificates:
 
     def test_invalid_params_invalid_base64_types_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with invalid base64 type strings
-           When: Call list_certificates
-           Then: Raises InvalidParameterError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError
         """
         # Given - Invalid base64 type strings (note: + and / are valid base64 chars)
         invalid_base64_types = [
@@ -363,7 +351,7 @@ class TestWalletListCertificates:
             "caret^here",
             "ampersand&here",
             "asterisk*here",
-            "backslash\\invalid"
+            "backslash\\invalid",
         ]
 
         for cert_type in invalid_base64_types:
@@ -375,21 +363,16 @@ class TestWalletListCertificates:
 
     def test_invalid_params_wrong_limit_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong limit type
-           When: Call list_certificates
-           Then: Raises InvalidParameterError or TypeError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError or TypeError
         """
         # Given - Test various invalid types
-        invalid_types = ["string", [], {}, True, 45.67]
 
         # Note: True is coerced to 1 in Python isinstance check
         invalid_types_for_limit = ["string", [], {}, 45.67]
 
         for invalid_limit in invalid_types_for_limit:
-            invalid_args = {
-                "certifiers": [],
-                "types": [],
-                "limit": invalid_limit
-            }
+            invalid_args = {"certifiers": [], "types": [], "limit": invalid_limit}
 
             # When/Then - InvalidParameterError is raised
             with pytest.raises(InvalidParameterError):
@@ -397,18 +380,14 @@ class TestWalletListCertificates:
 
     def test_invalid_params_wrong_offset_type_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with wrong offset type
-           When: Call list_certificates
-           Then: Raises InvalidParameterError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError
         """
         # Given - Test various invalid types (negative integers are allowed)
         invalid_types_for_offset = ["string", [], {}, 45.67]
 
         for invalid_offset in invalid_types_for_offset:
-            invalid_args = {
-                "certifiers": [],
-                "types": [],
-                "offset": invalid_offset
-            }
+            invalid_args = {"certifiers": [], "types": [], "offset": invalid_offset}
 
             # When/Then - InvalidParameterError is raised
             with pytest.raises(InvalidParameterError):
@@ -416,15 +395,11 @@ class TestWalletListCertificates:
 
     def test_invalid_params_zero_limit_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with zero limit
-           When: Call list_certificates
-           Then: Returns empty result (zero limit is allowed)
+        When: Call list_certificates
+        Then: Returns empty result (zero limit is allowed)
         """
         # Given
-        invalid_args = {
-            "certifiers": [],
-            "types": [],
-            "limit": 0
-        }
+        invalid_args = {"certifiers": [], "types": [], "limit": 0}
 
         # When - Zero limit is allowed (returns 0 items)
         result = wallet_with_storage.list_certificates(invalid_args)
@@ -434,15 +409,11 @@ class TestWalletListCertificates:
 
     def test_invalid_params_negative_limit_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with negative limit
-           When: Call list_certificates
-           Then: Raises InvalidParameterError
+        When: Call list_certificates
+        Then: Raises InvalidParameterError
         """
         # Given
-        invalid_args = {
-            "certifiers": [],
-            "types": [],
-            "limit": -1
-        }
+        invalid_args = {"certifiers": [], "types": [], "limit": -1}
 
         # When/Then
         with pytest.raises(InvalidParameterError):
@@ -450,15 +421,11 @@ class TestWalletListCertificates:
 
     def test_negative_offset_accepted(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with negative offset
-           When: Call list_certificates
-           Then: Returns result (negative offset is allowed)
+        When: Call list_certificates
+        Then: Returns result (negative offset is allowed)
         """
         # Given
-        invalid_args = {
-            "certifiers": [],
-            "types": [],
-            "offset": -1
-        }
+        invalid_args = {"certifiers": [], "types": [], "offset": -1}
 
         # When - Negative offset is allowed
         result = wallet_with_storage.list_certificates(invalid_args)
@@ -468,18 +435,14 @@ class TestWalletListCertificates:
 
     def test_invalid_params_extremely_large_limit_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with extremely large limit
-           When: Call list_certificates
-           Then: Raises InvalidParameterError for limits > 10000
+        When: Call list_certificates
+        Then: Raises InvalidParameterError for limits > 10000
         """
         # Given - Limits that exceed MAX_PAGINATION_LIMIT (10000)
         large_limits = [10001, 100000, 1000000]
 
         for limit in large_limits:
-            invalid_args = {
-                "certifiers": [],
-                "types": [],
-                "limit": limit
-            }
+            invalid_args = {"certifiers": [], "types": [], "limit": limit}
 
             # When/Then - InvalidParameterError is raised
             with pytest.raises(InvalidParameterError):
@@ -487,8 +450,8 @@ class TestWalletListCertificates:
 
     def test_valid_params_minimal_args(self, wallet_with_storage: Wallet) -> None:
         """Given: Minimal valid ListCertificatesArgs
-           When: Call list_certificates
-           Then: Returns results successfully
+        When: Call list_certificates
+        Then: Returns results successfully
         """
         # Given - Minimal required args
         minimal_args = {"certifiers": [], "types": []}
@@ -504,8 +467,8 @@ class TestWalletListCertificates:
 
     def test_valid_params_empty_filters(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with empty certifiers and types
-           When: Call list_certificates
-           Then: Returns all certificates (no filtering)
+        When: Call list_certificates
+        Then: Returns all certificates (no filtering)
         """
         # Given
         args = {"certifiers": [], "types": []}
@@ -521,8 +484,8 @@ class TestWalletListCertificates:
 
     def test_valid_params_with_pagination(self, wallet_with_storage: Wallet, list_certificates_pagination) -> None:
         """Given: ListCertificatesArgs with pagination parameters
-           When: Call list_certificates
-           Then: Returns paginated results
+        When: Call list_certificates
+        Then: Returns paginated results
         """
         # When
         result = wallet_with_storage.list_certificates(list_certificates_pagination)
@@ -536,8 +499,8 @@ class TestWalletListCertificates:
 
     def test_valid_params_case_insensitive_certifier_hex(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with mixed case hex certifier
-           When: Call list_certificates
-           Then: Handles case insensitive hex correctly
+        When: Call list_certificates
+        Then: Handles case insensitive hex correctly
         """
         # Given - Test different case variations of same certifier
         test_cases = [
@@ -559,14 +522,14 @@ class TestWalletListCertificates:
 
     def test_valid_params_large_offset_returns_empty(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with offset larger than total certificates
-           When: Call list_certificates
-           Then: Returns empty results
+        When: Call list_certificates
+        Then: Returns empty results
         """
         # Given - Use a very large offset
         args = {
             "certifiers": [],
             "types": [],
-            "offset": 10000  # Much larger than any reasonable number of certificates
+            "offset": 10000,  # Much larger than any reasonable number of certificates
         }
 
         # When
@@ -581,14 +544,14 @@ class TestWalletListCertificates:
 
     def test_valid_params_multiple_filters_combined(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with both certifier and type filters
-           When: Call list_certificates
-           Then: Returns certificates matching both filters
+        When: Call list_certificates
+        Then: Returns certificates matching both filters
         """
         # Given
         args = {
             "certifiers": ["02cf6cdf466951d8dfc9e7c9367511d0007ed6fba35ed42d425cc412fd6cfd4a17"],
             "types": ["exOl3KM0dIJ04EW5pZgbZmPag6MdJXd3/a1enmUU/BA="],
-            "limit": 10
+            "limit": 10,
         }
 
         # When
@@ -607,14 +570,11 @@ class TestWalletListCertificates:
 
     def test_valid_params_unicode_type_strings(self, wallet_with_storage: Wallet) -> None:
         """Given: ListCertificatesArgs with unicode type strings
-           When: Call list_certificates
-           Then: Raises InvalidParameterError (types must be valid base64)
+        When: Call list_certificates
+        Then: Raises InvalidParameterError (types must be valid base64)
         """
         # Given - Unicode is not valid base64
-        unicode_args = {
-            "certifiers": [],
-            "types": ["test_type_with_unicode_测试"]
-        }
+        unicode_args = {"certifiers": [], "types": ["test_type_with_unicode_测试"]}
 
         # When/Then - Unicode in type string is not valid base64
         with pytest.raises(InvalidParameterError):

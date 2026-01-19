@@ -97,13 +97,13 @@ class TestBitailsErrorHandling:
         """Test handling invalid API responses."""
         try:
             provider = Bitails(chain="main")
-            
+
             with patch("requests.get") as mock_get:
                 mock_response = Mock()
                 mock_response.status_code = 500
                 mock_response.json.side_effect = ValueError("Invalid JSON")
                 mock_get.return_value = mock_response
-                
+
                 if hasattr(provider, "get_script_history"):
                     try:
                         provider.get_script_history("script_hash")
@@ -111,4 +111,3 @@ class TestBitailsErrorHandling:
                         pass
         except TypeError:
             pass
-

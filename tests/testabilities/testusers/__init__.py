@@ -7,18 +7,17 @@ Reference: go-wallet-toolbox/pkg/internal/fixtures/testusers/test_users.go
 """
 
 from .test_users import (
-    User,
     ALICE,
-    BOB,
     ALL_USERS,
     ANYONE_IDENTITY_KEY,
+    BOB,
+    User,
 )
 
 __all__ = [
-    "User",
     "ALICE",
-    "BOB",
     "ALL_USERS",
     "ANYONE_IDENTITY_KEY",
+    "BOB",
+    "User",
 ]
-

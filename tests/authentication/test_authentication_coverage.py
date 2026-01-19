@@ -15,6 +15,7 @@ class TestAuthentication:
         """Test importing authentication module."""
         try:
             from bsv_wallet_toolbox import authentication
+
             assert authentication is not None
         except ImportError:
             pass
@@ -23,7 +24,7 @@ class TestAuthentication:
         """Test creating authentication context."""
         try:
             from bsv_wallet_toolbox.authentication import AuthContext
-            
+
             auth = AuthContext(user_id="user123")
             assert auth.user_id == "user123"
         except (ImportError, AttributeError, TypeError):
@@ -33,7 +34,7 @@ class TestAuthentication:
         """Test verifying credentials."""
         try:
             from bsv_wallet_toolbox.authentication import verify_credentials
-            
+
             result = verify_credentials("user", "password")
             assert isinstance(result, bool) or result is not None
         except (ImportError, AttributeError):
@@ -47,10 +48,10 @@ class TestAuthorization:
         """Test checking user permissions."""
         try:
             from bsv_wallet_toolbox.authentication import check_permission
-            
+
             mock_auth = Mock()
             mock_auth.user_id = "user123"
-            
+
             result = check_permission(mock_auth, "read")
             assert isinstance(result, bool) or result is not None
         except (ImportError, AttributeError, TypeError):
@@ -60,10 +61,10 @@ class TestAuthorization:
         """Test requiring specific permission."""
         try:
             from bsv_wallet_toolbox.authentication import require_permission
-            
+
             mock_auth = Mock()
             mock_auth.permissions = ["read", "write"]
-            
+
             # Should not raise if permission exists
             require_permission(mock_auth, "read")
             assert True
@@ -74,10 +75,10 @@ class TestAuthorization:
         """Test checking user role."""
         try:
             from bsv_wallet_toolbox.authentication import has_role
-            
+
             mock_auth = Mock()
             mock_auth.roles = ["admin"]
-            
+
             result = has_role(mock_auth, "admin")
             assert result is True or isinstance(result, bool)
         except (ImportError, AttributeError, TypeError):
@@ -91,8 +92,9 @@ class TestAuthenticationErrors:
         """Test handling invalid credentials."""
         try:
             from bsv_wallet_toolbox.authentication import verify_credentials
+
             from bsv_wallet_toolbox.errors import AuthenticationError
-            
+
             with pytest.raises((AuthenticationError, Exception)):
                 verify_credentials("invalid", "wrong")
         except (ImportError, AttributeError):
@@ -102,11 +104,12 @@ class TestAuthenticationErrors:
         """Test handling missing permission."""
         try:
             from bsv_wallet_toolbox.authentication import require_permission
+
             from bsv_wallet_toolbox.errors import PermissionError
-            
+
             mock_auth = Mock()
             mock_auth.permissions = []
-            
+
             with pytest.raises((PermissionError, Exception)):
                 require_permission(mock_auth, "admin")
         except (ImportError, AttributeError, TypeError):
@@ -121,6 +124,7 @@ class TestAuthContextMethods:
         """Create mock auth context."""
         try:
             from bsv_wallet_toolbox.authentication import AuthContext
+
             return AuthContext(user_id="user123")
         except (ImportError, TypeError):
             # Return a mock object if AuthContext doesn't exist
@@ -154,4 +158,3 @@ class TestAuthContextMethods:
                 assert True
         except AttributeError:
             pass
-

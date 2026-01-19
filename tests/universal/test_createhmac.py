@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -35,7 +33,7 @@ class TestUniversalVectorsCreateHmac:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("createHmac-simple")
+        args_data, _result_data = load_test_vectors("createHmac-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 
@@ -49,17 +47,17 @@ class TestUniversalVectorsCreateHmac:
         assert len(result["hmac"]) == 32  # HMAC-SHA256 produces 32 bytes
         assert isinstance(wire_output, bytes)
         assert len(wire_output) > 0
-        from bsv_wallet_toolbox.abi import serialize_request, deserialize_request, serialize_response
+        from bsv_wallet_toolbox.abi import deserialize_request, serialize_request, serialize_response
 
         # Test serialization/deserialization functions exist and work
         args = {}
         wire_request = serialize_request("createHmac", args)
         parsed_method, parsed_args = deserialize_request(wire_request)
-        
+
         assert parsed_method == "createHmac"
         assert isinstance(parsed_args, dict)
-        
-        # Test response serialization  
+
+        # Test response serialization
         result = {"test": "data"}
         wire_response = serialize_response(result)
         assert isinstance(wire_response, bytes)

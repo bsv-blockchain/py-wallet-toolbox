@@ -1,7 +1,7 @@
 """TaskSendWaiting implementation."""
 
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from ..wallet_monitor_task import WalletMonitorTask
 
@@ -62,10 +62,10 @@ class TaskSendWaiting(WalletMonitorTask):
         current_time = int(time.time() * 1000)
         filtered_reqs = []
         for req in reqs:
-            updated_at = req.get("updatedAt") 
+            updated_at = req.get("updatedAt")
             if updated_at is not None:
                 # Convert updated_at to milliseconds since epoch
-                if hasattr(updated_at, 'timestamp'):  # datetime object
+                if hasattr(updated_at, "timestamp"):  # datetime object
                     updated_at_ms = int(updated_at.timestamp() * 1000)
                 elif isinstance(updated_at, str):
                     # Assume ISO format, convert to timestamp
@@ -104,6 +104,7 @@ class TaskSendWaiting(WalletMonitorTask):
                     notify = req.get("notify", {})
                     if isinstance(notify, str):
                         import json
+
                         notify = json.loads(notify)
                     transaction_ids = notify.get("transactionIds", [])
                     for tx_id in transaction_ids:
@@ -113,15 +114,13 @@ class TaskSendWaiting(WalletMonitorTask):
                     # Call callback
                     broadcast_result = {"status": "success", "txid": txid}
                     self.monitor.call_on_broadcasted_transaction(broadcast_result)
+                # Format error message to match test expectations
+                elif isinstance(result, dict) and "message" in result:
+                    log_messages.append(f"Broadcast failed {txid}: {result['message']}")
                 else:
-                    # Format error message to match test expectations
-                    if isinstance(result, dict) and "message" in result:
-                        log_messages.append(f"Broadcast failed {txid}: {result['message']}")
-                    else:
-                        log_messages.append(f"Failed to broadcast transaction {txid}: {result}")
+                    log_messages.append(f"Failed to broadcast transaction {txid}: {result}")
 
             except Exception as e:
                 log_messages.append(f"Error broadcasting transaction {txid}: {e!s}")
 
         return "\n".join(log_messages) if log_messages else ""
-

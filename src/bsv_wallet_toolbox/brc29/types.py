@@ -20,7 +20,7 @@ PROTOCOL = Protocol(security_level=2, protocol=PROTOCOL_ID)
 # Type aliases for flexible key input handling
 # These match the Go implementation's type constraints
 CounterpartyPrivateKey = str | bytes | KeyDeriver | Any  # PrivHex | WIF | PrivateKey | KeyDeriver
-CounterpartyPublicKey = str | bytes | KeyDeriver | Any   # PubHex | KeyDeriver | PublicKey
+CounterpartyPublicKey = str | bytes | KeyDeriver | Any  # PubHex | KeyDeriver | PublicKey
 
 
 @dataclass

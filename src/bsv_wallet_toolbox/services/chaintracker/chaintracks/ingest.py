@@ -36,11 +36,7 @@ class BulkIngestor(Protocol):
     Reference: toolbox/go-wallet-toolbox/pkg/services/chaintracks/ingest/bulk_ingestor.go
     """
 
-    async def synchronize(
-        self,
-        present_height: int,
-        missing_range: HeightRange
-    ) -> list[Any]:
+    async def synchronize(self, present_height: int, missing_range: HeightRange) -> list[Any]:
         """Synchronize bulk data for missing range.
 
         Args:

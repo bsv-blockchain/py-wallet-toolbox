@@ -4,21 +4,20 @@ These tests verify the logic of individual monitor tasks in isolation,
 mocking the Monitor dependency to focus on task behavior.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 from bsv_wallet_toolbox.monitor.tasks import (
-    TaskClock,
-    TaskNewHeader,
-    TaskSendWaiting,
     TaskCheckForProofs,
-    TaskReviewStatus,
-    TaskPurge,
+    TaskClock,
     TaskFailAbandoned,
     TaskMonitorCallHistory,
+    TaskNewHeader,
+    TaskPurge,
     TaskReorg,
+    TaskReviewStatus,
+    TaskSendWaiting,
     TaskSyncWhenIdle,
     TaskUnFail,
 )
@@ -191,7 +190,9 @@ class TestTaskSendWaiting:
         result = task.run_task()
 
         assert result == ""
-        mock_monitor.storage.find_proven_tx_reqs.assert_called_once_with({"partial": {}, "status": ["unsent", "sending"]})
+        mock_monitor.storage.find_proven_tx_reqs.assert_called_once_with(
+            {"partial": {}, "status": ["unsent", "sending"]}
+        )
 
     def test_task_send_waiting_run_task_with_transactions(self) -> None:
         """Test TaskSendWaiting with unsent ProvenTxReqs."""
@@ -201,8 +202,20 @@ class TestTaskSendWaiting:
 
         # Mock ProvenTxReq data
         reqs = [
-            {"txid": "tx1", "provenTxReqId": 123, "rawTx": bytes([1, 2, 3]), "status": "unsent", "notify": '{"transactionIds": [1]}'},
-            {"txid": "tx2", "provenTxReqId": 456, "rawTx": bytes([4, 5, 6]), "status": "unsent", "notify": '{"transactionIds": [2]}'},
+            {
+                "txid": "tx1",
+                "provenTxReqId": 123,
+                "rawTx": bytes([1, 2, 3]),
+                "status": "unsent",
+                "notify": '{"transactionIds": [1]}',
+            },
+            {
+                "txid": "tx2",
+                "provenTxReqId": 456,
+                "rawTx": bytes([4, 5, 6]),
+                "status": "unsent",
+                "notify": '{"transactionIds": [2]}',
+            },
         ]
         mock_storage.find_proven_tx_reqs.return_value = reqs
         mock_services.post_beef.return_value = {"accepted": True}
@@ -227,7 +240,15 @@ class TestTaskSendWaiting:
         mock_storage = MagicMock()
         mock_services = MagicMock()
 
-        reqs = [{"txid": "tx1", "provenTxReqId": 123, "rawTx": bytes([1, 2, 3]), "status": "unsent", "notify": '{"transactionIds": [1]}'}]
+        reqs = [
+            {
+                "txid": "tx1",
+                "provenTxReqId": 123,
+                "rawTx": bytes([1, 2, 3]),
+                "status": "unsent",
+                "notify": '{"transactionIds": [1]}',
+            }
+        ]
         mock_storage.find_proven_tx_reqs.return_value = reqs
         mock_services.post_beef.return_value = {"accepted": False, "message": "Network error"}
 
@@ -389,10 +410,8 @@ class TestTaskFailAbandoned:
         """Test run_task with transaction that hasn't been abandoned yet."""
         mock_monitor = MagicMock()
         # Transaction updated 1 minute ago, abandoned threshold is 5 minutes
-        recent_time = datetime.now(timezone.utc) - timedelta(minutes=1)
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 1, "updatedAt": recent_time}
-        ]
+        recent_time = datetime.now(UTC) - timedelta(minutes=1)
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 1, "updatedAt": recent_time}]
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -405,10 +424,8 @@ class TestTaskFailAbandoned:
         """Test run_task with transaction that should be failed."""
         mock_monitor = MagicMock()
         # Transaction updated 10 minutes ago (past the 5 minute threshold)
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 123, "updatedAt": old_time}
-        ]
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 123, "updatedAt": old_time}]
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -420,13 +437,13 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_multiple_transactions(self) -> None:
         """Test run_task with multiple transactions."""
         mock_monitor = MagicMock()
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
-        recent_time = datetime.now(timezone.utc) - timedelta(minutes=1)
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
+        recent_time = datetime.now(UTC) - timedelta(minutes=1)
 
         mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 1, "updatedAt": old_time},      # Should be failed
-            {"transactionId": 2, "updatedAt": recent_time},   # Should not be failed
-            {"transactionId": 3, "updatedAt": old_time},      # Should be failed
+            {"transactionId": 1, "updatedAt": old_time},  # Should be failed
+            {"transactionId": 2, "updatedAt": recent_time},  # Should not be failed
+            {"transactionId": 3, "updatedAt": old_time},  # Should be failed
         ]
 
         task = TaskFailAbandoned(mock_monitor)
@@ -444,10 +461,8 @@ class TestTaskFailAbandoned:
         """Test run_task with string datetime format."""
         mock_monitor = MagicMock()
         # ISO format string from 10 minutes ago
-        old_time_str = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 456, "updatedAt": old_time_str}
-        ]
+        old_time_str = (datetime.now(UTC) - timedelta(minutes=10)).isoformat()
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 456, "updatedAt": old_time_str}]
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -458,9 +473,7 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_invalid_datetime_string(self) -> None:
         """Test run_task with invalid datetime string."""
         mock_monitor = MagicMock()
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 789, "updatedAt": "invalid-date"}
-        ]
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 789, "updatedAt": "invalid-date"}]
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -472,9 +485,7 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_no_updated_at(self) -> None:
         """Test run_task with transaction missing updated_at field."""
         mock_monitor = MagicMock()
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 999}  # No updated_at field
-        ]
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 999}]  # No updated_at field
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -487,10 +498,8 @@ class TestTaskFailAbandoned:
         """Test run_task with naive datetime (no timezone)."""
         mock_monitor = MagicMock()
         # Naive datetime from 10 minutes ago (representing UTC time)
-        old_time_naive = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=10)
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 111, "updatedAt": old_time_naive}
-        ]
+        old_time_naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=10)
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 111, "updatedAt": old_time_naive}]
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -501,10 +510,8 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_update_error(self) -> None:
         """Test run_task when transaction update fails."""
         mock_monitor = MagicMock()
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 222, "updatedAt": old_time}
-        ]
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 222, "updatedAt": old_time}]
         mock_monitor.storage.update_transaction_status.side_effect = Exception("DB error")
 
         task = TaskFailAbandoned(mock_monitor)
@@ -516,10 +523,8 @@ class TestTaskFailAbandoned:
     def test_task_fail_abandoned_run_task_no_transaction_id(self) -> None:
         """Test run_task with transaction missing transaction_id."""
         mock_monitor = MagicMock()
-        old_time = datetime.now(timezone.utc) - timedelta(minutes=10)
-        mock_monitor.storage.find_transactions.return_value = [
-            {"updatedAt": old_time}  # No transaction_id field
-        ]
+        old_time = datetime.now(UTC) - timedelta(minutes=10)
+        mock_monitor.storage.find_transactions.return_value = [{"updatedAt": old_time}]  # No transaction_id field
 
         task = TaskFailAbandoned(mock_monitor)
         result = task.run_task()
@@ -640,7 +645,7 @@ class TestTaskReorg:
         mock_monitor = MagicMock()
         mock_monitor.storage.find_proven_txs.return_value = [
             {"txid": "tx1", "provenTxId": 1, "blockHash": "old_hash"},
-            {"txid": "tx2", "provenTxId": 2, "blockHash": "old_hash"}
+            {"txid": "tx2", "provenTxId": 2, "blockHash": "old_hash"},
         ]
 
         # Mock successful merkle path
@@ -650,10 +655,7 @@ class TestTaskReorg:
 
         mock_header = {"merkleRoot": "root123", "hash": "new_hash"}
 
-        mock_monitor.services.get_merkle_path.return_value = {
-            "merklePath": mock_mp,
-            "header": mock_header
-        }
+        mock_monitor.services.get_merkle_path.return_value = {"merklePath": mock_mp, "header": mock_header}
 
         task = TaskReorg(mock_monitor)
         task.process_queue = [{"header": {"hash": "old_hash"}, "tries": 0}]
@@ -681,16 +683,14 @@ class TestTaskReorg:
     def test_task_reorg_run_task_same_block_hash(self) -> None:
         """Test run_task when new merkle path has same block hash."""
         mock_monitor = MagicMock()
-        mock_monitor.storage.find_proven_txs.return_value = [
-            {"txid": "tx1", "provenTxId": 1, "blockHash": "same_hash"}
-        ]
+        mock_monitor.storage.find_proven_txs.return_value = [{"txid": "tx1", "provenTxId": 1, "blockHash": "same_hash"}]
 
         mock_mp = MagicMock()
         mock_mp.blockHeight = 100
 
         mock_monitor.services.get_merkle_path.return_value = {
             "merklePath": mock_mp,
-            "header": {"merkleRoot": "root", "hash": "same_hash"}  # Same hash
+            "header": {"merkleRoot": "root", "hash": "same_hash"},  # Same hash
         }
 
         task = TaskReorg(mock_monitor)
@@ -706,16 +706,14 @@ class TestTaskReorg:
     def test_task_reorg_run_task_max_retries_exceeded(self) -> None:
         """Test run_task when maximum retries are exceeded."""
         mock_monitor = MagicMock()
-        mock_monitor.storage.find_proven_txs.return_value = [
-            {"txid": "tx1", "provenTxId": 1, "blockHash": "same_hash"}
-        ]
+        mock_monitor.storage.find_proven_txs.return_value = [{"txid": "tx1", "provenTxId": 1, "blockHash": "same_hash"}]
 
         mock_mp = MagicMock()
         mock_mp.blockHeight = 100
 
         mock_monitor.services.get_merkle_path.return_value = {
             "merklePath": mock_mp,
-            "header": {"merkleRoot": "root", "hash": "same_hash"}
+            "header": {"merkleRoot": "root", "hash": "same_hash"},
         }
 
         task = TaskReorg(mock_monitor, max_retries=2)
@@ -850,18 +848,10 @@ class TestTaskUnFail:
         """Test run_task with successful unfail operation."""
         mock_monitor = MagicMock()
         mock_monitor.storage.find_proven_tx_reqs.return_value = [
-            {
-                "provenTxReqId": 123,
-                "txid": "tx123",
-                "rawTx": b"deadbeef"
-            }
+            {"provenTxReqId": 123, "txid": "tx123", "rawTx": b"deadbeef"}
         ]
-        mock_monitor.services.get_merkle_path_for_transaction.return_value = {
-            "merklePath": {"some": "path"}
-        }
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 456, "userId": 789}
-        ]
+        mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": {"some": "path"}}
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 456, "userId": 789}]
 
         task = TaskUnFail(mock_monitor)
         result = task.run_task()
@@ -878,12 +868,8 @@ class TestTaskUnFail:
     def test_task_un_fail_run_task_proof_not_found(self) -> None:
         """Test run_task when merkle proof is not found."""
         mock_monitor = MagicMock()
-        mock_monitor.storage.find_proven_tx_reqs.return_value = [
-            {"provenTxReqId": 456, "txid": "tx456"}
-        ]
-        mock_monitor.services.get_merkle_path_for_transaction.return_value = {
-            "merklePath": None
-        }
+        mock_monitor.storage.find_proven_tx_reqs.return_value = [{"provenTxReqId": 456, "txid": "tx456"}]
+        mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": None}
 
         task = TaskUnFail(mock_monitor)
         result = task.run_task()
@@ -895,9 +881,7 @@ class TestTaskUnFail:
     def test_task_un_fail_run_task_merkle_path_error(self) -> None:
         """Test run_task when getting merkle path fails."""
         mock_monitor = MagicMock()
-        mock_monitor.storage.find_proven_tx_reqs.return_value = [
-            {"provenTxReqId": 789, "txid": "tx789"}
-        ]
+        mock_monitor.storage.find_proven_tx_reqs.return_value = [{"provenTxReqId": 789, "txid": "tx789"}]
         mock_monitor.services.get_merkle_path_for_transaction.side_effect = Exception("Network error")
 
         task = TaskUnFail(mock_monitor)
@@ -911,14 +895,12 @@ class TestTaskUnFail:
         mock_monitor.storage.find_proven_tx_reqs.return_value = [
             {"txid": "tx1"},  # Missing req_id
             {"provenTxReqId": 2},  # Missing txid
-            {"provenTxReqId": 3, "txid": "tx3"}  # Valid
+            {"provenTxReqId": 3, "txid": "tx3"},  # Valid
         ]
-        mock_monitor.services.get_merkle_path_for_transaction.return_value = {
-            "merklePath": {"some": "path"}
-        }
+        mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": {"some": "path"}}
 
         task = TaskUnFail(mock_monitor)
-        result = task.run_task()
+        task.run_task()
 
         # Should only process the valid request
         assert mock_monitor.services.get_merkle_path_for_transaction.call_count == 1
@@ -930,9 +912,7 @@ class TestTaskUnFail:
         mock_monitor.storage.find_proven_tx_reqs.return_value = [
             {"provenTxReqId": 111, "txid": "tx111", "rawTx": b"data"}
         ]
-        mock_monitor.services.get_merkle_path_for_transaction.return_value = {
-            "merklePath": {"some": "path"}
-        }
+        mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": {"some": "path"}}
         mock_monitor.storage.find_transactions.return_value = []  # Not found
 
         task = TaskUnFail(mock_monitor)
@@ -948,12 +928,8 @@ class TestTaskUnFail:
         mock_monitor.storage.find_proven_tx_reqs.return_value = [
             {"provenTxReqId": 222, "txid": "tx222", "rawTx": b"data"}
         ]
-        mock_monitor.services.get_merkle_path_for_transaction.return_value = {
-            "merklePath": {"some": "path"}
-        }
-        mock_monitor.storage.find_transactions.return_value = [
-            {"transactionId": 333, "userId": 444}
-        ]
+        mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": {"some": "path"}}
+        mock_monitor.storage.find_transactions.return_value = [{"transactionId": 333, "userId": 444}]
         mock_monitor.storage.update_transaction.side_effect = Exception("DB error")
 
         task = TaskUnFail(mock_monitor)
@@ -969,15 +945,10 @@ class TestTaskUnFail:
         # Create 150 requests (more than the limit of 100)
         requests = []
         for i in range(150):
-            requests.append({
-                "provenTxReqId": i + 1,
-                "txid": f"tx{i+1}"
-            })
+            requests.append({"provenTxReqId": i + 1, "txid": f"tx{i+1}"})
 
         mock_monitor.storage.find_proven_tx_reqs.return_value = requests
-        mock_monitor.services.get_merkle_path_for_transaction.return_value = {
-            "merklePath": {"some": "path"}
-        }
+        mock_monitor.services.get_merkle_path_for_transaction.return_value = {"merklePath": {"some": "path"}}
 
         task = TaskUnFail(mock_monitor)
         result = task.run_task()
@@ -1060,15 +1031,12 @@ class TestTaskCheckNoSends:
         """Test TaskCheckNoSends run_task when nosend reqs exist."""
         mock_monitor = MagicMock()
         mock_monitor.services.find_chain_tip_header.return_value = {"height": 1000}
-        mock_monitor.storage.find_proven_tx_reqs.return_value = [
-            {"id": 1, "txid": "tx1"},
-            {"id": 2, "txid": "tx2"}
-        ]
+        mock_monitor.storage.find_proven_tx_reqs.return_value = [{"id": 1, "txid": "tx1"}, {"id": 2, "txid": "tx2"}]
 
         task = TaskCheckNoSends(mock_monitor)
 
         # Mock the inherited _process_req method
-        with patch.object(task, '_process_req') as mock_process_req:
+        with patch.object(task, "_process_req") as mock_process_req:
             result = task.run_task()
 
             # Should process the reqs
@@ -1101,9 +1069,9 @@ class TestTaskCheckNoSends:
         task = TaskCheckNoSends(mock_monitor)
 
         # Should have inherited methods from parent
-        assert hasattr(task, 'trigger')
-        assert hasattr(task, '_process_req')
-        assert hasattr(task, 'run_task')
+        assert hasattr(task, "trigger")
+        assert hasattr(task, "_process_req")
+        assert hasattr(task, "run_task")
 
         # But should have its own name
         assert task.name == "CheckNoSends"

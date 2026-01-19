@@ -6,13 +6,13 @@ Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
 """
 
 import asyncio
+
 import pytest
 from bsv.keys import PrivateKey
 from bsv.wallet import KeyDeriver
 
 try:
     from bsv_wallet_toolbox.local_kv_store import LocalKVStore
-
     from bsv_wallet_toolbox.wallet import Wallet
 
     IMPORTS_AVAILABLE = True
@@ -22,12 +22,14 @@ except ImportError:
 root_key = PrivateKey(bytes.fromhex("6a2991c9de20e38b31d7ea147bf55f5039e4bbc073160f5e0d541d1f17e321b8"))
 key_deriver = KeyDeriver(root_key)
 
+
 class TestLocalKVStore:
     """Test suite for LocalKVStore.
 
     Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
                 describe('LocalKVStore tests')
     """
+
     @pytest.mark.asyncio
     async def test_get_non_existent(self) -> None:
         """Given: LocalKVStore with empty storage
@@ -37,7 +39,7 @@ class TestLocalKVStore:
         Reference: wallet-toolbox/test/bsv-ts-sdk/LocalKVStore.test.ts
                    test('0 get non-existent')
         """
-        
+
         wallet = Wallet(chain="test", key_deriver=key_deriver)
         context = "test kv store"
         kv_store = LocalKVStore(wallet, context, False, None, True)

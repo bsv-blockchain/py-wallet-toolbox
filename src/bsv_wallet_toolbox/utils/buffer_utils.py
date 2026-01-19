@@ -57,11 +57,11 @@ def as_string(
     # Default return encoding to input encoding
     if return_enc is None:
         return_enc = enc
-    
+
     # If already a string and encodings match, return as-is
     if isinstance(value, str) and enc == return_enc:
         return value
-    
+
     # Convert string to bytes using input encoding
     if isinstance(value, str):
         if enc == "hex":
@@ -73,11 +73,11 @@ def as_string(
         else:
             msg = f"Unsupported input encoding: {enc}"
             raise ValueError(msg)
-    
+
     # Convert list to bytes
     if isinstance(value, list):
         value = bytes(value)
-    
+
     # Now value is bytes
     if not isinstance(value, bytes):
         raise TypeError(f"Cannot convert {type(value)} to string")

@@ -3,7 +3,7 @@
 Reference: wallet-toolbox/test/wallet/action/createAction.test.ts
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -14,66 +14,70 @@ from bsv_wallet_toolbox.errors import InvalidParameterError
 @pytest.fixture
 def wallet_with_storage_and_funds(wallet_with_storage: Wallet) -> Wallet:
     """Create a wallet with storage and seeded UTXOs for create_action tests.
-    
+
     This fixture extends wallet_with_storage by seeding a spendable UTXO
     that can be used to fund transactions in create_action tests.
     """
     wallet = wallet_with_storage
     storage = wallet.storage
-    
+
     # Make storage available
     storage.make_available()
-    
+
     # Get user ID from wallet
     auth = wallet._make_auth()
     user_id = auth["userId"]
-    
+
     # Get or create default basket (required for allocate_funding_input)
     change_basket = storage.find_or_insert_output_basket(user_id, "default")
     basket_id = change_basket["basketId"] if isinstance(change_basket, dict) else change_basket.basket_id
-    
+
     # Seed transaction that will provide the UTXO
     source_txid = "03cca43f0f28d3edffe30354b28934bc8e881e94ecfa68de2cf899a0a647d37c"
-    tx_id = storage.insert_transaction({
-        "userId": user_id,
-        "txid": source_txid,
-        "status": "completed",
-        "reference": "test-seed-tx",
-        "isOutgoing": False,
-        "satoshis": 50000,  # Sufficient to fund outputs + fees for createAction tests
-        "description": "Seeded UTXO for testing",
-        "version": 1,
-        "lockTime": 0,
-        "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
-    
+    tx_id = storage.insert_transaction(
+        {
+            "userId": user_id,
+            "txid": source_txid,
+            "status": "completed",
+            "reference": "test-seed-tx",
+            "isOutgoing": False,
+            "satoshis": 50000,  # Sufficient to fund outputs + fees for createAction tests
+            "description": "Seeded UTXO for testing",
+            "version": 1,
+            "lockTime": 0,
+            "rawTx": bytes([1, 0, 0, 0, 1] + [0] * 100),  # Minimal valid transaction bytes
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
+        }
+    )
+
     # Seed spendable UTXO (output at vout 0)
     # Use a simple P2PKH locking script (OP_DUP OP_HASH160 <pubkey_hash> OP_EQUALVERIFY OP_CHECKSIG)
     pub_key = wallet.key_deriver._root_private_key.public_key()
     pub_key_hash = pub_key.hash160()
     # P2PKH: 76 a9 14 <20 bytes pubkey hash> 88 ac
-    locking_script = bytes([0x76, 0xa9, 0x14]) + pub_key_hash + bytes([0x88, 0xac])
-    
-    storage.insert_output({
-        "transactionId": tx_id,
-        "userId": user_id,
-        "basketId": basket_id,  # "default" basket - required for allocate_funding_input
-        "spendable": True,
-        "change": True,  # Change outputs are spendable
-        "vout": 0,
-        "satoshis": 50000,  # Sufficient to fund outputs + fees for createAction tests
-        "providedBy": "storage",  # Must be "storage" to match working examples
-        "purpose": "change",
-        "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
-        "txid": source_txid,
-        "lockingScript": locking_script,
-        "spentBy": None,  # Explicitly set to None to ensure it's allocatable
-        "createdAt": datetime.now(timezone.utc),
-        "updatedAt": datetime.now(timezone.utc),
-    })
-    
+    locking_script = bytes([0x76, 0xA9, 0x14]) + pub_key_hash + bytes([0x88, 0xAC])
+
+    storage.insert_output(
+        {
+            "transactionId": tx_id,
+            "userId": user_id,
+            "basketId": basket_id,  # "default" basket - required for allocate_funding_input
+            "spendable": True,
+            "change": True,  # Change outputs are spendable
+            "vout": 0,
+            "satoshis": 50000,  # Sufficient to fund outputs + fees for createAction tests
+            "providedBy": "storage",  # Must be "storage" to match working examples
+            "purpose": "change",
+            "type": "P2PKH",  # Must be "P2PKH" for signer to process it correctly
+            "txid": source_txid,
+            "lockingScript": locking_script,
+            "spentBy": None,  # Explicitly set to None to ensure it's allocatable
+            "createdAt": datetime.now(UTC),
+            "updatedAt": datetime.now(UTC),
+        }
+    )
+
     return wallet
 
 
@@ -86,9 +90,9 @@ def valid_create_action_args():
             {
                 "satoshis": 42,
                 "lockingScript": "76a914" + "00" * 20 + "88ac",  # P2PKH script
-                "outputDescription": "test output"
+                "outputDescription": "test output",
             }
-        ]
+        ],
     }
 
 
@@ -98,13 +102,9 @@ def create_action_args_no_send():
     return {
         "description": "Test no send",
         "outputs": [
-            {
-                "satoshis": 45,
-                "lockingScript": "76a914" + "11" * 20 + "88ac",
-                "outputDescription": "no send output"
-            }
+            {"satoshis": 45, "lockingScript": "76a914" + "11" * 20 + "88ac", "outputDescription": "no send output"}
         ],
-        "options": {"randomizeOutputs": False, "signAndProcess": True, "noSend": True}
+        "options": {"randomizeOutputs": False, "signAndProcess": True, "noSend": True},
     }
 
 
@@ -114,13 +114,9 @@ def create_action_args_signable():
     return {
         "description": "Test signable",
         "outputs": [
-            {
-                "satoshis": 100,
-                "lockingScript": "76a914" + "22" * 20 + "88ac",
-                "outputDescription": "signable output"
-            }
+            {"satoshis": 100, "lockingScript": "76a914" + "22" * 20 + "88ac", "outputDescription": "signable output"}
         ],
-        "options": {"randomizeOutputs": False, "signAndProcess": False, "noSend": True}
+        "options": {"randomizeOutputs": False, "signAndProcess": False, "noSend": True},
     }
 
 
@@ -302,13 +298,15 @@ class TestWalletCreateAction:
 
     def test_invalid_params_negative_satoshis(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with negative satoshis
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {
             "description": "negative sats",
-            "outputs": [{"satoshis": -1, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "negative"}],
+            "outputs": [
+                {"satoshis": -1, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "negative"}
+            ],
         }
 
         # When/Then
@@ -317,8 +315,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_zero_satoshis(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with zero satoshis
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {
@@ -332,8 +330,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_empty_outputs(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with empty outputs array
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {"description": "no outputs", "outputs": []}
@@ -344,8 +342,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_none_outputs(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with None outputs
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {"description": "none outputs", "outputs": None}
@@ -356,8 +354,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_missing_satoshis(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with missing satoshis in output
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {
@@ -371,8 +369,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_missing_locking_script(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with missing lockingScript in output
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {
@@ -386,13 +384,15 @@ class TestWalletCreateAction:
 
     def test_invalid_params_invalid_hex_locking_script(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with invalid hex characters in lockingScript
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given
         invalid_args = {
             "description": "invalid hex",
-            "outputs": [{"satoshis": 42, "lockingScript": "zzzz" + "00" * 18 + "88ac", "outputDescription": "invalid hex"}],
+            "outputs": [
+                {"satoshis": 42, "lockingScript": "zzzz" + "00" * 18 + "88ac", "outputDescription": "invalid hex"}
+            ],
         }
 
         # When/Then
@@ -401,14 +401,20 @@ class TestWalletCreateAction:
 
     def test_invalid_params_extremely_large_satoshis(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with extremely large satoshis (> 21M BTC)
-           When: Call create_action
-           Then: Raises InvalidParameterError
+        When: Call create_action
+        Then: Raises InvalidParameterError
         """
         # Given - 22 BTC in satoshis (more than max supply)
         large_amount = 22 * 100_000_000 * 100_000_000  # 2.2 quadrillion satoshis
         invalid_args = {
             "description": "too large",
-            "outputs": [{"satoshis": large_amount, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "too large"}],
+            "outputs": [
+                {
+                    "satoshis": large_amount,
+                    "lockingScript": "76a914" + "00" * 20 + "88ac",
+                    "outputDescription": "too large",
+                }
+            ],
         }
 
         # When/Then
@@ -417,14 +423,16 @@ class TestWalletCreateAction:
 
     def test_valid_params_minimal_satoshis(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with minimal valid satoshis (dust threshold)
-           When: Call create_action
-           Then: Creates transaction successfully
+        When: Call create_action
+        Then: Creates transaction successfully
         """
         # Given - Using 1 satoshi (below dust but might still work for testing)
         minimal_args = {
             "description": "minimal",
-            "outputs": [{"satoshis": 1, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "minimal"}],
-            "options": {"noSend": True, "signAndProcess": True}
+            "outputs": [
+                {"satoshis": 1, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "minimal"}
+            ],
+            "options": {"noSend": True, "signAndProcess": True},
         }
 
         # When
@@ -437,8 +445,8 @@ class TestWalletCreateAction:
 
     def test_valid_params_multiple_outputs(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with multiple outputs
-           When: Call create_action
-           Then: Creates transaction with multiple outputs
+        When: Call create_action
+        Then: Creates transaction with multiple outputs
         """
         # Given
         multi_output_args = {
@@ -448,7 +456,7 @@ class TestWalletCreateAction:
                 {"satoshis": 200, "lockingScript": "76a914" + "22" * 20 + "88ac", "outputDescription": "output2"},
                 {"satoshis": 300, "lockingScript": "76a914" + "33" * 20 + "88ac", "outputDescription": "output3"},
             ],
-            "options": {"noSend": True, "signAndProcess": True}
+            "options": {"noSend": True, "signAndProcess": True},
         }
 
         # When
@@ -460,8 +468,8 @@ class TestWalletCreateAction:
 
     def test_valid_params_with_options(self, wallet_with_storage: Wallet, valid_create_action_args) -> None:
         """Given: CreateActionArgs with various options
-           When: Call create_action
-           Then: Respects option settings
+        When: Call create_action
+        Then: Respects option settings
         """
         # Given
         args_with_options = valid_create_action_args.copy()
@@ -469,7 +477,7 @@ class TestWalletCreateAction:
             "randomizeOutputs": False,
             "trustSelf": False,
             "noSend": True,
-            "signAndProcess": True
+            "signAndProcess": True,
         }
 
         # When
@@ -482,8 +490,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_empty_description_edge_cases(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with various empty/whitespace descriptions
-           When: Call create_action
-           Then: Raises InvalidParameterError for all cases
+        When: Call create_action
+        Then: Raises InvalidParameterError for all cases
         """
         # Given - Various empty/whitespace descriptions
         empty_descriptions = ["", "   ", "\t", "\n", " \t \n "]
@@ -491,7 +499,9 @@ class TestWalletCreateAction:
         for desc in empty_descriptions:
             invalid_args = {
                 "description": desc,
-                "outputs": [{"satoshis": 42, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "test"}],
+                "outputs": [
+                    {"satoshis": 42, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "test"}
+                ],
             }
 
             # When/Then
@@ -500,8 +510,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_locking_script_edge_cases(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with various invalid locking scripts
-           When: Call create_action
-           Then: Raises InvalidParameterError for all cases
+        When: Call create_action
+        Then: Raises InvalidParameterError for all cases
         """
         # Given - Various invalid locking scripts
         invalid_scripts = [
@@ -526,14 +536,16 @@ class TestWalletCreateAction:
 
     def test_valid_params_unicode_description(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with unicode description
-           When: Call create_action
-           Then: Handles unicode correctly
+        When: Call create_action
+        Then: Handles unicode correctly
         """
         # Given
         unicode_args = {
             "description": "Test transaction with unicode: 你好世界 🌍",
-            "outputs": [{"satoshis": 42, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "unicode test"}],
-            "options": {"noSend": True}
+            "outputs": [
+                {"satoshis": 42, "lockingScript": "76a914" + "00" * 20 + "88ac", "outputDescription": "unicode test"}
+            ],
+            "options": {"noSend": True},
         }
 
         # When
@@ -544,8 +556,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_none_description_raises_error(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with None description
-           When: Call create_action
-           Then: Raises TypeError
+        When: Call create_action
+        Then: Raises TypeError
         """
         # Given
         invalid_args = {
@@ -559,8 +571,8 @@ class TestWalletCreateAction:
 
     def test_invalid_params_invalid_output_format(self, wallet_with_storage: Wallet) -> None:
         """Given: CreateActionArgs with invalid output format (not a dict)
-           When: Call create_action
-           Then: Raises appropriate error
+        When: Call create_action
+        Then: Raises appropriate error
         """
         # Given
         invalid_args = {

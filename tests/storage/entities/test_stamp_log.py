@@ -152,8 +152,8 @@ class TeststampLog:
 
     def test_formats_empty_log_string(self) -> None:
         """Given: Empty string log
-           When: Call stamp_log_format
-           Then: Returns empty string
+        When: Call stamp_log_format
+        Then: Returns empty string
         """
         # Given
         log = ""
@@ -166,8 +166,8 @@ class TeststampLog:
 
     def test_formats_log_with_no_spaced_lines(self) -> None:
         """Given: Log string with lines that have no spaces (no timestamps)
-           When: Call stamp_log_format
-           Then: Returns empty string
+        When: Call stamp_log_format
+        Then: Returns empty string
         """
         # Given - log with lines that have no spaces, so they are skipped
         log = "Event1\nEvent2\nEvent3"

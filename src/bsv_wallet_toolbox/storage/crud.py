@@ -9,15 +9,15 @@ Reference: go-wallet-toolbox/pkg/storage/crud/
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, TypeVar
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any, Generic, TypeVar
 
 from .provider import StorageProvider
 
-
 # Generic types for fluent interface
-T = TypeVar('T')
-ParentT = TypeVar('ParentT')
+T = TypeVar("T")
+ParentT = TypeVar("ParentT")
 
 
 class Condition(Generic[T, ParentT], ABC):
@@ -59,30 +59,35 @@ class StringCondition(Condition[str, ParentT]):
     def equals(self, value: str) -> ParentT:
         """Exact string match."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="equals", value=value))
         return self.parent
 
     def not_equals(self, value: str) -> ParentT:
         """String not equal."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_equals", value=value))
         return self.parent
 
     def in_(self, values: list[str]) -> ParentT:
         """String in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="in", value=values))
         return self.parent
 
     def not_in(self, values: list[str]) -> ParentT:
         """String not in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_in", value=values))
         return self.parent
 
     def like(self, pattern: str) -> ParentT:
         """String pattern match."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="like", value=pattern))
         return self.parent
 
@@ -93,24 +98,28 @@ class NumericCondition(Condition[int, ParentT]):
     def equals(self, value: int) -> ParentT:
         """Exact numeric match."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="equals", value=value))
         return self.parent
 
     def not_equals(self, value: int) -> ParentT:
         """Numeric not equal."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_equals", value=value))
         return self.parent
 
     def in_(self, values: list[int]) -> ParentT:
         """Numeric in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="in", value=values))
         return self.parent
 
     def not_in(self, values: list[int]) -> ParentT:
         """Numeric not in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_in", value=values))
         return self.parent
 
@@ -125,24 +134,28 @@ class BoolCondition(Condition[bool, ParentT]):
     def equals(self, value: bool) -> ParentT:
         """Exact boolean match."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="equals", value=value))
         return self.parent
 
     def not_equals(self, value: bool) -> ParentT:
         """Boolean not equal."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_equals", value=value))
         return self.parent
 
     def in_(self, values: list[bool]) -> ParentT:
         """Boolean in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="in", value=values))
         return self.parent
 
     def not_in(self, values: list[bool]) -> ParentT:
         """Boolean not in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_in", value=values))
         return self.parent
 
@@ -157,24 +170,28 @@ class TimeCondition(Condition[datetime, ParentT]):
     def equals(self, value: datetime) -> ParentT:
         """Exact time match."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="equals", value=value))
         return self.parent
 
     def not_equals(self, value: datetime) -> ParentT:
         """Time not equal."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_equals", value=value))
         return self.parent
 
     def in_(self, values: list[datetime]) -> ParentT:
         """Time in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="in", value=values))
         return self.parent
 
     def not_in(self, values: list[datetime]) -> ParentT:
         """Time not in list."""
         from .specifications import Comparable
+
         self.setter(Comparable(operator="not_in", value=values))
         return self.parent
 
@@ -192,7 +209,7 @@ class EntityAccessor(ABC):
         self.paging: dict[str, Any] | None = None
 
     @abstractmethod
-    def read(self) -> 'EntityReader':
+    def read(self) -> EntityReader:
         """Return a reader for building queries."""
         ...
 
@@ -221,7 +238,7 @@ class EntityReader(ABC):
         ...
 
     @abstractmethod
-    def paged(self, limit: int, offset: int, desc: bool = False) -> 'EntityReader':
+    def paged(self, limit: int, offset: int, desc: bool = False) -> EntityReader:
         """Apply pagination to query."""
         ...
 
@@ -249,13 +266,15 @@ class CommissionReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[CommissionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
+
         return NumericCondition(self, setter)
 
     def amount(self) -> NumericCondition[CommissionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["amount"] = spec
+
         return NumericCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> CommissionReader:
@@ -295,18 +314,21 @@ class TransactionReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[TransactionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
+
         return NumericCondition(self, setter)
 
     def txid(self) -> StringCondition[TransactionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["txid"] = spec
+
         return StringCondition(self, setter)
 
     def status(self) -> StringCondition[TransactionReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["status"] = spec
+
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> TransactionReader:
@@ -346,13 +368,15 @@ class UserReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def identity_key(self) -> StringCondition[UserReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["identityKey"] = spec
+
         return StringCondition(self, setter)
 
     def active_storage(self) -> StringCondition[UserReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["activeStorage"] = spec
+
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> UserReader:
@@ -392,13 +416,15 @@ class OutputBasketReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[OutputBasketReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
+
         return NumericCondition(self, setter)
 
     def name(self) -> StringCondition[OutputBasketReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["name"] = spec
+
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> OutputBasketReader:
@@ -438,18 +464,21 @@ class OutputReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def user_id(self) -> NumericCondition[OutputReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["userId"] = spec
+
         return NumericCondition(self, setter)
 
     def transaction_id(self) -> NumericCondition[OutputReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["transactionId"] = spec
+
         return NumericCondition(self, setter)
 
     def spendable(self) -> BoolCondition[OutputReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["spendable"] = spec
+
         return BoolCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> OutputReader:
@@ -489,13 +518,15 @@ class TxNoteReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def transaction_id(self) -> NumericCondition[TxNoteReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["transactionId"] = spec
+
         return NumericCondition(self, setter)
 
     def note(self) -> StringCondition[TxNoteReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["note"] = spec
+
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> TxNoteReader:
@@ -537,8 +568,9 @@ class KnownTxReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def txid(self) -> StringCondition[KnownTxReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["txid"] = spec
+
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> KnownTxReader:
@@ -581,8 +613,9 @@ class CertifierReader(EntityReader):
         self.paging: dict[str, Any] | None = None
 
     def certifier(self) -> StringCondition[CertifierReader]:
-        def setter(spec):
+        def setter(spec) -> None:
             self.spec["certifier"] = spec
+
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> CertifierReader:

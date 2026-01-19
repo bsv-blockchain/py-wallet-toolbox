@@ -1,12 +1,14 @@
 """Tests for CRUD entity accessors."""
 
-import pytest
 from unittest.mock import Mock
 
+import pytest
+
 from bsv_wallet_toolbox.storage.crud import (
-    CommissionAccessor, TransactionAccessor, UserAccessor,
-    OutputBasketAccessor, OutputAccessor, TxNoteAccessor,
-    KnownTxAccessor, CertifierAccessor
+    CertifierAccessor,
+    CommissionAccessor,
+    TransactionAccessor,
+    UserAccessor,
 )
 
 
@@ -79,7 +81,7 @@ class TestCertifierAccessor:
         accessor = CertifierAccessor(provider)
 
         # Should work
-        reader = accessor.read()
+        accessor.read()
 
         # Should raise NotImplementedError
         with pytest.raises(NotImplementedError):

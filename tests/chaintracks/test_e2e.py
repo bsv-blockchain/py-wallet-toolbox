@@ -9,11 +9,15 @@ environments. These tests verify the pub/sub event system functionality.
 Reference: wallet-toolbox/src/services/chaintracker/__tests__/e2e.test.ts
 """
 
-import pytest
 import asyncio
-from typing import Dict, Any
+from typing import Any
 
-from bsv_wallet_toolbox.services.chaintracker.chaintracks.core_service import ChaintracksCoreService, ChaintracksServiceConfig
+import pytest
+
+from bsv_wallet_toolbox.services.chaintracker.chaintracks.core_service import (
+    ChaintracksCoreService,
+    ChaintracksServiceConfig,
+)
 
 
 class TestChaintracksE2E:
@@ -89,20 +93,16 @@ class TestChaintracksE2E:
         service = ChaintracksCoreService(config)
         await service.make_available()
 
-        received_events: list[Dict[str, Any]] = []
+        received_events: list[dict[str, Any]] = []
 
-        def event_handler(event: Dict[str, Any]) -> None:
+        def event_handler(event: dict[str, Any]) -> None:
             received_events.append(event)
 
         # When
         send_callback, unsubscribe = service.subscribe_headers()
 
         # Send a test event
-        test_header = {
-            "hash": "test_hash",
-            "height": 100,
-            "merkleRoot": "test_root"
-        }
+        test_header = {"hash": "test_hash", "height": 100, "merkleRoot": "test_root"}
         send_callback(test_header)
 
         # Give event processing a moment
@@ -130,19 +130,16 @@ class TestChaintracksE2E:
         service = ChaintracksCoreService(config)
         await service.make_available()
 
-        received_events: list[Dict[str, Any]] = []
+        received_events: list[dict[str, Any]] = []
 
-        def event_handler(event: Dict[str, Any]) -> None:
+        def event_handler(event: dict[str, Any]) -> None:
             received_events.append(event)
 
         # When
-        send_callback, unsubscribe = service.subscribe_reorgs()
+        send_callback, _unsubscribe = service.subscribe_reorgs()
 
         # Send a test event
-        test_reorg = {
-            "oldTip": "old_hash",
-            "newTip": "new_hash"
-        }
+        test_reorg = {"oldTip": "old_hash", "newTip": "new_hash"}
         send_callback(test_reorg)
 
         # Give event processing a moment
@@ -172,7 +169,7 @@ class TestChaintracksE2E:
             "bits": 486604799,
             "nonce": 2083236893,
             "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
-            "height": 0
+            "height": 0,
         }
 
         # When

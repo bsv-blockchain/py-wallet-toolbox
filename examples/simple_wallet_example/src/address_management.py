@@ -2,6 +2,7 @@
 
 from bsv.constants import Network
 from bsv.keys import PublicKey
+
 from bsv_wallet_toolbox import Wallet
 
 
@@ -81,4 +82,3 @@ def display_wallet_info(wallet: Wallet, network: str) -> None:
         import traceback
 
         traceback.print_exc()
-

@@ -10,8 +10,6 @@ Source files:
 
 from collections.abc import Callable
 
-import pytest
-
 from bsv_wallet_toolbox import Wallet
 
 
@@ -35,7 +33,7 @@ class TestUniversalVectorsVerifySignature:
         from bsv_wallet_toolbox.abi import serialize_response
 
         # Given
-        args_data, result_data = load_test_vectors("verifySignature-simple")
+        args_data, _result_data = load_test_vectors("verifySignature-simple")
 
         wallet = Wallet(chain="main", key_deriver=test_key_deriver)
 

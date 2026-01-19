@@ -78,4 +78,3 @@ def demo_discover_by_attributes(wallet: Wallet) -> None:
 
     except Exception as err:
         print(f"❌ Discovery error: {err}")
-

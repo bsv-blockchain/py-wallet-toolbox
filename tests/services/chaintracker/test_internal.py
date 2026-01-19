@@ -4,8 +4,7 @@ This module provides comprehensive test coverage for PubSubEvents and CacheableW
 """
 
 import asyncio
-import time
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -120,9 +119,9 @@ class TestPubSubEvents:
         """Test multiple subscribe and unsubscribe operations."""
         pubsub = PubSubEvents[str]()
 
-        queue1, unsub1 = await pubsub.subscribe()
+        queue1, _unsub1 = await pubsub.subscribe()
         queue2, unsub2 = await pubsub.subscribe()
-        queue3, unsub3 = await pubsub.subscribe()
+        queue3, _unsub3 = await pubsub.subscribe()
 
         assert len(pubsub.subscribers) == 3
 
@@ -255,4 +254,3 @@ class TestCacheableWithTTL:
         assert result == data
         assert result["key"] == "value"
         assert result["count"] == 42
-

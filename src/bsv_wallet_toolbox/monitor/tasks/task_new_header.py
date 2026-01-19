@@ -2,8 +2,8 @@
 
 from typing import TYPE_CHECKING, Any
 
-from .task_check_for_proofs import TaskCheckForProofs
 from ..wallet_monitor_task import WalletMonitorTask
+from .task_check_for_proofs import TaskCheckForProofs
 
 if TYPE_CHECKING:
     from ..monitor import Monitor
@@ -49,4 +49,3 @@ class TaskNewHeader(WalletMonitorTask):
                     log += "Triggered TaskCheckForProofs\n"
 
         return log
-

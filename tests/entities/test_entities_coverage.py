@@ -13,6 +13,7 @@ class TestUserEntity:
         """Test importing User entity."""
         try:
             from bsv_wallet_toolbox.storage.entities import User
+
             assert User is not None
         except ImportError:
             pass
@@ -21,7 +22,7 @@ class TestUserEntity:
         """Test creating User instance."""
         try:
             from bsv_wallet_toolbox.storage.entities import User
-            
+
             user = User(user_id="user123", created_at=1234567890)
             assert user.user_id == "user123"
         except (ImportError, TypeError, AttributeError):
@@ -35,6 +36,7 @@ class TestOutputEntity:
         """Test importing Output entity."""
         try:
             from bsv_wallet_toolbox.storage.entities import Output
+
             assert Output is not None
         except ImportError:
             pass
@@ -43,7 +45,7 @@ class TestOutputEntity:
         """Test creating Output instance."""
         try:
             from bsv_wallet_toolbox.storage.entities import Output
-            
+
             output = Output(
                 txid="abc123",
                 vout=0,
@@ -63,6 +65,7 @@ class TestTransactionEntity:
         """Test importing Transaction entity."""
         try:
             from bsv_wallet_toolbox.storage.entities import Transaction
+
             assert Transaction is not None
         except ImportError:
             pass
@@ -71,7 +74,7 @@ class TestTransactionEntity:
         """Test creating Transaction instance."""
         try:
             from bsv_wallet_toolbox.storage.entities import Transaction
-            
+
             tx = Transaction(
                 txid="tx123",
                 raw_tx=b"raw_tx_data",
@@ -88,6 +91,7 @@ class TestCertificateEntity:
         """Test importing Certificate entity."""
         try:
             from bsv_wallet_toolbox.storage.entities import Certificate
+
             assert Certificate is not None
         except ImportError:
             pass
@@ -96,7 +100,7 @@ class TestCertificateEntity:
         """Test creating Certificate instance."""
         try:
             from bsv_wallet_toolbox.storage.entities import Certificate
-            
+
             cert = Certificate(
                 certificate_id="cert123",
                 certificate_type="identity",
@@ -113,6 +117,7 @@ class TestActionEntity:
         """Test importing Action entity."""
         try:
             from bsv_wallet_toolbox.storage.entities import Action
+
             assert Action is not None
         except ImportError:
             pass
@@ -121,7 +126,7 @@ class TestActionEntity:
         """Test creating Action instance."""
         try:
             from bsv_wallet_toolbox.storage.entities import Action
-            
+
             action = Action(
                 action_id="action123",
                 status="pending",
@@ -138,6 +143,7 @@ class TestOutputBasketEntity:
         """Test importing OutputBasket entity."""
         try:
             from bsv_wallet_toolbox.storage.entities import OutputBasket
+
             assert OutputBasket is not None
         except ImportError:
             pass
@@ -146,7 +152,7 @@ class TestOutputBasketEntity:
         """Test creating OutputBasket instance."""
         try:
             from bsv_wallet_toolbox.storage.entities import OutputBasket
-            
+
             basket = OutputBasket(
                 basket_id="basket123",
                 name="default",
@@ -163,7 +169,7 @@ class TestEntityRelationships:
         """Test User to Output relationship."""
         try:
             from bsv_wallet_toolbox.storage.entities import Output, User
-            
+
             user = User(user_id="user123", created_at=1234567890)
             output = Output(
                 txid="tx123",
@@ -172,7 +178,7 @@ class TestEntityRelationships:
                 script=b"script",
                 user_id="user123",
             )
-            
+
             assert output.user_id == user.user_id
         except (ImportError, TypeError, AttributeError):
             pass
@@ -181,7 +187,7 @@ class TestEntityRelationships:
         """Test Output to OutputBasket relationship."""
         try:
             from bsv_wallet_toolbox.storage.entities import Output, OutputBasket
-            
+
             basket = OutputBasket(basket_id="basket123", name="default")
             output = Output(
                 txid="tx123",
@@ -190,7 +196,7 @@ class TestEntityRelationships:
                 script=b"script",
                 basket_id="basket123",
             )
-            
+
             assert output.basket_id == basket.basket_id
         except (ImportError, TypeError, AttributeError):
             pass
@@ -203,7 +209,7 @@ class TestEntityValidation:
         """Test Output requires txid."""
         try:
             from bsv_wallet_toolbox.storage.entities import Output
-            
+
             # Missing required field
             with pytest.raises((TypeError, ValueError)):
                 Output(vout=0, satoshis=1000)
@@ -214,10 +220,9 @@ class TestEntityValidation:
         """Test Transaction requires txid."""
         try:
             from bsv_wallet_toolbox.storage.entities import Transaction
-            
+
             # Missing required field
             with pytest.raises((TypeError, ValueError)):
                 Transaction(raw_tx=b"data")
         except ImportError:
             pass
-

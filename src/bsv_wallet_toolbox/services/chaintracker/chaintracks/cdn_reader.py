@@ -6,13 +6,13 @@ Reference: go-wallet-toolbox/pkg/services/chaintracks/ingest/cdn_reader.go
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any
+
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from ...wallet_services import Chain
-
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class BulkHeaderFilesInfo:
     """Metadata about bulk block header files collection."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Initialize from JSON data.
 
         Args:
@@ -35,7 +35,7 @@ class BulkHeaderFilesInfo:
 class BulkHeaderFileInfo:
     """Metadata for a single bulk block header file."""
 
-    def __init__(self, data: Dict[str, Any]):
+    def __init__(self, data: dict[str, Any]):
         """Initialize from JSON data.
 
         Args:
@@ -56,11 +56,9 @@ class BulkHeaderFileInfo:
     def bulk_header_minimum_info(self) -> Any:
         """Get the minimum info for bulk operations."""
         from .bulk_ingestor_interface import BulkHeaderMinimumInfo
+
         return BulkHeaderMinimumInfo(
-            first_height=self.first_height,
-            count=self.count,
-            file_name=self.file_name,
-            source_url=self.source_url
+            first_height=self.first_height, count=self.count, file_name=self.file_name, source_url=self.source_url
         )
 
 
@@ -83,22 +81,16 @@ class CDNReader:
         # Setup requests session with retry strategy
         self.session = requests.Session()
 
-        retry_strategy = Retry(
-            total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            backoff_factor=1
-        )
+        retry_strategy = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], backoff_factor=1)
 
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
         # Set headers
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "py-wallet-toolbox"
-        })
+        self.session.headers.update(
+            {"Accept": "application/json", "Content-Type": "application/json", "User-Agent": "py-wallet-toolbox"}
+        )
 
     def fetch_bulk_header_files_info(self, chain: Chain) -> BulkHeaderFilesInfo:
         """Fetch metadata about available bulk header files.

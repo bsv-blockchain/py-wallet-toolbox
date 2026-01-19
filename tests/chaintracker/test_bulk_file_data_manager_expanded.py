@@ -4,7 +4,6 @@ This module provides comprehensive test coverage for the BulkFileDataManager
 and related utility classes.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from bsv_wallet_toolbox.services.chaintracker.chaintracks.util.bulk_file_data_manager import (
@@ -12,7 +11,6 @@ from bsv_wallet_toolbox.services.chaintracker.chaintracks.util.bulk_file_data_ma
     BulkFileDataManager,
     BulkFileDataManagerOptions,
 )
-from bsv_wallet_toolbox.services.wallet_services import Chain
 
 
 class TestBulkFileData:
@@ -47,10 +45,7 @@ class TestBulkFileDataManagerOptions:
     def test_init(self) -> None:
         """Test BulkFileDataManagerOptions initialization."""
         options = BulkFileDataManagerOptions(
-            chain="main",
-            from_known_source_url="https://cdn.example.com",
-            max_per_file=50000,
-            max_retained=3
+            chain="main", from_known_source_url="https://cdn.example.com", max_per_file=50000, max_retained=3
         )
 
         assert options.from_known_source_url == "https://cdn.example.com"
@@ -110,15 +105,11 @@ class TestBulkFileDataManager:
         assert manager.chain == "main"
         assert manager.max_per_file == 100000
         assert manager.max_retained == 2
-        assert hasattr(manager, 'bfds')
+        assert hasattr(manager, "bfds")
 
     def test_init_with_custom_options(self) -> None:
         """Test initialization with custom options."""
-        options = BulkFileDataManagerOptions(
-            chain="main",
-            max_per_file=50000,
-            max_retained=1
-        )
+        options = BulkFileDataManagerOptions(chain="main", max_per_file=50000, max_retained=1)
         manager = BulkFileDataManager(options)
 
         assert manager.chain == "main"
@@ -141,7 +132,7 @@ class TestBulkFileDataManager:
         assert manager.bfds[0].min_height == 0
         # Files should be consecutive
         for i in range(1, len(manager.bfds)):
-            prev_max = manager.bfds[i-1].max_height
+            prev_max = manager.bfds[i - 1].max_height
             curr_min = manager.bfds[i].min_height
             assert curr_min == prev_max + 1
 
@@ -149,10 +140,7 @@ class TestBulkFileDataManager:
     async def test_get_bulk_files(self, manager: BulkFileDataManager) -> None:
         """Test get_bulk_files method."""
         # Mock some bulk files
-        manager.bfds = [
-            BulkFileData(0, 0, 1000),
-            BulkFileData(1, 1000, 2000)
-        ]
+        manager.bfds = [BulkFileData(0, 0, 1000), BulkFileData(1, 1000, 2000)]
 
         result = await manager.get_bulk_files()
 
@@ -174,11 +162,7 @@ class TestBulkFileDataManager:
     @pytest.mark.asyncio
     async def test_get_height_range_with_files(self, manager: BulkFileDataManager) -> None:
         """Test get_height_range with files."""
-        manager.bfds = [
-            BulkFileData(0, 0, 1000),
-            BulkFileData(1, 1000, 2000),
-            BulkFileData(2, 2000, 2500)
-        ]
+        manager.bfds = [BulkFileData(0, 0, 1000), BulkFileData(1, 1000, 2000), BulkFileData(2, 2000, 2500)]
 
         result = await manager.get_height_range()
 
@@ -188,10 +172,7 @@ class TestBulkFileDataManager:
     @pytest.mark.asyncio
     async def test_get_height_range_gaps(self, manager: BulkFileDataManager) -> None:
         """Test get_height_range with gaps in file coverage."""
-        manager.bfds = [
-            BulkFileData(0, 0, 500),
-            BulkFileData(2, 1000, 1500)  # Gap between 500-1000
-        ]
+        manager.bfds = [BulkFileData(0, 0, 500), BulkFileData(2, 1000, 1500)]  # Gap between 500-1000
 
         result = await manager.get_height_range()
 

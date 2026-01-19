@@ -1,7 +1,7 @@
 """TaskReviewStatus implementation."""
 
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from ..wallet_monitor_task import WalletMonitorTask
 
@@ -44,7 +44,7 @@ class TaskReviewStatus(WalletMonitorTask):
     def run_task(self) -> str:
         """Review status."""
         log = ""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         aged_limit = now - timedelta(milliseconds=self.aged_msecs)
 
         try:
@@ -56,4 +56,3 @@ class TaskReviewStatus(WalletMonitorTask):
             log += f"Error running reviewStatus: {e!s}"
 
         return log
-

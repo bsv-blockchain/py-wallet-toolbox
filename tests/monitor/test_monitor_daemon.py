@@ -3,8 +3,6 @@
 This module provides comprehensive test coverage for the MonitorDaemon class.
 """
 
-import threading
-import time
 from unittest.mock import Mock, patch
 
 import pytest
@@ -77,7 +75,7 @@ class TestMonitorDaemon:
         assert daemon._running is False
         assert daemon._thread is None
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_loop_calls_monitor_run_once(self, mock_sleep: Mock, daemon: MonitorDaemon) -> None:
         """Test that the loop calls monitor.run_once()."""
         daemon._running = True
@@ -96,13 +94,14 @@ class TestMonitorDaemon:
 
         daemon.monitor.run_once.assert_called()
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_loop_handles_exceptions(self, mock_sleep: Mock, daemon: MonitorDaemon) -> None:
         """Test that the loop handles exceptions gracefully."""
         daemon._running = True
 
         # Make run_once raise an exception and then stop the loop
         call_count = 0
+
         def side_effect():
             nonlocal call_count
             call_count += 1
@@ -113,7 +112,7 @@ class TestMonitorDaemon:
 
         daemon.monitor.run_once.side_effect = side_effect
 
-        with patch('bsv_wallet_toolbox.monitor.monitor_daemon.logger') as mock_logger:
+        with patch("bsv_wallet_toolbox.monitor.monitor_daemon.logger") as mock_logger:
             daemon._loop()
 
             # Should have logged the error
@@ -123,7 +122,7 @@ class TestMonitorDaemon:
             assert isinstance(args[1], ValueError)
             assert str(args[1]) == "Test error"
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_loop_respects_running_flag(self, mock_sleep: Mock, daemon: MonitorDaemon) -> None:
         """Test that the loop respects the running flag."""
         daemon._running = False
@@ -134,7 +133,7 @@ class TestMonitorDaemon:
         # run_once should not be called
         daemon.monitor.run_once.assert_not_called()
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_loop_wait_timing(self, mock_sleep: Mock, daemon: MonitorDaemon) -> None:
         """Test that the loop waits for the correct amount of time."""
         daemon._running = True
@@ -142,6 +141,7 @@ class TestMonitorDaemon:
 
         # Count calls to control when to stop
         call_count = 0
+
         def side_effect():
             nonlocal call_count
             call_count += 1
@@ -170,7 +170,7 @@ class TestMonitorDaemon:
         # Thread should eventually stop (may take a moment)
         thread.join(timeout=2.0)
 
-    @patch('threading.Thread.join')
+    @patch("threading.Thread.join")
     def test_stop_handles_join_timeout(self, mock_join: Mock, daemon: MonitorDaemon) -> None:
         """Test that stop handles thread join timeout gracefully."""
         daemon.start()
