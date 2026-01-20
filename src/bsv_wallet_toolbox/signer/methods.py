@@ -497,7 +497,7 @@ def complete_signed_transaction(prior: PendingSignAction, spends: dict[int, Any]
                     from bsv.keys import PublicKey as PubKey
 
                     locker_pub_key = PubKey(locker_pub) if isinstance(locker_pub, str) else locker_pub
-                    counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=locker_pub_key)
+                    counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty_key=locker_pub_key)
                     logger.debug(f"  Using CounterpartyType.OTHER with identity key: {locker_pub_key.to_hex()[:30]}...")
                 else:
                     counterparty = Counterparty(type=CounterpartyType.SELF)
@@ -1443,7 +1443,7 @@ def _setup_wallet_payment_for_output(
             sender_pub_key = (
                 PubKey(sender_identity_key) if isinstance(sender_identity_key, str) else sender_identity_key
             )
-            counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=sender_pub_key)
+            counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty_key=sender_pub_key)
         else:
             counterparty = Counterparty(type=CounterpartyType.SELF)
 

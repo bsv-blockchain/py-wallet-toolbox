@@ -114,7 +114,7 @@ def address_for_counterparty(
     try:
         from bsv.wallet import Counterparty, CounterpartyType
 
-        counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty=recipient_identity_key)
+        counterparty = Counterparty(type=CounterpartyType.OTHER, counterparty_key=recipient_identity_key)
 
         derived_pub_key = sender_key_deriver.derive_public_key(
             protocol=PROTOCOL, key_id=str(key_id), counterparty=counterparty, for_self=False

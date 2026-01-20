@@ -149,7 +149,7 @@ def derive_recipient_private_key(
         derived_private_key = recipient_key_deriver.derive_private_key(
             protocol=PROTOCOL,
             key_id=str(key_id),
-            counterparty=Counterparty(type=CounterpartyType.OTHER, counterparty=sender_identity_key),
+            counterparty=Counterparty(type=CounterpartyType.OTHER, counterparty_key=sender_identity_key),
         )
         return derived_private_key
     except Exception as e:

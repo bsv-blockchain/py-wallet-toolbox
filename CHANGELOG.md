@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-01-20
+
+### Fixed
+- Black formatting issues in chaintracks_storage.py and wallet_permissions_manager.py
+
 ## [2.0.0] - 2026-01-20
 
 > **Installation:**
@@ -74,7 +79,8 @@ Cross-SDK interoperability with [TypeScript SDK](https://github.com/bsv-blockcha
 - Universal Test Vectors validation
 - 100% test coverage for implemented methods
 
-[Unreleased]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v0.6.0...v2.0.0
 [0.6.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v0.1.0...v0.6.0
 [0.1.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/releases/tag/v0.1.0

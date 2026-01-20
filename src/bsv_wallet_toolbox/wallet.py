@@ -99,7 +99,7 @@ def _parse_counterparty(value: str | PublicKey) -> Counterparty:
         InvalidParameterError: If value is invalid
     """
     if isinstance(value, PublicKey):
-        return Counterparty(type=CounterpartyType.OTHER, counterparty=value)
+        return Counterparty(type=CounterpartyType.OTHER, counterparty_key=value)
 
     if value == "self":
         return Counterparty(type=CounterpartyType.SELF)
@@ -110,7 +110,7 @@ def _parse_counterparty(value: str | PublicKey) -> Counterparty:
     # Assume it's a hex-encoded public key
     try:
         pub_key = PublicKey(value)
-        return Counterparty(type=CounterpartyType.OTHER, counterparty=pub_key)
+        return Counterparty(type=CounterpartyType.OTHER, counterparty_key=pub_key)
     except Exception as e:
         raise InvalidParameterError(
             "counterparty", f"'self', 'anyone', or a valid hex-encoded public key (got {value!r}, error: {e})"
