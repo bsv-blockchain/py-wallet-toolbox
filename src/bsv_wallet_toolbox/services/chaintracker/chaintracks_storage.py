@@ -576,17 +576,13 @@ class ChaintracksStorageMemory(ChaintracksStorage):
             result = session.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"))
             if not result.fetchone():
                 # Create migrations table
-                session.execute(
-                    text(
-                        """
+                session.execute(text("""
                     CREATE TABLE migrations (
                         id INTEGER PRIMARY KEY,
                         version TEXT NOT NULL,
                         applied_at INTEGER NOT NULL
                     )
-                """
-                    )
-                )
+                """))
                 session.commit()
 
             # TODO: Implement specific migration logic

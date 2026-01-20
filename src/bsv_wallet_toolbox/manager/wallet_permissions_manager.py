@@ -3321,8 +3321,7 @@ class WalletPermissionsManager:
         self._db_conn = sqlite3.connect(":memory:")
 
         with self._db_lock:
-            self._db_conn.execute(
-                """
+            self._db_conn.execute("""
                 CREATE TABLE IF NOT EXISTS permission_tokens (
                     id INTEGER PRIMARY KEY,
                     cache_key TEXT NOT NULL,
@@ -3330,8 +3329,7 @@ class WalletPermissionsManager:
                     created_at INTEGER NOT NULL,
                     UNIQUE(cache_key, token_data)
                 )
-            """
-            )
+            """)
             self._db_conn.commit()
 
     def _load_permissions_from_db(self) -> None:
