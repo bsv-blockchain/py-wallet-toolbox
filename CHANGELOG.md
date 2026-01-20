@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-01-20
+
+> **Installation:**
+> ```bash
+> pip install bsv-wallet-toolbox --pre
+> ```
+> The `--pre` flag is required because this package depends on `bsv-sdk>=2.0.0b1` (beta).
+
+Compatible with TypeScript [wallet-toolbox v2.0.0+](https://github.com/bsv-blockchain/wallet-toolbox/tree/2.0.0)
+Cross-SDK interoperability with [TypeScript SDK](https://github.com/bsv-blockchain/ts-sdk) and [Go SDK](https://github.com/bsv-blockchain/go-sdk) (v2.0.0+).
+
 ### Added
 - Complete test suite implementation (846 tests)
 - Manual tests directory with 29 integration tests
@@ -43,11 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pytest framework with asyncio support
 - 100% lint critical error resolution
 
-### References
-- TypeScript implementation: wallet-toolbox
-- Go implementation: go-wallet-toolbox
-- Universal Test Vectors: brc100/
-
 ## [0.1.0] - 2025-01-16
 
 ### Added
@@ -68,33 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Universal Test Vectors validation
 - 100% test coverage for implemented methods
 
-### References
-- TypeScript implementation: ts-wallet-toolbox v1.0.0
-- Go implementation: go-wallet-toolbox v1.0.0
-- Universal Test Vectors: brc100/getVersion-simple-*
-
----
-
-## Future Releases
-
-### [0.2.0] - Planned
-- Level 2: `getNetwork`, `isAuthenticated`, `waitForAuthentication`
-- Level 3: Services integration (`getHeight`, `getHeaderForHeight`, `getPublicKey`)
-
-### [0.5.0] - Planned
-- Levels 4-7: Storage operations
-  - `listActions`, `listOutputs`, `listCertificates`
-  - `relinquishOutput`, `relinquishCertificate`, `abortAction`
-  - `internalizeAction`, `createAction`, `signAction`
-
-### [1.0.0] - Planned
-- All 28 WalletInterface methods
-- Full BRC-100 compliance
-- Complete TypeScript/Go compatibility
-- Storage Synchronization support
-- JSON-RPC dispatcher
-- BRC-100 ABI support
-
-[Unreleased]: https://github.com/bsv-blockchain/wallet-toolbox/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/bsv-blockchain/wallet-toolbox/releases/tag/v0.1.0
-
+[Unreleased]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v0.6.0...v2.0.0
+[0.6.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v0.1.0...v0.6.0
+[0.1.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/releases/tag/v0.1.0

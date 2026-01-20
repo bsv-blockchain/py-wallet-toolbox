@@ -33,7 +33,7 @@ from .services.chaintracker.chaintracks.api import (
 from .services.providers import WhatsOnChain
 from .wallet import Wallet
 
-__version__ = "0.6.0"
+__version__ = "2.0.0"
 __all__ = [
     "AuthFetch",
     "AuthPeer",

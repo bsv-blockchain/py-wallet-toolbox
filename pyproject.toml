@@ -1,6 +1,6 @@
 [project]
 name = "bsv-wallet-toolbox"
-version = "0.6.0"
+version = "2.0.0"
 description = "BRC-100 compliant Bitcoin SV wallet implementation"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -18,8 +18,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "bsv-sdk @ git+https://github.com/bsv-blockchain/py-sdk.git@develop-port",
-    "bsv-middleware @ git+https://github.com/bsv-blockchain/py-middleware.git@develop",
+    "bsv-sdk>=2.0.0b1",
+    "bsv-middleware>=2.0.2",
     "requests>=2.31",
     "SQLAlchemy>=2.0",
     "python-dotenv>=1.0",

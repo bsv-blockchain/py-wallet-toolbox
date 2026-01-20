@@ -1,0 +1,11 @@
+alice:
+  identity_key: 0244e7346ec8d7fd88a7ca050ac225d086b4c6f9cd396fbe11016dc1293c19da27
+  private_key: 1e8bdf1966632e4a41f6023d06897c72686eef500271bf4011b10ff4337c00ac
+bob:
+  identity_key: 0264d26ebd1c92009eccfb0bd2dfde5d7e81c3c378ce199236361a11f55eb71773
+  private_key: a96c603b4629df8d107b65a20ff3968cc5c1144ef40da82f57e6453b6b324899
+network: testnet
+server_private_key: 9a1b02c96311651770c3d4858dd73bfb5b4128990cf7a3f0e6b11c00934de831
+# Remote storage server URL - Django server with BRC-104 authentication
+# Start the Django server first: cd django_server && python manage.py runserver 8000
+server_url: 'http://localhost:8000/'

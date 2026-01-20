@@ -180,19 +180,18 @@ class Wallet:
 
     Note:
         Version is hardcoded as a class constant, matching TypeScript implementation.
-        Python implementation uses "0.6.0" during development, will become "1.0.0"
-        when all 28 methods are implemented.
+        Python implementation uses "2.0.0".
         Chain parameter is required (no default value), matching TypeScript implementation.
 
     Example:
         >>> wallet = Wallet(chain="main")
         >>> result = wallet.get_version({})
         >>> print(result["version"])
-        0.6.0
+        2.0.0
     """
 
     # Version constant (matches TypeScript's hardcoded return value)
-    VERSION = "1.0.0"  # Updated to match Universal Test Vectors
+    VERSION = "2.0.0"  # Updated to match Universal Test Vectors
 
     def __init__(
         self,
