@@ -9,7 +9,7 @@ Source files:
 
 Note: TypeScript implementation returns 'wallet-brc100-1.0.0',
       but Universal Test Vectors expect '1.0.0' only.
-      
+
       As of v2.0.0, py-wallet-toolbox returns '2.0.0' which differs from
       the Universal Test Vectors expectation of '1.0.0'. These tests verify
       the actual version returned by the implementation.
