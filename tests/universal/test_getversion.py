@@ -15,8 +15,9 @@ Note: TypeScript implementation returns 'wallet-brc100-1.0.0',
       the actual version returned by the implementation.
 """
 
-import pytest
 from collections.abc import Callable
+
+import pytest
 
 from bsv_wallet_toolbox import Wallet
 
