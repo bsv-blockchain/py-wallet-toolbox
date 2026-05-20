@@ -66,7 +66,7 @@ jobs:
 
     - name: Commit coverage update
       if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'master' && matrix.python-version == '3.11'
-      uses: stefanzweifel/git-auto-commit-action@v5
+      uses: stefanzweifel/git-auto-commit-action@v7
       with:
         commit_message: "chore: update coverage badge to ${{ steps.coverage.outputs.coverage }}%"
         file_pattern: README.md
