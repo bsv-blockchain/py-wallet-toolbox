@@ -13,9 +13,8 @@
 >
 > **Installation:**
 > ```bash
-> pip install bsv-wallet-toolbox --pre
+> pip install bsv-wallet-toolbox
 > ```
-> The `--pre` flag is required because this package depends on `bsv-sdk>=2.0.0b1` (beta).
 
 BRC-100 conforming wallet implementation providing production-ready, persistent storage components. Built on top of the official [Python SDK](https://github.com/bsv-blockchain/py-sdk), this toolbox helps you assemble scalable wallet-backed applications and services.
 
@@ -43,7 +42,7 @@ The BSV Wallet Toolbox builds on the [BSV SDK for Python](https://github.com/bsv
 
 ## Current Status
 
-**Version**: 2.0.0
+**Version**: 2.0.2
 
 | Metric | Status |
 |--------|--------|
@@ -58,7 +57,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.11 or higher (3.11, 3.12, 3.13)
 - pip package manager
 - SQLite (included with Python) or PostgreSQL/MySQL (optional)
 

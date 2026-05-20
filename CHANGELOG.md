@@ -7,18 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-05-20
+
+### Added
+- Python 3.13 support
+- Dependabot configuration for automated dependency updates
+
+### Changed
+- Bumped minimum bsv-sdk dependency from 2.0.0b1 to 2.1.3 (Python 3.13 compatibility fix)
+
 ## [2.0.1] - 2026-01-20
 
 ### Fixed
 - Black formatting issues in chaintracks_storage.py and wallet_permissions_manager.py
 
 ## [2.0.0] - 2026-01-20
-
-> **Installation:**
-> ```bash
-> pip install bsv-wallet-toolbox --pre
-> ```
-> The `--pre` flag is required because this package depends on `bsv-sdk>=2.0.0b1` (beta).
 
 Compatible with TypeScript [wallet-toolbox v2.0.0+](https://github.com/bsv-blockchain/wallet-toolbox/tree/2.0.0)
 Cross-SDK interoperability with [TypeScript SDK](https://github.com/bsv-blockchain/ts-sdk) and [Go SDK](https://github.com/bsv-blockchain/go-sdk) (v2.0.0+).
@@ -79,7 +82,8 @@ Cross-SDK interoperability with [TypeScript SDK](https://github.com/bsv-blockcha
 - Universal Test Vectors validation
 - 100% test coverage for implemented methods
 
-[Unreleased]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v0.6.0...v2.0.0
 [0.6.0]: https://github.com/bsv-blockchain/py-wallet-toolbox/compare/v0.1.0...v0.6.0
