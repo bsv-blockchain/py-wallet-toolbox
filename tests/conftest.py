@@ -567,13 +567,13 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
             """
             # getRawTx
             if "/tx/" in url and url.endswith("/hex"):
-                txid = url.split("/tx/")[-1].split("/")[0]
+                txid = url.rsplit("/tx/", maxsplit=1)[-1].split("/", maxsplit=1)[0]
                 if txid in recorded_hex:
                     return Resp(True, 200, {"data": recorded_hex[txid]})
                 return Resp(False, 404, {})
             # getMerklePath - TSC proof endpoint
             if "/tx/" in url and "/proof/tsc" in url:
-                txid = url.split("/tx/")[-1].split("/")[0]
+                txid = url.rsplit("/tx/", maxsplit=1)[-1].split("/", maxsplit=1)[0]
                 if txid in recorded_merkle:
                     # Return TSC proof format that the code expects
                     merkle_data = recorded_merkle[txid]
@@ -616,7 +616,7 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
                 return Resp(True, 200, {})
             # getMerklePath - legacy endpoint (kept for compatibility)
             if "/tx/" in url and url.endswith("/merklepath"):
-                txid = url.split("/tx/")[-1].split("/")[0]
+                txid = url.rsplit("/tx/", maxsplit=1)[-1].split("/", maxsplit=1)[0]
                 if txid in recorded_merkle:
                     return Resp(True, 200, recorded_merkle[txid])
                 return Resp(False, 404, {})

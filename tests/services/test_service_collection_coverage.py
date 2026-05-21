@@ -196,7 +196,7 @@ class TestServiceCollectionErrorHandling:
             # Should raise or return None after all fail
             if hasattr(collection, "call_with_failover"):
                 try:
-                    collection.call_with_failover(lambda: failing_provider1.call())
+                    collection.call_with_failover(failing_provider1.call)
                 except Exception:
                     pass
         except (TypeError, AttributeError):

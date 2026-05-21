@@ -80,6 +80,7 @@ ignore = [
     "E722",     # bare-except (some legacy code)
     "SIM105",   # suppressible-exception
     "A002",     # builtin-argument-shadowing
+    "A003",     # builtin-attribute-shadowing (id property on entities)
     "B023",     # function-uses-loop-variable
     "SIM102",   # collapsible-if
     "SIM108",   # if-else-block-instead-of-if-exp

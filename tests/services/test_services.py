@@ -134,7 +134,7 @@ class TestServices:
         ok_old = WocHeadersBulkListener(
             height - 4,
             height,
-            lambda h: headers_old.append(h),
+            headers_old.append,
             lambda code, message: errors_old.append({"code": code, "message": message}) or True,
             stop_old_listeners_token,
             chain,
