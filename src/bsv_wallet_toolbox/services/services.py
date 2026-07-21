@@ -58,6 +58,7 @@ from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
 from .http_client import ToolboxHttpClient
 from .providers.arc import ARC, ArcConfig
+from .providers.arcade import Arcade
 from .providers.bitails import Bitails, BitailsConfig
 from .providers.whatsonchain import WhatsOnChain
 from .service_collection import ServiceCollection
@@ -115,6 +116,10 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
     # For mainnet: https://arc.gorillapool.io
     arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else "https://testnet.arc.gorillapool.io"
 
+    # Arcade (Teranode-native broadcaster) is opt-in: set arcadeUrl explicitly
+    # (mainnet public endpoint: https://arcade-v2-us-1.bsvblockchain.tech) to
+    # register it ahead of ARC. Unlike TS (arcadeDefaultUrl()), no default is
+    # applied here so existing broadcast behavior is unchanged.
     return WalletServicesOptions(
         chain=chain,
         taalApiKey=None,
@@ -319,6 +324,7 @@ class Services(WalletServices):
     # Provider instances (TypeScript structure)
     options: WalletServicesOptions
     whatsonchain: WhatsOnChain
+    arcade: Arcade | None = None
     arc_taal: ARC | None = None
     arc_gorillapool: ARC | None = None
     bitails: Bitails | None = None
@@ -382,6 +388,17 @@ class Services(WalletServices):
         woc_api_key = self.options.get("whatsOnChainApiKey")
         self.whatsonchain = WhatsOnChain(network=chain, api_key=woc_api_key, http_client=self._get_http_client())
 
+        # Initialize Arcade provider (optional; tried before ARC when configured)
+        arcade_url = self.options.get("arcadeUrl")
+        if arcade_url:
+            arcade_config = ArcConfig(
+                api_key=self.options.get("arcadeApiKey"),
+                headers=self.options.get("arcadeHeaders"),
+                callback_url=self.options.get("arcadeCallbackUrl"),
+                callback_token=self.options.get("arcadeCallbackToken"),
+            )
+            self.arcade = Arcade(arcade_url, config=arcade_config, name="arcade")
+
         # Initialize ARC TAAL provider (optional)
         arc_url = self.options.get("arcUrl")
         if arc_url:
@@ -420,6 +437,9 @@ class Services(WalletServices):
         """
         # getMerklePath collection
         self.get_merkle_path_services = ServiceCollection("getMerklePath")
+        # Arcade first: it has the proof earliest for transactions it broadcast.
+        if self.arcade:
+            self.get_merkle_path_services.add({"name": "arcade", "service": self.arcade.get_merkle_path})
         self.get_merkle_path_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path})
         # ARC can sometimes provide merklePath earlier / when other indexers lag.
         if self.arc_gorillapool:
@@ -435,8 +455,10 @@ class Services(WalletServices):
         self.get_raw_tx_services = ServiceCollection("getRawTx")
         self.get_raw_tx_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx})
 
-        # postBeef collection
+        # postBeef collection (Arcade first — TS parity)
         self.post_beef_services = ServiceCollection("postBeef")
+        if self.arcade:
+            self.post_beef_services.add({"name": "arcade", "service": self.arcade.post_beef})
         if self.arc_gorillapool:
             self.post_beef_services.add({"name": "arcGorillaPool", "service": self.arc_gorillapool.post_beef})
         if self.arc_taal:
