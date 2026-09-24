@@ -9,12 +9,14 @@ PostTxResultForTxid, PostBeefResult) but differs where it must:
 - Endpoints are served at the root: ``POST /tx`` and ``GET /tx/{txid}``
   (no ``/v1`` prefix).
 - A submit returns HTTP 202 with ``{"txid", "status": 202, "txStatus"}``;
-  HTTP 400 is a terminal validation failure (the tx itself is invalid, so
-  it is NOT a service error — failing over to another provider won't help).
-- Submission encoding is Extended Format (EF), not BEEF: Arcade's ``/tx``
-  parser rejects BEEF and runs fee/script validation that needs per-input
-  source data, which EF carries inline.
-- DOUBLE_SPEND_ATTEMPTED is terminal in Arcade (unlike ARC).
+  HTTP 400 ``{"error": "transaction failed validation"}`` is terminal (the
+  tx itself is invalid, so failing over to another provider won't help).
+  Other 400s (e.g. an invalid X-CallbackUrl) are request/config errors and
+  remain service errors.
+- Submission encoding is Extended Format (EF) only: Arcade's ``/tx`` parser
+  rejects BEEF, and a raw tx fails validation because it lacks the
+  per-input source data that EF carries inline. When EF cannot be built,
+  nothing is posted and the result is a service error.
 - Error bodies are flat ``{"error": ..., "reason": ...}``, not RFC 7807.
 
 Reference Implementation: ts-wallet-toolbox/src/services/providers/Arcade.ts
@@ -27,8 +29,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import requests
+from bsv.merkle_path import MerklePath
 
-from bsv_wallet_toolbox.utils.merkle_path_utils import normalize_merkle_path_value
 from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 
 from .arc import (
@@ -44,6 +46,9 @@ logger = logging.getLogger(__name__)
 
 # POST /tx txStatus values meaning the transaction can never succeed.
 ARCADE_TERMINAL_TX_STATUSES = frozenset({"REJECTED", "DOUBLE_SPEND_ATTEMPTED"})
+
+# POST /tx HTTP 400 error text for a transaction that failed validation (terminal).
+ARCADE_VALIDATION_FAILED_ERROR = "transaction failed validation"
 
 # GET /tx/{txid} txStatus values meaning the transaction is included in a block.
 ARCADE_MINED_TX_STATUSES = frozenset({"MINED", "IMMUTABLE"})
@@ -87,7 +92,7 @@ class Arcade:
             name: Service name for logging (defaults to 'arcade').
         """
         self.name = name or "arcade"
-        self.url = url
+        self.url = url.rstrip("/")
 
         if isinstance(config, str):
             self.api_key: str | None = config.strip()
@@ -127,9 +132,10 @@ class Arcade:
     def broadcast(self, tx: Any) -> PostTxResultForTxid:
         """Broadcast a Transaction object via Arcade.
 
-        Prefers Extended Format (EF) which carries per-input source data that
-        Arcade's fee/script validation needs; falls back to raw hex when
-        source transactions are unavailable.
+        Arcade needs Extended Format (EF), which carries the per-input source
+        data its fee/script validation requires. When EF cannot be built
+        (inputs without source transactions) nothing is posted and a service
+        error is returned so aggregation falls through to another provider.
 
         Args:
             tx: Transaction object with hex()/txid() (and optionally to_ef()) methods.
@@ -141,10 +147,27 @@ class Arcade:
             raise ValueError("Arcade broadcast expects a Transaction object")
         txid = tx.txid()
         try:
-            raw_tx_hex = tx.to_ef().hex()
-        except Exception:
-            raw_tx_hex = tx.hex()
-        return self.post_raw_tx(raw_tx_hex, [txid])
+            ef_hex = tx.to_ef().hex()
+        except Exception as e:
+            return self._ef_build_failed(txid, e)
+        return self.post_raw_tx(ef_hex, [txid])
+
+    def _ef_build_failed(self, txid: str, error: Exception) -> PostTxResultForTxid:
+        """Non-terminal result for a tx that cannot be encoded as EF (nothing is posted)."""
+        return PostTxResultForTxid(
+            txid=txid,
+            status="error",
+            service_error=True,
+            notes=[
+                {
+                    "name": self.name,
+                    "when": datetime.now(UTC).isoformat(),
+                    "what": "arcadeEfBuildFailed",
+                    "txid": txid,
+                    "error": str(error),
+                }
+            ],
+        )
 
     def post_raw_tx(
         self,
@@ -220,16 +243,12 @@ class Arcade:
                     result.rate_limited = True
                 else:
                     result.status = "error"
-                # HTTP 400 is a terminal validation failure — the transaction
-                # itself is invalid, so retrying with another provider won't
-                # help. Rate limits, backpressure (503) and unknown failures
-                # remain service errors so aggregation falls through.
-                result.service_error = response.status_code != 400
 
                 error_data = PostTxResultForTxidError(status=str(response.status_code))
                 result.data = error_data
 
                 note: dict[str, Any] = {**nne, "what": "postRawTxError", "status": response.status_code}
+                body: Any = None
                 try:
                     body = response.json()
                     if isinstance(body, dict):
@@ -240,6 +259,17 @@ class Arcade:
                 except Exception:
                     if response.text:
                         note["data"] = response.text[:128]
+
+                # A 400 "transaction failed validation" is terminal — the tx
+                # itself is invalid, so retrying with another provider won't
+                # help. Other 400s (invalid callback URL, malformed request),
+                # rate limits, backpressure (503) and unknown failures remain
+                # service errors so aggregation falls through.
+                result.service_error = not (
+                    response.status_code == 400
+                    and isinstance(body, dict)
+                    and body.get("error") == ARCADE_VALIDATION_FAILED_ERROR
+                )
 
                 result.notes.append(note)
 
@@ -258,10 +288,11 @@ class Arcade:
         is not guaranteed to contain that data (txidOnly / pruned entries), so
         when EF cannot be built for a txid it is recorded as a (non-terminal)
         service error and cross-provider aggregation falls through to a
-        BEEF-capable broadcaster.
+        BEEF-capable broadcaster. A hex string that is not BEEF (a bare raw
+        tx) cannot provide EF either and is handled the same way.
 
         Args:
-            beef: Beef object, or hex string (will be parsed).
+            beef: Beef object, or BEEF / Atomic BEEF hex string (will be parsed).
             txids: Transaction IDs to submit.
 
         Returns:
@@ -270,39 +301,36 @@ class Arcade:
         Reference: Arcade.ts (postBeef)
         """
         result = PostBeefResult(name=self.name, status="success", txid_results=[])
-        now = datetime.now(UTC).isoformat()
-        nn = {"name": self.name, "when": now}
 
+        # BEEF V1 and Atomic BEEF parsing also return the linked subject tx;
+        # V1 entries carry no tx_obj, so the subject tx is the only way to EF.
+        subject_tx: Any = None
         if isinstance(beef, str):
             from bsv.transaction.beef import parse_beef_ex
 
             try:
-                beef, _, _ = parse_beef_ex(bytes.fromhex(beef))
-            except Exception:
-                # Not BEEF: treat as a single raw/EF tx hex.
-                if txids:
-                    prtr = self.post_raw_tx(beef, txids)
-                    result.status = prtr.status
-                    result.txid_results = [prtr]
-                    return result
-                raise
+                beef, _, subject_tx = parse_beef_ex(bytes.fromhex(beef))
+            except Exception as e:
+                # Not BEEF (e.g. a bare raw tx): no source data for EF.
+                if not txids:
+                    raise
+                result.status = "error"
+                result.txid_results = [self._ef_build_failed(txid, e) for txid in txids]
+                return result
 
         for txid in txids:
             try:
-                btx = beef.find_transaction_for_signing(txid)
-                if btx is None or btx.tx_obj is None:
+                if subject_tx is not None and subject_tx.txid() == txid:
+                    tx_obj = subject_tx
+                else:
+                    btx = beef.find_transaction_for_signing(txid)
+                    tx_obj = btx.tx_obj if btx is not None else None
+                if tx_obj is None:
                     raise ValueError(f"transaction {txid} not found in BEEF")
-                ef_hex = btx.tx_obj.to_ef().hex()
+                ef_hex = tx_obj.to_ef().hex()
             except Exception as e:
                 result.status = "error"
-                result.txid_results.append(
-                    PostTxResultForTxid(
-                        txid=txid,
-                        status="error",
-                        service_error=True,
-                        notes=[{**nn, "what": "arcadeEfBuildFailed", "txid": txid, "error": str(e)}],
-                    )
-                )
+                result.txid_results.append(self._ef_build_failed(txid, e))
                 continue
 
             prtr = self.post_raw_tx(ef_hex, [txid])
@@ -349,8 +377,13 @@ class Arcade:
         (or 404) and this returns no merklePath, so Services.get_merkle_path
         falls through to the other providers.
 
+        Arcade returns the proof as BUMP hex. It is only returned after the
+        block header is resolved via ``services.hash_to_header`` and the
+        proof's root matches the header's merkle root; otherwise no
+        merklePath is returned so the next provider is tried.
+
         Returns the same shape as other providers:
-          {"header": {...}, "merklePath": {...}, "name": "...", "notes": [...]}
+          {"header": {...}, "merklePath": {"blockHeight", "path"}, "name": "...", "notes": [...]}
         """
         now = datetime.now(UTC).isoformat()
         result: dict[str, Any] = {"name": self.name, "notes": []}
@@ -367,26 +400,27 @@ class Arcade:
             )
             return result
 
-        # Resolve header using Services if possible (block hash is usually present).
-        header: dict[str, Any] | None = None
         try:
-            block_hash = dr.block_hash
-            if isinstance(block_hash, str) and len(block_hash) == 64 and hasattr(services, "hash_to_header"):
-                header = services.hash_to_header(block_hash)
-        except Exception:
-            header = None
-
-        try:
-            mp_norm = normalize_merkle_path_value(txid, dr.merkle_path, block_height=dr.block_height)
+            merkle_path = MerklePath.from_hex(dr.merkle_path)
+            header = services.hash_to_header(dr.block_hash)
+            root = merkle_path.compute_root(txid)
         except Exception as exc:
             result["notes"].append({"name": self.name, "when": now, "what": "getMerklePathNoData", "error": str(exc)})
             return result
 
-        if mp_norm is None:
-            result["notes"].append({"name": self.name, "when": now, "what": "getMerklePathNoData"})
+        if root != header.get("merkleRoot"):
+            result["notes"].append(
+                {
+                    "name": self.name,
+                    "when": now,
+                    "what": "getMerklePathRootMismatch",
+                    "root": root,
+                    "merkleRoot": header.get("merkleRoot"),
+                }
+            )
             return result
 
-        result["merklePath"] = mp_norm
+        result["merklePath"] = {"blockHeight": merkle_path.block_height, "path": merkle_path.path}
         result["header"] = header
         result["notes"].append({"name": self.name, "when": now, "what": "getMerklePathSuccess"})
         return result

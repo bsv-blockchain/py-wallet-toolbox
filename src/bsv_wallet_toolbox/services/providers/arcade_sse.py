@@ -8,9 +8,10 @@ real-time transaction status updates. The wire format is::
     data: {"txid": "...", "txStatus": "...", "timestamp": "..."}
 
 Keepalive comment lines (starting with ``:``) are sent every 15 seconds.
-The ``Last-Event-ID`` request header (a nanosecond timestamp) enables
-catch-up replay of statuses after a reconnect; Arcade replays only
-non-terminal statuses.
+On a first connect (no ``Last-Event-ID``) Arcade replays the current
+non-terminal statuses for the token. With ``Last-Event-ID`` (a nanosecond
+timestamp) it replays every status newer than that timestamp, terminal
+ones included.
 
 The stream is read on a daemon thread; ``on_event`` is invoked from that
 thread, so callbacks must be thread-safe. Lifecycle mirrors the TS
@@ -33,6 +34,20 @@ from urllib.parse import quote
 import requests
 
 logger = logging.getLogger(__name__)
+
+
+def _resume_event_id(last_event_id: str) -> str:
+    """Last-Event-ID to resume from after ``last_event_id``.
+
+    Event ids are status timestamps, and several events can share one when
+    Arcade stamps a batch at once. Arcade replays only events strictly newer
+    than the id, so step back 1ns to also get the rest of a batch interrupted
+    mid-way; the few events redelivered are processed idempotently.
+    """
+    try:
+        return str(int(last_event_id) - 1)
+    except ValueError:
+        return last_event_id
 
 
 class ArcadeSSEClient:
@@ -85,6 +100,8 @@ class ArcadeSSEClient:
         base = base_url.rstrip("/")
         self._url = f"{base}/events?callbackToken={quote(callback_token)}"
         self._display_url = f"{base}/events?callbackToken=<redacted>"
+        # Connection errors quote the request URL; keep the token out of on_error.
+        self._secrets = {s for s in (callback_token, quote(callback_token)) if s}
 
         self._thread: threading.Thread | None = None
         self._response: requests.Response | None = None
@@ -139,12 +156,13 @@ class ArcadeSSEClient:
         headers = {
             "Accept": "text/event-stream",
             "Cache-Control": "no-cache",
-            "Last-Event-ID": self.last_event_id or "0",
         }
+        if self.last_event_id:
+            headers["Last-Event-ID"] = _resume_event_id(self.last_event_id)
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
 
-        logger.debug(f"ArcadeSSE connecting to {self._display_url} (Last-Event-ID: {headers['Last-Event-ID']})")
+        logger.debug(f"ArcadeSSE connecting to {self._display_url} (Last-Event-ID: {headers.get('Last-Event-ID')})")
 
         try:
             response = requests.get(self._url, headers=headers, stream=True, timeout=(10, self._read_timeout))
@@ -156,7 +174,10 @@ class ArcadeSSEClient:
                 self._on_error(RuntimeError("SSE stream ended"))
         except Exception as e:
             if not self._closing and self._on_error:
-                self._on_error(e if isinstance(e, Exception) else RuntimeError(str(e)))
+                message = str(e)
+                for secret in self._secrets:
+                    message = message.replace(secret, "<redacted>")
+                self._on_error(RuntimeError(message))
         finally:
             self._response = None
 

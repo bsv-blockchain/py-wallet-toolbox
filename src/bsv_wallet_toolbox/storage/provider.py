@@ -4744,7 +4744,11 @@ class StorageProvider:
 
             updated = 0
             for tx in txs:
-                tx.status = status
+                if status == "failed":
+                    # TS updateTransactionStatus('failed'): also release the inputs it had allocated.
+                    self._mark_transaction_failed(tx, session)
+                else:
+                    tx.status = status
                 session.add(tx)
                 updated += 1
 

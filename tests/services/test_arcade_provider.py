@@ -6,6 +6,10 @@ Reference: ts-wallet-toolbox/src/services/__tests/Services.arcade.test.ts
 
 from unittest.mock import MagicMock, patch
 
+from bsv import P2PKH, PrivateKey, Transaction, TransactionInput, TransactionOutput
+from bsv.merkle_path import MerklePath
+from bsv.transaction.beef import BEEF_V2, Beef
+
 from bsv_wallet_toolbox.services.providers.arc import ArcConfig
 from bsv_wallet_toolbox.services.providers.arcade import Arcade
 from bsv_wallet_toolbox.services.services import Services, create_default_options
@@ -20,6 +24,30 @@ def _mock_response(status_code: int, json_data: dict) -> MagicMock:
     response.json.return_value = json_data
     response.text = ""
     return response
+
+
+def _signed_tx() -> Transaction:
+    """A signed tx whose input is linked to its source tx, so EF can be built."""
+    key = PrivateKey()
+    source = Transaction()
+    source.add_output(TransactionOutput(P2PKH().lock(key.address()), 1000))
+    tx = Transaction()
+    tx.add_input(
+        TransactionInput(
+            source_transaction=source, source_output_index=0, unlocking_script_template=P2PKH().unlock(key)
+        )
+    )
+    tx.add_output(TransactionOutput(P2PKH().lock(key.address()), 900))
+    tx.sign()
+    return tx
+
+
+def _atomic_beef_hex(tx: Transaction) -> str:
+    beef = Beef(version=BEEF_V2)
+    for tx_input in tx.inputs:
+        beef.merge_transaction(tx_input.source_transaction)
+    beef.merge_transaction(tx)
+    return beef.to_binary_atomic(tx.txid()).hex()
 
 
 class TestArcadePostRawTx:
@@ -76,6 +104,18 @@ class TestArcadePostRawTx:
         assert result.service_error is False
         assert result.data.detail == "transaction failed validation: missing inputs"
 
+    def test_400_request_error_is_service_error(self) -> None:
+        """A 400 that is not a tx validation failure (e.g. bad callback URL) must fall through."""
+        arcade = Arcade(ARCADE_URL)
+        mock = _mock_response(400, {"error": "invalid callback url: private address not allowed"})
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock):
+            result = arcade.post_raw_tx("aabbcc", [TXID])
+
+        assert result.status == "error"
+        assert result.service_error is True
+        assert result.data.detail == "invalid callback url: private address not allowed"
+
     def test_503_is_service_error(self) -> None:
         arcade = Arcade(ARCADE_URL)
         mock = _mock_response(503, {"error": "service overloaded, retry shortly"})
@@ -107,6 +147,41 @@ class TestArcadePostRawTx:
 
         assert result.status == "error"
         assert result.service_error is True
+
+
+class TestArcadeBroadcast:
+    def test_posts_ef(self) -> None:
+        tx = _signed_tx()
+        arcade = Arcade(ARCADE_URL)
+        mock = _mock_response(202, {"txid": tx.txid(), "status": 202, "txStatus": "RECEIVED"})
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock) as post:
+            result = arcade.broadcast(tx)
+
+        assert result.status == "success"
+        assert post.call_args[1]["json"] == {"rawTx": tx.to_ef().hex()}
+
+    def test_no_ef_is_service_error_without_posting(self) -> None:
+        """A raw tx (no source data) always fails Arcade validation — don't post it."""
+        tx = Transaction.from_hex(_signed_tx().hex())
+        arcade = Arcade(ARCADE_URL)
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post") as post:
+            result = arcade.broadcast(tx)
+
+        assert result.status == "error"
+        assert result.service_error is True
+        assert result.notes[0]["what"] == "arcadeEfBuildFailed"
+        post.assert_not_called()
+
+    def test_trailing_slash_in_url(self) -> None:
+        arcade = Arcade(ARCADE_URL + "/")
+        mock = _mock_response(202, {"txid": TXID, "status": 202, "txStatus": "RECEIVED"})
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock) as post:
+            arcade.post_raw_tx("aabbcc", [TXID])
+
+        assert post.call_args[0][0] == f"{ARCADE_URL}/tx"
 
 
 class TestArcadePostBeef:
@@ -141,8 +216,96 @@ class TestArcadePostBeef:
         assert result.txid_results[0].service_error is True
         post.assert_not_called()
 
+    def test_atomic_and_v1_beef_hex_post_ef(self) -> None:
+        tx = _signed_tx()
+        arcade = Arcade(ARCADE_URL)
+        mock = _mock_response(202, {"txid": tx.txid(), "status": 202, "txStatus": "RECEIVED"})
+
+        for beef_hex in (_atomic_beef_hex(tx), tx.to_beef().hex()):
+            with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock) as post:
+                result = arcade.post_beef(beef_hex, [tx.txid()])
+
+            assert result.status == "success"
+            assert post.call_args[1]["json"] == {"rawTx": tx.to_ef().hex()}
+
+    def test_non_beef_hex_is_service_error_without_posting(self) -> None:
+        tx = _signed_tx()
+        arcade = Arcade(ARCADE_URL)
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post") as post:
+            result = arcade.post_beef(tx.hex(), [tx.txid()])
+
+        assert result.status == "error"
+        assert result.txid_results[0].service_error is True
+        post.assert_not_called()
+
+
+def _mined_response(txid: str, merkle_path: MerklePath, block_hash: str = "b" * 64) -> MagicMock:
+    return _mock_response(
+        200,
+        {
+            "txid": txid,
+            "txStatus": "MINED",
+            "blockHash": block_hash,
+            "blockHeight": merkle_path.block_height,
+            "merklePath": merkle_path.to_hex(),
+        },
+    )
+
+
+def _two_leaf_path(txid: str) -> MerklePath:
+    return MerklePath(
+        870123,
+        [[{"offset": 0, "hash_str": txid, "txid": True}, {"offset": 1, "hash_str": "c" * 64}]],
+    )
+
 
 class TestArcadeGetMerklePath:
+    def test_mined_returns_verified_proof(self) -> None:
+        """Arcade returns merklePath as BUMP hex; it is verified against the header root."""
+        mp = _two_leaf_path(TXID)
+        header = {"height": 870123, "hash": "b" * 64, "merkleRoot": mp.compute_root(TXID)}
+        services = MagicMock()
+        services.hash_to_header.return_value = header
+        arcade = Arcade(ARCADE_URL)
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.get", return_value=_mined_response(TXID, mp)):
+            result = arcade.get_merkle_path(TXID, services=services)
+
+        services.hash_to_header.assert_called_once_with("b" * 64)
+        assert result["header"] == header
+        assert result["merklePath"]["blockHeight"] == 870123
+        # Same dict shape the other providers return: usable by MerklePath(blockHeight, path)
+        rebuilt = MerklePath(result["merklePath"]["blockHeight"], result["merklePath"]["path"])
+        assert rebuilt.compute_root(TXID) == header["merkleRoot"]
+
+    def test_root_mismatch_returns_no_proof(self) -> None:
+        mp = _two_leaf_path(TXID)
+        services = MagicMock()
+        services.hash_to_header.return_value = {"height": 870123, "hash": "b" * 64, "merkleRoot": "0" * 64}
+        arcade = Arcade(ARCADE_URL)
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.get", return_value=_mined_response(TXID, mp)):
+            result = arcade.get_merkle_path(TXID, services=services)
+
+        assert "merklePath" not in result
+        assert result["notes"][-1]["what"] == "getMerklePathRootMismatch"
+
+    def test_unknown_header_returns_no_proof(self) -> None:
+        """Without a header the proof can't be verified — let the next provider try."""
+        services = MagicMock()
+        services.hash_to_header.side_effect = RuntimeError("header not found")
+        arcade = Arcade(ARCADE_URL)
+
+        with patch(
+            "bsv_wallet_toolbox.services.providers.arcade.requests.get",
+            return_value=_mined_response(TXID, _two_leaf_path(TXID)),
+        ):
+            result = arcade.get_merkle_path(TXID, services=services)
+
+        assert "merklePath" not in result
+        assert result["notes"][-1]["what"] == "getMerklePathNoData"
+
     def test_not_mined_returns_no_proof(self) -> None:
         arcade = Arcade(ARCADE_URL)
         mock = _mock_response(200, {"txid": TXID, "txStatus": "SEEN_ON_NETWORK"})
@@ -211,7 +374,102 @@ class TestServicesArcadeRegistration:
         assert services.arcade.callback_url == "https://example.com/cb"
         assert services.arcade.callback_token == "tok"
 
+    def test_post_beef_array_broadcasts_with_arcade_only(self) -> None:
+        """An Arcade-only configuration must broadcast, not return mocked results."""
+        services = _arcade_only_services()
+        tx = _signed_tx()
+        mock = _mock_response(202, {"txid": tx.txid(), "status": 202, "txStatus": "RECEIVED"})
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock) as post:
+            results = services.post_beef_array([_atomic_beef_hex(tx)])
+
+        assert results[0]["accepted"] is True
+        assert post.call_count == 1
+
     def test_default_options_have_no_arcade_url(self) -> None:
         """Arcade is opt-in: default options never set arcadeUrl."""
         assert create_default_options("main").get("arcadeUrl") is None
         assert create_default_options("test").get("arcadeUrl") is None
+
+
+def _arcade_only_services(**options: str) -> Services:
+    services = Services({"chain": "main", "arcadeUrl": ARCADE_URL, "arcadeCallbackToken": "tok", **options})
+    services.arc_taal = None
+    services.arc_gorillapool = None
+    services.bitails = None
+    return services
+
+
+class TestServicesPostBeefArcade:
+    def test_arcade_is_tried_first_with_callback_token(self) -> None:
+        services = _arcade_only_services()
+        services.arc_taal = MagicMock()
+        tx = _signed_tx()
+        mock = _mock_response(202, {"txid": tx.txid(), "status": 202, "txStatus": "RECEIVED"})
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock) as post:
+            result = services.post_beef(_atomic_beef_hex(tx))
+
+        assert result["accepted"] is True
+        assert result["txid"] == tx.txid()
+        # Only the subject tx is posted, as EF, under the wallet's callback token
+        assert post.call_count == 1
+        assert post.call_args[1]["json"] == {"rawTx": tx.to_ef().hex()}
+        assert post.call_args[1]["headers"]["X-CallbackToken"] == "tok"
+        services.arc_taal.broadcast.assert_not_called()
+
+    def test_service_error_falls_through(self) -> None:
+        services = _arcade_only_services()
+        services.bitails = MagicMock()
+        services.bitails.post_beef.return_value = {"accepted": True, "txid": "x", "message": "ok"}
+        tx = _signed_tx()
+
+        with patch(
+            "bsv_wallet_toolbox.services.providers.arcade.requests.post",
+            return_value=_mock_response(503, {"error": "service overloaded, retry shortly"}),
+        ):
+            result = services.post_beef(_atomic_beef_hex(tx))
+
+        assert result["accepted"] is True
+        services.bitails.post_beef.assert_called_once()
+
+    def test_validation_failure_is_terminal(self) -> None:
+        services = _arcade_only_services()
+        services.bitails = MagicMock()
+        tx = _signed_tx()
+
+        with patch(
+            "bsv_wallet_toolbox.services.providers.arcade.requests.post",
+            return_value=_mock_response(400, {"error": "transaction failed validation", "reason": "bad script"}),
+        ):
+            result = services.post_beef(_atomic_beef_hex(tx))
+
+        assert result["accepted"] is False
+        assert "bad script" in result["message"]
+        services.bitails.post_beef.assert_not_called()
+
+    def test_double_spend_is_reported(self) -> None:
+        services = _arcade_only_services()
+        tx = _signed_tx()
+        mock = _mock_response(
+            202,
+            {"txid": tx.txid(), "status": 202, "txStatus": "DOUBLE_SPEND_ATTEMPTED", "competingTxs": ["dead"]},
+        )
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock):
+            result = services.post_beef(_atomic_beef_hex(tx))
+
+        assert result["accepted"] is False
+        assert result["doubleSpend"] is True
+
+    def test_raw_tx_skips_arcade(self) -> None:
+        """A bare raw tx cannot be encoded as EF, so Arcade is skipped without posting."""
+        services = _arcade_only_services()
+        services.bitails = MagicMock()
+        services.bitails.post_beef.return_value = {"accepted": True, "txid": "x", "message": "ok"}
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post") as post:
+            result = services.post_beef(_signed_tx().hex())
+
+        assert result["accepted"] is True
+        post.assert_not_called()

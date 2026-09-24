@@ -53,9 +53,9 @@ class TestArcadeSSEClient:
         assert events[0]["txid"] == TXID
         assert events[0]["txStatus"] == "MINED"
         assert client.last_event_id == "1700000000000000001"
-        # URL and catch-up header
+        # URL; a first connect sends no Last-Event-ID (Arcade then replays only non-terminal statuses)
         assert get.call_args[0][0] == f"{ARCADE_URL}/events?callbackToken=tok"
-        assert get.call_args[1]["headers"]["Last-Event-ID"] == "0"
+        assert "Last-Event-ID" not in get.call_args[1]["headers"]
 
     def test_ignores_keepalives_and_non_status_events(self) -> None:
         lines = [
@@ -83,8 +83,13 @@ class TestArcadeSSEClient:
         assert saved == ["42"]
 
     def test_initial_last_event_id_sent_for_catchup(self) -> None:
+        """Resume 1ns before the last id: events sharing that timestamp are replayed too."""
         _events, _client, get = _run_client([], last_event_id="99")
-        assert get.call_args[1]["headers"]["Last-Event-ID"] == "99"
+        assert get.call_args[1]["headers"]["Last-Event-ID"] == "98"
+
+    def test_non_numeric_last_event_id_sent_as_is(self) -> None:
+        _events, _client, get = _run_client([], last_event_id="abc")
+        assert get.call_args[1]["headers"]["Last-Event-ID"] == "abc"
 
     def test_api_key_header(self) -> None:
         _events, _client, get = _run_client([], api_key="key1")
@@ -113,6 +118,25 @@ class TestArcadeSSEClient:
                 time.sleep(0.01)
         assert len(errors) == 1
         assert "503" in str(errors[0])
+
+    def test_connection_error_redacts_callback_token(self) -> None:
+        """requests errors quote the URL; the callback token must not reach on_error."""
+        errors: list[Exception] = []
+        client = ArcadeSSEClient(
+            base_url=ARCADE_URL,
+            callback_token="SECRET token",
+            on_event=lambda e: None,
+            on_error=errors.append,
+        )
+        exc = ConnectionError("Max retries exceeded with url: /events?callbackToken=SECRET%20token (SECRET token)")
+        with patch("bsv_wallet_toolbox.services.providers.arcade_sse.requests.get", side_effect=exc):
+            client.connect()
+            deadline = time.time() + 5
+            while client.connected and time.time() < deadline:
+                time.sleep(0.01)
+        assert len(errors) == 1
+        assert "SECRET" not in str(errors[0])
+        assert "<redacted>" in str(errors[0])
 
 
 def _make_monitor(options: dict | None = None) -> MagicMock:
@@ -160,9 +184,12 @@ class TestTaskArcadeSSESetup:
 
 
 class TestTaskArcadeSSEProcessing:
-    def _task_with_req(self, req: dict, options: dict | None = None) -> tuple[TaskArcadeSSE, MagicMock]:
+    def _task_with_req(
+        self, req: dict, options: dict | None = None, transaction_ids: list[int] | None = None
+    ) -> tuple[TaskArcadeSSE, MagicMock]:
         task, monitor = _make_task(options or {})
         monitor.storage.find_proven_tx_reqs.return_value = [req]
+        monitor.storage.find_transactions.return_value = [{"transactionId": i} for i in transaction_ids or []]
         return task, monitor
 
     def test_trigger_runs_only_with_pending_events(self) -> None:
@@ -172,15 +199,16 @@ class TestTaskArcadeSSEProcessing:
         assert task.trigger(0)["run"] is True
 
     def test_seen_on_network_marks_unmined(self) -> None:
-        req = {"provenTxReqId": 7, "status": "sending", "notify": {"transactionIds": [1, 2]}}
-        task, monitor = self._task_with_req(req)
+        req = {"provenTxReqId": 7, "txid": TXID, "status": "sending", "notify": {}}
+        task, monitor = self._task_with_req(req, transaction_ids=[1, 2])
         task._on_event({"txid": TXID, "txStatus": "SEEN_ON_NETWORK"})
 
         log = task.run_task()
 
         monitor.storage.update_proven_tx_req.assert_called_once_with(7, {"status": "unmined"})
-        assert monitor.storage.update_transaction.call_count == 2
-        monitor.storage.update_transaction.assert_any_call(1, {"status": "unproven"})
+        # Transactions are resolved by txid: storage never populates notify.transactionIds
+        monitor.storage.find_transactions.assert_called_once_with({"partial": {"txid": TXID}})
+        monitor.storage.update_transactions_status.assert_called_once_with([1, 2], "unproven")
         assert "req 7 => unmined" in log
 
     def test_mined_flags_check_for_proofs(self) -> None:
@@ -198,25 +226,26 @@ class TestTaskArcadeSSEProcessing:
         assert "proof check requested" in log
 
     def test_double_spend_marks_failed(self) -> None:
-        req = {"provenTxReqId": 7, "status": "unmined", "notify": {"transactionIds": [3]}}
-        task, monitor = self._task_with_req(req)
+        req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
+        task, monitor = self._task_with_req(req, transaction_ids=[3])
         task._on_event({"txid": TXID, "txStatus": "DOUBLE_SPEND_ATTEMPTED"})
 
         log = task.run_task()
 
         monitor.storage.update_proven_tx_req.assert_called_once_with(7, {"status": "doubleSpend"})
-        monitor.storage.update_transaction.assert_called_once_with(3, {"status": "failed"})
+        # update_transactions_status releases the inputs of transactions marked failed
+        monitor.storage.update_transactions_status.assert_called_once_with([3], "failed")
         assert "req 7 => doubleSpend" in log
 
     def test_rejected_marks_invalid(self) -> None:
-        req = {"provenTxReqId": 7, "status": "unsent", "notify": '{"transactionIds": [4]}'}
-        task, monitor = self._task_with_req(req)
+        req = {"provenTxReqId": 7, "txid": TXID, "status": "unsent", "notify": {}}
+        task, monitor = self._task_with_req(req, transaction_ids=[4])
         task._on_event({"txid": TXID, "txStatus": "REJECTED"})
 
         log = task.run_task()
 
         monitor.storage.update_proven_tx_req.assert_called_once_with(7, {"status": "invalid"})
-        monitor.storage.update_transaction.assert_called_once_with(4, {"status": "failed"})
+        monitor.storage.update_transactions_status.assert_called_once_with([4], "failed")
         assert "req 7 => invalid" in log
 
     def test_terminal_req_is_skipped(self) -> None:
@@ -237,6 +266,18 @@ class TestTaskArcadeSSEProcessing:
         log = task.run_task()
 
         assert "No matching ProvenTxReq" in log
+
+    def test_event_failure_does_not_drop_remaining_events(self) -> None:
+        task, monitor = _make_task({})
+        monitor.storage.find_proven_tx_reqs.side_effect = [RuntimeError("database is locked"), []]
+        task._on_event({"txid": "a" * 64, "txStatus": "MINED"})
+        task._on_event({"txid": TXID, "txStatus": "MINED"})
+
+        log = task.run_task()
+
+        assert "failed to process" in log and "database is locked" in log
+        assert f"SSE: txid={TXID} status=MINED" in log
+        assert monitor.storage.find_proven_tx_reqs.call_count == 2
 
     def test_events_drained_after_run(self) -> None:
         task, monitor = _make_task({})

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Arcade broadcaster provider (opt-in via `arcadeUrl`): `Services.post_beef` tries Arcade first (EF submission) and falls through to ARC / Bitails on service errors; `get_merkle_path` verifies Arcade's BUMP against the block header
+- `TaskArcadeSSE` monitor task and `ArcadeSSEClient` for real-time transaction status updates via Arcade SSE (see `docs/ARCADE.md`)
+
+### Changed
+- `update_transactions_status(ids, "failed")` releases the outputs the failed transactions had allocated (TS parity)
+
 ## [2.0.2] - 2026-05-20
 
 ### Added

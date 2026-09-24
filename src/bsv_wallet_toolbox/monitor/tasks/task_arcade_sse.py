@@ -1,6 +1,5 @@
 """TaskArcadeSSE implementation."""
 
-import json
 import threading
 from typing import TYPE_CHECKING, Any
 
@@ -34,10 +33,14 @@ class TaskArcadeSSE(WalletMonitorTask):
     - MINED / IMMUTABLE: flags TaskCheckForProofs to run now, which fetches
       the proof via Services.get_merkle_path (Arcade is queried first when
       configured) and persists the ProvenTx. (TS fetches the proof inline;
-      here the existing proof machinery is reused.)
-    - DOUBLE_SPEND_ATTEMPTED: terminal in Arcade — req => doubleSpend,
-      transactions => failed.
+      here the existing proof machinery is reused, so TaskCheckForProofs and
+      TaskNewHeader must be installed.)
+    - DOUBLE_SPEND_ATTEMPTED: req => doubleSpend, transactions => failed
+      (their allocated inputs are released). Current Arcade reports double
+      spends as REJECTED; this branch is defensive.
     - REJECTED: req => invalid, transactions => failed.
+
+    Transactions are resolved by txid (every user's transaction row for it).
 
     Reference: ts-wallet-toolbox/src/monitor/tasks/TaskArcSSE.ts
     """
@@ -101,7 +104,11 @@ class TaskArcadeSSE(WalletMonitorTask):
 
         log_lines: list[str] = []
         for event in events:
-            self._process_status_event(event, log_lines)
+            try:
+                self._process_status_event(event, log_lines)
+            except Exception as e:
+                # Keep going: the reader has already moved past these events.
+                log_lines.append(f"SSE: failed to process {event.get('txid')}: {e!s}")
         return "\n".join(log_lines) if log_lines else ""
 
     def _process_status_event(self, event: dict[str, Any], log_lines: list[str]) -> None:
@@ -132,32 +139,32 @@ class TaskArcadeSSE(WalletMonitorTask):
         if tx_status in _BROADCAST_CONFIRMED_STATUSES:
             if status in ("unsent", "sending", "callback"):
                 self.monitor.storage.update_proven_tx_req(req_id, {"status": "unmined"})
-                self._update_notify_transactions(req, "unproven")
+                self._update_transactions(req, "unproven")
                 log_lines.append(f"  req {req_id} => unmined")
         elif tx_status in ("MINED", "IMMUTABLE"):
             self._request_proof_check()
             log_lines.append(f"  req {req_id} MINED/IMMUTABLE — proof check requested")
         elif tx_status == "DOUBLE_SPEND_ATTEMPTED":
             self.monitor.storage.update_proven_tx_req(req_id, {"status": "doubleSpend"})
-            self._update_notify_transactions(req, "failed")
+            self._update_transactions(req, "failed")
             log_lines.append(f"  req {req_id} => doubleSpend")
         elif tx_status == "REJECTED":
             self.monitor.storage.update_proven_tx_req(req_id, {"status": "invalid"})
-            self._update_notify_transactions(req, "failed")
+            self._update_transactions(req, "failed")
             log_lines.append(f"  req {req_id} => invalid")
         else:
             log_lines.append(f"  req {req_id} unhandled status: {tx_status}")
 
-    def _update_notify_transactions(self, req: dict[str, Any], new_status: str) -> None:
-        """Update the transactions recorded in the req's notify list."""
-        notify = req.get("notify", {})
-        if isinstance(notify, str):
-            try:
-                notify = json.loads(notify)
-            except ValueError:
-                return
-        for tx_id in notify.get("transactionIds", []) if isinstance(notify, dict) else []:
-            self.monitor.storage.update_transaction(tx_id, {"status": new_status})
+    def _update_transactions(self, req: dict[str, Any], new_status: str) -> None:
+        """Update the status of the transactions for the req's txid.
+
+        Resolved by txid because ProvenTxReq.notify.transactionIds is not
+        populated by this storage. update_transactions_status releases the
+        inputs of transactions marked 'failed'.
+        """
+        txs = self.monitor.storage.find_transactions({"partial": {"txid": req.get("txid")}})
+        ids = [t["transactionId"] for t in txs if t.get("transactionId") is not None]
+        self.monitor.storage.update_transactions_status(ids, new_status)
 
     def _request_proof_check(self) -> None:
         """Flag TaskCheckForProofs to run on its next trigger evaluation."""

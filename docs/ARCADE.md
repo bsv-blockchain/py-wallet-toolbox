@@ -34,7 +34,8 @@ services = Services({
 ```
 
 - No public testnet endpoint is deployed.
-- When enabled, `arcade` is registered **first** in both `post_beef_services` and `get_merkle_path_services` (same priority as TS). On failure, aggregation falls over to the existing ARC providers (GorillaPool / TAAL) and then Bitails.
+- When enabled, `arcade` is registered **first** in both `post_beef_services` and `get_merkle_path_services` (same priority as TS).
+- `Services.post_beef` tries Arcade first, posting only the subject transaction as EF. A service error (EF cannot be built, rate limit, 5xx, network error, non-validation 400) falls over to the existing providers (TAAL, GorillaPool, then Bitails). A terminal validation failure or a double spend is returned without trying the others.
 
 ## Differences from ARC (wire contract)
 
@@ -44,19 +45,19 @@ Verified against the arcade server implementation (Go, in the sibling `arcade/` 
 |---|---|---|
 | Submit endpoint | `POST {url}/v1/tx` | `POST {url}/tx` (no `/v1` prefix) |
 | Status endpoint | `GET {url}/v1/tx/{txid}` | `GET {url}/tx/{txid}` |
-| Submission encoding | raw / BEEF V1 | **EF (Extended Format) preferred, raw accepted. BEEF is rejected with 400** |
+| Submission encoding | raw / BEEF V1 | **EF (Extended Format) only.** BEEF is rejected, and a raw tx fails validation (no per-input source data), both with 400 |
 | Success response | 200 | **202** `{"txid", "status": 202, "txStatus": "RECEIVED"}` |
-| Duplicate submit | — | 202 echoing the current status (which can be terminal) |
-| Meaning of 400 | various | **terminal validation failure** `{"error", "reason"}` — retrying is pointless |
+| Duplicate submit | — | 202 echoing the current status; a resubmitted `REJECTED` tx re-enters the pipeline (`RECEIVED`) |
+| Meaning of 400 | various | `{"error": "transaction failed validation", "reason"}` is a **terminal validation failure** (including non-final nLockTime). Other 400s (`invalid callback url`, `invalid request`, ...) are request/config errors |
 | Error format | RFC 7807-style | flat `{"error": ..., "reason": ...}` |
-| DOUBLE_SPEND_ATTEMPTED | may still resolve | **terminal** |
+| DOUBLE_SPEND_ATTEMPTED | may still resolve | defined, but not emitted by current Arcade: double spends arrive as `REJECTED` |
 | SSE | none | `GET /events?callbackToken=...` (separate SSE service/port) |
 
 ### txStatus values
 
 `UNKNOWN, RECEIVED, SENT_TO_NETWORK, ACCEPTED_BY_NETWORK, SEEN_ON_NETWORK, SEEN_MULTIPLE_NODES, DOUBLE_SPEND_ATTEMPTED, REJECTED, PENDING_RETRY, STUMP_PROCESSING, MINED, IMMUTABLE`
 
-Terminal: `REJECTED` / `DOUBLE_SPEND_ATTEMPTED` / `MINED` / `IMMUTABLE`
+Treated as final by the wallet: `REJECTED` / `DOUBLE_SPEND_ATTEMPTED` / `MINED` / `IMMUTABLE`. (Arcade's status lattice can still move `REJECTED` / `DOUBLE_SPEND_ATTEMPTED` forward, e.g. to `MINED`; like TS, the wallet does not follow that.)
 
 ### Honored headers
 
@@ -66,11 +67,11 @@ Only `X-CallbackUrl` / `X-CallbackToken` / `X-FullStatusUpdates`. `Authorization
 
 Arcade does not accept BEEF, so `Arcade.post_beef(beef, txids)` does the following per txid:
 
-1. Link parent transactions with `beef.find_transaction_for_signing(txid)`
+1. Get the linked transaction: the subject tx returned when parsing a BEEF V1 / Atomic BEEF hex string, otherwise `beef.find_transaction_for_signing(txid)`
 2. Build EF hex with `tx.to_ef()` (inlines each input's satoshis + locking script)
 3. Submit `{"rawTx": efHex}` to `POST /tx`
 
-When the BEEF does not carry a parent's bytes (e.g. txidOnly entries), EF cannot be built. That txid is recorded with `service_error=True` (non-terminal) so cross-provider aggregation falls through to a BEEF-capable broadcaster (ARC / Bitails).
+When EF cannot be built (the BEEF does not carry a parent's bytes, e.g. txidOnly entries, or the input is a bare raw tx), nothing is posted. That txid is recorded with `service_error=True` (non-terminal) so cross-provider aggregation falls through to another broadcaster (ARC / Bitails). `Arcade.broadcast(tx)` behaves the same way.
 
 ## Error classification (failover control)
 
@@ -79,8 +80,9 @@ Results of `post_raw_tx`:
 | Condition | status | service_error | Meaning |
 |---|---|---|---|
 | 202 + non-terminal txStatus | `success` | — | accepted |
-| 202 + `REJECTED` / `DOUBLE_SPEND_ATTEMPTED` | `error` | False | terminal (double spend sets `double_spend=True`) |
-| 400 | `error` | **False** | the transaction itself is invalid; other providers will fail too |
+| 202 + `REJECTED` / `DOUBLE_SPEND_ATTEMPTED` | `error` | False | terminal (double spend sets `double_spend=True`); defensive, current Arcade does not return these |
+| 400 `transaction failed validation` | `error` | **False** | the transaction itself is invalid; other providers will fail too |
+| other 400 (e.g. `invalid callback url`) | `error` | True | request/config error → fail over |
 | 429 | `rate_limited` | True | rate limited |
 | 503 / 5xx / network exception | `error` | True | transient failure → fail over |
 
@@ -117,29 +119,33 @@ If `arcadeUrl` / `arcadeCallbackToken` are not configured, the task logs "SSE di
 |---|---|---|
 | `SENT_TO_NETWORK` / `ACCEPTED_BY_NETWORK` / `SEEN_ON_NETWORK` / `SEEN_MULTIPLE_NODES` | `unsent`/`sending`/`callback` → `unmined` | → `unproven` |
 | `MINED` / `IMMUTABLE` | sets `TaskCheckForProofs.check_now = True`, delegating to the existing proof machinery* | (updated when the proof is persisted) |
-| `DOUBLE_SPEND_ATTEMPTED` | → `doubleSpend` | → `failed` |
-| `REJECTED` | → `invalid` | → `failed` |
+| `DOUBLE_SPEND_ATTEMPTED` | → `doubleSpend` | → `failed` (allocated inputs released) |
+| `REJECTED` | → `invalid` | → `failed` (allocated inputs released) |
 
-\* TS fetches the proof inline in the task; the Python port reuses the existing `TaskCheckForProofs` (via `Services.get_merkle_path` — Arcade is queried first when configured). The proof is validated against the wallet's own chaintracker before it is persisted.
+Transactions are resolved by txid (every user's transaction row for it).
+
+\* TS fetches the proof inline in the task; the Python port reuses the existing `TaskCheckForProofs` (via `Services.get_merkle_path` — Arcade is queried first when configured), so the default tasks `TaskCheckForProofs` and `TaskNewHeader` must be installed. The proof's root is checked against the block header before it is persisted.
 
 ### Reconnection and catch-up
 
-- No automatic reconnection (same lifecycle as TS). Call `ArcadeSSEClient.fetch_events()` on demand (app open, balance refresh, etc.); if disconnected it reconnects with `Last-Event-ID` (a nanosecond timestamp) and replays missed events
-- Persist `last_event_id` via the `on_last_event_id_changed` callback
-- Arcade replays only non-terminal statuses on catch-up. Terminal history remains queryable via `GET /tx/{txid}`
+- No automatic reconnection (same lifecycle as TS). Call `ArcadeSSEClient.fetch_events()` on demand (app open, balance refresh, etc.); if disconnected it reconnects with `Last-Event-ID` and replays missed events
+- A first connect sends no `Last-Event-ID`; Arcade then replays the current non-terminal statuses for the token. A reconnect sends the last event id (a nanosecond timestamp) minus 1ns, and Arcade replays every status newer than it, terminal ones included. Stepping back 1ns re-delivers events that share the last id's timestamp; processing them again is harmless
+- `TaskArcadeSSE` does not persist `last_event_id`, so a process restart is a first connect. Terminal statuses reached while the process was down are picked up by the polling tasks. `ArcadeSSEClient` users can persist it via `on_last_event_id_changed`
+- Connection errors reported to `on_error` have the callback token redacted
 
 ## Proof retrieval (get_merkle_path)
 
 `Arcade.get_merkle_path(txid, services)` queries `GET /tx/{txid}` and:
 
-- Returns a proof only when `txStatus` is `MINED` / `IMMUTABLE` and a `merklePath` (BUMP hex) is present
-- Otherwise (unmined / untracked / 404) returns empty with notes, so `Services.get_merkle_path` falls through to the next providers (WhatsOnChain / Bitails)
+- Returns a proof only when `txStatus` is `MINED` / `IMMUTABLE`, the `merklePath` BUMP hex parses, the block header resolves via `services.hash_to_header(blockHash)`, and the proof's root matches the header's `merkleRoot` (same checks as TS)
+- The proof is returned as `{"blockHeight", "path"}`, the same shape as the other providers
+- Otherwise (unmined / untracked / 404 / unknown header / root mismatch) returns empty with notes, so `Services.get_merkle_path` falls through to the next providers (WhatsOnChain / Bitails)
 
 ## Tests
 
 ```
-pytest tests/services/test_arcade_provider.py   # provider (17 tests)
-pytest tests/services/test_arcade_sse.py        # SSE client + monitor task (19 tests)
+pytest tests/services/test_arcade_provider.py   # provider + Services.post_beef routing
+pytest tests/services/test_arcade_sse.py        # SSE client + monitor task
 ```
 
 Neither requires network access (requests is mocked).

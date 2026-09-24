@@ -1599,13 +1599,37 @@ class Services(WalletServices):
 
         # Debug: high-level broadcast context
         self.logger.debug(
-            "Services.post_beef: txid=%s, txids=%s, providers={'taal': %s, 'gorillapool': %s, 'bitails': %s}",
+            "Services.post_beef: txid=%s, txids=%s, providers={'arcade': %s, 'taal': %s, 'gorillapool': %s, 'bitails': %s}",
             txid,
             txids,
+            bool(self.arcade),
             bool(self.arc_taal),
             bool(self.arc_gorillapool),
             bool(self.bitails),
         )
+
+        # 0. Try Arcade first (opt-in via arcadeUrl; TS registers it first in postBeefServices).
+        # Only the subject tx is posted, as EF. A tx that cannot be encoded as EF (e.g. a bare
+        # raw tx) and any other service error fall through to the providers below.
+        if self.arcade:
+            try:
+                res = self.arcade.broadcast(tx)
+                if res.status == "success":
+                    return {"accepted": True, "txid": txid, "message": "Broadcast successful"}
+                if res.double_spend:
+                    return {
+                        "accepted": False,
+                        "doubleSpend": True,
+                        "txid": txid,
+                        "message": _fmt_arc_error(res),
+                    }
+                if not res.service_error:
+                    # Terminal validation failure: another provider would reject it too.
+                    return {"accepted": False, "txid": txid, "message": _fmt_arc_error(res)}
+                provider_errors["arcade"] = _fmt_arc_error(res)
+            except Exception as e:
+                provider_errors["arcade"] = str(e)
+                self.logger.debug("Services.post_beef: Arcade broadcast exception: %s", e)
 
         # 1. Try ARC TAAL first (if configured)
         if self.arc_taal:
@@ -1724,6 +1748,8 @@ class Services(WalletServices):
                     message = f"{message}; other_failures: {extras}"
             # Also include which providers were tried
             tried_providers = []
+            if self.arcade:
+                tried_providers.append("Arcade")
             if self.arc_gorillapool:
                 tried_providers.append("GorillaPool")
             if self.arc_taal:
@@ -1805,8 +1831,8 @@ class Services(WalletServices):
             if not isinstance(beef, str):
                 raise InvalidParameterError(f"beefs[{i}]", "must be a string")
 
-        # Use ARC if either provider is configured
-        if self.arc_gorillapool or self.arc_taal:
+        # Broadcast for real if any ARC-style provider is configured
+        if self.arcade or self.arc_gorillapool or self.arc_taal:
             results: list[dict[str, Any]] = []
             for beef in beefs:
                 try:
