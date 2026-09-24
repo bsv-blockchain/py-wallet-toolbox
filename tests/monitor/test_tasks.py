@@ -82,64 +82,80 @@ class TestTaskNewHeader:
 
         assert task.name == "NewHeader"
         assert task.monitor == mock_monitor
-        assert task.check_now is False
+        assert task.trigger_msecs == 60 * 1000
+        assert task.header is None
+        assert task.queued_header is None
 
     def test_task_new_header_trigger(self) -> None:
-        """Test TaskNewHeader trigger logic."""
+        """Test TaskNewHeader runs once per polling interval."""
+        task = TaskNewHeader(MagicMock(), trigger_msecs=1000)
+        task.last_run_msecs_since_epoch = 5000
+
+        assert task.trigger(5500)["run"] is False
+        assert task.trigger(6001)["run"] is True
+
+    def test_task_new_header_first_header_is_queued(self) -> None:
+        """Test the first chain tip is queued, not processed."""
         mock_monitor = MagicMock()
-        task = TaskNewHeader(mock_monitor)
-
-        # Initially should not run
-        result = task.trigger(0)
-        assert result["run"] is False
-
-        # When check_now is set, should run
-        task.check_now = True
-        result = task.trigger(0)
-        assert result["run"] is True
-
-    def test_task_new_header_run_task_no_header(self) -> None:
-        """Test TaskNewHeader run_task with no header."""
-        mock_monitor = MagicMock()
-        mock_monitor.last_new_header = None
-        mock_monitor._tasks = []
+        mock_monitor.services.find_chain_tip_header.return_value = {"height": 100, "hash": "abc123"}
 
         task = TaskNewHeader(mock_monitor)
         result = task.run_task()
 
-        assert result == ""
-        assert task.check_now is False
+        assert result == "first header: 100 abc123"
+        assert task.queued_header == {"height": 100, "hash": "abc123"}
+        mock_monitor.process_new_block_header.assert_not_called()
 
-    def test_task_new_header_run_task_with_header(self) -> None:
-        """Test TaskNewHeader run_task with header."""
+    def test_task_new_header_processes_header_after_quiet_cycle(self) -> None:
+        """Test a queued header is processed once a cycle passes without a newer one."""
         mock_monitor = MagicMock()
-        mock_monitor.last_new_header = {"height": 100, "hash": "abc123"}
-        mock_monitor._tasks = []
+        header = {"height": 100, "hash": "abc123"}
+        mock_monitor.services.find_chain_tip_header.return_value = header
 
         task = TaskNewHeader(mock_monitor)
+        task.run_task()
         result = task.run_task()
 
-        assert "Processing new header 100 abc123" in result
-        assert task.check_now is False
+        assert result.startswith("process header: 100 abc123 delayed")
+        mock_monitor.process_new_block_header.assert_called_once_with(header)
+        assert task.queued_header is None
 
-    def test_task_new_header_run_task_triggers_proof_check(self) -> None:
-        """Test TaskNewHeader triggers TaskCheckForProofs."""
-        from bsv_wallet_toolbox.monitor.tasks.task_check_for_proofs import TaskCheckForProofs
+        # Nothing left to process on the next unchanged cycle
+        assert task.run_task() == ""
+        mock_monitor.process_new_block_header.assert_called_once()
 
+    def test_task_new_header_new_and_reorg_headers_requeue(self) -> None:
+        """Test newer and same-height different-hash tips replace the queued header."""
         mock_monitor = MagicMock()
-        mock_monitor.last_new_header = {"height": 100, "hash": "abc123"}
-
-        # Create mock proof check task
-        proof_task = MagicMock(spec=TaskCheckForProofs)
-        proof_task.check_now = False
-
-        mock_monitor._tasks = [proof_task]
+        mock_monitor.services.find_chain_tip_header.side_effect = [
+            {"height": 100, "hash": "a"},
+            {"height": 103, "hash": "b"},
+            {"height": 103, "hash": "c"},
+        ]
 
         task = TaskNewHeader(mock_monitor)
+        task.run_task()
+
+        assert task.run_task() == "new header: 103 b SKIPPED 2"
+        assert task.run_task() == "reorg header: 103 c"
+        assert task.queued_header == {"height": 103, "hash": "c"}
+        mock_monitor.process_new_block_header.assert_not_called()
+
+    def test_task_new_header_keeps_higher_header(self) -> None:
+        """Test a lower tip does not replace the current header."""
+        mock_monitor = MagicMock()
+        mock_monitor.services.find_chain_tip_header.side_effect = [
+            {"height": 100, "hash": "a"},
+            {"height": 99, "hash": "z"},
+        ]
+
+        task = TaskNewHeader(mock_monitor)
+        task.run_task()
         result = task.run_task()
 
-        assert "Triggered TaskCheckForProofs" in result
-        assert proof_task.check_now is True
+        assert result.startswith("process header: 100 a delayed")
+        assert task.header == {"height": 100, "hash": "a"}
+        mock_monitor.process_new_block_header.assert_called_once_with({"height": 100, "hash": "a"})
 
 
 class TestTaskSendWaiting:

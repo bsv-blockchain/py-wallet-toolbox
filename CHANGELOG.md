@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Monitor never stored merkle proofs: `TaskNewHeader` now polls the chain tip and calls `Monitor.process_new_block_header` (TS parity), and `TaskCheckForProofs` calls the synchronous `Services.get_merkle_path_for_transaction` directly instead of through `asyncio.run`
+- `TaskCheckForProofs` validates dict-form merkle paths against the block header and stores the real BUMP and tx index instead of placeholder bytes and index 0
+
 ## [2.0.2] - 2026-05-20
 
 ### Added
