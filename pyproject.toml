@@ -99,6 +99,7 @@ ignore = [
     "E501",     # line-too-long (handled by black formatter)
     "PLC0415",  # import-not-at-top-level (acceptable for conditional imports)
     "PLR0913",  # too-many-arguments (some functions legitimately need many args)
+    "PLR0917",  # too-many-positional-arguments (same rationale as PLR0913)
     "SIM117",   # nested-with-statements (acceptable in test code)
     "N802",     # function-name-should-be-lowercase (test function naming conventions)
     "N806",     # variable-name-should-be-lowercase (constants and class attributes)
