@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 
-def stamp_log(log: str | None | dict[str, Any], line_to_add: str) -> str | None:
+def stamp_log(log: str | dict[str, Any] | None, line_to_add: str) -> str | None:
     """Add a timestamped line to a log string or object.
 
     If a log is being kept, add a time stamped line.
