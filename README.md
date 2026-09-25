@@ -3,7 +3,7 @@
 [![Build](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
 [![PyPI version](https://img.shields.io/pypi/v/bsv-wallet-toolbox)](https://pypi.org/project/bsv-wallet-toolbox)
 [![Python versions](https://img.shields.io/pypi/pyversions/bsv-wallet-toolbox)](https://pypi.org/project/bsv-wallet-toolbox)
-[![Coverage](https://img.shields.io/badge/coverage-71.45385587863464%25-yellowgreen)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
+[![Coverage](https://img.shields.io/badge/coverage-71.48196787554298%25-yellowgreen)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
 
 > **🔗 Cross-SDK Interoperability (v2.0.0)**
 >
