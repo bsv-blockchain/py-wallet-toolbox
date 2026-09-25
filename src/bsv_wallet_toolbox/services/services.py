@@ -1128,17 +1128,8 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findChainTipHeader)
         """
-        h = self._run_async(self.whatsonchain.find_chain_tip_header())
-        return {
-            "version": h.version,
-            "previousHash": h.previousHash,
-            "merkleRoot": h.merkleRoot,
-            "time": h.time,
-            "bits": h.bits,
-            "nonce": h.nonce,
-            "height": h.height,
-            "hash": h.hash,
-        }
+        # WhatsOnChain returns a BlockHeader TypedDict (a plain dict).
+        return dict(self._run_async(self.whatsonchain.find_chain_tip_header()))
 
     def find_chain_tip_hash(self) -> str:
         """Return the active chain tip hash (hex string)."""
@@ -1156,19 +1147,9 @@ class Services(WalletServices):
         Reference:
             - toolbox/ts-wallet-toolbox/src/services/Services.ts (findHeaderForBlockHash)
         """
+        # WhatsOnChain returns a BlockHeader TypedDict (a plain dict).
         h = self._run_async(self.whatsonchain.find_header_for_block_hash(block_hash))
-        if h is None:
-            return None
-        return {
-            "version": h.version,
-            "previousHash": h.previousHash,
-            "merkleRoot": h.merkleRoot,
-            "time": h.time,
-            "bits": h.bits,
-            "nonce": h.nonce,
-            "height": h.height,
-            "hash": h.hash,
-        }
+        return dict(h) if h is not None else None
 
     def update_bsv_exchange_rate(self) -> dict[str, Any]:
         """Get the current BSV/USD exchange rate via provider.

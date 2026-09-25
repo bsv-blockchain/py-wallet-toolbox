@@ -10,6 +10,7 @@ import asyncio
 import json
 
 import pytest
+from bsv.merkle_path import MerklePath
 
 # Monitor tests - previously skipped due to missing helper functions
 # These tests require implementation of test utility functions
@@ -235,11 +236,10 @@ class TestMonitor:
 
         ctx.storage.destroy()
 
-    @pytest.mark.asyncio
-    async def test_tasknewheader(self) -> None:
-        """Given: Monitor with new header task running for 10+ seconds
-           When: Check header and checkNow flag
-           Then: Latest header is fetched and checkNow flag is set
+    def test_tasknewheader(self) -> None:
+        """Given: Monitor with new header task polling the chain tip
+           When: The same tip is seen for a second cycle
+           Then: The header is processed and TaskCheckForProofs.check_now is set
 
         Reference: wallet-toolbox/test/monitor/Monitor.test.ts
                    test('1 TaskNewHeader')
@@ -251,33 +251,31 @@ class TestMonitor:
         if monitor is None:
             raise ValueError("test requires setup with monitor")
 
-        # When
+        tip = {"height": 1000, "hash": "a" * 64, "merkleRoot": "b" * 64}
+        monitor.services.find_chain_tip_header = lambda: tip
+
         task = TaskNewHeader(monitor)
         monitor._tasks.append(task)
-
-        # Create a TaskCheckForProofs instance to verify check_now is set
         check_proofs_task = TaskCheckForProofs(monitor)
         monitor._tasks.append(check_proofs_task)
         assert check_proofs_task.check_now is False
 
-        # Set a mock header for the monitor to process
-        monitor.last_new_header = {"height": 1000, "hash": "a" * 64, "merkleRoot": "b" * 64}
-
-        # Set check_now to trigger the task
-        task.check_now = True
-
-        start_tasks_task = asyncio.create_task(monitor.start_tasks())
-        await asyncio.sleep(Monitor.ONE_SECOND / 1000.0 * 2)  # Wait 2 seconds for task to run
+        # When: first cycle queues the new header
+        log = task.run_task()
 
         # Then
-        # Task should have processed the header
-        assert task.header is not None
-        assert task.header.get("height") == 1000
-        # TaskCheckForProofs instance check_now should be True after processing
-        assert check_proofs_task.check_now is True
+        assert log == f"first header: 1000 {'a' * 64}"
+        assert task.header == tip
+        assert monitor.last_new_header is None
+        assert check_proofs_task.check_now is False
 
-        monitor.stop_tasks()
-        await start_tasks_task  # Wait for tasks to stop
+        # When: tip unchanged for a full cycle
+        log = task.run_task()
+
+        # Then
+        assert log.startswith(f"process header: 1000 {'a' * 64}")
+        assert monitor.last_new_header == tip
+        assert check_proofs_task.check_now is True
 
         ctx.storage.destroy()
 
@@ -404,7 +402,7 @@ class TestMonitor:
 
         mock_result_index = 0
 
-        async def merkle_path_callback(txid: str):
+        def merkle_path_callback(txid: str):
             nonlocal mock_result_index
             assert txid in expected_txids
             result = MOCK_MERKLE_PATH_RESULTS[mock_result_index]
@@ -455,9 +453,12 @@ class TestMonitor:
         monitor.run_task("CheckForProofs")
 
         # Then
-        for txid in expected_txids:
+        for i, txid in enumerate(expected_txids):
             proven = (storage.find_proven_txs({"partial": {"txid": txid}}))[0]
             assert proven["merklePath"] is not None
+            mp = MerklePath.from_binary(bytes(proven["merklePath"]))
+            assert mp.compute_root(txid) == MOCK_MERKLE_PATH_RESULTS[i]["header"]["merkleRoot"]
+            assert proven["index"] == next(leaf["offset"] for leaf in mp.path[0] if leaf.get("hash_str") == txid)
 
             req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None
@@ -490,7 +491,7 @@ class TestMonitor:
             "519675259eff036c6597e4a497d37c132e718171dde4ea2257e84c947ecf656b",
         ]
 
-        async def merkle_path_callback(txid: str):
+        def merkle_path_callback(txid: str):
             assert txid in expected_txids
             return {}  # Empty = no proof
 
@@ -612,7 +613,7 @@ class TestMonitor:
 
         mock_result_index = 0
 
-        async def merkle_path_callback(txid: str):
+        def merkle_path_callback(txid: str):
             nonlocal mock_result_index
             assert txid in expected_txids
             result = MOCK_MERKLE_PATH_RESULTS[mock_result_index]
@@ -675,9 +676,12 @@ class TestMonitor:
         monitor.run_task("CheckForProofs")
 
         # Then
-        for txid in expected_txids:
+        for i, txid in enumerate(expected_txids):
             proven = (storage.find_proven_txs({"partial": {"txid": txid}}))[0]
             assert proven["merklePath"] is not None
+            mp = MerklePath.from_binary(bytes(proven["merklePath"]))
+            assert mp.compute_root(txid) == MOCK_MERKLE_PATH_RESULTS[i]["header"]["merkleRoot"]
+            assert proven["index"] == next(leaf["offset"] for leaf in mp.path[0] if leaf.get("hash_str") == txid)
 
             req = ProvenTxReq.from_storage_txid(storage, txid)
             assert req is not None

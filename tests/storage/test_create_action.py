@@ -13,6 +13,7 @@ parity is reached.
 from __future__ import annotations
 
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -183,11 +184,18 @@ def test_create_action_randomizes_outputs(storage_seeded: tuple[StorageProvider,
     ]
     args["options"]["randomizeOutputs"] = True
 
-    result = storage.create_action(_auth_for(user), args)
-    user_outputs = [out for out in result.get("outputs", []) if out.get("providedBy") == "you"]
+    # A real shuffle can legitimately return any order, so asserting on it is flaky.
+    # Pin the permutation (reverse) and check the vouts follow it.
+    with patch("random.shuffle", side_effect=lambda xs: xs.reverse()) as shuffle:
+        result = storage.create_action(_auth_for(user), args)
+
+    shuffle.assert_called_once()
+    outputs = result.get("outputs", [])
+    assert sorted(out["vout"] for out in outputs) == list(range(len(outputs)))
+    user_outputs = [out for out in outputs if out.get("providedBy") == "you"]
     assert len(user_outputs) == 3
-    order = [out["vout"] for out in user_outputs]
-    assert order not in ([0, 1, 2], [2, 1, 0])
+    n = len(outputs)
+    assert [out["vout"] for out in user_outputs] == [n - 1, n - 2, n - 3]
 
 
 def test_create_action_known_txids_return_txid_only(storage_seeded: tuple[StorageProvider, dict[str, Any]]) -> None:
