@@ -108,9 +108,7 @@ class TaskCheckForProofs(WalletMonitorTask):
 
         try:
             # 1. Get Merkle Path from Services
-            import asyncio
-
-            res = asyncio.run(self.monitor.services.get_merkle_path_for_transaction(txid))
+            res = self.monitor.services.get_merkle_path_for_transaction(txid)
         except Exception as e:
             log_lines.append(f"Error getting proof for {txid}: {e!s}")
             self._increment_attempts(proven_tx_req_id, attempts)
@@ -130,50 +128,33 @@ class TaskCheckForProofs(WalletMonitorTask):
             return
 
         # 2. Validate Proof
-        # Need to convert merkle_path_data to BUMP bytes for storage and validation
-        bump_bytes: bytes
-        merkle_path_obj: MerklePath | None = None
-
         try:
             if isinstance(merkle_path_data, bytes):
-                bump_bytes = merkle_path_data
-                merkle_path_obj = MerklePath.from_binary(bump_bytes)
+                merkle_path_obj = MerklePath.from_binary(merkle_path_data)
             elif isinstance(merkle_path_data, str):
-                # Hex string
-                bump_bytes = bytes.fromhex(merkle_path_data)
-                merkle_path_obj = MerklePath.from_binary(bump_bytes)
+                merkle_path_obj = MerklePath.from_hex(merkle_path_data)
             elif isinstance(merkle_path_data, dict):
-                # Dictionary structure (from TS-like response)
-                # For testing purposes, assume the proof is valid and create minimal binary data
-                # TODO: Implement proper MerklePath validation when py-sdk supports dict format
-                # Background: py-sdk's MerklePath class expects binary BUMP format but external
-                # services (WhatsOnChain, GorillaPool) return JSON dict format with blockHeight,
-                # path array, etc. TypeScript uses MerklePath.fromBinary() and .fromHex() which
-                # can parse both formats. py-sdk needs to add dict-to-binary conversion or
-                # direct dict parsing. Once py-sdk supports this, update to use proper validation.
-                # See: py-sdk/src/merkle_path.py and BRC-74 BUMP format specification
-                block_height = merkle_path_data.get("blockHeight")
-                if block_height is not None:
-                    # Create minimal valid BUMP data for testing
-                    # This is a simplified approach - in production, proper validation is needed
-                    bump_bytes = b"test_bump_data"
-                    merkle_path_obj = None  # Skip MerklePath object creation for now
-                else:
-                    log_lines.append(f"Invalid MerklePath dict format for {txid}")
-                    return
+                # Normalized {"blockHeight", "path"} form returned by the providers.
+                # Leaves may use py-sdk's "hash_str" or TS's "hash" key.
+                path = [
+                    [{"hash_str": leaf["hash"], **leaf} if "hash" in leaf else leaf for leaf in level]
+                    for level in merkle_path_data["path"]
+                ]
+                merkle_path_obj = MerklePath(merkle_path_data["blockHeight"], path)
             else:
                 log_lines.append(f"Unsupported MerklePath type {type(merkle_path_data)} for {txid}")
                 return
 
             # Validate root matches header
-            if merkle_path_obj:
-                calculated_root = merkle_path_obj.compute_root(txid)
-                header_root = header.get("merkleRoot")
-                if header_root and calculated_root != header_root:
-                    log_lines.append(f"Merkle root mismatch for {txid}: {calculated_root} != {header_root}")
-                    # Mark as invalid? TS marks as invalid.
-                    # self.monitor.storage.update_proven_tx_req(proven_tx_req_id, {"status": "invalid"})
-                    return
+            calculated_root = merkle_path_obj.compute_root(txid)
+            header_root = header.get("merkleRoot")
+            if header_root and calculated_root != header_root:
+                log_lines.append(f"Merkle root mismatch for {txid}: {calculated_root} != {header_root}")
+                # Mark as invalid? TS marks as invalid.
+                # self.monitor.storage.update_proven_tx_req(proven_tx_req_id, {"status": "invalid"})
+                return
+
+            index = next(leaf["offset"] for leaf in merkle_path_obj.path[0] if leaf.get("hash_str") == txid)
 
         except Exception as e:
             log_lines.append(f"Proof validation failed for {txid}: {e!s}")
@@ -181,22 +162,16 @@ class TaskCheckForProofs(WalletMonitorTask):
 
         # 3. Update Storage (ProvenTx)
         try:
-            # For cases where we don't have a MerklePath object (e.g., dict format),
-            # use the bump_bytes we created
-            if merkle_path_obj:
-                bump_bytes = merkle_path_obj.to_binary()
-            # else: bump_bytes was set above
-
             update_args = {
                 "provenTxReqId": proven_tx_req_id,
                 "status": "notifying",  # or completed? TS: status becomes 'completed' inside update method
                 "txid": txid,
                 "attempts": attempts,
                 "history": req.get("history", []),
-                "index": 0,  # Extract from BUMP if possible, otherwise 0
+                "index": index,
                 "height": height,
                 "blockHash": header.get("hash"),
-                "merklePath": bump_bytes,
+                "merklePath": merkle_path_obj.to_binary(),
                 "merkleRoot": header.get("merkleRoot"),
             }
 

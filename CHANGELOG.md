@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped minimum bsv-sdk dependency from 2.1.3 to 2.4.0
 - `update_transactions_status(ids, "failed")` releases the outputs the failed transactions had allocated (TS parity)
 
+### Fixed
+- Monitor never stored merkle proofs: `TaskNewHeader` now polls the chain tip and calls `Monitor.process_new_block_header` (TS parity), and `TaskCheckForProofs` calls the synchronous `Services.get_merkle_path_for_transaction` directly instead of through `asyncio.run`
+- `TaskCheckForProofs` validates dict-form merkle paths against the block header and stores the real BUMP and tx index instead of placeholder bytes and index 0
+- WhatsOnChain `current_height` read the chain height from the wrong level of the response and always returned 0; `Services.find_chain_tip_header`, `find_header_for_block_hash` and `find_chain_tip_hash` failed with `AttributeError` on the header dict WhatsOnChain returns
+
 ## [2.0.2] - 2026-05-20
 
 ### Added
