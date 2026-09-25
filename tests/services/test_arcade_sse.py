@@ -7,8 +7,31 @@ Reference: ts-wallet-toolbox/src/monitor/tasks/TaskArcSSE.ts
 import time
 from unittest.mock import MagicMock, patch
 
-from bsv_wallet_toolbox.monitor.tasks.task_arcade_sse import TaskArcadeSSE
+from bsv_wallet_toolbox.monitor.tasks.task_arcade_sse import MAX_EVENT_ATTEMPTS, TaskArcadeSSE
+from bsv_wallet_toolbox.services.providers.arc import ArcMinerGetTxData
 from bsv_wallet_toolbox.services.providers.arcade_sse import ArcadeSSEClient
+from bsv_wallet_toolbox.storage.db import create_engine_from_url
+from bsv_wallet_toolbox.storage.models import Base
+from bsv_wallet_toolbox.storage.provider import StorageProvider
+
+FEE_POLICY_REASON = "transaction fee is too low: 10 < 50 required: transaction fee is too low: 10 < 50 required"
+
+
+def _rejected_status(extra_info: str) -> ArcMinerGetTxData:
+    """Arcade GET /tx/{txid} for a REJECTED tx; extraInfo carries the rejection reason."""
+    return ArcMinerGetTxData(
+        status=200,
+        title="",
+        block_hash="",
+        block_height=0,
+        competing_txs=None,
+        extra_info=extra_info,
+        merkle_path=None,
+        timestamp="",
+        txid=TXID,
+        tx_status="REJECTED",
+    )
+
 
 TXID = "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec"
 ARCADE_URL = "https://arcade-v2-us-1.bsvblockchain.tech"
@@ -240,6 +263,7 @@ class TestTaskArcadeSSEProcessing:
     def test_rejected_marks_invalid(self) -> None:
         req = {"provenTxReqId": 7, "txid": TXID, "status": "unsent", "notify": {}}
         task, monitor = self._task_with_req(req, transaction_ids=[4])
+        monitor.services.arcade.get_tx_data.return_value = _rejected_status("script execution failed")
         task._on_event({"txid": TXID, "txStatus": "REJECTED"})
 
         log = task.run_task()
@@ -247,6 +271,65 @@ class TestTaskArcadeSSEProcessing:
         monitor.storage.update_proven_tx_req.assert_called_once_with(7, {"status": "invalid"})
         monitor.storage.update_transactions_status.assert_called_once_with([4], "failed")
         assert "req 7 => invalid" in log
+
+    def test_fee_policy_rejection_is_not_applied(self) -> None:
+        """Arcade's own fee floor: Services.post_beef fell through to the other broadcasters, which decide."""
+        req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
+        task, monitor = self._task_with_req(req, transaction_ids=[4])
+        monitor.services.arcade.get_tx_data.return_value = _rejected_status(FEE_POLICY_REASON)
+        task._on_event({"txid": TXID, "txStatus": "REJECTED"})
+
+        log = task.run_task()
+
+        monitor.services.arcade.get_tx_data.assert_called_once_with(TXID)
+        monitor.storage.update_proven_tx_req.assert_not_called()
+        monitor.storage.update_transactions_status.assert_not_called()
+        assert "fee policy" in log
+
+    def test_rejection_reason_unavailable_is_retried(self) -> None:
+        req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
+        task, monitor = self._task_with_req(req, transaction_ids=[4])
+        monitor.services.arcade.get_tx_data.return_value = None
+        task._on_event({"txid": TXID, "txStatus": "REJECTED"})
+
+        task.run_task()
+
+        monitor.storage.update_proven_tx_req.assert_not_called()
+        assert task.trigger(0)["run"] is True
+
+    def test_failed_event_is_retried_next_run(self) -> None:
+        """A transient storage error must not lose the event: the SSE cursor has moved past it."""
+        req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
+        task, monitor = self._task_with_req(req, transaction_ids=[4])
+        monitor.services.arcade.get_tx_data.return_value = _rejected_status("script execution failed")
+        monitor.storage.update_transactions_status.side_effect = [RuntimeError("database is locked"), 1]
+        task._on_event({"txid": TXID, "txStatus": "REJECTED"})
+
+        log = task.run_task()
+
+        assert "will retry" in log
+        # Transactions are updated before the req, so the req stays non-terminal and the retry redoes both.
+        monitor.storage.update_proven_tx_req.assert_not_called()
+        assert task.trigger(0)["run"] is True
+
+        task.run_task()
+
+        monitor.storage.update_proven_tx_req.assert_called_once_with(7, {"status": "invalid"})
+        assert monitor.storage.update_transactions_status.call_count == 2
+        assert task.trigger(0)["run"] is False
+
+    def test_poison_event_is_dropped_after_max_attempts(self) -> None:
+        task, monitor = _make_task({})
+        monitor.storage.find_proven_tx_reqs.side_effect = RuntimeError("boom")
+        task._on_event({"txid": TXID, "txStatus": "MINED"})
+
+        for _ in range(MAX_EVENT_ATTEMPTS - 1):
+            task.run_task()
+            assert task.trigger(0)["run"] is True
+        log = task.run_task()
+
+        assert "giving up" in log
+        assert task.trigger(0)["run"] is False
 
     def test_terminal_req_is_skipped(self) -> None:
         req = {"provenTxReqId": 7, "status": "completed", "notify": {}}
@@ -285,3 +368,81 @@ class TestTaskArcadeSSEProcessing:
         task._on_event({"txid": TXID, "txStatus": "MINED"})
         task.run_task()
         assert task.trigger(0)["run"] is False
+
+
+class TestTaskArcadeSSEWithStorage:
+    """TaskArcadeSSE against a real SQLite StorageProvider."""
+
+    def _storage(self) -> tuple[StorageProvider, int]:
+        engine = create_engine_from_url("sqlite:///:memory:")
+        Base.metadata.create_all(bind=engine)
+        storage = StorageProvider(engine=engine, chain="test", storage_identity_key="K" * 64)
+        storage.make_available()
+        user_id = storage.find_or_insert_user("sse_user")["user"]["userId"]
+        funding_id = storage.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "funding",
+                "txid": "f" * 64,
+                "status": "completed",
+                "rawTx": b"raw",
+                "satoshis": 1000,
+                "description": "funding",
+            }
+        )
+        spending_id = storage.insert_transaction(
+            {
+                "userId": user_id,
+                "reference": "spending",
+                "txid": TXID,
+                "status": "unproven",
+                "rawTx": b"raw",
+                "satoshis": -1000,
+                "description": "spends funding",
+            }
+        )
+        storage.insert_output(
+            {
+                "userId": user_id,
+                "transactionId": funding_id,
+                "basketId": None,
+                "spendable": False,
+                "change": True,
+                "vout": 0,
+                "satoshis": 1000,
+                "providedBy": "you",
+                "purpose": "change",
+                "type": "P2PKH",
+                "txid": "f" * 64,
+                "spentBy": spending_id,
+            }
+        )
+        storage.insert_proven_tx_req(
+            {"txid": TXID, "rawTx": b"raw", "status": "unmined", "notify": "{}", "history": "{}"}
+        )
+        return storage, funding_id
+
+    def test_rejected_after_transient_db_error_releases_inputs(self) -> None:
+        storage, funding_id = self._storage()
+        task, monitor = _make_task({})
+        monitor.storage = storage
+        monitor.services.arcade.get_tx_data.return_value = _rejected_status("script execution failed")
+        real_update = storage.update_transactions_status
+        calls = {"n": 0}
+
+        def update_locked_once(ids: list[int], status: str) -> int:
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("database is locked")
+            return real_update(ids, status)
+
+        task._on_event({"txid": TXID, "txStatus": "REJECTED"})
+        with patch.object(storage, "update_transactions_status", side_effect=update_locked_once):
+            task.run_task()
+            task.run_task()
+
+        assert storage.find_transactions({"partial": {"reference": "spending"}})[0]["status"] == "failed"
+        output = storage.find_outputs({"transactionId": funding_id})[0]
+        assert output["spendable"] is True
+        assert output["spentBy"] is None
+        assert storage.find_proven_tx_reqs({"partial": {"txid": TXID}})[0]["status"] == "invalid"

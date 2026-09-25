@@ -3,6 +3,7 @@
 import threading
 from typing import TYPE_CHECKING, Any
 
+from ...services.providers.arcade import is_fee_policy_rejection
 from ...services.providers.arcade_sse import ArcadeSSEClient
 from ..wallet_monitor_task import WalletMonitorTask
 
@@ -11,6 +12,9 @@ if TYPE_CHECKING:
 
 # ProvenTxReq statuses that can never change again (TS: ProvenTxReqTerminalStatus).
 PROVEN_TX_REQ_TERMINAL_STATUSES = frozenset({"completed", "invalid", "doubleSpend"})
+
+# Attempts per SSE event before it is dropped (~5 minutes at the default 5 s monitor cycle).
+MAX_EVENT_ATTEMPTS = 60
 
 # Arcade statuses confirming the broadcast reached the network.
 _BROADCAST_CONFIRMED_STATUSES = frozenset(
@@ -38,9 +42,15 @@ class TaskArcadeSSE(WalletMonitorTask):
     - DOUBLE_SPEND_ATTEMPTED: req => doubleSpend, transactions => failed
       (their allocated inputs are released). Current Arcade reports double
       spends as REJECTED; this branch is defensive.
-    - REJECTED: req => invalid, transactions => failed.
+    - REJECTED: req => invalid, transactions => failed. Not applied when the
+      reason (GET /tx/{txid} extraInfo) is Arcade's own minimum-fee policy:
+      Services.post_beef fell through to the other broadcasters on that
+      rejection, so the broadcast result decides the outcome.
 
     Transactions are resolved by txid (every user's transaction row for it).
+    They are updated before the req so a failure part-way leaves the req
+    non-terminal; a failed event is retried on the next run (the SSE cursor
+    has already moved past it) up to MAX_EVENT_ATTEMPTS.
 
     Reference: ts-wallet-toolbox/src/monitor/tasks/TaskArcSSE.ts
     """
@@ -103,12 +113,23 @@ class TaskArcadeSSE(WalletMonitorTask):
             self._pending_events.clear()
 
         log_lines: list[str] = []
+        retry: list[dict[str, Any]] = []
         for event in events:
             try:
                 self._process_status_event(event, log_lines)
             except Exception as e:
-                # Keep going: the reader has already moved past these events.
-                log_lines.append(f"SSE: failed to process {event.get('txid')}: {e!s}")
+                attempts = event.get("_attempts", 0) + 1
+                if attempts < MAX_EVENT_ATTEMPTS:
+                    retry.append({**event, "_attempts": attempts})
+                    log_lines.append(
+                        f"SSE: failed to process {event.get('txid')} (attempt {attempts}), will retry: {e!s}"
+                    )
+                else:
+                    log_lines.append(f"SSE: giving up on {event.get('txid')} after {attempts} attempts: {e!s}")
+        if retry:
+            with self._pending_lock:
+                # Ahead of newer events, keeping arrival order.
+                self._pending_events[:0] = retry
         return "\n".join(log_lines) if log_lines else ""
 
     def _process_status_event(self, event: dict[str, Any], log_lines: list[str]) -> None:
@@ -138,22 +159,39 @@ class TaskArcadeSSE(WalletMonitorTask):
     ) -> None:
         if tx_status in _BROADCAST_CONFIRMED_STATUSES:
             if status in ("unsent", "sending", "callback"):
-                self.monitor.storage.update_proven_tx_req(req_id, {"status": "unmined"})
                 self._update_transactions(req, "unproven")
+                self.monitor.storage.update_proven_tx_req(req_id, {"status": "unmined"})
                 log_lines.append(f"  req {req_id} => unmined")
         elif tx_status in ("MINED", "IMMUTABLE"):
             self._request_proof_check()
             log_lines.append(f"  req {req_id} MINED/IMMUTABLE — proof check requested")
         elif tx_status == "DOUBLE_SPEND_ATTEMPTED":
-            self.monitor.storage.update_proven_tx_req(req_id, {"status": "doubleSpend"})
             self._update_transactions(req, "failed")
+            self.monitor.storage.update_proven_tx_req(req_id, {"status": "doubleSpend"})
             log_lines.append(f"  req {req_id} => doubleSpend")
         elif tx_status == "REJECTED":
-            self.monitor.storage.update_proven_tx_req(req_id, {"status": "invalid"})
+            if self._rejected_for_fee_policy(req.get("txid")):
+                log_lines.append(f"  req {req_id} REJECTED by Arcade's fee policy; left to the other broadcasters")
+                return
             self._update_transactions(req, "failed")
+            self.monitor.storage.update_proven_tx_req(req_id, {"status": "invalid"})
             log_lines.append(f"  req {req_id} => invalid")
         else:
             log_lines.append(f"  req {req_id} unhandled status: {tx_status}")
+
+    def _rejected_for_fee_policy(self, txid: Any) -> bool:
+        """True when Arcade rejected the tx for its own minimum-fee policy.
+
+        The SSE event carries no reason, so it is read from GET /tx/{txid}.
+        Raises when the reason cannot be read so the event is retried.
+        """
+        arcade = getattr(self.monitor.services, "arcade", None)
+        if arcade is None:
+            return False
+        data = arcade.get_tx_data(txid)
+        if data is None:
+            raise RuntimeError(f"could not read Arcade's rejection reason for {txid}")
+        return is_fee_policy_rejection(data.extra_info)
 
     def _update_transactions(self, req: dict[str, Any], new_status: str) -> None:
         """Update the status of the transactions for the req's txid.

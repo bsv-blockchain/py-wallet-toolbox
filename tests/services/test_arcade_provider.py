@@ -116,6 +116,20 @@ class TestArcadePostRawTx:
         assert result.service_error is True
         assert result.data.detail == "invalid callback url: private address not allowed"
 
+    def test_400_fee_policy_rejection_is_service_error(self) -> None:
+        """Arcade's minimum fee is operator policy: another broadcaster may accept the tx."""
+        arcade = Arcade(ARCADE_URL)
+        mock = _mock_response(
+            400,
+            {"error": "transaction failed validation", "reason": "transaction fee is too low: 10 < 50 required"},
+        )
+
+        with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post", return_value=mock):
+            result = arcade.post_raw_tx("aabbcc", [TXID])
+
+        assert result.status == "error"
+        assert result.service_error is True
+
     def test_503_is_service_error(self) -> None:
         arcade = Arcade(ARCADE_URL)
         mock = _mock_response(503, {"error": "service overloaded, retry shortly"})
@@ -447,6 +461,24 @@ class TestServicesPostBeefArcade:
         assert result["accepted"] is False
         assert "bad script" in result["message"]
         services.bitails.post_beef.assert_not_called()
+
+    def test_fee_policy_rejection_falls_through(self) -> None:
+        services = _arcade_only_services()
+        services.bitails = MagicMock()
+        services.bitails.post_beef.return_value = {"accepted": True, "txid": "x", "message": "ok"}
+        tx = _signed_tx()
+
+        with patch(
+            "bsv_wallet_toolbox.services.providers.arcade.requests.post",
+            return_value=_mock_response(
+                400,
+                {"error": "transaction failed validation", "reason": "transaction fee is too low: 10 < 50 required"},
+            ),
+        ):
+            result = services.post_beef(_atomic_beef_hex(tx))
+
+        assert result["accepted"] is True
+        services.bitails.post_beef.assert_called_once()
 
     def test_double_spend_is_reported(self) -> None:
         services = _arcade_only_services()

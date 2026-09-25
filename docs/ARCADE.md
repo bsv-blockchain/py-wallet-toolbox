@@ -35,7 +35,7 @@ services = Services({
 
 - No public testnet endpoint is deployed.
 - When enabled, `arcade` is registered **first** in both `post_beef_services` and `get_merkle_path_services` (same priority as TS).
-- `Services.post_beef` tries Arcade first, posting only the subject transaction as EF. A service error (EF cannot be built, rate limit, 5xx, network error, non-validation 400) falls over to the existing providers (TAAL, GorillaPool, then Bitails). A terminal validation failure or a double spend is returned without trying the others.
+- `Services.post_beef` tries Arcade first, posting only the subject transaction as EF. A service error (EF cannot be built, rate limit, 5xx, network error, a rejection by Arcade's minimum-fee policy, non-validation 400) falls over to the existing providers (TAAL, GorillaPool, then Bitails). A terminal validation failure or a double spend is returned without trying the others.
 
 ## Differences from ARC (wire contract)
 
@@ -48,7 +48,7 @@ Verified against the arcade server implementation (Go, in the sibling `arcade/` 
 | Submission encoding | raw / BEEF V1 | **EF (Extended Format) only.** BEEF is rejected, and a raw tx fails validation (no per-input source data), both with 400 |
 | Success response | 200 | **202** `{"txid", "status": 202, "txStatus": "RECEIVED"}` |
 | Duplicate submit | — | 202 echoing the current status; a resubmitted `REJECTED` tx re-enters the pipeline (`RECEIVED`) |
-| Meaning of 400 | various | `{"error": "transaction failed validation", "reason"}` is a **terminal validation failure** (including non-final nLockTime). Other 400s (`invalid callback url`, `invalid request`, ...) are request/config errors |
+| Meaning of 400 | various | `{"error": "transaction failed validation", "reason"}` is a **terminal validation failure** (including non-final nLockTime), except a reason of `transaction fee is too low`: Arcade's minimum fee is operator-configured, so other broadcasters may accept the tx. Other 400s (`invalid callback url`, `invalid request`, ...) are request/config errors |
 | Error format | RFC 7807-style | flat `{"error": ..., "reason": ...}` |
 | DOUBLE_SPEND_ATTEMPTED | may still resolve | defined, but not emitted by current Arcade: double spends arrive as `REJECTED` |
 | SSE | none | `GET /events?callbackToken=...` (separate SSE service/port) |
@@ -82,6 +82,7 @@ Results of `post_raw_tx`:
 | 202 + non-terminal txStatus | `success` | — | accepted |
 | 202 + `REJECTED` / `DOUBLE_SPEND_ATTEMPTED` | `error` | False | terminal (double spend sets `double_spend=True`); defensive, current Arcade does not return these |
 | 400 `transaction failed validation` | `error` | **False** | the transaction itself is invalid; other providers will fail too |
+| 400 `transaction failed validation`, reason `transaction fee is too low` | `error` | True | Arcade's fee policy → fail over |
 | other 400 (e.g. `invalid callback url`) | `error` | True | request/config error → fail over |
 | 429 | `rate_limited` | True | rate limited |
 | 503 / 5xx / network exception | `error` | True | transient failure → fail over |
@@ -121,8 +122,12 @@ If `arcadeUrl` / `arcadeCallbackToken` are not configured, the task logs "SSE di
 | `MINED` / `IMMUTABLE` | sets `TaskCheckForProofs.check_now = True`, delegating to the existing proof machinery* | (updated when the proof is persisted) |
 | `DOUBLE_SPEND_ATTEMPTED` | → `doubleSpend` | → `failed` (allocated inputs released) |
 | `REJECTED` | → `invalid` | → `failed` (allocated inputs released) |
+| `REJECTED` for Arcade's fee policy | unchanged | unchanged |
 
 Transactions are resolved by txid (every user's transaction row for it).
+
+- The SSE event carries no rejection reason, so for `REJECTED` the task reads `extraInfo` via `GET /tx/{txid}`. A fee-policy rejection is not applied: `Services.post_beef` fell through to the other broadcasters on that rejection, and applying it could fail a transaction another broadcaster accepted. (A fee rejection reported after Arcade accepted the tx is therefore not applied either.)
+- Transactions are updated before the ProvenTxReq, so a failure part-way leaves the req non-terminal. An event that fails (e.g. `database is locked`, or the rejection reason cannot be read) is retried on the next run, up to `MAX_EVENT_ATTEMPTS` (60, about 5 minutes at the default monitor cycle); the SSE cursor has already moved past it, so a reconnect would not replay it.
 
 \* TS fetches the proof inline in the task; the Python port reuses the existing `TaskCheckForProofs` (via `Services.get_merkle_path` — Arcade is queried first when configured), so the default tasks `TaskCheckForProofs` and `TaskNewHeader` must be installed. The proof's root is checked against the block header before it is persisted.
 

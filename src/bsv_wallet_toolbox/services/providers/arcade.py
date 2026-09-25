@@ -10,9 +10,9 @@ PostTxResultForTxid, PostBeefResult) but differs where it must:
   (no ``/v1`` prefix).
 - A submit returns HTTP 202 with ``{"txid", "status": 202, "txStatus"}``;
   HTTP 400 ``{"error": "transaction failed validation"}`` is terminal (the
-  tx itself is invalid, so failing over to another provider won't help).
-  Other 400s (e.g. an invalid X-CallbackUrl) are request/config errors and
-  remain service errors.
+  tx itself is invalid, so failing over to another provider won't help),
+  except when the reason is Arcade's operator-configured minimum fee.
+  That and other 400s (e.g. an invalid X-CallbackUrl) remain service errors.
 - Submission encoding is Extended Format (EF) only: Arcade's ``/tx`` parser
   rejects BEEF, and a raw tx fails validation because it lacks the
   per-input source data that EF carries inline. When EF cannot be built,
@@ -52,6 +52,15 @@ ARCADE_VALIDATION_FAILED_ERROR = "transaction failed validation"
 
 # GET /tx/{txid} txStatus values meaning the transaction is included in a block.
 ARCADE_MINED_TX_STATUSES = frozenset({"MINED", "IMMUTABLE"})
+
+
+def is_fee_policy_rejection(reason: Any) -> bool:
+    """True when an Arcade rejection reason is its minimum-fee policy.
+
+    The fee floor is operator-configured, so another broadcaster may accept the
+    transaction. Teranode reports it as "transaction fee is too low: ...".
+    """
+    return isinstance(reason, str) and "fee is too low" in reason.lower()
 
 
 def _arcade_error_detail(data: Any) -> str | None:
@@ -262,13 +271,15 @@ class Arcade:
 
                 # A 400 "transaction failed validation" is terminal — the tx
                 # itself is invalid, so retrying with another provider won't
-                # help. Other 400s (invalid callback URL, malformed request),
+                # help — unless it only failed Arcade's minimum-fee policy.
+                # That, other 400s (invalid callback URL, malformed request),
                 # rate limits, backpressure (503) and unknown failures remain
                 # service errors so aggregation falls through.
                 result.service_error = not (
                     response.status_code == 400
                     and isinstance(body, dict)
                     and body.get("error") == ARCADE_VALIDATION_FAILED_ERROR
+                    and not is_fee_policy_rejection(body.get("reason"))
                 )
 
                 result.notes.append(note)
