@@ -56,6 +56,13 @@ class WalletServicesOptions(TypedDict, total=False):
     exchangeratesapiKey: str | None  # API key for exchangeratesapi.io
     chaintracksFiatExchangeRatesUrl: str | None  # URL for fiat rates (via Chaintracks)
 
+    # Arcade broadcaster options (TS parity; Teranode-native, ARC-compatible)
+    arcadeUrl: str | None
+    arcadeApiKey: str | None
+    arcadeHeaders: dict[str, str] | None
+    arcadeCallbackUrl: str | None
+    arcadeCallbackToken: str | None
+
     # ARC TAAL broadcaster options (TS parity)
     arcUrl: str | None
     arcApiKey: str | None
