@@ -142,8 +142,10 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
 
         response = await self.http_client.fetch(f"{self.URL}/chain/info", request_options)
         if response.ok:
-            data = response.json() or {}
-            return data.get("blocks", 0)
+            # The http client wraps the JSON body as {"data": body}.
+            blocks = ((response.json() or {}).get("data") or {}).get("blocks")
+            if isinstance(blocks, int):
+                return blocks
         raise RuntimeError(f"Failed to get current height: {response.json()}")
 
     def _get_http_headers(self) -> dict[str, str]:
@@ -267,7 +269,7 @@ class WhatsOnChain(WhatsOnChainTracker, ChaintracksClientApi):
     async def _find_chain_tip_hash(self) -> str:
         """Internal implementation of find_chain_tip_hash."""
         h = await self.find_chain_tip_header()
-        return h.hash
+        return h["hash"]
 
     async def find_header_for_height(self, height: int) -> BlockHeader | None:
         """Get block header for a given block height on active chain.

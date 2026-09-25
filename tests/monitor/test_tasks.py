@@ -141,6 +141,35 @@ class TestTaskNewHeader:
         assert task.queued_header == {"height": 103, "hash": "c"}
         mock_monitor.process_new_block_header.assert_not_called()
 
+    def test_task_new_header_with_real_services(self) -> None:
+        """The default Services (WhatsOnChain) chain tip reaches process_new_block_header."""
+        from bsv.http_client import HttpResponse
+
+        from bsv_wallet_toolbox.services.services import Services, create_default_options
+
+        tip = {"hash": "ab" * 32, "height": 877599, "version": 1, "merkleroot": "cd" * 32, "time": 1, "nonce": 1}
+
+        class WocHttp:
+            async def fetch(self, url: str, options: dict) -> HttpResponse:
+                # bsv-sdk's DefaultHttpClient wraps the JSON body as {"data": body}
+                if url.endswith("/chain/info"):
+                    return HttpResponse(ok=True, status_code=200, json_data={"data": {"blocks": 877599}})
+                if url.endswith("/block/877599/header"):
+                    return HttpResponse(ok=True, status_code=200, json_data={"data": tip})
+                return HttpResponse(ok=False, status_code=404, json_data={"data": None})
+
+        mock_monitor = MagicMock()
+        mock_monitor.services = Services(create_default_options("main"))
+        mock_monitor.services.whatsonchain.http_client = WocHttp()
+
+        task = TaskNewHeader(mock_monitor)
+        task.run_task()
+        task.run_task()
+
+        processed = mock_monitor.process_new_block_header.call_args[0][0]
+        assert processed["height"] == 877599
+        assert processed["hash"] == "ab" * 32
+
     def test_task_new_header_keeps_higher_header(self) -> None:
         """Test a lower tip does not replace the current header."""
         mock_monitor = MagicMock()

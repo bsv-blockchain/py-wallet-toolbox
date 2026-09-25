@@ -6,6 +6,7 @@ Tests service orchestration with mocked providers.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from bsv.http_client import HttpResponse
 
 from bsv_wallet_toolbox.errors.wallet_errors import InvalidParameterError
 from bsv_wallet_toolbox.services.services import Services, create_default_options
@@ -114,16 +115,17 @@ class TestServicesBlockchainMethods:
 
     def test_find_chain_tip_header(self, mock_services):
         """Test find_chain_tip_header method."""
-        # Create a mock header object with the expected attributes
-        mock_header_obj = MagicMock()
-        mock_header_obj.version = 536870912
-        mock_header_obj.previousHash = "prev_hash"
-        mock_header_obj.merkleRoot = "merkle_root"
-        mock_header_obj.time = 1234567890
-        mock_header_obj.bits = 474103450
-        mock_header_obj.nonce = 3894752803
-        mock_header_obj.height = 851000
-        mock_header_obj.hash = "tip_hash"
+        # WhatsOnChain returns a BlockHeader TypedDict (a plain dict)
+        mock_header_obj = {
+            "version": 536870912,
+            "previousHash": "prev_hash",
+            "merkleRoot": "merkle_root",
+            "time": 1234567890,
+            "bits": 474103450,
+            "nonce": 3894752803,
+            "height": 851000,
+            "hash": "tip_hash",
+        }
 
         mock_services.whatsonchain.find_chain_tip_header = MagicMock(return_value=mock_header_obj)
 
@@ -149,16 +151,17 @@ class TestServicesBlockchainMethods:
 
     def test_find_header_for_block_hash(self, mock_services):
         """Test find_header_for_block_hash method."""
-        # Create a mock header object with the expected attributes
-        mock_header_obj = MagicMock()
-        mock_header_obj.version = 536870912
-        mock_header_obj.previousHash = "prev_hash"
-        mock_header_obj.merkleRoot = "merkle_root"
-        mock_header_obj.time = 1234567890
-        mock_header_obj.bits = 474103450
-        mock_header_obj.nonce = 3894752803
-        mock_header_obj.height = 850000
-        mock_header_obj.hash = "block_hash"
+        # WhatsOnChain returns a BlockHeader TypedDict (a plain dict)
+        mock_header_obj = {
+            "version": 536870912,
+            "previousHash": "prev_hash",
+            "merkleRoot": "merkle_root",
+            "time": 1234567890,
+            "bits": 474103450,
+            "nonce": 3894752803,
+            "height": 850000,
+            "hash": "block_hash",
+        }
 
         mock_services.whatsonchain.find_header_for_block_hash = MagicMock(return_value=mock_header_obj)
 
@@ -942,3 +945,76 @@ class TestServicesErrorHandling:
         for result in results:
             if not isinstance(result, Exception):
                 assert result is not None
+
+
+TIP_HASH = "0000000000000000019b1a7e4b8d3b5e4a4f7b8c2e1d0f3a5b6c7d8e9f0a1b2c"
+TIP_HEADER_JSON = {
+    "hash": TIP_HASH,
+    "height": 877599,
+    "version": 536870912,
+    "merkleroot": "68bde58600fbd2c716871356cc2ad34b43ac67ac8d7a879dd966429d5a6935b2",
+    "time": 1734530373,
+    "nonce": 3894752803,
+    "bits": "180997ee",
+    "previousblockhash": "0000000039f1c7dc943d50883e531022825bf5c15a40db2cedde7d203ca3d644",
+}
+
+
+class _WocHttp:
+    """Fake WoC HTTP client. bsv-sdk's DefaultHttpClient wraps the JSON body as {"data": body}."""
+
+    def __init__(self, bodies: dict) -> None:
+        self.bodies = bodies
+        self.urls: list[str] = []
+
+    async def fetch(self, url: str, options: dict) -> HttpResponse:
+        self.urls.append(url)
+        for suffix, body in self.bodies.items():
+            if url.endswith(suffix):
+                return HttpResponse(ok=True, status_code=200, json_data={"data": body})
+        return HttpResponse(ok=False, status_code=404, json_data={"data": None})
+
+
+class TestServicesChainTipThroughWocHttp:
+    """Exercise the WhatsOnChain parsing path, not mocked provider return values."""
+
+    def _services(self) -> tuple[Services, _WocHttp]:
+        services = Services(create_default_options("main"))
+        http = _WocHttp({"/chain/info": {"chain": "main", "blocks": 877599}, "/block/877599/header": TIP_HEADER_JSON})
+        services.whatsonchain.http_client = http
+        return services, http
+
+    def test_get_height_reads_blocks_from_response_body(self) -> None:
+        services, _http = self._services()
+        assert services.get_height() == 877599
+
+    def test_find_chain_tip_header(self) -> None:
+        services, http = self._services()
+
+        header = services.find_chain_tip_header()
+
+        assert header["height"] == 877599
+        assert header["hash"] == TIP_HASH
+        assert header["merkleRoot"] == TIP_HEADER_JSON["merkleroot"]
+        assert http.urls[-1].endswith("/block/877599/header")
+
+    def test_find_chain_tip_hash(self) -> None:
+        services, _http = self._services()
+        assert services.find_chain_tip_hash() == TIP_HASH
+
+    def test_find_header_for_block_hash(self) -> None:
+        services = Services(create_default_options("main"))
+        services.whatsonchain.http_client = _WocHttp({f"/block/hash/{TIP_HASH}": TIP_HEADER_JSON})
+
+        header = services.find_header_for_block_hash(TIP_HASH)
+
+        assert header["height"] == 877599
+        assert header["hash"] == TIP_HASH
+
+    def test_missing_height_raises_instead_of_returning_zero(self) -> None:
+        """A height of 0 would make the genesis block the chain tip."""
+        services = Services(create_default_options("main"))
+        services.whatsonchain.http_client = _WocHttp({"/chain/info": {"chain": "main"}})
+
+        with pytest.raises(RuntimeError):
+            services.find_chain_tip_header()
