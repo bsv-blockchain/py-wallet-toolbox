@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Arcade broadcaster provider (opt-in via `arcadeUrl`): `Services.post_beef` tries Arcade first (EF submission) and falls through to ARC / Bitails on service errors; `get_merkle_path` verifies Arcade's BUMP against the block header
+- `TaskArcadeSSE` monitor task and `ArcadeSSEClient` for real-time transaction status updates via Arcade SSE (see `docs/ARCADE.md`)
+
 ### Changed
 - Bumped minimum bsv-sdk dependency from 2.1.3 to 2.4.0
+- `update_transactions_status(ids, "failed")` releases the outputs the failed transactions had allocated (TS parity)
 
 ### Fixed
 - Monitor never stored merkle proofs: `TaskNewHeader` now polls the chain tip and calls `Monitor.process_new_block_header` (TS parity), and `TaskCheckForProofs` calls the synchronous `Services.get_merkle_path_for_transaction` directly instead of through `asyncio.run`

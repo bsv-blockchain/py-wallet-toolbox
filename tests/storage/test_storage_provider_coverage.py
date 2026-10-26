@@ -1393,6 +1393,55 @@ class TestTransactionOperationsExtended:
         rows = storage_provider.update_transactions_status(tx_ids, "signed")
         assert rows == len(tx_ids)
 
+    def test_update_transactions_status_failed_releases_inputs(self, storage_provider, test_user) -> None:
+        """Marking transactions 'failed' releases the outputs they had allocated (TS parity)."""
+        funding_tx_id = storage_provider.insert_transaction(
+            {
+                "userId": test_user,
+                "reference": "funding",
+                "txid": "f" * 64,
+                "status": "completed",
+                "rawTx": b"raw",
+                "satoshis": 1000,
+                "description": "funding",
+            }
+        )
+        spending_tx_id = storage_provider.insert_transaction(
+            {
+                "userId": test_user,
+                "reference": "spending",
+                "txid": "1" * 64,
+                "status": "unproven",
+                "rawTx": b"raw",
+                "satoshis": -1000,
+                "description": "spends funding",
+            }
+        )
+        storage_provider.insert_output(
+            {
+                "userId": test_user,
+                "transactionId": funding_tx_id,
+                "basketId": None,
+                "spendable": False,
+                "change": True,
+                "vout": 0,
+                "satoshis": 1000,
+                "providedBy": "you",
+                "purpose": "change",
+                "type": "P2PKH",
+                "txid": "f" * 64,
+                "spentBy": spending_tx_id,
+            }
+        )
+
+        rows = storage_provider.update_transactions_status([spending_tx_id], "failed")
+
+        assert rows == 1
+        assert storage_provider.find_transactions({"reference": "spending"})[0]["status"] == "failed"
+        output = storage_provider.find_outputs({"transactionId": funding_tx_id})[0]
+        assert output["spendable"] is True
+        assert output["spentBy"] is None
+
     def test_confirm_spendable_outputs(self, storage_provider) -> None:
         """Test confirming spendable outputs."""
         # Skip test due to model attribute issue - method exists but has implementation issues
