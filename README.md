@@ -225,4 +225,4 @@ For questions, bug reports, or feature requests:
 
 ## License
 
-The license for the code in this repository is the Open BSV License version 4. See [license.md](./license.md) for details.
+The license for the code in this repository is the Apache License 2.0. See [LICENSE](LICENSE) for details.
