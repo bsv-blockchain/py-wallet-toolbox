@@ -1,6 +1,7 @@
 """Monitor tasks package."""
 
 from .task_arcade_sse import TaskArcadeSSE
+from .task_bsv_broadcaster_sse import TaskBsvBroadcasterSSE
 from .task_check_for_proofs import TaskCheckForProofs
 from .task_check_no_sends import TaskCheckNoSends
 from .task_clock import TaskClock
@@ -16,6 +17,7 @@ from .task_un_fail import TaskUnFail
 
 __all__ = [
     "TaskArcadeSSE",
+    "TaskBsvBroadcasterSSE",
     "TaskCheckForProofs",
     "TaskCheckNoSends",
     "TaskClock",

@@ -1,4 +1,4 @@
-"""Unit tests for ArcadeSSEClient and TaskArcadeSSE.
+"""Unit tests for BsvBroadcasterSSEClient and TaskBsvBroadcasterSSE.
 
 Reference: ts-wallet-toolbox/src/services/providers/ArcSSEClient.ts
 Reference: ts-wallet-toolbox/src/monitor/tasks/TaskArcSSE.ts
@@ -7,9 +7,9 @@ Reference: ts-wallet-toolbox/src/monitor/tasks/TaskArcSSE.ts
 import time
 from unittest.mock import MagicMock, patch
 
-from bsv_wallet_toolbox.monitor.tasks.task_arcade_sse import MAX_EVENT_ATTEMPTS, TaskArcadeSSE
+from bsv_wallet_toolbox.monitor.tasks.task_bsv_broadcaster_sse import MAX_EVENT_ATTEMPTS, TaskBsvBroadcasterSSE
 from bsv_wallet_toolbox.services.providers.arc import ArcMinerGetTxData
-from bsv_wallet_toolbox.services.providers.arcade_sse import ArcadeSSEClient
+from bsv_wallet_toolbox.services.providers.bsv_broadcaster_sse import BsvBroadcasterSSEClient
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import Base
 from bsv_wallet_toolbox.storage.provider import StorageProvider
@@ -18,7 +18,7 @@ FEE_POLICY_REASON = "transaction fee is too low: 10 < 50 required: transaction f
 
 
 def _rejected_status(extra_info: str) -> ArcMinerGetTxData:
-    """Arcade GET /tx/{txid} for a REJECTED tx; extraInfo carries the rejection reason."""
+    """BSV Broadcaster GET /tx/{txid} for a REJECTED tx; extraInfo carries the rejection reason."""
     return ArcMinerGetTxData(
         status=200,
         title="",
@@ -34,7 +34,7 @@ def _rejected_status(extra_info: str) -> ArcMinerGetTxData:
 
 
 TXID = "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec"
-ARCADE_URL = "https://arcade-v2-us-1.bsvblockchain.tech"
+BROADCASTER_URL = "https://arcade-v2-us-1.bsvblockchain.tech"
 
 
 def _stream_response(lines: list[str], status_code: int = 200) -> MagicMock:
@@ -44,17 +44,17 @@ def _stream_response(lines: list[str], status_code: int = 200) -> MagicMock:
     return response
 
 
-def _run_client(lines: list[str], **kwargs) -> tuple[list[dict], ArcadeSSEClient, MagicMock]:
+def _run_client(lines: list[str], **kwargs) -> tuple[list[dict], BsvBroadcasterSSEClient, MagicMock]:
     """Run the client over a canned SSE stream until the reader thread ends."""
     events: list[dict] = []
-    client = ArcadeSSEClient(
-        base_url=ARCADE_URL,
+    client = BsvBroadcasterSSEClient(
+        base_url=BROADCASTER_URL,
         callback_token="tok",
         on_event=events.append,
         **kwargs,
     )
     mock = _stream_response(lines)
-    with patch("bsv_wallet_toolbox.services.providers.arcade_sse.requests.get", return_value=mock) as get:
+    with patch("bsv_wallet_toolbox.services.providers.bsv_broadcaster_sse.requests.get", return_value=mock) as get:
         client.connect()
         deadline = time.time() + 5
         while client.connected and time.time() < deadline:
@@ -62,7 +62,7 @@ def _run_client(lines: list[str], **kwargs) -> tuple[list[dict], ArcadeSSEClient
     return events, client, get
 
 
-class TestArcadeSSEClient:
+class TestBsvBroadcasterSSEClient:
     def test_dispatches_status_events(self) -> None:
         lines = [
             "id: 1700000000000000001",
@@ -76,8 +76,8 @@ class TestArcadeSSEClient:
         assert events[0]["txid"] == TXID
         assert events[0]["txStatus"] == "MINED"
         assert client.last_event_id == "1700000000000000001"
-        # URL; a first connect sends no Last-Event-ID (Arcade then replays only non-terminal statuses)
-        assert get.call_args[0][0] == f"{ARCADE_URL}/events?callbackToken=tok"
+        # URL; a first connect sends no Last-Event-ID (BSV Broadcaster then replays only non-terminal statuses)
+        assert get.call_args[0][0] == f"{BROADCASTER_URL}/events?callbackToken=tok"
         assert "Last-Event-ID" not in get.call_args[1]["headers"]
 
     def test_ignores_keepalives_and_non_status_events(self) -> None:
@@ -125,14 +125,14 @@ class TestArcadeSSEClient:
 
     def test_connect_failure_reports_error(self) -> None:
         errors: list[Exception] = []
-        client = ArcadeSSEClient(
-            base_url=ARCADE_URL,
+        client = BsvBroadcasterSSEClient(
+            base_url=BROADCASTER_URL,
             callback_token="tok",
             on_event=lambda e: None,
             on_error=errors.append,
         )
         with patch(
-            "bsv_wallet_toolbox.services.providers.arcade_sse.requests.get",
+            "bsv_wallet_toolbox.services.providers.bsv_broadcaster_sse.requests.get",
             return_value=_stream_response([], status_code=503),
         ):
             client.connect()
@@ -145,14 +145,14 @@ class TestArcadeSSEClient:
     def test_connection_error_redacts_callback_token(self) -> None:
         """requests errors quote the URL; the callback token must not reach on_error."""
         errors: list[Exception] = []
-        client = ArcadeSSEClient(
-            base_url=ARCADE_URL,
+        client = BsvBroadcasterSSEClient(
+            base_url=BROADCASTER_URL,
             callback_token="SECRET token",
             on_event=lambda e: None,
             on_error=errors.append,
         )
         exc = ConnectionError("Max retries exceeded with url: /events?callbackToken=SECRET%20token (SECRET token)")
-        with patch("bsv_wallet_toolbox.services.providers.arcade_sse.requests.get", side_effect=exc):
+        with patch("bsv_wallet_toolbox.services.providers.bsv_broadcaster_sse.requests.get", side_effect=exc):
             client.connect()
             deadline = time.time() + 5
             while client.connected and time.time() < deadline:
@@ -169,31 +169,33 @@ def _make_monitor(options: dict | None = None) -> MagicMock:
     return monitor
 
 
-def _make_task(options: dict | None = None) -> tuple[TaskArcadeSSE, MagicMock]:
+def _make_task(options: dict | None = None) -> tuple[TaskBsvBroadcasterSSE, MagicMock]:
     monitor = _make_monitor(options)
-    task = TaskArcadeSSE(monitor)
+    task = TaskBsvBroadcasterSSE(monitor)
     return task, monitor
 
 
-class TestTaskArcadeSSESetup:
+class TestTaskBsvBroadcasterSSESetup:
     def test_disabled_without_arcade_url(self) -> None:
         task, _monitor = _make_task({})
         task.setup()
         assert task.sse_client is None
 
     def test_disabled_without_callback_token(self) -> None:
-        task, _monitor = _make_task({"arcadeUrl": ARCADE_URL})
+        task, _monitor = _make_task({"arcadeUrl": BROADCASTER_URL})
         task.setup()
         assert task.sse_client is None
 
     def test_setup_creates_and_connects_client(self) -> None:
-        task, _monitor = _make_task({"arcadeUrl": ARCADE_URL, "arcadeCallbackToken": "tok", "arcadeApiKey": "key1"})
-        with patch("bsv_wallet_toolbox.monitor.tasks.task_arcade_sse.ArcadeSSEClient") as client_cls:
+        task, _monitor = _make_task(
+            {"arcadeUrl": BROADCASTER_URL, "arcadeCallbackToken": "tok", "arcadeApiKey": "key1"}
+        )
+        with patch("bsv_wallet_toolbox.monitor.tasks.task_bsv_broadcaster_sse.BsvBroadcasterSSEClient") as client_cls:
             task.setup()
 
         assert task.sse_client is not None
         kwargs = client_cls.call_args[1]
-        assert kwargs["base_url"] == ARCADE_URL
+        assert kwargs["base_url"] == BROADCASTER_URL
         assert kwargs["callback_token"] == "tok"
         assert kwargs["api_key"] == "key1"
         client_cls.return_value.connect.assert_called_once()
@@ -206,10 +208,10 @@ class TestTaskArcadeSSESetup:
         assert task.sse_client is None
 
 
-class TestTaskArcadeSSEProcessing:
+class TestTaskBsvBroadcasterSSEProcessing:
     def _task_with_req(
         self, req: dict, options: dict | None = None, transaction_ids: list[int] | None = None
-    ) -> tuple[TaskArcadeSSE, MagicMock]:
+    ) -> tuple[TaskBsvBroadcasterSSE, MagicMock]:
         task, monitor = _make_task(options or {})
         monitor.storage.find_proven_tx_reqs.return_value = [req]
         monitor.storage.find_transactions.return_value = [{"transactionId": i} for i in transaction_ids or []]
@@ -263,7 +265,7 @@ class TestTaskArcadeSSEProcessing:
     def test_rejected_marks_invalid(self) -> None:
         req = {"provenTxReqId": 7, "txid": TXID, "status": "unsent", "notify": {}}
         task, monitor = self._task_with_req(req, transaction_ids=[4])
-        monitor.services.arcade.get_tx_data.return_value = _rejected_status("script execution failed")
+        monitor.services.bsv_broadcaster.get_tx_data.return_value = _rejected_status("script execution failed")
         task._on_event({"txid": TXID, "txStatus": "REJECTED"})
 
         log = task.run_task()
@@ -273,15 +275,15 @@ class TestTaskArcadeSSEProcessing:
         assert "req 7 => invalid" in log
 
     def test_fee_policy_rejection_is_not_applied(self) -> None:
-        """Arcade's own fee floor: Services.post_beef fell through to the other broadcasters, which decide."""
+        """BSV Broadcaster's own fee floor: Services.post_beef fell through to the other broadcasters, which decide."""
         req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
         task, monitor = self._task_with_req(req, transaction_ids=[4])
-        monitor.services.arcade.get_tx_data.return_value = _rejected_status(FEE_POLICY_REASON)
+        monitor.services.bsv_broadcaster.get_tx_data.return_value = _rejected_status(FEE_POLICY_REASON)
         task._on_event({"txid": TXID, "txStatus": "REJECTED"})
 
         log = task.run_task()
 
-        monitor.services.arcade.get_tx_data.assert_called_once_with(TXID)
+        monitor.services.bsv_broadcaster.get_tx_data.assert_called_once_with(TXID)
         monitor.storage.update_proven_tx_req.assert_not_called()
         monitor.storage.update_transactions_status.assert_not_called()
         assert "fee policy" in log
@@ -289,7 +291,7 @@ class TestTaskArcadeSSEProcessing:
     def test_rejection_reason_unavailable_is_retried(self) -> None:
         req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
         task, monitor = self._task_with_req(req, transaction_ids=[4])
-        monitor.services.arcade.get_tx_data.return_value = None
+        monitor.services.bsv_broadcaster.get_tx_data.return_value = None
         task._on_event({"txid": TXID, "txStatus": "REJECTED"})
 
         task.run_task()
@@ -301,7 +303,7 @@ class TestTaskArcadeSSEProcessing:
         """A transient storage error must not lose the event: the SSE cursor has moved past it."""
         req = {"provenTxReqId": 7, "txid": TXID, "status": "unmined", "notify": {}}
         task, monitor = self._task_with_req(req, transaction_ids=[4])
-        monitor.services.arcade.get_tx_data.return_value = _rejected_status("script execution failed")
+        monitor.services.bsv_broadcaster.get_tx_data.return_value = _rejected_status("script execution failed")
         monitor.storage.update_transactions_status.side_effect = [RuntimeError("database is locked"), 1]
         task._on_event({"txid": TXID, "txStatus": "REJECTED"})
 
@@ -370,8 +372,8 @@ class TestTaskArcadeSSEProcessing:
         assert task.trigger(0)["run"] is False
 
 
-class TestTaskArcadeSSEWithStorage:
-    """TaskArcadeSSE against a real SQLite StorageProvider."""
+class TestTaskBsvBroadcasterSSEWithStorage:
+    """TaskBsvBroadcasterSSE against a real SQLite StorageProvider."""
 
     def _storage(self) -> tuple[StorageProvider, int]:
         engine = create_engine_from_url("sqlite:///:memory:")
@@ -426,7 +428,7 @@ class TestTaskArcadeSSEWithStorage:
         storage, funding_id = self._storage()
         task, monitor = _make_task({})
         monitor.storage = storage
-        monitor.services.arcade.get_tx_data.return_value = _rejected_status("script execution failed")
+        monitor.services.bsv_broadcaster.get_tx_data.return_value = _rejected_status("script execution failed")
         real_update = storage.update_transactions_status
         calls = {"n": 0}
 

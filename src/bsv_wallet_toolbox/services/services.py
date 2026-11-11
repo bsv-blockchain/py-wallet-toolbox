@@ -44,6 +44,7 @@ import inspect
 import logging
 import os
 import threading
+import warnings
 from collections.abc import Callable
 from time import time
 from typing import Any
@@ -58,8 +59,8 @@ from ..utils.script_hash import hash_output_script as utils_hash_output_script
 from .cache_manager import CacheManager
 from .http_client import ToolboxHttpClient
 from .providers.arc import ARC, ArcConfig
-from .providers.arcade import Arcade
 from .providers.bitails import Bitails, BitailsConfig
+from .providers.bsv_broadcaster import BsvBroadcaster
 from .providers.whatsonchain import WhatsOnChain
 from .service_collection import ServiceCollection
 from .wallet_services import Chain, WalletServices
@@ -116,9 +117,9 @@ def create_default_options(chain: Chain) -> WalletServicesOptions:
     # For mainnet: https://arc.gorillapool.io
     arc_gorillapool_url = "https://arc.gorillapool.io" if chain == "main" else "https://testnet.arc.gorillapool.io"
 
-    # Arcade (Teranode-native broadcaster) is opt-in: set arcadeUrl explicitly
-    # (mainnet public endpoint: https://arcade-v2-us-1.bsvblockchain.tech) to
-    # register it ahead of ARC. Unlike TS (arcadeDefaultUrl()), no default is
+    # BSV Broadcaster (Teranode-native, formerly Arcade) is opt-in: set arcadeUrl
+    # explicitly (mainnet public endpoint: https://arcade-v2-us-1.bsvblockchain.tech)
+    # to register it ahead of ARC. Unlike TS (arcadeDefaultUrl()), no default is
     # applied here so existing broadcast behavior is unchanged.
     return WalletServicesOptions(
         chain=chain,
@@ -324,7 +325,7 @@ class Services(WalletServices):
     # Provider instances (TypeScript structure)
     options: WalletServicesOptions
     whatsonchain: WhatsOnChain
-    arcade: Arcade | None = None
+    bsv_broadcaster: BsvBroadcaster | None = None
     arc_taal: ARC | None = None
     arc_gorillapool: ARC | None = None
     bitails: Bitails | None = None
@@ -346,6 +347,25 @@ class Services(WalletServices):
     @staticmethod
     def create_default_options(chain: Chain) -> WalletServicesOptions:
         return create_default_options(chain)
+
+    @property
+    def arcade(self) -> BsvBroadcaster | None:
+        """Deprecated alias of :attr:`bsv_broadcaster` (Arcade was renamed to BSV Broadcaster)."""
+        warnings.warn(
+            "Services.arcade is deprecated. Use Services.bsv_broadcaster; Arcade was renamed to BSV Broadcaster.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.bsv_broadcaster
+
+    @arcade.setter
+    def arcade(self, value: BsvBroadcaster | None) -> None:
+        warnings.warn(
+            "Services.arcade is deprecated. Use Services.bsv_broadcaster; Arcade was renamed to BSV Broadcaster.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.bsv_broadcaster = value
 
     def __init__(self, options_or_chain: Chain | WalletServicesOptions) -> None:
         """Initialize wallet services with multi-provider support.
@@ -388,16 +408,17 @@ class Services(WalletServices):
         woc_api_key = self.options.get("whatsOnChainApiKey")
         self.whatsonchain = WhatsOnChain(network=chain, api_key=woc_api_key, http_client=self._get_http_client())
 
-        # Initialize Arcade provider (optional; tried before ARC when configured)
-        arcade_url = self.options.get("arcadeUrl")
-        if arcade_url:
-            arcade_config = ArcConfig(
+        # Initialize BSV Broadcaster provider (optional; tried before ARC when configured).
+        # Option keys and the provider name keep their "arcade" spelling for compatibility.
+        bsv_broadcaster_url = self.options.get("arcadeUrl")
+        if bsv_broadcaster_url:
+            bsv_broadcaster_config = ArcConfig(
                 api_key=self.options.get("arcadeApiKey"),
                 headers=self.options.get("arcadeHeaders"),
                 callback_url=self.options.get("arcadeCallbackUrl"),
                 callback_token=self.options.get("arcadeCallbackToken"),
             )
-            self.arcade = Arcade(arcade_url, config=arcade_config, name="arcade")
+            self.bsv_broadcaster = BsvBroadcaster(bsv_broadcaster_url, config=bsv_broadcaster_config, name="arcade")
 
         # Initialize ARC TAAL provider (optional)
         arc_url = self.options.get("arcUrl")
@@ -437,9 +458,9 @@ class Services(WalletServices):
         """
         # getMerklePath collection
         self.get_merkle_path_services = ServiceCollection("getMerklePath")
-        # Arcade first: it has the proof earliest for transactions it broadcast.
-        if self.arcade:
-            self.get_merkle_path_services.add({"name": "arcade", "service": self.arcade.get_merkle_path})
+        # BSV Broadcaster first: it has the proof earliest for transactions it broadcast.
+        if self.bsv_broadcaster:
+            self.get_merkle_path_services.add({"name": "arcade", "service": self.bsv_broadcaster.get_merkle_path})
         self.get_merkle_path_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_merkle_path})
         # ARC can sometimes provide merklePath earlier / when other indexers lag.
         if self.arc_gorillapool:
@@ -455,10 +476,10 @@ class Services(WalletServices):
         self.get_raw_tx_services = ServiceCollection("getRawTx")
         self.get_raw_tx_services.add({"name": "WhatsOnChain", "service": self.whatsonchain.get_raw_tx})
 
-        # postBeef collection (Arcade first — TS parity)
+        # postBeef collection (BSV Broadcaster first — TS parity)
         self.post_beef_services = ServiceCollection("postBeef")
-        if self.arcade:
-            self.post_beef_services.add({"name": "arcade", "service": self.arcade.post_beef})
+        if self.bsv_broadcaster:
+            self.post_beef_services.add({"name": "arcade", "service": self.bsv_broadcaster.post_beef})
         if self.arc_gorillapool:
             self.post_beef_services.add({"name": "arcGorillaPool", "service": self.arc_gorillapool.post_beef})
         if self.arc_taal:
@@ -1583,18 +1604,18 @@ class Services(WalletServices):
             "Services.post_beef: txid=%s, txids=%s, providers={'arcade': %s, 'taal': %s, 'gorillapool': %s, 'bitails': %s}",
             txid,
             txids,
-            bool(self.arcade),
+            bool(self.bsv_broadcaster),
             bool(self.arc_taal),
             bool(self.arc_gorillapool),
             bool(self.bitails),
         )
 
-        # 0. Try Arcade first (opt-in via arcadeUrl; TS registers it first in postBeefServices).
+        # 0. Try BSV Broadcaster first (opt-in via arcadeUrl; TS registers it first in postBeefServices).
         # Only the subject tx is posted, as EF. A tx that cannot be encoded as EF (e.g. a bare
         # raw tx) and any other service error fall through to the providers below.
-        if self.arcade:
+        if self.bsv_broadcaster:
             try:
-                res = self.arcade.broadcast(tx)
+                res = self.bsv_broadcaster.broadcast(tx)
                 if res.status == "success":
                     return {"accepted": True, "txid": txid, "message": "Broadcast successful"}
                 if res.double_spend:
@@ -1610,7 +1631,7 @@ class Services(WalletServices):
                 provider_errors["arcade"] = _fmt_arc_error(res)
             except Exception as e:
                 provider_errors["arcade"] = str(e)
-                self.logger.debug("Services.post_beef: Arcade broadcast exception: %s", e)
+                self.logger.debug("Services.post_beef: BSV Broadcaster broadcast exception: %s", e)
 
         # 1. Try ARC TAAL first (if configured)
         if self.arc_taal:
@@ -1729,8 +1750,8 @@ class Services(WalletServices):
                     message = f"{message}; other_failures: {extras}"
             # Also include which providers were tried
             tried_providers = []
-            if self.arcade:
-                tried_providers.append("Arcade")
+            if self.bsv_broadcaster:
+                tried_providers.append("BSV Broadcaster")
             if self.arc_gorillapool:
                 tried_providers.append("GorillaPool")
             if self.arc_taal:
@@ -1813,7 +1834,7 @@ class Services(WalletServices):
                 raise InvalidParameterError(f"beefs[{i}]", "must be a string")
 
         # Broadcast for real if any ARC-style provider is configured
-        if self.arcade or self.arc_gorillapool or self.arc_taal:
+        if self.bsv_broadcaster or self.arc_gorillapool or self.arc_taal:
             results: list[dict[str, Any]] = []
             for beef in beefs:
                 try:
