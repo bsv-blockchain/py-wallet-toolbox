@@ -164,7 +164,7 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
 
         result.txid = prior.tx.txid()
         trace(logger, "signer.create_action.completed", txid=result.txid)
-        beef = Beef(version=1)
+        beef = Beef(version=BEEF_V2)
         if prior.dcr.get("inputBeef"):
             # Remote storage servers encode bytes as list[int] in JSON-RPC.
             # Normalize to bytes for py-sdk parse_beef().
@@ -723,7 +723,7 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     # Build result
     txid = prior.tx.txid()
-    beef = parse_beef(prior.dcr.get("inputBeef", b"")) if prior.dcr.get("inputBeef") else Beef(version=1)
+    beef = parse_beef(prior.dcr.get("inputBeef", b"")) if prior.dcr.get("inputBeef") else Beef(version=BEEF_V2)
     beef.merge_transaction(prior.tx)
 
     _verify_unlock_scripts(txid, beef)
@@ -1176,7 +1176,7 @@ def _make_signable_transaction_beef(tx: Transaction, input_beef: bytes) -> bytes
     Reference:
         - toolbox/ts-wallet-toolbox/src/signer/methods/createAction.ts
     """
-    beef = Beef(version=1)
+    beef = Beef(version=BEEF_V2)
     for inp in tx.inputs:
         # TransactionInput is an object, not a dict - use attribute access
         source_tx = getattr(inp, "source_transaction", None)
