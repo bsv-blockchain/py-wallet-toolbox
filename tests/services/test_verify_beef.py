@@ -6,7 +6,7 @@ Reference: wallet-toolbox/src/services/__tests/verifyBeef.test.ts
 """
 
 import asyncio
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -66,8 +66,11 @@ def invalid_beef_data():
 
 @pytest.fixture
 def mock_chaintracker():
-    """Fixture providing a mock chaintracker."""
-    return Mock()
+    """Fixture providing a mock chaintracker that recognizes no merkle root.
+
+    Beef.verify awaits only is_valid_root_for_height; get_merkle_path is never called.
+    """
+    return AsyncMock(**{"is_valid_root_for_height.return_value": False})
 
 
 @pytest.fixture

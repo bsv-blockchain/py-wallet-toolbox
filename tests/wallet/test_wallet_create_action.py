@@ -6,6 +6,7 @@ Reference: wallet-toolbox/test/wallet/action/createAction.test.ts
 from datetime import UTC, datetime
 
 import pytest
+from bsv.transaction.beef import parse_beef
 
 from bsv_wallet_toolbox import Wallet
 from bsv_wallet_toolbox.errors import InvalidParameterError
@@ -249,6 +250,7 @@ class TestWalletCreateAction:
         assert result["signableTransaction"] is not None
         assert "reference" in result["signableTransaction"]
         assert "tx" in result["signableTransaction"]  # AtomicBEEF format
+        parse_beef(bytes(result["signableTransaction"]["tx"]))  # raises on a non-V1/V2 BEEF header
 
     def test_create_action_defaults_options_and_returns_signable(self, wallet_with_mocked_create_action) -> None:
         wallet, _storage, call_log, user_id = wallet_with_mocked_create_action
