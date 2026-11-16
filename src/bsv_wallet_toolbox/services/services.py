@@ -1786,6 +1786,16 @@ class Services(WalletServices):
         chaintracker = self.get_chain_tracker()
         return self._run_async(beef_obj.verify(chaintracker, True))
 
+    @staticmethod
+    def verify_beef_spv(services: Any, beef: Any, allow_txid_only: bool) -> bool:
+        """TS ``beef.verify(await services.getChainTracker(), allowTxidOnly)`` from sync code.
+
+        Works with any WalletServices (sync or async ``get_chain_tracker``). A missing or failing
+        chain tracker raises, so callers fail closed.
+        """
+        tracker = Services._run_async(services.get_chain_tracker())
+        return Services._run_async(beef.verify(tracker, allow_txid_only)) is True
+
     def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).
 
