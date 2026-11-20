@@ -27,12 +27,9 @@ from bsv.transaction import Beef, Transaction, TransactionInput, TransactionOutp
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
 from bsv.wallet import Counterparty, CounterpartyType, Protocol
 
-from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
+from bsv_wallet_toolbox.services.services import Services
 from bsv_wallet_toolbox.utils import validate_internalize_action_args
-from bsv_wallet_toolbox.utils.atomic_beef_utils import (
-    AtomicBeefBuildResult,
-    build_internalize_atomic_beef,
-)
 from bsv_wallet_toolbox.utils.trace import trace
 from bsv_wallet_toolbox.utils.validation import validate_satoshis
 
@@ -802,41 +799,11 @@ def internalize_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str
 
     trace(logger, "signer.internalize_action.target_tx", txid=txid, outputs_len=len(getattr(tx, "outputs", []) or []))
 
-    # IMPORTANT (TS parity / Go compatibility):
-    # Always normalize outgoing payload to a canonical BEEF_V2 AtomicBEEF binary.
-    # Some parsers are permissive and may accept rawTx bytes, but remote storage servers
-    # expect AtomicBEEF (BEEF.fromBinary(...) compatible) and will reject rawTx.
-    build_result: AtomicBeefBuildResult | None = None
-    if hasattr(wallet, "get_services") and callable(wallet.get_services):
-        try:
-            services = wallet.get_services()
-            build_result = build_internalize_atomic_beef(services, tx, txid)
-        except Exception:
-            build_result = None
-    if build_result is None:
-        normalized_atomic = bytes(tx_bytes) if tx_bytes else ab.to_binary()
-        trace(
-            logger,
-            "signer.internalize_action.atomic_beef.fallback",
-            txid=txid,
-            reason="services unavailable",
-            raw_len=len(tx_bytes or b""),
-            atomic_len=len(normalized_atomic),
-        )
-    else:
-        normalized_atomic = build_result.atomic_bytes
-        trace(
-            logger,
-            "signer.internalize_action.atomic_beef.normalized",
-            txid=txid,
-            raw_len=len(tx.serialize()),
-            atomic_len=len(build_result.atomic_bytes),
-            has_merkle_path=build_result.has_merkle_path,
-            parents_total=build_result.parents_total,
-            parents_with_proof=build_result.parents_with_proof,
-        )
-
-    vargs["tx"] = normalized_atomic
+    # Internalization is a trust boundary: SPV-verify the sender's BEEF against the chain tracker
+    # and forward that same BEEF as AtomicBEEF (TS internalizeActionCore validateAtomicBeef).
+    if not Services.verify_beef_spv(wallet.get_services(), ab, allow_txid_only=False):
+        raise InvalidParameterError("tx", "valid AtomicBEEF")
+    vargs["tx"] = ab.to_binary_atomic(txid)
 
     # BRC-29 protocol ID
     brc29_protocol_id = [2, "3241645161d8"]

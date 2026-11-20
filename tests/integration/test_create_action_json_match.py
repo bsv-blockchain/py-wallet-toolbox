@@ -69,6 +69,7 @@ class TestCreateActionJsonExactMatch:
 
         # Given: Create in-memory storage provider WITH deterministic randomizer
         storage_provider, cleanup = create_in_memory_storage_provider(chain="testnet")
+        storage_provider.set_services(mock_bhs)  # SPV-verify the internalized BEEF against the BHS
 
         # Inject deterministic randomizer (Go parity: WithRandomizer(NewTestRandomizer()))
         storage_provider.with_randomizer(DeterministicRandomizer())

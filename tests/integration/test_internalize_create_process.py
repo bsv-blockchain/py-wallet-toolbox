@@ -178,6 +178,7 @@ class TestInternalizeThenCreateThenProcess:
 
         # Given: Create in-memory storage provider
         storage_provider, cleanup = create_in_memory_storage_provider(chain="testnet")
+        storage_provider.set_services(mock_bhs)  # SPV-verify the internalized BEEF against the BHS
 
         try:
             # Register user first
@@ -529,6 +530,7 @@ class TestInternalizePlusTooHighCreate:
 
         # Given: Create in-memory storage provider
         storage_provider, cleanup = create_in_memory_storage_provider(chain="testnet")
+        storage_provider.set_services(mock_bhs)  # SPV-verify the internalized BEEF against the BHS
 
         try:
             # Register user

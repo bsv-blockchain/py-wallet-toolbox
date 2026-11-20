@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TaskCheckForProofs` validates dict-form merkle paths against the block header and stores the real BUMP and tx index instead of placeholder bytes and index 0
 - WhatsOnChain `current_height` read the chain height from the wrong level of the response and always returned 0; `Services.find_chain_tip_header`, `find_header_for_block_hash` and `find_chain_tip_hash` failed with `AttributeError` on the header dict WhatsOnChain returns
 
+### Removed
+- `utils.atomic_beef_utils.build_internalize_atomic_beef`, `build_atomic_beef_from_tx_with_proven_inputs` and `AtomicBeefBuildResult`: `internalizeAction` no longer rebuilds the sender's BEEF from WhatsOnChain
+
+### Security
+- `internalizeAction` (signer and storage) and `createAction` `inputBEEF` (storage) now SPV-verify the caller's BEEF with `Beef.verify` against the services' chain tracker (TS parity) and reject it with `InvalidParameterError` otherwise; a forged BUMP or unknown merkle root was previously accepted and could be recorded as `completed`. Storage without services fails closed. Verifying BEEF V1 needs bsv-sdk 2.5.0: earlier releases drop V1 parents and BUMPs while parsing, so the check passes without consulting the chain tracker
+
 ## [2.0.2] - 2026-05-20
 
 ### Added

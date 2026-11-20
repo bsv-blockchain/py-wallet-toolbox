@@ -528,7 +528,10 @@ class TestInternalizeAction:
         with patch("bsv_wallet_toolbox.signer.methods._recover_action_from_storage") as mock_recover:
             with patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process:
                 with patch("bsv_wallet_toolbox.signer.methods.parse_beef_ex") as mock_parse_beef_ex:
-                    with patch("bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output"):
+                    with (
+                        patch("bsv_wallet_toolbox.signer.methods._setup_wallet_payment_for_output"),
+                        patch("bsv_wallet_toolbox.signer.methods.Services.verify_beef_spv", return_value=True),
+                    ):
                         mock_recover.return_value = Mock()
                         mock_process.return_value = {"txid": "internalized_txid"}
                         beef_mock = Mock()

@@ -92,6 +92,14 @@ class MockBHS:
             "valid": response.status == BHSMerkleRootConfirmed,
         }
 
+    async def is_valid_root_for_height(self, root: str, height: int) -> bool:
+        """ChainTracker interface backed by the configured responses (Go: BHS-backed chain tracker)."""
+        return (await self.verify_merkle_root(height, root))["valid"]
+
+    def get_chain_tracker(self) -> "MockBHS":
+        """Lets ``storage.set_services(mock_bhs)`` stand in for services in SPV checks."""
+        return self
+
     async def get_header_for_height(self, height: int) -> dict[str, Any] | None:
         """Get block header for a specific height.
 

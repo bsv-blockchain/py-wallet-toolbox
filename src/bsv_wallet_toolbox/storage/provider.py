@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import exists
 
 from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.services.services import Services
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log as util_stamp_log
 from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
@@ -2467,7 +2468,13 @@ class StorageProvider:
         storage_beef_bytes = vargs.input_beef_bytes or b""
         inputs = getattr(vargs, "inputs", []) or []
         if not inputs:
-            return storage_beef_bytes, []
+            return b"", []  # TS: inputBEEF is ignored (not stored) when there are no inputs
+
+        # inputBEEF is untrusted proof data (TS validateRequiredInputs).
+        if vargs.input_beef is not None and not Services.verify_beef_spv(
+            self.get_services(), vargs.input_beef, allow_txid_only=vargs.options.trust_self == "known"
+        ):
+            raise InvalidParameterError("inputBEEF", "valid Beef when factoring options.trustSelf")
 
         xinputs: list[dict[str, Any]] = []
         session = self.SessionLocal()
@@ -5572,6 +5579,10 @@ class InternalizeActionContext:
 
         if not subject_txid or subject_tx is None:
             raise InvalidParameterError("tx", "AtomicBEEF must include subject transaction data")
+
+        # Storage is a trust boundary too (remote clients call it directly): TS validateAtomicBeef.
+        if not Services.verify_beef_spv(self.storage.get_services(), beef_obj, allow_txid_only=False):
+            raise InvalidParameterError("tx", "valid AtomicBEEF")
 
         self.beef_obj = beef_obj
         return subject_txid, subject_tx
