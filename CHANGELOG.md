@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TaskArcadeSSE` monitor task and `ArcadeSSEClient` for real-time transaction status updates via Arcade SSE (see `docs/ARCADE.md`)
 
 ### Changed
-- Bumped minimum bsv-sdk dependency from 2.1.3 to 2.4.0
+- Bumped minimum bsv-sdk dependency from 2.1.3 to 2.5.0 (2.5.0 fixes the native transaction parser crash in GHSA-49jm-v8w3-4j8c, which affects 2.3.2 through 2.4.0)
 - `update_transactions_status(ids, "failed")` releases the outputs the failed transactions had allocated (TS parity)
 
 ### Fixed
