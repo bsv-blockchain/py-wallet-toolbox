@@ -13,7 +13,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.errors import InvalidParameterError, StateError, WalletError
 from bsv_wallet_toolbox.storage.db import create_engine_from_url
 from bsv_wallet_toolbox.storage.models import (
     Base,
@@ -957,7 +957,7 @@ class TestTransactionMethods:
         tx_id = storage_provider.insert_transaction(tx_data)
 
         # Update status
-        rows_updated = storage_provider.update_transaction_status("signed", tx_id)
+        rows_updated = storage_provider.update_transaction_status("unprocessed", tx_id)
 
         assert rows_updated == 1
 
@@ -966,7 +966,7 @@ class TestTransactionMethods:
         assert len(txs) == 1
         tx = txs[0]
         status_key = "status"
-        assert tx.get(status_key) == "signed"
+        assert tx.get(status_key) == "unprocessed"
 
     def test_update_transaction_status_not_found(self, storage_provider) -> None:
         """Test update_transaction_status with non-existent transaction."""
@@ -986,10 +986,17 @@ class TestTransactionMethods:
         }
         tx_id = storage_provider.insert_transaction(tx_data)
 
-        # Test valid status transitions
-        for status in ["signed", "sent", "unproven", "completed", "failed", "nosend"]:
+        # Test valid status transitions (TS TransactionStatus values)
+        for status in ["unprocessed", "sending", "unproven", "completed"]:
             rows = storage_provider.update_transaction_status(status, tx_id)
             assert rows == 1
+
+        # A completed transaction can't change; statuses TS doesn't have are rejected.
+        with pytest.raises(StateError):
+            storage_provider.update_transaction_status("failed", tx_id)
+        open_tx = storage_provider.insert_transaction({**tx_data, "reference": "still_open", "txid": "9" * 64})
+        with pytest.raises(InvalidParameterError):
+            storage_provider.update_transaction_status("signed", open_tx)
 
     def test_process_action_minimal_valid(self, storage_provider, test_user) -> None:
         """Test process_action with minimal valid arguments."""
@@ -1390,7 +1397,7 @@ class TestTransactionOperationsExtended:
             tx_id = storage_provider.insert_transaction(tx_data)
             tx_ids.append(tx_id)
 
-        rows = storage_provider.update_transactions_status(tx_ids, "signed")
+        rows = storage_provider.update_transactions_status(tx_ids, "unprocessed")
         assert rows == len(tx_ids)
 
     def test_update_transactions_status_failed_releases_inputs(self, storage_provider, test_user) -> None:
@@ -1599,8 +1606,9 @@ class TestReviewAndPurge:
         tx_invalid = storage_provider.find_transactions({"reference": "tx_invalid"})[0]
         assert tx_invalid["status"] == "failed"
 
+        # TS reviewStatus: an output the failed transaction created is never restored; it is neutralised.
         outputs = storage_provider.find_outputs({"transactionId": failed_tx_id})
-        assert outputs[0]["spendable"] is True
+        assert outputs[0]["spendable"] is False
         assert outputs[0]["spentBy"] is None
 
         tx_proven = storage_provider.find_transactions({"reference": "tx_proven"})[0]

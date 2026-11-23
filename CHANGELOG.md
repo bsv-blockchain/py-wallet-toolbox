@@ -12,10 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TaskArcadeSSE` monitor task and `ArcadeSSEClient` for real-time transaction status updates via Arcade SSE (see `docs/ARCADE.md`)
 
 ### Changed
+- `find_*` / `count_*` take the TS `Find*Args` shape (`partial` plus `since`, `paged`, `orderDescending` and the per-table extras such as `status`, `txids`, `txStatus`, `noRawTx`) and raise `InvalidParameterError` for unknown keys or columns instead of silently dropping them
+- `update_transaction_status` / `update_transactions_status` follow TS: a completed (or proven) transaction can't change status, a failed one can't be un-failed, statuses TS doesn't define are rejected, and 'failed' also makes the transaction's own outputs unspendable; a transaction can also be addressed by `user_id` and `reference`
 - Bumped minimum bsv-sdk dependency from 2.1.3 to 2.5.0 (2.5.0 fixes the native transaction parser crash in GHSA-49jm-v8w3-4j8c, which affects 2.3.2 through 2.4.0)
 - `update_transactions_status(ids, "failed")` releases the outputs the failed transactions had allocated (TS parity)
 
 ### Fixed
+- `TaskFailAbandoned` set every transaction older than five minutes to 'failed', completed ones included: its `txStatus` filter was silently dropped. `TaskSendWaiting`'s `status` filter was dropped the same way. `review_status` now restores inputs and neutralises outputs of a failed transaction only when its ProvenTxReq is terminal (TS), and `create_action` marks its transaction failed when construction throws, releasing the allocated change
 - Monitor never stored merkle proofs: `TaskNewHeader` now polls the chain tip and calls `Monitor.process_new_block_header` (TS parity), and `TaskCheckForProofs` calls the synchronous `Services.get_merkle_path_for_transaction` directly instead of through `asyncio.run`
 - `TaskCheckForProofs` validates dict-form merkle paths against the block header and stores the real BUMP and tx index instead of placeholder bytes and index 0
 - WhatsOnChain `current_height` read the chain height from the wrong level of the response and always returned 0; `Services.find_chain_tip_header`, `find_header_for_block_hash` and `find_chain_tip_hash` failed with `AttributeError` on the header dict WhatsOnChain returns

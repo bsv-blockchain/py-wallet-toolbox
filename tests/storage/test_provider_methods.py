@@ -284,10 +284,8 @@ class TestStorageProviderProvenTxOperations:
         assert req_id > 0
 
     def test_find_proven_tx_reqs(self, storage_provider):
-        """Test finding proven transaction requests."""
-        user_id = storage_provider.get_or_create_user_id("test_user")
-
-        reqs = storage_provider.find_proven_tx_reqs({"userId": user_id})
+        """Test finding proven transaction requests (proven_tx_reqs has no userId column)."""
+        reqs = storage_provider.find_proven_tx_reqs({"partial": {}, "status": ["unsent"]})
         assert isinstance(reqs, list)
 
 
