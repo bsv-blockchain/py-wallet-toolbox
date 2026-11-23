@@ -31,7 +31,7 @@ from bsv_wallet_toolbox.errors import InvalidParameterError, WalletError
 from bsv_wallet_toolbox.services.services import Services
 from bsv_wallet_toolbox.utils import validate_internalize_action_args
 from bsv_wallet_toolbox.utils.trace import trace
-from bsv_wallet_toolbox.utils.validation import validate_satoshis
+from bsv_wallet_toolbox.utils.validation import validate_satoshis, validate_sign_action_args
 
 logger = logging.getLogger(__name__)
 
@@ -180,10 +180,9 @@ def create_action(wallet: Any, auth: Any, vargs: dict[str, Any]) -> CreateAction
             else None
         )
         result.no_send_change_output_vouts = prior.dcr.get("noSendChangeOutputVouts")
-        if not vargs.get("options", {}).get("returnTxidOnly"):
-            # BRC-100 spec: return raw transaction bytes, not BEEF
-            # py-sdk may return memoryview/bytearray depending on implementation; normalize to bytes.
-            result.tx = bytes(prior.tx.serialize())
+        if not vargs.get("options", {}).get("returnTXIDOnly"):
+            # BRC-100 / TS: tx is AtomicBEEF.
+            result.tx = beef.to_binary_atomic(result.txid)
             trace(logger, "signer.create_action.tx_bytes", tx=result.tx)
 
     trace(
@@ -220,7 +219,7 @@ def build_signable_transaction(
     """
     change_keys = wallet.get_client_change_key_pair()
 
-    input_beef_raw = args.get("inputBeef")
+    input_beef_raw = args.get("inputBEEF")
     if isinstance(input_beef_raw, list):
         input_beef_raw = bytes(input_beef_raw)
     input_beef = parse_beef(input_beef_raw) if input_beef_raw else None
@@ -299,9 +298,9 @@ def build_signable_transaction(
             if args.get("isSignAction") and input_beef:
                 txid = args_input.get("outpoint", {}).get("txid")
                 if txid:
-                    tx_data = input_beef.find_txid(txid)
-                    if tx_data:
-                        source_transaction = tx_data.get("tx")
+                    btx = input_beef.find_transaction(txid)
+                    if btx:
+                        source_transaction = btx.tx_obj
 
             tx.add_input(
                 TransactionInput(
@@ -725,10 +724,9 @@ def sign_action(wallet: Any, auth: Any, args: dict[str, Any]) -> dict[str, Any]:
 
     _verify_unlock_scripts(txid, beef)
 
-    # BRC-100 format: return raw transaction, not BEEF
     result = {
         "txid": txid,
-        "tx": (None if vargs.get("options", {}).get("returnTxidOnly") else prior.tx.serialize()),
+        "tx": None if vargs["options"]["returnTXIDOnly"] else beef.to_binary_atomic(txid),
         "sendWithResults": process_result.get("sendWithResults"),  # Internal - will be removed by wallet layer
         "notDelayedResults": process_result.get("notDelayedResults"),  # Internal - will be removed by wallet layer
     }
@@ -1320,31 +1318,17 @@ def _verify_unlock_scripts(txid: str, beef: Beef) -> None:
 
 
 def _merge_prior_options(ca_vargs: dict[str, Any], sa_args: dict[str, Any]) -> dict[str, Any]:
-    """Merge prior create action options with sign action options (TS parity - internal).
+    """Fill unset signAction options from the createAction options, then validate (TS mergePriorOptions).
 
     Reference:
         - toolbox/ts-wallet-toolbox/src/signer/methods/signAction.ts
     """
-    result = dict(sa_args)
-
-    sa_options = result.get("options", {})
-    if not isinstance(sa_options, dict):
-        sa_options = {}
-
-    ca_options = ca_vargs.get("options", {})
-
-    # Set defaults from create action options
-    if "accept_delayed_broadcast" not in sa_options:
-        sa_options["acceptDelayedBroadcast"] = ca_options.get("acceptDelayedBroadcast")
-    if "return_txid_only" not in sa_options:
-        sa_options["returnTxidOnly"] = ca_options.get("returnTxidOnly")
-    if "no_send" not in sa_options:
-        sa_options["noSend"] = ca_options.get("noSend")
-    if "send_with" not in sa_options:
-        sa_options["sendWith"] = ca_options.get("sendWith")
-
-    result["options"] = sa_options
-    return result
+    sa_options = dict(sa_args.get("options") or {})
+    ca_options = ca_vargs.get("options") or {}
+    for key in ("acceptDelayedBroadcast", "returnTXIDOnly", "noSend", "sendWith"):
+        if sa_options.get(key) is None:
+            sa_options[key] = ca_options.get(key)
+    return validate_sign_action_args({**sa_args, "options": sa_options})
 
 
 def _setup_wallet_payment_for_output(

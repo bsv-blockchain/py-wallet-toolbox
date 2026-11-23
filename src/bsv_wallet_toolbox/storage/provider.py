@@ -2317,7 +2317,7 @@ class StorageProvider:
         # Start with existing beef or create new one
         if storage_beef_bytes and len(storage_beef_bytes) > 0:
             try:
-                beef = Beef.from_binary(list(storage_beef_bytes))
+                beef = Beef.from_binary(bytes(storage_beef_bytes))
             except Exception:
                 beef = Beef(version=BEEF_V2)
         else:
@@ -2392,11 +2392,7 @@ class StorageProvider:
             # Align behavior with TypeScript: only fetch when
             # vargs.includeAllSourceTransactions && vargs.isSignAction.
             source_transaction = xi.get("sourceTransaction")
-            if (
-                source_transaction is None
-                and vargs.get("includeAllSourceTransactions", False)
-                and vargs.get("isSignAction", False)
-            ):
+            if source_transaction is None and vargs.options.include_all_source_transactions and vargs.is_sign_action:
                 source_transaction = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
 
             session = self.SessionLocal()
@@ -2408,7 +2404,7 @@ class StorageProvider:
                 if o:
                     o.spendable = False
                     o.spent_by = ctx["transactionId"]
-                    o.spending_description = xi.get("inputDescription")
+                    o.spending_description = xi.get("spendingDescription")
                     session.add(o)
                     session.commit()
             finally:

@@ -916,8 +916,8 @@ class Wallet:
         if self.return_txid_only:
             return beef
 
-        # Extract txid-only transactions and merge them with full data
-        for btx in beef.txs.values():
+        # Extract txid-only transactions and merge them with full data (merging re-keys beef.txs, so iterate a copy)
+        for btx in list(beef.txs.values()):
             # Check if this is a txid-only transaction (data_format == 2)
             if btx.data_format == 2:  # TxIDOnly
                 txid = btx.txid
@@ -949,8 +949,8 @@ class Wallet:
         return beef
 
     def verify_returned_txid_only_atomic_beef(
-        self, beef_data: bytes | None, known_txids: list[str] | None = None
-    ) -> bytes | None:
+        self, beef_data: bytes | list[int] | None, known_txids: list[str] | None = None
+    ) -> bytes | list[int] | None:
         """Verify and process returned AtomicBEEF data with txid-only verification.
 
         TS: verifyReturnedTxidOnlyAtomicBEEF(beef: AtomicBEEF, knownTxids?: string[]): AtomicBEEF
@@ -974,12 +974,14 @@ class Wallet:
         if beef_data is None:
             return None
 
-        if not isinstance(beef_data, (bytes, bytearray)):
+        # Wallet results carry tx as list[int] (JSON-friendly); answer in the same form.
+        as_list = isinstance(beef_data, list)
+        if not as_list and not isinstance(beef_data, (bytes, bytearray)):
             return beef_data
 
         try:
             # Parse AtomicBEEF to get subject txid
-            beef, subject_txid, _ = parse_beef_ex(beef_data)
+            beef, subject_txid, _ = parse_beef_ex(bytes(beef_data))
 
             if not subject_txid:
                 msg = "unable to extract subject txid from atomic beef"
@@ -989,7 +991,8 @@ class Wallet:
             verified_beef = self.verify_returned_txid_only(beef, known_txids)
 
             # Reconstruct AtomicBEEF with verified data
-            return verified_beef.to_binary_atomic(subject_txid)
+            atomic = verified_beef.to_binary_atomic(subject_txid)
+            return list(atomic) if as_list else atomic
 
         except Exception:
             # If verification fails, return original data as fallback

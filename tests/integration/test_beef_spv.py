@@ -186,11 +186,6 @@ class TestCreateActionInputBeef:
             storage.update_output(o["outputId"], {"change": False})
         return tracker
 
-    @pytest.mark.xfail(
-        strict=True,
-        raises=AttributeError,
-        reason="pre-existing: storage create_action calls vargs.get() on NormalizedCreateActionArgs for user inputs",
-    )
     @pytest.mark.parametrize("txid_only", [False, True])
     def test_accepts_input_beef_confirmed_by_chain_tracker(self, storage, tracker, txid_only) -> None:
         beef = parse_beef_ex(atomic_beef())[0].txid_only().to_binary() if txid_only else atomic_beef()

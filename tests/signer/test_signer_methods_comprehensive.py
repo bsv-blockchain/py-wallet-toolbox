@@ -210,7 +210,7 @@ class TestBuildSignableTransaction:
             "inputs": [{"beef": "input_beef_data"}],
             "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}],
         }
-        args = {"inputBeef": "hex_beef_data", "isSignAction": True}
+        args = {"inputBEEF": "hex_beef_data", "isSignAction": True}
 
         with patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef:
             with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
@@ -229,7 +229,7 @@ class TestBuildSignableTransaction:
     def test_build_signable_transaction_input_beef_txid_not_found(self, mock_wallet: Mock) -> None:
         """Test build_signable_transaction with input BEEF but txid not found."""
         dctr = {"inputs": [{"beef": "input_beef_data"}], "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef"}]}
-        args = {"inputBeef": "hex_beef_data", "isSignAction": True}
+        args = {"inputBEEF": "hex_beef_data", "isSignAction": True}
 
         with patch("bsv_wallet_toolbox.signer.methods.parse_beef") as mock_parse_beef:
             with patch("bsv_wallet_toolbox.signer.methods.Transaction") as mock_tx_class:
@@ -797,7 +797,7 @@ class TestHelperFunctions:
     def test_merge_prior_options_basic(self) -> None:
         """Test _merge_prior_options basic functionality."""
         ca_vargs = {"options": {"acceptDelayedBroadcast": True}}
-        sa_args = {"option2": "value2"}
+        sa_args = {"reference": "ref", "option2": "value2"}
 
         result = _merge_prior_options(ca_vargs, sa_args)
 
@@ -808,14 +808,14 @@ class TestHelperFunctions:
 
     def test_merge_prior_options_empty(self) -> None:
         """Test _merge_prior_options with empty args."""
-        result = _merge_prior_options({}, {})
+        result = _merge_prior_options({}, {"reference": "ref"})
 
         assert isinstance(result, dict)
 
     def test_merge_prior_options_overrides(self) -> None:
         """Test _merge_prior_options with overlapping keys."""
         ca_vargs = {"option1": "value1", "shared": "ca_value"}
-        sa_args = {"option2": "value2", "shared": "sa_value"}
+        sa_args = {"reference": "ref", "option2": "value2", "shared": "sa_value"}
 
         result = _merge_prior_options(ca_vargs, sa_args)
 

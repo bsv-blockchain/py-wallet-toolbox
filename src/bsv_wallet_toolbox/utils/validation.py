@@ -5,6 +5,7 @@ Reference: toolbox/go-wallet-toolbox/pkg/internal/validate/
 """
 
 import base64
+import re
 from typing import Any
 
 from bsv_wallet_toolbox.errors import InvalidParameterError
@@ -94,11 +95,8 @@ MAX_PAGINATION_OFFSET = 1_000_000
 
 
 def _is_hex_string(value: str) -> bool:
-    try:
-        int(value, 16)
-        return True
-    except Exception:
-        return False
+    # Hex digits only: int(value, 16) also accepted "0x51", "+1", "a_b" and surrounding whitespace.
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-fA-F]+", value) is not None
 
 
 def _is_base64_string(value: str) -> bool:
@@ -298,6 +296,51 @@ def validate_list_certificates_args(args: dict[str, Any]) -> None:
                 raise InvalidParameterError("revocationOutpoint", "format '<txid>.<index>'")
 
 
+def _validate_create_action_input(i: Any) -> dict[str, Any]:
+    """TS validateCreateActionInput: {txid, vout} outpoint, unlocking script or its length, description, sequence."""
+    if not isinstance(i, dict):
+        raise InvalidParameterError("inputs", "a list of dicts")
+    script = i.get("unlockingScript")
+    length = i.get("unlockingScriptLength")
+    if script is None and length is None:
+        raise InvalidParameterError("unlockingScript, unlockingScriptLength", "at least one valid value.")
+    if script is not None and (not isinstance(script, str) or len(script) % 2 or not _is_hex_string(script)):
+        raise InvalidParameterError("unlockingScript", "an even-length hexadecimal string")
+    if length is None:
+        length = len(script) // 2
+    elif not isinstance(length, int) or length < 0 or (script is not None and length != len(script) // 2):
+        raise InvalidParameterError("unlockingScriptLength", "length of unlockingScript if both valid.")
+    desc = i.get("inputDescription")
+    if not isinstance(desc, str) or not 5 <= len(desc.encode("utf-8")) <= 2000:
+        raise InvalidParameterError("inputDescription", "5-2000 bytes UTF-8")
+    seq = i.get("sequenceNumber")
+    if seq is not None and (not isinstance(seq, int) or not 0 <= seq <= 0xFFFFFFFF):
+        raise InvalidParameterError("sequenceNumber", "an integer 0 to 0xffffffff")
+
+    outpoint = i.get("outpoint")
+    if isinstance(outpoint, str):  # BRC-100 OutpointString 'txid.vout'
+        txid, _, vout = outpoint.partition(".")
+        outpoint = {"txid": txid, "vout": int(vout) if vout.isdigit() else None}
+    if not isinstance(outpoint, dict):
+        raise InvalidParameterError("outpoint", "'txid.vout' or {txid, vout}")
+    txid, vout = outpoint.get("txid"), outpoint.get("vout")
+    if (
+        not isinstance(txid, str)
+        or len(txid) != 64
+        or not _is_hex_string(txid)
+        or not isinstance(vout, int)
+        or vout < 0
+    ):
+        raise InvalidParameterError("outpoint", "'txid.vout' or {txid, vout}")
+
+    return {
+        **i,
+        "outpoint": {"txid": txid, "vout": vout},
+        "unlockingScriptLength": length,
+        "sequenceNumber": 0xFFFFFFFF if seq is None else seq,
+    }
+
+
 def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     """Validate CreateActionArgs with full normalization.
 
@@ -375,6 +418,7 @@ def validate_create_action_args(args: dict[str, Any]) -> dict[str, Any]:
     inputs = args.get("inputs", [])
     if not isinstance(inputs, list):
         raise InvalidParameterError("inputs", "a list")
+    inputs = [_validate_create_action_input(i) for i in inputs]
 
     # Normalize and compute flags
     # --- Validate options (TS parity) ---
@@ -799,7 +843,7 @@ def validate_no_send_change_outputs(outputs: list[dict[str, Any]]) -> None:
             raise InvalidParameterError("basketName", "must equal 'change basket'")
 
 
-def validate_sign_action_args(args: dict[str, Any]) -> None:
+def validate_sign_action_args(args: dict[str, Any]) -> dict[str, Any]:
     """Validate SignActionArgs for BRC-100 Transaction Operations.
 
     Required parameters:
@@ -807,7 +851,11 @@ def validate_sign_action_args(args: dict[str, Any]) -> None:
 
     Optional parameters:
         - spends: dict mapping input index (str) to spend data with unlockingScript
-        - options: dict with signAndProcess options
+        - options: acceptDelayedBroadcast (default True), returnTXIDOnly, noSend, sendWith
+
+    Returns:
+        The args with defaulted options and the flags storage processAction needs
+        (isNewTx, isSendWith, isDelayed, isNoSend), as TS validateSignActionArgs.
 
     Reference: BRC-100 SignActionArgs specification
     """
@@ -824,6 +872,24 @@ def validate_sign_action_args(args: dict[str, Any]) -> None:
         spends = args["spends"]
         if not isinstance(spends, dict):
             raise InvalidParameterError("spends", "a dict mapping input index to spend data")
+
+    o = args.get("options") or {}
+    options = {
+        "acceptDelayedBroadcast": o.get("acceptDelayedBroadcast") is not False,
+        "returnTXIDOnly": bool(o.get("returnTXIDOnly")),
+        "noSend": bool(o.get("noSend")),
+        "sendWith": o.get("sendWith") or [],
+    }
+    return {
+        **args,
+        "spends": args.get("spends") or {},
+        "options": options,
+        "isNewTx": True,
+        "isRemixChange": False,
+        "isSendWith": len(options["sendWith"]) > 0,
+        "isDelayed": options["acceptDelayedBroadcast"],
+        "isNoSend": options["noSend"],
+    }
 
 
 def validate_satoshis(value: Any, field_name: str = "satoshis") -> int:

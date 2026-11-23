@@ -27,7 +27,7 @@ class TestBuildSignableTransactionEdgeCases:
         dctr = {"inputs": [], "outputs": [{"satoshis": 1000, "lockingScript": "deadbeef", "vout": 0}]}
 
         # Mock args with inputBeef
-        args = {"inputBeef": "mock_beef_hex", "isSignAction": True}
+        args = {"inputBEEF": "mock_beef_hex", "isSignAction": True}
 
         wallet = Mock()
         wallet.get_client_change_key_pair.return_value = ["key1", "key2"]
@@ -203,7 +203,7 @@ class TestSignerHelperFunctionsEdgeCases:
     def test_merge_prior_options_empty(self):
         """Test _merge_prior_options with empty args."""
         ca_vargs = {}
-        sa_args = {}
+        sa_args = {"reference": "ref"}
 
         result = _merge_prior_options(ca_vargs, sa_args)
 
