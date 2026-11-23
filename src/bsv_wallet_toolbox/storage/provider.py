@@ -4513,24 +4513,14 @@ class StorageProvider:
                         log_lines.append(f"{deleted} {status} proven_tx_reqs deleted")
                         total_count += deleted
 
-            if params.get("purgeSpent"):
+        # TS order: after purgeFailed, whose released outputs are UTXOs again and need their ancestors too.
+        proof_txids = self._txids_needed_by_utxo_beefs() if params.get("purgeSpent") else None
+        if params.get("purgeSpent") and proof_txids is None:
+            log_lines.append("purgeSpent skipped: a UTXO's BEEF needs a transaction that is not in storage")
+
+        with session_scope(self.SessionLocal) as session:
+            if proof_txids is not None:
                 cutoff = _cutoff("purgeSpentAge")
-                proof_txids = {
-                    txid
-                    for txid in session.execute(
-                        select(Output.txid).where(Output.spendable.is_(True), Output.txid.is_not(None))
-                    ).scalars()
-                    if txid
-                }
-                proof_txids.update(
-                    txid
-                    for txid in session.execute(
-                        select(TransactionModel.txid)
-                        .join(Output, Output.transaction_id == TransactionModel.transaction_id)
-                        .where(Output.spendable.is_(True), TransactionModel.txid.is_not(None))
-                    ).scalars()
-                    if txid
-                )
 
                 spent_candidates = session.execute(
                     select(TransactionModel.transaction_id, TransactionModel.txid).where(
@@ -4553,6 +4543,7 @@ class StorageProvider:
                 orphan_deleted = (
                     session.execute(
                         delete(ProvenTx).where(
+                            ProvenTx.txid.not_in(proof_txids),  # a UTXO's BEEF may need a proof with no tx row
                             ~exists(
                                 select(TransactionModel.transaction_id).where(
                                     (TransactionModel.txid == ProvenTx.txid)
@@ -4574,6 +4565,36 @@ class StorageProvider:
                     total_count += orphan_deleted
 
         return {"log": "\n".join(log_lines).strip(), "count": total_count}
+
+    def _txids_needed_by_utxo_beefs(self) -> set[str] | None:
+        """Every txid in the BEEF of each UTXO, built from local storage only (TS purgeData purgeSpent).
+
+        Returns None when a UTXO's BEEF needs an ancestor that is not in storage: what else it needs
+        is then unknown, so nothing may be purged as spent.
+        """
+        with session_scope(self.SessionLocal) as session:
+            utxo_txids = set(
+                session.execute(
+                    select(Output.txid)
+                    .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+                    .where(
+                        Output.spendable.is_(True),
+                        Output.txid.is_not(None),
+                        TransactionModel.status.in_(["sending", "unproven", "completed", "nosend"]),
+                    )
+                ).scalars()
+            )
+        beef = Beef(version=BEEF_V2)
+        for txid in utxo_txids:
+            try:
+                self.get_beef_for_transaction(txid, {"mergeToBeef": beef, "ignoreServices": True})
+            except WalletError as e:
+                if "is not known to storage" not in str(e):
+                    raise
+                if f"{txid!r} is not known to storage" not in str(e):
+                    return None
+                # The UTXO's own tx is unknown here; having spendable outputs, it is never purged as spent.
+        return set(beef.txs)
 
     # NOTE: allocate_funding_input and count_funding_inputs are defined earlier in this file
     # (around line 2216 and 2237) with proper Transaction status checking.
