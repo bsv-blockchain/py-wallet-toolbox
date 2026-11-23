@@ -106,6 +106,9 @@ class Monitor:
         self.chaintracks = options.chaintracks
         self._tasks = []
         self.deactivated_headers = []
+        # Per-instance hooks; call_on_* fall back to the ones in options.
+        self.on_transaction_broadcasted: Callable[[dict[str, Any]], Any] | None = None
+        self.on_transaction_proven: Callable[[dict[str, Any]], Any] | None = None
 
     def add_task(self, task: WalletMonitorTask) -> None:
         """Add a task to the monitor.

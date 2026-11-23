@@ -379,11 +379,7 @@ class TestBEEFOperations:
 
         result = storage_provider.attempt_to_post_reqs_to_network(reqs)
 
-        assert isinstance(result, dict)
-        assert "posted" in result
-        assert "failed" in result
-        assert result["posted"] == 2  # All should be "posted" in mock
-        assert result["failed"] == 0
+        assert [(d["txid"], d["status"]) for d in result["details"]] == [("a" * 64, "invalid"), ("b" * 64, "invalid")]
 
     def test_update_proven_tx_req_dynamics_not_found(self, storage_provider):
         """Test updating proven tx req dynamics for non-existent record."""
@@ -535,9 +531,7 @@ class TestBeefOperationsExtended:
         """Test posting empty reqs list."""
         result = storage_provider.attempt_to_post_reqs_to_network([])
 
-        assert isinstance(result, dict)
-        assert result["posted"] == 0
-        assert result["failed"] == 0
+        assert result == {"details": []}
 
 
 class TestTransactionStatusOperations:

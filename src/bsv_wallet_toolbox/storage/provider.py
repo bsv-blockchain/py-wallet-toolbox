@@ -2981,6 +2981,8 @@ class StorageProvider:
             s.flush()
 
             # Create or update ProvenTxReq (TS line 271)
+            # notify.transactionIds is what the send path updates once the tx is broadcast (TS addNotifyTransactionId).
+            notify = json.dumps({"transactionIds": [transaction.transaction_id]})
             existing_req_stmt = select(ProvenTxReq).where(ProvenTxReq.txid == txid)
             existing_req = s.execute(existing_req_stmt).scalar_one_or_none()
             if existing_req:
@@ -2990,7 +2992,7 @@ class StorageProvider:
                 existing_req.attempts = 0
                 existing_req.notified = False
                 existing_req.history = "{}"
-                existing_req.notify = "{}"
+                existing_req.notify = notify
                 s.add(existing_req)
             else:
                 new_req = ProvenTxReq(
@@ -2998,6 +3000,7 @@ class StorageProvider:
                     status=new_req_status,
                     raw_tx=raw_tx,
                     input_beef=input_beef_bytes,
+                    notify=notify,
                 )
                 s.add(new_req)
             s.flush()
@@ -3033,175 +3036,39 @@ class StorageProvider:
         if not txids:
             return swr, ndr
 
-        # Debug: show high-level broadcast intent
-        # self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
-
-        session = self.SessionLocal()
-        try:
-            reqs = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids))).scalars().all()
-            req_map = {req.txid: req for req in reqs}
-
-            tx_records = (
-                session.execute(select(TransactionModel).where(TransactionModel.txid.in_(txids))).scalars().all()
-            )
-            tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
-
-            if is_delayed:
-                # self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
+        if is_delayed:
+            # TaskSendWaiting sends 'unsent' reqs. The transactions become 'sending' so that
+            # TaskFailAbandoned, which fails old 'unprocessed' ones, leaves them alone meanwhile.
+            with session_scope(self.SessionLocal) as session:
+                reqs = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids))).scalars().all()
+                req_map = {req.txid: req for req in reqs}
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
                         swr.append({"txid": txid, "status": "failed"})
                         continue
                     req.status = "unsent"
-                    tx_model = tx_map.get(txid)
-                    if tx_model:
-                        tx_model.status = "unprocessed"
+                    self._set_notify_transactions_status(req, "sending", session)
                     swr.append({"txid": txid, "status": "sending"})
-                session.commit()
-                return swr, None
+            return swr, None
 
-            try:
-                services = self.get_services()
-            except RuntimeError:
-                # self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
-                services = None
-
-            for txid in txids:
-                req = req_map.get(txid)
-                tx_model = tx_map.get(txid)
-                if not req:
-                    swr.append({"txid": txid, "status": "failed"})
-                    if ndr is not None:
-                        ndr.append({"txid": txid, "status": "error", "message": "missing ProvenTxReq"})
-                    continue
-
-                # Prefer using full BEEF (with parent chain) if available
-                # This ensures unbroadcast parent transactions are included
-                beef_hex_for_broadcast = None
-                raw_bytes = None
-
-                if req.input_beef and len(req.input_beef) > 0:
-                    # Use the full BEEF for broadcasting - includes parent chain
-                    try:
-                        beef_hex_for_broadcast = req.input_beef.hex()
-                    except Exception:
-                        pass
-
-                if beef_hex_for_broadcast is None and req.raw_tx:
-                    # Fallback: use raw transaction
-                    raw_bytes = req.raw_tx
-
-                if not raw_bytes:
-                    swr.append({"txid": txid, "status": "failed"})
-                    if ndr is not None:
-                        ndr.append({"txid": txid, "status": "error", "message": "no raw transaction available"})
-                    continue
-
-                # Debug: we have raw bytes and will attempt broadcast
-                # self.logger.debug(
-                #     "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
-                #     "services_available=%s",
-                #     txid,
-                #     len(raw_bytes),
-                #     services is not None,
-                # )
-
-                status = "failed"
-                broadcast_ok = False
-                message: str | None = None
-
-                if services is not None:
-                    try:
-                        if beef_hex_for_broadcast:
-                            # Broadcast the full BEEF (includes parent chain)
-                            broadcast_result = services.post_beef(beef_hex_for_broadcast)
-                        else:
-                            # Fallback: broadcast raw transaction
-                            raw_tx_hex = raw_bytes.hex()
-
-                            # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
-                            # self.logger.debug(
-                            #     "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
-                            #     txid,
-                            #     len(raw_tx_hex) // 2,
-                            #     raw_tx_hex[:100]
-                            # )
-                            # Log full hex for small transactions
-                            # if len(raw_tx_hex) < 2000:
-                            #     self.logger.debug(
-                            #         "_share_reqs_with_world: rawTx hex (full): %s",
-                            #         raw_tx_hex
-                            #     )
-                            # Verify it's not AtomicBEEF format (should not start with 01010101)
-                            if raw_tx_hex.startswith("01010101"):
-                                self.logger.error(
-                                    "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
-                                    "This should be raw transaction hex. Transaction will fail to broadcast."
-                                )
-                            # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
-                            elif not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
-                                self.logger.warning(
-                                    "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
-                                    "First 8 chars: %s",
-                                    raw_tx_hex[:8],
-                                )
-
-                            # Send raw transaction hex to services.post_beef
-                            # services.post_beef will parse it and extract the Transaction object for ARC
-                            broadcast_result = services.post_beef(raw_tx_hex)
-                        if broadcast_result.get("accepted"):
-                            status = "unproven"
-                            broadcast_ok = True
-                            message = broadcast_result.get("message")
-                        else:
-                            message = broadcast_result.get("message", "broadcast failed")
-                    except Exception as exc:
-                        message = str(exc)
-                else:
-                    message = "Services not configured"
-
-                # Debug: log provider result
-                # self.logger.debug(
-                #     "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
-                #     txid,
-                #     broadcast_ok,
-                #     status,
-                #     message,
-                # )
-
-                if broadcast_ok:
-                    req.status = "unmined"
-                    req.attempts = (req.attempts or 0) + 1
-                    if tx_model:
-                        tx_model.status = "unproven"
-                    swr.append({"txid": txid, "status": status})
-                    if ndr is not None:
-                        ndr.append({"txid": txid, "status": "success", "message": message or "broadcasted"})
-                else:
-                    fatal_error = self._is_fatal_broadcast_error(message)
-                    if fatal_error:
-                        req.status = "invalid"
-                        if tx_model and tx_model.status != "completed" and tx_model.proven_tx_id is None:
-                            self._set_transaction_status(tx_model, "failed", session)
-                    else:
-                        req.status = "unsent"
-                        req.attempts = (req.attempts or 0) + 1
-                    swr.append({"txid": txid, "status": "failed"})
-                    if ndr is not None:
-                        ndr.append(
-                            {
-                                "txid": txid,
-                                "status": "error",
-                                "message": message,
-                                "fatal": fatal_error,
-                            }
-                        )
-
-            session.commit()
-            return swr, ndr
-        finally:
-            session.close()
+        # TS aggregateActionResults: SendWithResult and ReviewActionResult status per aggregate status.
+        swr_status = {"success": "unproven", "serviceError": "sending"}
+        for d in self.attempt_to_post_reqs_to_network([{"txid": txid} for txid in txids])["details"]:
+            status = d["status"]
+            swr.append({"txid": d["txid"], "status": swr_status.get(status, "failed")})
+            if status == "success":
+                ndr.append({"txid": d["txid"], "status": "success", "message": d.get("message") or "broadcasted"})
+            else:
+                ndr.append(
+                    {
+                        "txid": d["txid"],
+                        "status": "error",
+                        "message": d.get("message"),
+                        "fatal": status in ("doubleSpend", "invalidTx"),
+                    }
+                )
+        return swr, ndr
 
     def internalize_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """Internalize a transaction action (take ownership of outputs in pre-existing transaction).
@@ -4959,34 +4826,89 @@ class StorageProvider:
 
         return _impl(self, {}, txid, options)
 
-    def attempt_to_post_reqs_to_network(self, reqs: list[dict[str, Any]]) -> dict[str, Any]:
-        """Attempt to post ProvenTxReq records to the network.
+    def attempt_to_post_reqs_to_network(self, reqs: list[dict[str, Any]], services: Any = None) -> dict[str, Any]:
+        """Post each req's transaction as AtomicBEEF and record the outcome (TS attemptToPostReqsToNetwork).
 
-        Tries to send ProvenTxReq (transaction proof requests) to network.
-        In full implementation, would connect to external service; currently
-        counts attempts for instrumentation.
+        The one send path for an immediate processAction and for TaskSendWaiting. Per req:
+            success: req 'unmined', its notify transactions 'unproven'
+            doubleSpend / invalidTx: req 'doubleSpend' / 'invalid', transactions 'failed'
+            serviceError: req 'sending' with one more attempt, transactions 'sending' (sent again later)
+        A req that is already 'unmined' or 'completed' is left as it is.
 
         Args:
-            reqs: List of ProvenTxReq dictionaries to post
+            reqs: ProvenTxReq dicts; only 'txid' is read.
+            services: Services to post with; defaults to the storage's own.
 
         Returns:
-            dict with keys:
-                - posted (int): Count of successfully posted requests
-                - failed (int): Count of requests that failed to post
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (attemptToPostReqsToNetwork)
+            {"details": [{"txid", "status", "message"}]}, status 'invalid' when the txid has no req.
         """
-        posted = 0
-        failed = 0
-
-        for _req in reqs:
+        services = services if services is not None else self._services
+        details: list[dict[str, Any]] = []
+        for txid in dict.fromkeys(r["txid"] for r in reqs):
+            with session_scope(self.SessionLocal) as session:
+                req = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid)).scalar_one_or_none()
+                problem = self._req_not_sendable(req, session)
+                if problem and req is not None and req.status not in ("unmined", "completed"):
+                    req.status = "invalid"
+            if problem:
+                details.append({"txid": txid, "status": "invalid", "message": problem})
+                continue
             try:
-                posted += 1
-            except Exception:
-                failed += 1
+                if services is None:
+                    raise WalletError("Services not configured")
+                beef = Beef.from_binary(self.get_beef_for_transaction(txid))
+                result = services.post_beef(beef.to_binary_atomic(txid).hex())
+            except Exception as exc:
+                result = {"accepted": False, "message": str(exc)}
+            message = result.get("message")
+            if result.get("accepted"):
+                status, req_status, tx_status = "success", "unmined", "unproven"
+            elif result.get("doubleSpend"):
+                status, req_status, tx_status = "doubleSpend", "doubleSpend", "failed"
+            elif self._is_fatal_broadcast_error(message):
+                status, req_status, tx_status = "invalidTx", "invalid", "failed"
+            else:
+                status, req_status, tx_status = "serviceError", "sending", "sending"
+            with session_scope(self.SessionLocal) as session:
+                req = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid)).scalar_one()
+                if req.status not in ("unmined", "completed"):
+                    req.status = req_status
+                    if status == "serviceError":
+                        req.attempts = (req.attempts or 0) + 1
+                    self._set_notify_transactions_status(req, tx_status, session)
+            details.append({"txid": txid, "status": status, "message": message})
+        return {"details": details}
 
-        return {"posted": posted, "failed": failed}
+    def _req_not_sendable(self, req: ProvenTxReq | None, session: Session) -> str | None:
+        """Why a req must not be broadcast, or None (TS validateReqsAndMergeBeefs).
+
+        A req without notify.transactionIds (written before they were recorded) or one whose transaction
+        is already failed may belong to a transaction whose inputs were released; broadcasting it would
+        put a transaction the wallet has given up on onto the chain.
+        """
+        if req is None:
+            return "missing ProvenTxReq"
+        ids = json.loads(req.notify or "{}").get("transactionIds") or []
+        if not ids:
+            return "no notify transactionIds"
+        failed = session.execute(
+            select(TransactionModel.transaction_id).where(
+                TransactionModel.transaction_id.in_(ids), TransactionModel.status == "failed"
+            )
+        ).first()
+        return "transaction is failed" if failed else None
+
+    def _set_notify_transactions_status(self, req: ProvenTxReq, status: str, session: Session) -> None:
+        """Set the status of the req's notify.transactionIds (TS updateTransactionsStatus)."""
+        ids = json.loads(req.notify or "{}").get("transactionIds") or []
+        if not ids:
+            return
+        txs = session.execute(select(TransactionModel).where(TransactionModel.transaction_id.in_(ids))).scalars().all()
+        for tx in txs:
+            try:
+                self._set_transaction_status(tx, status, session)
+            except StateError:
+                pass  # A completed or failed row keeps its status; refusing would leave the req to be re-sent forever.
 
     def update_proven_tx_req_dynamics(self, proven_tx_req_id: int) -> bool:
         """Update dynamic properties of a ProvenTxReq record.
