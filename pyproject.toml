@@ -4,9 +4,9 @@ version = "2.0.2"
 description = "BRC-100 compliant Bitcoin SV wallet implementation"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "Open BSV License version 4"}
+license = "Apache-2.0"
 authors = [
-    {name = "BSV Blockchain Association"},
+    {name = "BSV Association"},
 ]
 keywords = ["bitcoin", "bsv", "wallet", "brc-100"]
 classifiers = [
@@ -19,7 +19,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "bsv-sdk>=2.4.0",
+    "bsv-sdk>=2.5.0",
     "bsv-middleware>=2.0.2",
     "requests>=2.31",
     "SQLAlchemy>=2.0",

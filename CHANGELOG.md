@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Arcade provider renamed to `BsvBroadcaster` after the service's rename to BSV Broadcaster ([bsv-blockchain/broadcaster](https://github.com/bsv-blockchain/broadcaster)): new modules `services/providers/bsv_broadcaster.py`, `services/providers/bsv_broadcaster_sse.py` and `monitor/tasks/task_bsv_broadcaster_sse.py`, `Services.bsv_broadcaster`, and `BSV_BROADCASTER_*` constants. Behaviour is unchanged, as are the `arcade*` option keys, the `arcade` provider name, the `ArcadeSSE` monitor task name and the public hostnames. The guide moved to `docs/BSV_BROADCASTER.md`
-- Bumped minimum bsv-sdk dependency from 2.1.3 to 2.4.0
+- Bumped minimum bsv-sdk dependency from 2.1.3 to 2.5.0 (2.5.0 fixes the native transaction parser crash in GHSA-49jm-v8w3-4j8c, which affects 2.3.2 through 2.4.0)
 - `update_transactions_status(ids, "failed")` releases the outputs the failed transactions had allocated (TS parity)
 
 ### Deprecated

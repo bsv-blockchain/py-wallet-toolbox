@@ -4,7 +4,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/bsv-wallet-toolbox)](https://pypi.org/project/bsv-wallet-toolbox)
 [![Python versions](https://img.shields.io/pypi/pyversions/bsv-wallet-toolbox)](https://pypi.org/project/bsv-wallet-toolbox)
 
-[![Coverage](https://img.shields.io/badge/coverage-71.55237567390537%25-yellowgreen)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
+[![Coverage](https://img.shields.io/badge/coverage-71.57714054927303%25-yellowgreen)](https://github.com/bsv-blockchain/py-wallet-toolbox/actions/workflows/build.yml)
 
 > **🔗 Cross-SDK Interoperability (v2.0.0)**
 >
@@ -225,4 +225,4 @@ For questions, bug reports, or feature requests:
 
 ## License
 
-The license for the code in this repository is the Open BSV License version 4. See [license.md](./license.md) for details.
+The license for the code in this repository is the Apache License 2.0. See [LICENSE](LICENSE) for details.
