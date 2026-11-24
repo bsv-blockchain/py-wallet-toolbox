@@ -1128,7 +1128,7 @@ class Wallet:
             # Avoid mutating caller's dict
             args = {**args, "auth": auth}
 
-        if self.auto_known_txids and not args.get("knownTxids"):
+        if self.auto_known_txids and "knownTxids" not in args:  # an explicit [] asks for whole txs
             args = {**args, "knownTxids": self.get_known_txids()}
 
         trace(logger, "wallet.list_outputs.call", originator=originator, auth=auth, args=args)

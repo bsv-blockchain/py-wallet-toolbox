@@ -49,3 +49,21 @@ def test_list_outputs_beef_is_merged_and_auto_known_txids_are_sent(wallet: Walle
     # The listed output's own tx stays whole (knownTxids only shorten its inputs).
     btx = parse_beef(bytes(r2["BEEF"])).find_transaction(PARENT_BEEF_TXID)
     assert btx is not None and btx.data_format != 2
+
+
+def test_explicit_empty_known_txids_is_kept(wallet: Wallet, storage) -> None:
+    wallet.get_known_txids(["ab" * 32])  # some txid the wallet claims to know
+    wallet.auto_known_txids = True
+    sent: list[dict] = []
+    original = storage.list_outputs
+
+    def spy(auth, args):
+        sent.append(args)
+        return original(auth, args)
+
+    storage.list_outputs = spy
+    wallet.list_outputs({"basket": "default", "include": "entire transactions", "knownTxids": []})
+    wallet.list_outputs({"basket": "default", "include": "entire transactions"})
+
+    assert sent[0]["knownTxids"] == []  # an explicit [] asks for whole transactions
+    assert "ab" * 32 in sent[1]["knownTxids"]
