@@ -111,18 +111,34 @@ def double_spend_scenarios():
     ]
 
 
-def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
-    """Ensure ARC path returns TS-like shape for single BEEF (mocked).
+def _arc_ok(url: str, json: dict, **_: object) -> Mock:
+    """Canned ARC /v1/tx answer: accepted, for the txid of the posted tx."""
+    r = Mock(status_code=200)
+    r.json.return_value = {"txid": json.get("txid", "00" * 32), "txStatus": "SEEN_ON_NETWORK", "extraInfo": ""}
+    return r
 
-    - Uses conftest's FakeClient to avoid network.
-    - Asserts only TS-like return shape and basic types.
-    """
+
+def _offline_services() -> Services:
+    """Default mainnet options would reach the real GorillaPool ARC and Bitails: keep both off the network."""
     options = Services.create_default_options("main")
     options["arcUrl"] = "https://arc.mock"
     options["arcApiKey"] = "test"
     services = Services(options)
+    services.bitails = None
+    return services
 
-    res = services.post_beef(valid_beef_data)
+
+def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
+    """Ensure ARC path returns TS-like shape for single BEEF (mocked).
+
+    - ARC's HTTP call is stubbed and Bitails is off, so nothing reaches the network.
+    - Asserts only TS-like return shape and basic types.
+    """
+    services = _offline_services()
+
+    with patch("bsv_wallet_toolbox.services.providers.arc.requests.post", side_effect=_arc_ok) as post:
+        res = services.post_beef(valid_beef_data)
+    assert {c.args[0] for c in post.call_args_list} == {"https://arc.mock/v1/tx"}
     assert isinstance(res, dict)
     # Required keys must be present (providerErrors is optional)
     assert {"accepted", "txid", "message"} <= set(res.keys())
@@ -132,18 +148,17 @@ def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
 def test_post_beef_array_arc_minimal_enabled(valid_beef_data) -> None:
     """Ensure ARC path returns TS-like shape for multiple BEEFs (mocked).
 
-    - Uses conftest's FakeClient to avoid network.
+    - ARC's HTTP call is stubbed and Bitails is off, so nothing reaches the network.
     - Asserts only TS-like return shape and basic types.
     """
-    options = Services.create_default_options("main")
-    options["arcUrl"] = "https://arc.mock"
-    options["arcApiKey"] = "test"
-    services = Services(options)
+    services = _offline_services()
 
     # Use valid beef data repeated for the array test
     beef1 = valid_beef_data
     beef2 = valid_beef_data  # Same valid data for simplicity
-    res_list = services.post_beef_array([beef1, beef2])
+    with patch("bsv_wallet_toolbox.services.providers.arc.requests.post", side_effect=_arc_ok) as post:
+        res_list = services.post_beef_array([beef1, beef2])
+    assert {c.args[0] for c in post.call_args_list} == {"https://arc.mock/v1/tx"}
     assert isinstance(res_list, list)
     assert len(res_list) == 2
     for res in res_list:
