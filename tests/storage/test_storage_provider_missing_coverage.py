@@ -324,22 +324,6 @@ class TestInternalizeActionContext:
 class TestBEEFOperations:
     """Test BEEF-related operations."""
 
-    def test_build_minimal_beef_for_txids_empty(self, storage_provider):
-        """Test building minimal BEEF with empty txid list."""
-        result = storage_provider._build_minimal_beef_for_txids([])
-
-        assert isinstance(result, bytes)
-        # Empty BEEF is valid - returns empty bytes
-
-    def test_build_minimal_beef_for_txids_with_data(self, storage_provider):
-        """Test building minimal BEEF with txids."""
-        txids = ["a" * 64, "b" * 64]
-
-        result = storage_provider._build_minimal_beef_for_txids(txids)
-
-        assert isinstance(result, bytes)
-        # Method may return empty bytes for non-existent txids
-
     def test_get_valid_beef_for_txid_not_found(self, storage_provider):
         """Test getting BEEF for non-existent txid."""
         txid = "0" * 64

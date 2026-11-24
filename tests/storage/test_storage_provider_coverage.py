@@ -817,12 +817,6 @@ class TestKeyConversions:
 class TestBeefOperations:
     """Test BEEF-related operations."""
 
-    def test_build_minimal_beef_for_txids_empty(self, storage_provider) -> None:
-        """Test building BEEF with empty txid list."""
-        result = storage_provider._build_minimal_beef_for_txids([])
-
-        assert isinstance(result, bytes)
-
     def test_get_valid_beef_for_txid_nonexistent(self, storage_provider) -> None:
         """Test getting BEEF for non-existent txid."""
         txid = "0" * 64

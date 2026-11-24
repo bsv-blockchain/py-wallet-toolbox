@@ -1115,6 +1115,13 @@ class Wallet:
         # Validate parameters
         self._validate_originator(originator)
         validate_list_outputs_args(args)
+        if "include" in args:  # BRC-100 include -> the storage flags (TS validateListOutputsArgs)
+            include = args["include"]
+            args = {
+                **args,
+                "includeLockingScripts": include == "locking scripts",
+                "includeTransactions": include == "entire transactions",
+            }
 
         if not self.storage:
             raise RuntimeError("storage provider is not configured")

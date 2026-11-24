@@ -888,7 +888,7 @@ class StorageProvider:
 
                 for output_row in rows:
                     # Ensure script is available
-                    self.validate_output_script(output_row=output_row, session=s)
+                    self.validate_output_script(output_row=output_row, _session=s)
                     if not output_row.locking_script or len(output_row.locking_script) == 0:
                         continue
                     ok: bool | None = None
@@ -926,7 +926,7 @@ class StorageProvider:
                     wo["customInstructions"] = output_row.custom_instructions
                 if include_scripts or specop_include_scripts:
                     # TS uses short names like 'o'/'s'; Python uses descriptive names for clarity.
-                    self.validate_output_script(output_row=output_row, session=s)
+                    self.validate_output_script(output_row=output_row, _session=s)
                     if output_row.locking_script:
                         wo["lockingScript"] = output_row.locking_script
                 if include_labels and output_row.txid:
@@ -972,17 +972,17 @@ class StorageProvider:
 
             result: dict[str, Any] = {"totalOutputs": int(total), "outputs": outputs}
             if include_transactions:
-                # Build minimal BEEF by merging rawTx for listed outputs (unique txids)
-                txids: list[str] = []
-                seen: set[str] = set()
-                for output_row in rows:
-                    if output_row.txid and output_row.txid not in seen:
-                        seen.add(output_row.txid)
-                        txids.append(output_row.txid)
+                # TS listOutputsKnex: one Beef holding every listed output's tx, built from storage.
                 known_txids = args.get("knownTxids") or []
                 if not isinstance(known_txids, list):
                     known_txids = []
-                result["BEEF"] = self._build_recursive_beef_for_txids(txids, known_txids=known_txids)
+                beef = Beef(version=BEEF_V2)
+                for output_row in rows:
+                    if output_row.txid and beef.find_transaction(output_row.txid) is None:
+                        self.get_beef_for_transaction(
+                            output_row.txid, {"mergeToBeef": beef, "knownTxids": known_txids, "ignoreServices": True}
+                        )
+                result["BEEF"] = beef.to_binary()
             return result
 
     def validate_output_script(self, output_row: Output, _session: Session | None = None) -> None:
@@ -1011,123 +1011,6 @@ class StorageProvider:
         )
         if script:
             output_row.locking_script = script
-
-    def _build_minimal_beef_for_txids(self, txids: list[str]) -> bytes:
-        """Construct a minimal BEEF-like binary by concatenating rawTx blobs.
-
-        Summary:
-            This is a pragmatic interim implementation: for each txid, include its
-            rawTx if known. It does not yet recursively include inputs or Merkle
-            paths. Sufficient to unblock `includeTransactions` clients expecting a
-            non-empty BEEF when transactions are requested.
-        TS parity:
-            Approximates BEEF merging from TS; full parity (inputs/paths) will be
-            implemented alongside Proven utilities.
-        Args:
-            txids: Unique list of transaction ids to include.
-        Returns:
-            Bytes blob representing a minimal BEEF.
-        """
-        chunks: list[bytes] = []
-        seen: set[str] = set()
-        for txid in txids:
-            if txid in seen:
-                continue
-            seen.add(txid)
-            r = self.get_proven_or_raw_tx(txid)
-            raw = r.get("rawTx")
-            if isinstance(raw, (bytes, bytearray)):
-                chunks.append(bytes(raw))
-            # If this tx has an input BEEF from storage (req), append it as a minimal ancestry hint
-            ib = r.get("inputBEEF")
-            if isinstance(ib, (bytes, bytearray)) and len(ib) > 0:
-                chunks.append(bytes(ib))
-        return b"".join(chunks)
-
-    def _build_recursive_beef_for_txids(
-        self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None
-    ) -> bytes:
-        """Construct a more complete BEEF-like binary including ancestors.
-
-        Summary:
-            Starting from txids, append known rawTx bytes and any stored inputBEEF,
-            then recursively traverse inputs (by parsing rawTx) up to max_depth to
-            append ancestor rawTx blobs. This is still a placeholder and does not
-            encode BUMP structures; it is a pragmatic superset of the minimal form.
-        Args:
-            txids: Starting transaction ids.
-            max_depth: Maximum recursion depth.
-        Returns:
-            bytes: Concatenated bytes representing a BEEF-like payload.
-        """
-        chunks: list[bytes] = []
-        seen: set[str] = set()
-        known: set[str] = set(known_txids or [])
-        first_beef: bytes | None = None
-
-        def add_tx_and_ancestors(cur_txid: str, depth: int) -> None:
-            if cur_txid in seen or depth > max_depth:
-                return
-            seen.add(cur_txid)
-            r = self.get_proven_or_raw_tx(cur_txid)
-            raw = r.get("rawTx")
-            if isinstance(raw, (bytes, bytearray)):
-                # Attempt to parse and follow inputs (and attach MerklePath)
-                try:
-                    tx = Transaction.from_hex(raw)
-                    if tx and getattr(tx, "inputs", None):
-                        mpb = r.get("merklePath")
-                        if isinstance(mpb, (bytes, bytearray)) and len(mpb) > 0:
-                            try:
-                                tx.merkle_path = MerklePath.from_binary(bytes(mpb))
-                            except Exception:
-                                pass
-                        for txin in tx.inputs:
-                            src = getattr(txin, "source_txid", None)
-                            if isinstance(src, str) and src and src != "00" * 32:
-                                # If the caller already knows this txid, do not fetch/descend further
-                                if src not in known:
-                                    add_tx_and_ancestors(src, depth + 1)
-                                # Try to hydrate parent transaction for to_beef ancestry
-                                try:
-                                    pr = self.get_proven_or_raw_tx(src)
-                                    praw = pr.get("rawTx")
-                                    if isinstance(praw, (bytes, bytearray)):
-                                        parent_tx = Transaction.from_hex(praw)
-                                        if parent_tx is not None:
-                                            txin.source_transaction = parent_tx
-                                except Exception:
-                                    pass
-                        try:
-                            beef_bytes = tx.to_beef()
-                            chunks.append(beef_bytes)
-                        except Exception:
-                            chunks.append(bytes(raw))
-                    else:
-                        chunks.append(bytes(raw))
-                except Exception:
-                    chunks.append(bytes(raw))
-            ib = r.get("inputBEEF")
-            if isinstance(ib, (bytes, bytearray)) and len(ib) > 0:
-                chunks.append(bytes(ib))
-
-        for tid in txids:
-            add_tx_and_ancestors(tid, 0)
-
-        # Prefer a single BEEF if constructed for the primary tx
-        if first_beef is not None:
-            return first_beef
-
-        # Deduplicate identical fragments to approximate normalization (fallback)
-        unique_chunks: list[bytes] = []
-        seen_hashes: set[int] = set()
-        for c in chunks:
-            h = hash(c)
-            if h in seen_hashes:
-                continue
-            seen_hashes.add(h)
-            unique_chunks.append(c)
-        return b"".join(unique_chunks)
 
     # ------------------------------------------------------------------
     # Additional find/list helpers
@@ -1514,21 +1397,8 @@ class StorageProvider:
         return bool(r.get("proven") or r.get("rawTx"))
 
     def get_valid_beef_for_txid(self, txid: str, known_txids: list[str] | None = None) -> bytes:
-        """Return a BEEF-like bytes blob for a known txid (minimal parity).
-
-        Summary:
-            Builds a BEEF-style payload for the txid using any known rawTx and
-            optionally attached MerklePath (ProvenTx). Recursively includes
-            ancestors up to a small depth, skipping any ids listed in known_txids.
-        TS parity:
-            Minimal approximation of getValidBeefForTxid.
-        Args:
-            txid: Subject transaction id.
-            known_txids: Optional list of txids to treat as already known.
-        Returns:
-            bytes: BEEF-like payload (may be a single-tx BEEF when possible).
-        """
-        return self._build_recursive_beef_for_txids([txid], known_txids=known_txids)
+        """BEEF for a txid built from storage only, known_txids as txid-only (TS getValidBeefForKnownTxid)."""
+        return self.get_beef_for_transaction(txid, {"knownTxids": known_txids or [], "ignoreServices": True})
 
     # ------------------------------------------------------------------
     # Proven helpers
