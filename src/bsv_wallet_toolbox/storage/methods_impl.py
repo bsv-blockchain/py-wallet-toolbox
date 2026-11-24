@@ -1080,6 +1080,8 @@ class StorageGetBeefOptions:
     ignore_new_proven: bool = False
     min_proof_level: int = 0
     max_recursion_depth: int = MAX_RECURSION_DEPTH
+    chain_tracker: Any = None  # if set, stored proofs must have a root it knows
+    skip_invalid_proofs: bool = False  # with chain_tracker: recurse past an unknown root instead of raising
 
 
 @dataclass
@@ -1147,10 +1149,6 @@ def get_beef_for_transaction(
 
     opts = _parse_get_beef_options(options)
 
-    # Go parity: if txid is in known list, return txid-only beef immediately
-    if txid in opts.known_txids:
-        return _beef_for_known_id(txid)
-
     # Track service-fetched transactions for potential persistence
     service_fetched_txs: dict[str, RawTxWithMerklePath] = {}
 
@@ -1163,6 +1161,11 @@ def get_beef_for_transaction(
         beef = opts.merge_to_beef
     else:
         beef = Beef(version=BEEF_V2)
+
+    # A txid the caller already knows goes in txid-only, into mergeToBeef too (TS getValidBeefForKnownTxid).
+    if txid in opts.known_txids:
+        beef.merge_txid_only(txid)
+        return beef.to_binary()
 
     # Try storage first (unless ignored)
     if not opts.ignore_storage:
@@ -1197,17 +1200,9 @@ def _parse_get_beef_options(options: dict[str, Any] | None) -> StorageGetBeefOpt
         ignore_new_proven=options.get("ignoreNewProven", False),
         min_proof_level=options.get("minProofLevel", 0),
         max_recursion_depth=options.get("maxRecursionDepth", MAX_RECURSION_DEPTH),
+        chain_tracker=options.get("chainTracker"),
+        skip_invalid_proofs=bool(options.get("skipInvalidProofs")),
     )
-
-
-def _beef_for_known_id(txid: str) -> bytes:
-    """Create a BEEF with only a txid-only entry.
-
-    Go parity: mirrors beefForKnownID in get_beef.go
-    """
-    beef = Beef(version=BEEF_V2)
-    beef.merge_txid_only(txid)
-    return beef.to_binary()
 
 
 def _get_beef_from_storage(
@@ -1354,6 +1349,16 @@ def _recursive_build_valid_beef(
             mp = merkle_path
         else:
             mp = None
+
+        if mp is not None and options.chain_tracker is not None:
+            # TS getBeefForTransaction: a stored proof must have a root the chain tracker knows.
+            from bsv_wallet_toolbox.services.services import Services
+
+            root = mp.compute_root(txid)
+            if not Services._run_async(options.chain_tracker.is_valid_root_for_height(root, mp.block_height)):
+                if not options.skip_invalid_proofs:
+                    raise WalletError(f"Invalid merkle root {root} at height {mp.block_height} for txid {txid}")
+                mp = None  # ignore this currently invalid proof and recurse deeper
 
         if mp is not None:
             beef.merge_raw_tx(raw_tx)

@@ -41,6 +41,7 @@ def mock_services(valid_services_config):
         mock_service_collection.return_value = mock_instance
 
         services = Services(valid_services_config)
+        services.bitails = None  # unit tests here stub ARC; a live Bitails fallback would reach the network
         yield services, mock_instance
 
 
@@ -110,18 +111,34 @@ def double_spend_scenarios():
     ]
 
 
-def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
-    """Ensure ARC path returns TS-like shape for single BEEF (mocked).
+def _arc_ok(url: str, json: dict, **_: object) -> Mock:
+    """Canned ARC /v1/tx answer: accepted, for the txid of the posted tx."""
+    r = Mock(status_code=200)
+    r.json.return_value = {"txid": json.get("txid", "00" * 32), "txStatus": "SEEN_ON_NETWORK", "extraInfo": ""}
+    return r
 
-    - Uses conftest's FakeClient to avoid network.
-    - Asserts only TS-like return shape and basic types.
-    """
+
+def _offline_services() -> Services:
+    """Default mainnet options would reach the real GorillaPool ARC and Bitails: keep both off the network."""
     options = Services.create_default_options("main")
     options["arcUrl"] = "https://arc.mock"
     options["arcApiKey"] = "test"
     services = Services(options)
+    services.bitails = None
+    return services
 
-    res = services.post_beef(valid_beef_data)
+
+def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
+    """Ensure ARC path returns TS-like shape for single BEEF (mocked).
+
+    - ARC's HTTP call is stubbed and Bitails is off, so nothing reaches the network.
+    - Asserts only TS-like return shape and basic types.
+    """
+    services = _offline_services()
+
+    with patch("bsv_wallet_toolbox.services.providers.arc.requests.post", side_effect=_arc_ok) as post:
+        res = services.post_beef(valid_beef_data)
+    assert {c.args[0] for c in post.call_args_list} == {"https://arc.mock/v1/tx"}
     assert isinstance(res, dict)
     # Required keys must be present (providerErrors is optional)
     assert {"accepted", "txid", "message"} <= set(res.keys())
@@ -131,18 +148,17 @@ def test_post_beef_arc_minimal_enabled(valid_beef_data) -> None:
 def test_post_beef_array_arc_minimal_enabled(valid_beef_data) -> None:
     """Ensure ARC path returns TS-like shape for multiple BEEFs (mocked).
 
-    - Uses conftest's FakeClient to avoid network.
+    - ARC's HTTP call is stubbed and Bitails is off, so nothing reaches the network.
     - Asserts only TS-like return shape and basic types.
     """
-    options = Services.create_default_options("main")
-    options["arcUrl"] = "https://arc.mock"
-    options["arcApiKey"] = "test"
-    services = Services(options)
+    services = _offline_services()
 
     # Use valid beef data repeated for the array test
     beef1 = valid_beef_data
     beef2 = valid_beef_data  # Same valid data for simplicity
-    res_list = services.post_beef_array([beef1, beef2])
+    with patch("bsv_wallet_toolbox.services.providers.arc.requests.post", side_effect=_arc_ok) as post:
+        res_list = services.post_beef_array([beef1, beef2])
+    assert {c.args[0] for c in post.call_args_list} == {"https://arc.mock/v1/tx"}
     assert isinstance(res_list, list)
     assert len(res_list) == 2
     for res in res_list:
@@ -181,7 +197,7 @@ def test_post_beef_network_failure_500_error(mock_services, valid_beef_data) -> 
         mock_result = Mock()
         mock_result.status = "error"
         mock_result.description = "Internal Server Error"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     # Should handle network errors gracefully
     result = services.post_beef(valid_beef_data)
@@ -199,7 +215,7 @@ def test_post_beef_network_timeout_error(mock_services, valid_beef_data) -> None
 
     # Mock ARC provider to raise timeout exception
     if services.arc_taal:
-        services.arc_taal.broadcast = Mock(side_effect=TimeoutError("Connection timeout"))
+        services.arc_taal.post_raw_tx = Mock(side_effect=TimeoutError("Connection timeout"))
 
     # Should handle timeout errors gracefully
     result = services.post_beef(valid_beef_data)
@@ -222,7 +238,7 @@ def test_post_beef_rate_limiting_429_error(mock_services, valid_beef_data) -> No
         mock_result = Mock()
         mock_result.status = "rate_limited"
         mock_result.description = "Rate limit exceeded"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -240,7 +256,7 @@ def test_post_beef_malformed_json_response(mock_services, valid_beef_data) -> No
 
     # Mock ARC provider to raise JSON error
     if services.arc_taal:
-        services.arc_taal.broadcast = Mock(side_effect=ValueError("Invalid JSON"))
+        services.arc_taal.post_raw_tx = Mock(side_effect=ValueError("Invalid JSON"))
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -257,7 +273,7 @@ def test_post_beef_empty_response(mock_services, valid_beef_data) -> None:
 
     # Mock ARC provider to raise empty response error
     if services.arc_taal:
-        services.arc_taal.broadcast = Mock(side_effect=ValueError("Empty response"))
+        services.arc_taal.post_raw_tx = Mock(side_effect=ValueError("Empty response"))
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -279,7 +295,7 @@ def test_post_beef_service_unavailable_503_error(mock_services, valid_beef_data)
         mock_result = Mock()
         mock_result.status = "error"
         mock_result.description = "Service Unavailable"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -301,7 +317,7 @@ def test_post_beef_unauthorized_401_error(mock_services, valid_beef_data) -> Non
         mock_result = Mock()
         mock_result.status = "error"
         mock_result.description = "Unauthorized"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -323,7 +339,7 @@ def test_post_beef_forbidden_403_error(mock_services, valid_beef_data) -> None:
         mock_result = Mock()
         mock_result.status = "error"
         mock_result.description = "Forbidden"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -401,7 +417,7 @@ def test_post_beef_success_response(mock_services, valid_beef_data) -> None:
         mock_result.status = "success"
         mock_result.txid = "a1b2c3d4e5f6..."
         mock_result.message = "Transaction broadcast successfully"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -427,7 +443,7 @@ def test_post_beef_double_spend_detection(mock_services) -> None:
         mock_result1.status = "success"
         mock_result1.txid = "txid123"
         mock_result1.message = "Accepted"
-        services.arc_taal.broadcast = Mock(return_value=mock_result1)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result1)
 
     # First call - success
     result1 = services.post_beef(beef_data)
@@ -441,7 +457,7 @@ def test_post_beef_double_spend_detection(mock_services) -> None:
         mock_result2.status = "error"
         mock_result2.double_spend = True
         mock_result2.description = "Double spend detected"
-        services.arc_taal.broadcast = Mock(return_value=mock_result2)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result2)
 
     # Second call - double spend
     result2 = services.post_beef(beef_data)
@@ -476,10 +492,14 @@ def test_post_beef_unicode_in_response(mock_services, valid_beef_data) -> None:
     if services.arc_taal:
         from unittest.mock import Mock
 
-        mock_result = Mock()
-        mock_result.status = "error"
-        mock_result.description = "Error: 无效的交易数据 (Invalid transaction data)"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        from bsv_wallet_toolbox.services.providers.arc import PostTxResultForTxid, PostTxResultForTxidError
+
+        mock_result = PostTxResultForTxid(
+            txid="a" * 64,
+            status="error",
+            data=PostTxResultForTxidError(status="400", detail="Error: 无效的交易数据 (Invalid transaction data)"),
+        )
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -502,7 +522,7 @@ def test_post_beef_provider_fallback_simulation(mock_services, valid_beef_data) 
         mock_result.status = "success"
         mock_result.txid = "fallback_txid_123"
         mock_result.message = "Accepted via fallback provider"
-        services.arc_taal.broadcast = Mock(return_value=mock_result)
+        services.arc_taal.post_raw_tx = Mock(return_value=mock_result)
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)
@@ -519,7 +539,7 @@ def test_post_beef_connection_error_handling(mock_services, valid_beef_data) -> 
 
     # Mock ARC provider to raise connection error
     if services.arc_taal:
-        services.arc_taal.broadcast = Mock(side_effect=ConnectionError("Network is unreachable"))
+        services.arc_taal.post_raw_tx = Mock(side_effect=ConnectionError("Network is unreachable"))
 
     result = services.post_beef(valid_beef_data)
     assert isinstance(result, dict)

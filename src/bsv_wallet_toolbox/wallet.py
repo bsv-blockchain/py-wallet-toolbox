@@ -13,6 +13,7 @@ from bsv.keys import PublicKey
 from bsv.overlay_tools import LookupResolver, LookupResolverConfig
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
+from bsv.transaction.beef_party import BeefParty
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, ProtoWallet
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
@@ -279,11 +280,7 @@ class Wallet:
         # Initialize Beef instance (BeefParty equivalent - aggregates all BEEF data)
         # TS: this.beef = new BeefParty([this.userParty])
         # TS/Go parity: Use BEEF_V2 as default version (BRC-96)
-        try:
-            self.beef: Any = Beef(version=BEEF_V2)
-        except Exception:
-            # Fallback if Beef initialization fails
-            self.beef = None
+        self.beef: Any = BeefParty([self.user_party] if self.user_party else [])
 
         # Fallback list for known txids when BEEF isn't available
         self._known_txids: list[str] = []
@@ -916,8 +913,8 @@ class Wallet:
         if self.return_txid_only:
             return beef
 
-        # Extract txid-only transactions and merge them with full data
-        for btx in beef.txs.values():
+        # Extract txid-only transactions and merge them with full data (merging re-keys beef.txs, so iterate a copy)
+        for btx in list(beef.txs.values()):
             # Check if this is a txid-only transaction (data_format == 2)
             if btx.data_format == 2:  # TxIDOnly
                 txid = btx.txid
@@ -949,8 +946,8 @@ class Wallet:
         return beef
 
     def verify_returned_txid_only_atomic_beef(
-        self, beef_data: bytes | None, known_txids: list[str] | None = None
-    ) -> bytes | None:
+        self, beef_data: bytes | list[int] | None, known_txids: list[str] | None = None
+    ) -> bytes | list[int] | None:
         """Verify and process returned AtomicBEEF data with txid-only verification.
 
         TS: verifyReturnedTxidOnlyAtomicBEEF(beef: AtomicBEEF, knownTxids?: string[]): AtomicBEEF
@@ -974,12 +971,14 @@ class Wallet:
         if beef_data is None:
             return None
 
-        if not isinstance(beef_data, (bytes, bytearray)):
+        # Wallet results carry tx as list[int] (JSON-friendly); answer in the same form.
+        as_list = isinstance(beef_data, list)
+        if not as_list and not isinstance(beef_data, (bytes, bytearray)):
             return beef_data
 
         try:
             # Parse AtomicBEEF to get subject txid
-            beef, subject_txid, _ = parse_beef_ex(beef_data)
+            beef, subject_txid, _ = parse_beef_ex(bytes(beef_data))
 
             if not subject_txid:
                 msg = "unable to extract subject txid from atomic beef"
@@ -989,7 +988,8 @@ class Wallet:
             verified_beef = self.verify_returned_txid_only(beef, known_txids)
 
             # Reconstruct AtomicBEEF with verified data
-            return verified_beef.to_binary_atomic(subject_txid)
+            atomic = verified_beef.to_binary_atomic(subject_txid)
+            return list(atomic) if as_list else atomic
 
         except Exception:
             # If verification fails, return original data as fallback
@@ -1112,6 +1112,13 @@ class Wallet:
         # Validate parameters
         self._validate_originator(originator)
         validate_list_outputs_args(args)
+        if "include" in args:  # BRC-100 include -> the storage flags (TS validateListOutputsArgs)
+            include = args["include"]
+            args = {
+                **args,
+                "includeLockingScripts": include == "locking scripts",
+                "includeTransactions": include == "entire transactions",
+            }
 
         if not self.storage:
             raise RuntimeError("storage provider is not configured")
@@ -1121,9 +1128,17 @@ class Wallet:
             # Avoid mutating caller's dict
             args = {**args, "auth": auth}
 
+        if self.auto_known_txids and "knownTxids" not in args:  # an explicit [] asks for whole txs
+            args = {**args, "knownTxids": self.get_known_txids()}
+
         trace(logger, "wallet.list_outputs.call", originator=originator, auth=auth, args=args)
         try:
             result = self.storage.list_outputs(auth, args)
+            if result.get("BEEF") is not None and self.beef is not None:
+                # TS: this.beef.mergeBeefFromParty(this.storageParty, r.BEEF); r.BEEF = verifyReturnedTxidOnlyBEEF(r.BEEF)
+                beef_bytes = bytes(result["BEEF"])
+                self.beef.merge_beef_from_party(self.storage_party, beef_bytes)
+                result["BEEF"] = self.verify_returned_txid_only(Beef.from_binary(beef_bytes)).to_binary()
             trace(logger, "wallet.list_outputs.result", originator=originator, result=result)
             return result
         except Exception as e:
@@ -1442,13 +1457,7 @@ class Wallet:
         # 1. BEEF merge from transaction (if r.tx): this.beef.mergeBeefFromParty(this.storageParty, r.tx)
         if "tx" in result and result["tx"] is not None and self.beef is not None:
             try:
-                beef_data = result["tx"]
-                # Merge BEEF from result into wallet's BEEF state
-                if hasattr(self.beef, "merge_beef"):
-                    # BeefParty equivalent - merge with storage party tracking
-                    self.beef.merge_beef(beef_data)
-                elif hasattr(self.beef, "merge"):
-                    self.beef.merge(beef_data)
+                self.beef.merge_beef_from_party(self.storage_party, bytes(result["tx"]))
             except Exception:
                 # Best-effort BEEF merge; don't fail transaction on merge errors
                 pass

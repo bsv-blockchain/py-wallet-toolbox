@@ -16,6 +16,7 @@ from bsv_wallet_toolbox.services.providers.bitails import (
     GetMerklePathResult,
     PostBeefResult,
 )
+from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 
 
 class TestBitailsInitialization:
@@ -100,26 +101,26 @@ class TestBitailsPostBeef:
         return Bitails()
 
     def test_post_beef_success(self, bitails: Bitails) -> None:
-        """Test successful post_beef operation."""
-        mock_beef = {"format": "BEEF", "version": 1}
-        txids = ["txid1", "txid2"]
+        """The raws of the requested txids go out in order; one row per raw comes back."""
+        from bsv.transaction.beef import parse_beef_ex
+
+        from tests.testabilities.tsgenerated import parent_transaction_atomic_beef
+
+        beef, child, _ = parse_beef_ex(parent_transaction_atomic_beef())
+        txids = [t for t in beef.txs if t != child] + [child]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"success": True, "txids": ["txid1", "txid2"]}
+        mock_response.json.return_value = [{"txid": t} for t in txids]
 
         with patch("requests.post", return_value=mock_response) as mock_post:
-            result = bitails.post_beef(mock_beef, txids)
+            result = bitails.post_beef(beef, txids)
 
             assert isinstance(result, PostBeefResult)
             assert result.success is True
-            assert result.txids == ["txid1", "txid2"]
-
-            # Verify the request was made correctly
-            mock_post.assert_called_once()
-            call_args = mock_post.call_args
-            assert call_args[1]["json"]["beef"] == mock_beef
-            assert call_args[1]["json"]["txids"] == txids
+            assert result.txids == txids
+            # Only the raws go in the body (TS); a Beef object there was a TypeError.
+            assert mock_post.call_args[1]["json"] == {"raws": [beef.find_transaction(t).tx_obj.hex() for t in txids]}
 
     def test_post_beef_http_error(self, bitails: Bitails) -> None:
         """Test post_beef with HTTP error."""
@@ -203,73 +204,63 @@ class TestBitailsPostRaws:
         """Create Bitails instance for testing."""
         return Bitails()
 
+    @staticmethod
+    def _txid(raw: str) -> str:
+        return bytes(double_sha256_be(bytes.fromhex(raw))).hex()
+
     def test_post_raws_success(self, bitails: Bitails) -> None:
-        """Test successful post_raws operation."""
+        """Rows come back in raws order, each with its raw's txid."""
         raws = ["deadbeef", "beefdead"]
-        txids = ["txid1", "txid2"]
+        txids = [self._txid(r) for r in raws]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [{"txid": "txid1", "success": True}, {"txid": "txid2", "success": True}]
+        mock_response.json.return_value = [{"txid": t} for t in txids]
 
         with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
-            assert len(results) == 2
-            assert all(isinstance(r, BitailsPostRawsResult) for r in results)
-            assert all(r.success for r in results)
-            assert results[0].txid == "txid1"
-            assert results[1].txid == "txid2"
+            assert [r.txid for r in results] == txids
+            assert all(isinstance(r, BitailsPostRawsResult) and r.success for r in results)
 
     def test_post_raws_partial_success(self, bitails: Bitails) -> None:
-        """Test post_raws with partial success."""
+        """A row without a txid belongs to the raw in its position."""
         raws = ["deadbeef", "beefdead"]
-        txids = ["txid1", "txid2"]
+        txids = [self._txid(r) for r in raws]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"txid": "txid1", "success": True},
-            {"error": "Invalid transaction", "success": False},
-        ]
+        mock_response.json.return_value = [{"txid": txids[0]}, {"error": "Invalid transaction"}]
 
         with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
-            assert len(results) == 2
+            assert [r.txid for r in results] == txids
             assert results[0].success is True
             assert results[1].success is False
             assert "Invalid transaction" in results[1].error_message
 
-    def test_post_raws_no_provided_txids(self, bitails: Bitails) -> None:
-        """Test post_raws without providing txids (should infer from response)."""
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            [{"txid": "other"}],  # a txid that is not the raw's
+            [{}, {}],  # more rows than raws
+        ],
+    )
+    def test_post_raws_rows_not_matching_the_raws_fail_all(self, bitails: Bitails, rows: list) -> None:
+        """TS postRaws: a wrong count or txid means no row can be trusted."""
         raws = ["deadbeef"]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [{"txid": "inferred_txid", "success": True}]
+        mock_response.json.return_value = rows
 
         with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws)
 
-            assert len(results) == 1
-            assert results[0].txid == "inferred_txid"
-            assert results[0].success is True
-
-    def test_post_raws_mismatched_lengths(self, bitails: Bitails) -> None:
-        """Test post_raws with mismatched raws and txids lengths."""
-        raws = ["deadbeef", "beefdead"]
-        txids = ["txid1"]  # Different length
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"success": True}]
-
-        with patch("requests.post", return_value=mock_response):
-            results = bitails.post_raws(raws, txids)
-
-            # Should still work but txids might not match up properly
-            assert len(results) == 1
+            assert [r.txid for r in results] == [self._txid("deadbeef")]
+            assert results[0].success is False
+            assert results[0].error is None  # a service error, not a refusal of the tx
 
     def test_post_raws_empty_lists(self, bitails: Bitails) -> None:
         """Test post_raws with empty lists."""
@@ -323,79 +314,36 @@ class TestBitailsGetMerklePath:
         """Create Bitails instance for testing."""
         return Bitails()
 
-    def test_get_merkle_path_success(self, bitails: Bitails) -> None:
-        """Test successful get_merkle_path operation."""
-        txid = "test_txid"
-        mock_services = Mock()
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"merklePath": {"some": "path_data"}, "header": {"hash": "block_hash"}}
-
-        with patch("requests.get", return_value=mock_response):
-            result = bitails.get_merkle_path(txid, mock_services)
-
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is True
-            assert result.merkle_path == {"some": "path_data"}
-            assert result.header == {"hash": "block_hash"}
-
     def test_get_merkle_path_not_found(self, bitails: Bitails) -> None:
-        """Test get_merkle_path when transaction is not found."""
-        txid = "unknown_txid"
-        mock_services = Mock()
-
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_response.text = "Transaction not found"
+        """A 404 returns notes and no merklePath (the TS / WhatsOnChain result shape)."""
+        mock_response = Mock(status_code=404, reason="Not Found")
 
         with patch("requests.get", return_value=mock_response):
-            result = bitails.get_merkle_path(txid, mock_services)
+            result = bitails.get_merkle_path("unknown_txid", Mock())
 
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert result.merkle_path is None
-            assert result.header is None
+        assert result["name"] == "BitailsTsc"
+        assert "merklePath" not in result
+        assert result["notes"][-1]["what"] == "getMerklePathNotFound"
 
-    def test_get_merkle_path_http_error(self, bitails: Bitails) -> None:
-        """Test get_merkle_path with HTTP error."""
-        txid = "test_txid"
-        mock_services = Mock()
+    @pytest.mark.parametrize(
+        "error", [requests.HTTPError("403 Forbidden"), requests.ConnectionError("Network timeout")]
+    )
+    def test_get_merkle_path_request_error(self, bitails: Bitails, error: Exception) -> None:
+        with patch("requests.get", side_effect=error):
+            result = bitails.get_merkle_path("test_txid", Mock())
 
-        with patch("requests.get", side_effect=requests.HTTPError("403 Forbidden")):
-            result = bitails.get_merkle_path(txid, mock_services)
-
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert "403 Forbidden" in result.error_message
-
-    def test_get_merkle_path_connection_error(self, bitails: Bitails) -> None:
-        """Test get_merkle_path with connection error."""
-        txid = "test_txid"
-        mock_services = Mock()
-
-        with patch("requests.get", side_effect=requests.ConnectionError("Network timeout")):
-            result = bitails.get_merkle_path(txid, mock_services)
-
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert "Network timeout" in result.error_message
+        assert "merklePath" not in result
+        assert str(error) in result["error"]["message"]
 
     def test_get_merkle_path_invalid_json(self, bitails: Bitails) -> None:
-        """Test get_merkle_path with invalid JSON response."""
-        txid = "test_txid"
-        mock_services = Mock()
-
-        mock_response = Mock()
-        mock_response.status_code = 200
+        mock_response = Mock(status_code=200, reason="OK", content=b"x")
         mock_response.json.side_effect = ValueError("Invalid JSON")
 
         with patch("requests.get", return_value=mock_response):
-            result = bitails.get_merkle_path(txid, mock_services)
+            result = bitails.get_merkle_path("test_txid", Mock())
 
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert "Invalid JSON" in result.error_message
+        assert "merklePath" not in result
+        assert "Invalid JSON" in result["error"]["message"]
 
 
 class TestBitailsGetTransactionStatus:

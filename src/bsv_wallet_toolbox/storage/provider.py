@@ -19,7 +19,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import exists
 
-from bsv_wallet_toolbox.errors import WalletError
+from bsv_wallet_toolbox.errors import StateError, WalletError
+from bsv_wallet_toolbox.services.services import Services
 from bsv_wallet_toolbox.utils.stamp_log import stamp_log as util_stamp_log
 from bsv_wallet_toolbox.utils.validation import (
     InvalidParameterError,
@@ -887,7 +888,7 @@ class StorageProvider:
 
                 for output_row in rows:
                     # Ensure script is available
-                    self.validate_output_script(output_row=output_row, session=s)
+                    self.validate_output_script(output_row=output_row, _session=s)
                     if not output_row.locking_script or len(output_row.locking_script) == 0:
                         continue
                     ok: bool | None = None
@@ -925,7 +926,7 @@ class StorageProvider:
                     wo["customInstructions"] = output_row.custom_instructions
                 if include_scripts or specop_include_scripts:
                     # TS uses short names like 'o'/'s'; Python uses descriptive names for clarity.
-                    self.validate_output_script(output_row=output_row, session=s)
+                    self.validate_output_script(output_row=output_row, _session=s)
                     if output_row.locking_script:
                         wo["lockingScript"] = output_row.locking_script
                 if include_labels and output_row.txid:
@@ -971,17 +972,22 @@ class StorageProvider:
 
             result: dict[str, Any] = {"totalOutputs": int(total), "outputs": outputs}
             if include_transactions:
-                # Build minimal BEEF by merging rawTx for listed outputs (unique txids)
-                txids: list[str] = []
-                seen: set[str] = set()
-                for output_row in rows:
-                    if output_row.txid and output_row.txid not in seen:
-                        seen.add(output_row.txid)
-                        txids.append(output_row.txid)
+                # TS listOutputsKnex: one Beef holding every listed output's tx, built from storage.
                 known_txids = args.get("knownTxids") or []
                 if not isinstance(known_txids, list):
                     known_txids = []
-                result["BEEF"] = self._build_recursive_beef_for_txids(txids, known_txids=known_txids)
+                beef = Beef(version=BEEF_V2)
+                for output_row in rows:
+                    txid = output_row.txid
+                    btx = beef.find_transaction(txid) if txid else None
+                    # Also when an earlier output's tx put it in txid-only, from knownTxids.
+                    if txid and (btx is None or btx.data_format == 2):
+                        # knownTxids shorten only the inputs: a listed output's own tx is always whole (TS).
+                        known = [t for t in known_txids if t != txid]
+                        self.get_beef_for_transaction(
+                            txid, {"mergeToBeef": beef, "knownTxids": known, "ignoreServices": True}
+                        )
+                result["BEEF"] = beef.to_binary()
             return result
 
     def validate_output_script(self, output_row: Output, _session: Session | None = None) -> None:
@@ -1010,123 +1016,6 @@ class StorageProvider:
         )
         if script:
             output_row.locking_script = script
-
-    def _build_minimal_beef_for_txids(self, txids: list[str]) -> bytes:
-        """Construct a minimal BEEF-like binary by concatenating rawTx blobs.
-
-        Summary:
-            This is a pragmatic interim implementation: for each txid, include its
-            rawTx if known. It does not yet recursively include inputs or Merkle
-            paths. Sufficient to unblock `includeTransactions` clients expecting a
-            non-empty BEEF when transactions are requested.
-        TS parity:
-            Approximates BEEF merging from TS; full parity (inputs/paths) will be
-            implemented alongside Proven utilities.
-        Args:
-            txids: Unique list of transaction ids to include.
-        Returns:
-            Bytes blob representing a minimal BEEF.
-        """
-        chunks: list[bytes] = []
-        seen: set[str] = set()
-        for txid in txids:
-            if txid in seen:
-                continue
-            seen.add(txid)
-            r = self.get_proven_or_raw_tx(txid)
-            raw = r.get("rawTx")
-            if isinstance(raw, (bytes, bytearray)):
-                chunks.append(bytes(raw))
-            # If this tx has an input BEEF from storage (req), append it as a minimal ancestry hint
-            ib = r.get("inputBEEF")
-            if isinstance(ib, (bytes, bytearray)) and len(ib) > 0:
-                chunks.append(bytes(ib))
-        return b"".join(chunks)
-
-    def _build_recursive_beef_for_txids(
-        self, txids: list[str], max_depth: int = 4, known_txids: list[str] | None = None
-    ) -> bytes:
-        """Construct a more complete BEEF-like binary including ancestors.
-
-        Summary:
-            Starting from txids, append known rawTx bytes and any stored inputBEEF,
-            then recursively traverse inputs (by parsing rawTx) up to max_depth to
-            append ancestor rawTx blobs. This is still a placeholder and does not
-            encode BUMP structures; it is a pragmatic superset of the minimal form.
-        Args:
-            txids: Starting transaction ids.
-            max_depth: Maximum recursion depth.
-        Returns:
-            bytes: Concatenated bytes representing a BEEF-like payload.
-        """
-        chunks: list[bytes] = []
-        seen: set[str] = set()
-        known: set[str] = set(known_txids or [])
-        first_beef: bytes | None = None
-
-        def add_tx_and_ancestors(cur_txid: str, depth: int) -> None:
-            if cur_txid in seen or depth > max_depth:
-                return
-            seen.add(cur_txid)
-            r = self.get_proven_or_raw_tx(cur_txid)
-            raw = r.get("rawTx")
-            if isinstance(raw, (bytes, bytearray)):
-                # Attempt to parse and follow inputs (and attach MerklePath)
-                try:
-                    tx = Transaction.from_hex(raw)
-                    if tx and getattr(tx, "inputs", None):
-                        mpb = r.get("merklePath")
-                        if isinstance(mpb, (bytes, bytearray)) and len(mpb) > 0:
-                            try:
-                                tx.merkle_path = MerklePath.from_binary(bytes(mpb))
-                            except Exception:
-                                pass
-                        for txin in tx.inputs:
-                            src = getattr(txin, "source_txid", None)
-                            if isinstance(src, str) and src and src != "00" * 32:
-                                # If the caller already knows this txid, do not fetch/descend further
-                                if src not in known:
-                                    add_tx_and_ancestors(src, depth + 1)
-                                # Try to hydrate parent transaction for to_beef ancestry
-                                try:
-                                    pr = self.get_proven_or_raw_tx(src)
-                                    praw = pr.get("rawTx")
-                                    if isinstance(praw, (bytes, bytearray)):
-                                        parent_tx = Transaction.from_hex(praw)
-                                        if parent_tx is not None:
-                                            txin.source_transaction = parent_tx
-                                except Exception:
-                                    pass
-                        try:
-                            beef_bytes = tx.to_beef()
-                            chunks.append(beef_bytes)
-                        except Exception:
-                            chunks.append(bytes(raw))
-                    else:
-                        chunks.append(bytes(raw))
-                except Exception:
-                    chunks.append(bytes(raw))
-            ib = r.get("inputBEEF")
-            if isinstance(ib, (bytes, bytearray)) and len(ib) > 0:
-                chunks.append(bytes(ib))
-
-        for tid in txids:
-            add_tx_and_ancestors(tid, 0)
-
-        # Prefer a single BEEF if constructed for the primary tx
-        if first_beef is not None:
-            return first_beef
-
-        # Deduplicate identical fragments to approximate normalization (fallback)
-        unique_chunks: list[bytes] = []
-        seen_hashes: set[int] = set()
-        for c in chunks:
-            h = hash(c)
-            if h in seen_hashes:
-                continue
-            seen_hashes.add(h)
-            unique_chunks.append(c)
-        return b"".join(unique_chunks)
 
     # ------------------------------------------------------------------
     # Additional find/list helpers
@@ -1513,21 +1402,9 @@ class StorageProvider:
         return bool(r.get("proven") or r.get("rawTx"))
 
     def get_valid_beef_for_txid(self, txid: str, known_txids: list[str] | None = None) -> bytes:
-        """Return a BEEF-like bytes blob for a known txid (minimal parity).
-
-        Summary:
-            Builds a BEEF-style payload for the txid using any known rawTx and
-            optionally attached MerklePath (ProvenTx). Recursively includes
-            ancestors up to a small depth, skipping any ids listed in known_txids.
-        TS parity:
-            Minimal approximation of getValidBeefForTxid.
-        Args:
-            txid: Subject transaction id.
-            known_txids: Optional list of txids to treat as already known.
-        Returns:
-            bytes: BEEF-like payload (may be a single-tx BEEF when possible).
-        """
-        return self._build_recursive_beef_for_txids([txid], known_txids=known_txids)
+        """BEEF for a txid built from storage only, known_txids as txid-only (TS getValidBeefForKnownTxid)."""
+        known = [t for t in known_txids or [] if t != txid]  # knownTxids shorten only the inputs (TS)
+        return self.get_beef_for_transaction(txid, {"knownTxids": known, "ignoreServices": True})
 
     # ------------------------------------------------------------------
     # Proven helpers
@@ -2041,63 +1918,70 @@ class StorageProvider:
         fee_model = StorageFeeModel(model="sat/kb", value=fee_model_val)
 
         new_tx = self._create_new_tx_record(user_id, vargs, storage_beef_bytes)
+        try:
+            ctx = {
+                "xinputs": existing_inputs,
+                "xoutputs": xoutputs,
+                "changeBasket": change_basket,
+                "changeBasketId": change_basket_id,
+                "noSendChangeIn": no_send_change_in,
+                "availableFundingCount": available_funding_count,
+                "feeModel": fee_model,
+                "transactionId": new_tx.transaction_id,
+            }
 
-        ctx = {
-            "xinputs": existing_inputs,
-            "xoutputs": xoutputs,
-            "changeBasket": change_basket,
-            "changeBasketId": change_basket_id,
-            "noSendChangeIn": no_send_change_in,
-            "availableFundingCount": available_funding_count,
-            "feeModel": fee_model,
-            "transactionId": new_tx.transaction_id,
-        }
+            funding_result = self.fund_new_transaction_sdk(user_id, vargs, ctx)
+            allocated_change = funding_result["allocatedChange"]
+            change_outputs = funding_result["changeOutputs"]
+            # Generate the derivation prefix for this transaction (same one used for all change outputs)
+            derivation_prefix = self._generate_derivation_suffix()
+            max_possible_satoshis_adjustment = funding_result["maxPossibleSatoshisAdjustment"]
 
-        funding_result = self.fund_new_transaction_sdk(user_id, vargs, ctx)
-        allocated_change = funding_result["allocatedChange"]
-        change_outputs = funding_result["changeOutputs"]
-        # Generate the derivation prefix for this transaction (same one used for all change outputs)
-        derivation_prefix = self._generate_derivation_suffix()
-        max_possible_satoshis_adjustment = funding_result["maxPossibleSatoshisAdjustment"]
+            if max_possible_satoshis_adjustment:
+                idx = max_possible_satoshis_adjustment["fixedOutputIndex"]
+                sats = max_possible_satoshis_adjustment["satoshis"]
+                if ctx["xoutputs"][idx].satoshis != MAX_POSSIBLE_SATOSHIS:
+                    raise InternalError("Max possible output index mismatch")
+                ctx["xoutputs"][idx].satoshis = sats
 
-        if max_possible_satoshis_adjustment:
-            idx = max_possible_satoshis_adjustment["fixedOutputIndex"]
-            sats = max_possible_satoshis_adjustment["satoshis"]
-            if ctx["xoutputs"][idx].satoshis != MAX_POSSIBLE_SATOSHIS:
-                raise InternalError("Max possible output index mismatch")
-            ctx["xoutputs"][idx].satoshis = sats
+            # The satoshis of the transaction is the satoshis we get back in change minus the satoshis we spend.
+            total_change = sum(o.satoshis for o in change_outputs)
+            total_allocated = sum(o["satoshis"] for o in allocated_change)
+            satoshis = total_change - total_allocated
+            self.update_transaction(new_tx.transaction_id, {"satoshis": satoshis})
 
-        # The satoshis of the transaction is the satoshis we get back in change minus the satoshis we spend.
-        total_change = sum(o.satoshis for o in change_outputs)
-        total_allocated = sum(o["satoshis"] for o in allocated_change)
-        satoshis = total_change - total_allocated
-        self.update_transaction(new_tx.transaction_id, {"satoshis": satoshis})
+            outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs, derivation_prefix)
+            outputs_payload = outputs_result["outputs"]
+            change_vouts = outputs_result["changeVouts"]
 
-        outputs_result = self._create_new_outputs(user_id, vargs, ctx, change_outputs, derivation_prefix)
-        outputs_payload = outputs_result["outputs"]
-        change_vouts = outputs_result["changeVouts"]
+            input_beef_bytes = self._merge_allocated_change_beefs(user_id, vargs, allocated_change, storage_beef_bytes)
 
-        input_beef_bytes = self._merge_allocated_change_beefs(user_id, vargs, allocated_change, storage_beef_bytes)
+            inputs_payload = self._create_new_inputs(user_id, vargs, ctx, allocated_change)
 
-        inputs_payload = self._create_new_inputs(user_id, vargs, ctx, allocated_change)
+            result: dict[str, Any] = {
+                "reference": new_tx.reference,
+                "version": new_tx.version,
+                "lockTime": new_tx.lock_time,
+                "inputs": inputs_payload,
+                "outputs": outputs_payload,
+                "derivationPrefix": derivation_prefix,
+                "inputBeef": input_beef_bytes if input_beef_bytes else None,
+                "noSendChangeOutputVouts": change_vouts if vargs.is_no_send else [],
+            }
 
-        result: dict[str, Any] = {
-            "reference": new_tx.reference,
-            "version": new_tx.version,
-            "lockTime": new_tx.lock_time,
-            "inputs": inputs_payload,
-            "outputs": outputs_payload,
-            "derivationPrefix": derivation_prefix,
-            "inputBeef": input_beef_bytes if input_beef_bytes else None,
-            "noSendChangeOutputVouts": change_vouts if vargs.is_no_send else [],
-        }
+            if vargs.options.sign_and_process:
+                txid = deterministic_txid(new_tx.reference, vargs.outputs)
+                self.update_transaction(new_tx.transaction_id, {"txid": txid})
+                result["txid"] = txid
 
-        if vargs.options.sign_and_process:
-            txid = deterministic_txid(new_tx.reference, vargs.outputs)
-            self.update_transaction(new_tx.transaction_id, {"txid": txid})
-            result["txid"] = txid
-
-        return result
+            return result
+        except Exception:
+            # TS createAction: never leave the allocated change locked to a half-built transaction.
+            try:
+                self.update_transaction_status("failed", new_tx.transaction_id)
+            except Exception:
+                self.logger.exception("failed to clean up createAction transaction %s", new_tx.transaction_id)
+            raise
 
     def _validate_no_send_change(self, user_id: int, vargs: Any, change_basket: Any) -> list[Output]:
         if not vargs.is_no_send:
@@ -2309,7 +2193,7 @@ class StorageProvider:
         # Start with existing beef or create new one
         if storage_beef_bytes and len(storage_beef_bytes) > 0:
             try:
-                beef = Beef.from_binary(list(storage_beef_bytes))
+                beef = Beef.from_binary(bytes(storage_beef_bytes))
             except Exception:
                 beef = Beef(version=BEEF_V2)
         else:
@@ -2384,11 +2268,7 @@ class StorageProvider:
             # Align behavior with TypeScript: only fetch when
             # vargs.includeAllSourceTransactions && vargs.isSignAction.
             source_transaction = xi.get("sourceTransaction")
-            if (
-                source_transaction is None
-                and vargs.get("includeAllSourceTransactions", False)
-                and vargs.get("isSignAction", False)
-            ):
+            if source_transaction is None and vargs.options.include_all_source_transactions and vargs.is_sign_action:
                 source_transaction = self.get_raw_tx_of_known_valid_transaction(source_txid, None, None)
 
             session = self.SessionLocal()
@@ -2400,7 +2280,7 @@ class StorageProvider:
                 if o:
                     o.spendable = False
                     o.spent_by = ctx["transactionId"]
-                    o.spending_description = xi.get("inputDescription")
+                    o.spending_description = xi.get("spendingDescription")
                     session.add(o)
                     session.commit()
             finally:
@@ -2467,7 +2347,13 @@ class StorageProvider:
         storage_beef_bytes = vargs.input_beef_bytes or b""
         inputs = getattr(vargs, "inputs", []) or []
         if not inputs:
-            return storage_beef_bytes, []
+            return b"", []  # TS: inputBEEF is ignored (not stored) when there are no inputs
+
+        # inputBEEF is untrusted proof data (TS validateRequiredInputs).
+        if vargs.input_beef is not None and not Services.verify_beef_spv(
+            self.get_services(), vargs.input_beef, allow_txid_only=vargs.options.trust_self == "known"
+        ):
+            raise InvalidParameterError("inputBEEF", "valid Beef when factoring options.trustSelf")
 
         xinputs: list[dict[str, Any]] = []
         session = self.SessionLocal()
@@ -2967,6 +2853,8 @@ class StorageProvider:
             s.flush()
 
             # Create or update ProvenTxReq (TS line 271)
+            # notify.transactionIds is what the send path updates once the tx is broadcast (TS addNotifyTransactionId).
+            notify = json.dumps({"transactionIds": [transaction.transaction_id]})
             existing_req_stmt = select(ProvenTxReq).where(ProvenTxReq.txid == txid)
             existing_req = s.execute(existing_req_stmt).scalar_one_or_none()
             if existing_req:
@@ -2976,7 +2864,7 @@ class StorageProvider:
                 existing_req.attempts = 0
                 existing_req.notified = False
                 existing_req.history = "{}"
-                existing_req.notify = "{}"
+                existing_req.notify = notify
                 s.add(existing_req)
             else:
                 new_req = ProvenTxReq(
@@ -2984,6 +2872,7 @@ class StorageProvider:
                     status=new_req_status,
                     raw_tx=raw_tx,
                     input_beef=input_beef_bytes,
+                    notify=notify,
                 )
                 s.add(new_req)
             s.flush()
@@ -3019,175 +2908,39 @@ class StorageProvider:
         if not txids:
             return swr, ndr
 
-        # Debug: show high-level broadcast intent
-        # self.logger.debug("_share_reqs_with_world: txids=%s, is_delayed=%s", txids, is_delayed)
-
-        session = self.SessionLocal()
-        try:
-            reqs = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids))).scalars().all()
-            req_map = {req.txid: req for req in reqs}
-
-            tx_records = (
-                session.execute(select(TransactionModel).where(TransactionModel.txid.in_(txids))).scalars().all()
-            )
-            tx_map = {tx.txid: tx for tx in tx_records if tx.txid}
-
-            if is_delayed:
-                # self.logger.debug("_share_reqs_with_world: is_delayed=True → mark as unsent, no immediate broadcast")
+        if is_delayed:
+            # TaskSendWaiting sends 'unsent' reqs. The transactions become 'sending' so that
+            # TaskFailAbandoned, which fails old 'unprocessed' ones, leaves them alone meanwhile.
+            with session_scope(self.SessionLocal) as session:
+                reqs = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid.in_(txids))).scalars().all()
+                req_map = {req.txid: req for req in reqs}
                 for txid in txids:
                     req = req_map.get(txid)
                     if not req:
                         swr.append({"txid": txid, "status": "failed"})
                         continue
                     req.status = "unsent"
-                    tx_model = tx_map.get(txid)
-                    if tx_model:
-                        tx_model.status = "unprocessed"
+                    self._set_notify_transactions_status(req, "sending", session)
                     swr.append({"txid": txid, "status": "sending"})
-                session.commit()
-                return swr, None
+            return swr, None
 
-            try:
-                services = self.get_services()
-            except RuntimeError:
-                # self.logger.debug("_share_reqs_with_world: get_services() failed, skipping network broadcast")
-                services = None
-
-            for txid in txids:
-                req = req_map.get(txid)
-                tx_model = tx_map.get(txid)
-                if not req:
-                    swr.append({"txid": txid, "status": "failed"})
-                    if ndr is not None:
-                        ndr.append({"txid": txid, "status": "error", "message": "missing ProvenTxReq"})
-                    continue
-
-                # Prefer using full BEEF (with parent chain) if available
-                # This ensures unbroadcast parent transactions are included
-                beef_hex_for_broadcast = None
-                raw_bytes = None
-
-                if req.input_beef and len(req.input_beef) > 0:
-                    # Use the full BEEF for broadcasting - includes parent chain
-                    try:
-                        beef_hex_for_broadcast = req.input_beef.hex()
-                    except Exception:
-                        pass
-
-                if beef_hex_for_broadcast is None and req.raw_tx:
-                    # Fallback: use raw transaction
-                    raw_bytes = req.raw_tx
-
-                if not raw_bytes:
-                    swr.append({"txid": txid, "status": "failed"})
-                    if ndr is not None:
-                        ndr.append({"txid": txid, "status": "error", "message": "no raw transaction available"})
-                    continue
-
-                # Debug: we have raw bytes and will attempt broadcast
-                # self.logger.debug(
-                #     "_share_reqs_with_world: attempting broadcast for txid=%s, raw_tx_len=%s bytes, "
-                #     "services_available=%s",
-                #     txid,
-                #     len(raw_bytes),
-                #     services is not None,
-                # )
-
-                status = "failed"
-                broadcast_ok = False
-                message: str | None = None
-
-                if services is not None:
-                    try:
-                        if beef_hex_for_broadcast:
-                            # Broadcast the full BEEF (includes parent chain)
-                            broadcast_result = services.post_beef(beef_hex_for_broadcast)
-                        else:
-                            # Fallback: broadcast raw transaction
-                            raw_tx_hex = raw_bytes.hex()
-
-                            # Debug: Log the actual raw transaction being broadcast (not AtomicBEEF)
-                            # self.logger.debug(
-                            #     "_share_reqs_with_world: broadcasting rawTx for txid=%s, raw_tx_len=%d bytes, raw_tx_hex (first 100 chars): %s...",
-                            #     txid,
-                            #     len(raw_tx_hex) // 2,
-                            #     raw_tx_hex[:100]
-                            # )
-                            # Log full hex for small transactions
-                            # if len(raw_tx_hex) < 2000:
-                            #     self.logger.debug(
-                            #         "_share_reqs_with_world: rawTx hex (full): %s",
-                            #         raw_tx_hex
-                            #     )
-                            # Verify it's not AtomicBEEF format (should not start with 01010101)
-                            if raw_tx_hex.startswith("01010101"):
-                                self.logger.error(
-                                    "_share_reqs_with_world: ERROR - raw_tx appears to be AtomicBEEF format (starts with 01010101)! "
-                                    "This should be raw transaction hex. Transaction will fail to broadcast."
-                                )
-                            # Verify it looks like a valid raw transaction (should start with version bytes, typically 01000000)
-                            elif not raw_tx_hex.startswith("01") and not raw_tx_hex.startswith("02"):
-                                self.logger.warning(
-                                    "_share_reqs_with_world: WARNING - raw_tx hex doesn't start with expected version bytes (01 or 02). "
-                                    "First 8 chars: %s",
-                                    raw_tx_hex[:8],
-                                )
-
-                            # Send raw transaction hex to services.post_beef
-                            # services.post_beef will parse it and extract the Transaction object for ARC
-                            broadcast_result = services.post_beef(raw_tx_hex)
-                        if broadcast_result.get("accepted"):
-                            status = "unproven"
-                            broadcast_ok = True
-                            message = broadcast_result.get("message")
-                        else:
-                            message = broadcast_result.get("message", "broadcast failed")
-                    except Exception as exc:
-                        message = str(exc)
-                else:
-                    message = "Services not configured"
-
-                # Debug: log provider result
-                # self.logger.debug(
-                #     "_share_reqs_with_world: broadcast_result for txid=%s: broadcast_ok=%s, status=%s, message=%r",
-                #     txid,
-                #     broadcast_ok,
-                #     status,
-                #     message,
-                # )
-
-                if broadcast_ok:
-                    req.status = "unmined"
-                    req.attempts = (req.attempts or 0) + 1
-                    if tx_model:
-                        tx_model.status = "unproven"
-                    swr.append({"txid": txid, "status": status})
-                    if ndr is not None:
-                        ndr.append({"txid": txid, "status": "success", "message": message or "broadcasted"})
-                else:
-                    fatal_error = self._is_fatal_broadcast_error(message)
-                    if fatal_error:
-                        req.status = "invalid"
-                        if tx_model:
-                            self._mark_transaction_failed(tx_model, session)
-                    else:
-                        req.status = "unsent"
-                        req.attempts = (req.attempts or 0) + 1
-                    swr.append({"txid": txid, "status": "failed"})
-                    if ndr is not None:
-                        ndr.append(
-                            {
-                                "txid": txid,
-                                "status": "error",
-                                "message": message,
-                                "fatal": fatal_error,
-                            }
-                        )
-
-            session.commit()
-            return swr, ndr
-        finally:
-            session.close()
+        # TS aggregateActionResults: SendWithResult and ReviewActionResult status per aggregate status.
+        swr_status = {"success": "unproven", "serviceError": "sending"}
+        for d in self.attempt_to_post_reqs_to_network([{"txid": txid} for txid in txids])["details"]:
+            status = d["status"]
+            swr.append({"txid": d["txid"], "status": swr_status.get(status, "failed")})
+            if status == "success":
+                ndr.append({"txid": d["txid"], "status": "success", "message": d.get("message") or "broadcasted"})
+            else:
+                ndr.append(
+                    {
+                        "txid": d["txid"],
+                        "status": "error",
+                        "message": d.get("message"),
+                        "fatal": status in ("doubleSpend", "invalidTx"),
+                    }
+                )
+        return swr, ndr
 
     def internalize_action(self, auth: dict[str, Any], args: dict[str, Any]) -> dict[str, Any]:
         """Internalize a transaction action (take ownership of outputs in pre-existing transaction).
@@ -3414,7 +3167,11 @@ class StorageProvider:
                 session.close()
 
     def _find_generic(
-        self, table_name: str, args: dict[str, Any] | None = None, limit: int | None = None, offset: int = 0
+        self,
+        table_name: str,
+        args: dict[str, Any] | None = None,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[dict[str, Any]]:
         """Retrieve rows from a table with optional equality filters.
 
@@ -3439,17 +3196,7 @@ class StorageProvider:
         """
         model = self._get_model(table_name)
         with session_scope(self.SessionLocal) as s:
-            query: Any = select(model)
-            if args:
-                normalized_args = self._normalize_dict_keys(args)
-                for key, value in normalized_args.items():
-                    column = getattr(model, key, None)
-                    if column is None:
-                        continue
-                    if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
-                        query = query.where(column.in_(list(value)))
-                    else:
-                        query = query.where(column == value)
+            query: Any = self._where_args(select(model), table_name, args)
             if limit:
                 query = query.limit(limit)
             if offset:
@@ -3479,17 +3226,7 @@ class StorageProvider:
         """
         model = self._get_model(table_name)
         with session_scope(self.SessionLocal) as s:
-            query = select(func.count()).select_from(model)
-            if args:
-                normalized_args = self._normalize_dict_keys(args)
-                for key, value in normalized_args.items():
-                    column = getattr(model, key, None)
-                    if column is None:
-                        continue
-                    if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
-                        query = query.where(column.in_(list(value)))
-                    else:
-                        query = query.where(column == value)
+            query = self._where_args(select(func.count()).select_from(model), table_name, args, count=True)
             result = s.execute(query).scalar()
             return result or 0
 
@@ -3610,31 +3347,128 @@ class StorageProvider:
             return {}
         return {cls._normalize_key(k): v for k, v in data.items()}
 
+    # TS FindSincePagedArgs, accepted by every find_* / count_*.
+    _SINCE_PAGED_KEYS: ClassVar[frozenset[str]] = frozenset({"since", "paged", "orderDescending"})
+
     @classmethod
     def _split_query(
         cls,
         query: dict[str, Any] | None,
         extra_keys: Iterable[str] | None = None,
     ) -> tuple[dict[str, Any], dict[str, Any]]:
-        if extra_keys is None:
-            extra_keys = ()
-        extras_set = set(extra_keys)
+        """Split a TS Find*Args dict into (snake_case partial, extras).
+
+        ``{"partial": {...}, **extras}`` is the TS shape; a dict without ``partial`` is the partial itself.
+        Extras are since/paged/orderDescending plus ``extra_keys``. Any other key raises: dropping a
+        filter silently widens the query, which made TaskFailAbandoned fail every transaction.
+        """
         if not query:
             return {}, {}
-
+        allowed = cls._SINCE_PAGED_KEYS | set(extra_keys or ())
+        extras = {k: v for k, v in query.items() if k in allowed}
         if "partial" in query:
+            unknown = set(query) - allowed - {"partial"}
+            if unknown:
+                raise InvalidParameterError("args", f"supported find arguments, not {sorted(unknown)}")
             partial = query.get("partial") or {}
-            extras: dict[str, Any] = {}
-            for key, value in query.items():
-                if key == "partial":
-                    continue
-                if not extras_set or key in extras_set:
-                    extras[key] = value
         else:
-            partial = {k: v for k, v in query.items() if not extras_set or k not in extras_set}
-            extras = {k: v for k, v in query.items() if extras_set and k in extras_set}
-
+            partial = {k: v for k, v in query.items() if k not in allowed}
         return cls._normalize_dict_keys(partial), extras
+
+    @staticmethod
+    def _where_partial(q: Any, model: Any, partial: dict[str, Any]) -> Any:
+        """Equality filters (``IN`` for sequences); an unknown column raises instead of being skipped."""
+        columns = inspect(model).column_attrs
+        for key, value in partial.items():
+            if key not in columns:  # also rejects relationships and other class attributes
+                raise InvalidParameterError(f"args.partial.{key}", f"a column of {model.__tablename__}")
+            column = getattr(model, key)
+            if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
+                q = q.where(column.in_(list(value)))
+            else:
+                q = q.where(column == value)
+        return q
+
+    @staticmethod
+    def _where_in(q: Any, column: Any, values: Any) -> Any:
+        """TS ``whereIn`` for an optional extra: skipped when absent or empty."""
+        if values is None or values == []:
+            return q
+        return q.where(column.in_(values if isinstance(values, (list, tuple, set)) else [values]))
+
+    @staticmethod
+    def _naive_utc(value: datetime | str) -> datetime:
+        """A date argument as the naive UTC the tables store (ISO strings and aware datetimes accepted)."""
+        if isinstance(value, str):
+            value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return value.astimezone(UTC).replace(tzinfo=None) if value.tzinfo is not None else value
+
+    def _table_extras(self, table_name: str) -> tuple[set[str], Callable[[Any, dict[str, Any]], Any] | None]:
+        """TS Find*Args keys beyond partial/since/paged for a table, and their filters (StorageKnex find*Query).
+
+        noRawTx, noScript and includeFields shape the result rows; the find_* method applies them.
+        """
+        w = self._where_in
+        if table_name == "transaction":
+
+            def where_tx(q: Any, x: dict[str, Any]) -> Any:
+                q = w(q, TransactionModel.status, x.get("status"))
+                if x.get("from") is not None:
+                    q = q.where(TransactionModel.created_at >= self._naive_utc(x["from"]))
+                if x.get("to") is not None:
+                    q = q.where(TransactionModel.created_at < self._naive_utc(x["to"]))
+                return q
+
+            return {"status", "from", "to", "noRawTx"}, where_tx
+        if table_name == "output":
+
+            def where_output(q: Any, x: dict[str, Any]) -> Any:
+                if statuses := x.get("txStatus"):
+                    tx_ids = select(TransactionModel.transaction_id).where(TransactionModel.status.in_(statuses))
+                    q = q.where(Output.transaction_id.in_(tx_ids))
+                return q
+
+            return {"txStatus", "noScript"}, where_output
+        extras: dict[str, tuple[set[str], Callable[[Any, dict[str, Any]], Any]]] = {
+            "proven_tx_req": (
+                {"status", "txids"},
+                lambda q, x: w(w(q, ProvenTxReq.status, x.get("status")), ProvenTxReq.txid, x.get("txids")),
+            ),
+            "proven_tx": ({"txids"}, lambda q, x: w(q, ProvenTx.txid, x.get("txids"))),
+            "certificate": (
+                {"certifiers", "types", "includeFields"},
+                lambda q, x: w(w(q, Certificate.certifier, x.get("certifiers")), Certificate.type, x.get("types")),
+            ),
+            "output_tag_map": ({"tagIds"}, lambda q, x: w(q, OutputTagMap.output_tag_id, x.get("tagIds"))),
+            "tx_label_map": ({"labelIds"}, lambda q, x: w(q, TxLabelMap.tx_label_id, x.get("labelIds"))),
+        }
+        return extras.get(table_name, (set(), None))
+
+    def _where_args(self, q: Any, table_name: str, args: dict[str, Any] | None, count: bool = False) -> Any:
+        """Apply a TS Find*Args dict (see _split_query) to q: partial, table extras, since, paging (TS setupQuery)."""
+        model = self._get_model(table_name)
+        extra_keys, where_extras = self._table_extras(table_name)
+        partial, extras = self._split_query(args, extra_keys)
+        q = self._where_partial(q, model, partial)
+        if where_extras is not None:
+            q = where_extras(q, extras)
+        if extras.get("since") is not None:
+            q = q.where(model.updated_at >= self._naive_utc(extras["since"]))
+        if count:
+            return q
+        # TS pagingKey: map tables page by both ids, certificate fields by (certificateId, fieldName).
+        keys = {
+            CertificateField: (CertificateField.certificate_id, CertificateField.field_name),
+            OutputTagMap: (OutputTagMap.output_tag_id, OutputTagMap.output_id),
+            TxLabelMap: (TxLabelMap.tx_label_id, TxLabelMap.transaction_id),
+        }.get(model, tuple(model.__mapper__.primary_key))
+        if extras.get("orderDescending"):
+            q = q.order_by(*(k.desc() for k in keys))
+        if paged := extras.get("paged"):
+            if not extras.get("orderDescending"):
+                q = q.order_by(*keys)
+            q = q.limit(paged["limit"]).offset(paged.get("offset") or 0)
+        return q
 
     def insert_user(self, data: dict[str, Any]) -> int:
         return self._insert_generic("user", data)
@@ -3899,8 +3733,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("user", partial)
+        return self._find_generic("user", query)
 
     def find_proven_txs(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find proven transactions matching optional filters.
@@ -3920,15 +3753,14 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("proven_tx", partial)
+        return self._find_generic("proven_tx", query)
 
     def find_proven_tx_reqs(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
-        """Find ProvenTxReq rows with optional batch filter.
+        """Find ProvenTxReq rows.
 
         Summary:
-            Supports camelCase filters under `partial` plus TS-style extras
-            (e.g. `batch`).
+            Supports camelCase filters under `partial` plus the TS extras
+            `status` and `txids` (``batch`` is a column: filter it in `partial`).
 
         TS parity:
             Mimics `StorageProvider.findProvenTxReqs` in TS.
@@ -3942,21 +3774,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, extras = self._split_query(query)
-        with session_scope(self.SessionLocal) as s:
-            q = select(ProvenTxReq)
-            for key, value in partial.items():
-                column = getattr(ProvenTxReq, key, None)
-                if column is None:
-                    continue
-                if isinstance(value, Iterable) and not isinstance(value, (bytes, bytearray, str, dict)):
-                    q = q.where(column.in_(list(value)))
-                else:
-                    q = q.where(column == value)
-            if batch := extras.get("batch"):
-                q = q.where(ProvenTxReq.batch == batch)
-            result = s.execute(q).scalars().all()
-            return [self._model_to_dict(row) for row in result]
+        return self._find_generic("proven_tx_req", query)
 
     def find_certificates(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find certificates with optional certifier/type filters.
@@ -3964,20 +3782,18 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, extras = self._split_query(query, extra_keys={"certifiers", "types"})
-        with session_scope(self.SessionLocal) as s:
-            q = select(Certificate).where(Certificate.is_deleted.is_(False))
-            for key, value in partial.items():
-                column = getattr(Certificate, key, None)
-                if column is None:
-                    continue
-                q = q.where(column == value)
-            if certifiers := extras.get("certifiers"):
-                q = q.where(Certificate.certifier.in_(certifiers))
-            if types := extras.get("types"):
-                q = q.where(Certificate.type.in_(types))
-            result = s.execute(q).scalars().all()
-            return [self._model_to_dict(row) for row in result]
+        q = dict(query or {})
+        if "partial" in q:
+            q["partial"] = {"isDeleted": False, **(q["partial"] or {})}
+        else:
+            q = {"isDeleted": False, **q}
+        rows = self._find_generic("certificate", q)
+        if q.get("includeFields"):
+            for c in rows:
+                c["fields"] = self.find_certificate_fields(
+                    {"partial": {"certificateId": c["certificateId"], "userId": c["userId"]}}
+                )
+        return rows
 
     def find_certificate_fields(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find certificate fields (TS-compatible shape).
@@ -3985,8 +3801,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("certificate_field", partial)
+        return self._find_generic("certificate_field", query)
 
     def find_commissions(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find commission configuration rows.
@@ -3994,8 +3809,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("commission", partial)
+        return self._find_generic("commission", query)
 
     def find_monitor_events(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find monitor daemon events for diagnostics.
@@ -4003,8 +3817,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("monitor_event", partial)
+        return self._find_generic("monitor_event", query)
 
     def find_outputs(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find outputs with optional equality filters.
@@ -4012,8 +3825,10 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("output", partial)
+        rows = self._find_generic("output", query)
+        if (query or {}).get("noScript"):
+            rows = [{k: v for k, v in r.items() if k != "lockingScript"} for r in rows]
+        return rows
 
     # CamelCase alias for TS/Go parity
     findOutputs = find_outputs
@@ -4024,18 +3839,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, extras = self._split_query(query, extra_keys={"since"})
-        with session_scope(self.SessionLocal) as s:
-            q = select(OutputBasket)
-            for key, value in partial.items():
-                column = getattr(OutputBasket, key, None)
-                if column is None:
-                    continue
-                q = q.where(column == value)
-            if since := extras.get("since"):
-                q = q.where(OutputBasket.created_at >= since)
-            result = s.execute(q).scalars().all()
-            return [self._model_to_dict(row) for row in result]
+        return self._find_generic("output_basket", query)
 
     def find_output_tags(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find output tags associated with a user.
@@ -4043,8 +3847,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("output_tag", partial)
+        return self._find_generic("output_tag", query)
 
     def find_output_tag_maps(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find mapping rows between outputs and tags.
@@ -4052,8 +3855,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("output_tag_map", partial)
+        return self._find_generic("output_tag_map", query)
 
     def find_sync_states(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find sync state rows for peer storage instances.
@@ -4061,8 +3863,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("sync_state", partial)
+        return self._find_generic("sync_state", query)
 
     def find_or_insert_sync_state(
         self,
@@ -4119,8 +3920,10 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("transaction", partial)
+        rows = self._find_generic("transaction", query)
+        if (query or {}).get("noRawTx"):
+            rows = [{k: v for k, v in r.items() if k not in ("rawTx", "inputBeef")} for r in rows]
+        return rows
 
     def find_tx_labels(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find transaction labels for a user.
@@ -4128,8 +3931,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("tx_label", partial)
+        return self._find_generic("tx_label", query)
 
     def find_tx_label_maps(self, query: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Find label-to-transaction mapping rows.
@@ -4137,8 +3939,7 @@ class StorageProvider:
         Reference:
             - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts
         """
-        partial, _ = self._split_query(query)
-        return self._find_generic("tx_label_map", partial)
+        return self._find_generic("tx_label_map", query)
 
     def count_users(self, args: dict[str, Any] | None = None) -> int:
         return self._count_generic("user", args)
@@ -4369,15 +4170,33 @@ class StorageProvider:
                     f"{failed_rows} transactions updated to status 'failed' where matching provenTxReq is 'invalid'"
                 )
 
-            failed_tx_exists = exists(
+            # A failed transaction can still be reconciled while it has a req that is not terminally failed
+            # (TS provenTxReqStatusesSafeForInputRestore), so only then are its inputs and outputs settled.
+            def settled_failed_tx(tx_id_column: Any) -> Any:
+                live_req = exists(
+                    select(ProvenTxReq.proven_tx_req_id).where(
+                        ProvenTxReq.txid == TransactionModel.txid,
+                        ProvenTxReq.status.not_in(["invalid", "doubleSpend"]),
+                    )
+                )
+                return exists(
+                    select(TransactionModel.transaction_id).where(
+                        TransactionModel.transaction_id == tx_id_column,
+                        TransactionModel.status == "failed",
+                        ~live_req,
+                    )
+                )
+
+            source_failed = exists(
                 select(TransactionModel.transaction_id).where(
-                    TransactionModel.transaction_id == Output.spent_by,
+                    TransactionModel.transaction_id == Output.transaction_id,
                     TransactionModel.status == "failed",
                 )
             )
             release_stmt = (
                 update(Output)
-                .where(failed_tx_exists)
+                .where(settled_failed_tx(Output.spent_by))
+                .where(~source_failed)  # an output a failed transaction created is not a valid input
                 .values(spent_by=None, spendable=True)
                 .execution_options(synchronize_session=False)
             )
@@ -4386,6 +4205,20 @@ class StorageProvider:
                 updated_count += released_rows
                 log_lines.append(
                     f"{released_rows} outputs set to spendable where spentBy referenced a failed transaction"
+                )
+
+            neutralise_stmt = (
+                update(Output)
+                .where(or_(Output.spendable.is_(True), Output.spent_by.is_not(None)))
+                .where(settled_failed_tx(Output.transaction_id))
+                .values(spent_by=None, spendable=False)
+                .execution_options(synchronize_session=False)
+            )
+            neutralised_rows = session.execute(neutralise_stmt).rowcount or 0
+            if neutralised_rows:
+                updated_count += neutralised_rows
+                log_lines.append(
+                    f"{neutralised_rows} outputs set to not spendable where generated by a failed transaction"
                 )
 
             proven_id_subquery = (
@@ -4556,24 +4389,14 @@ class StorageProvider:
                         log_lines.append(f"{deleted} {status} proven_tx_reqs deleted")
                         total_count += deleted
 
-            if params.get("purgeSpent"):
+        # TS order: after purgeFailed, whose released outputs are UTXOs again and need their ancestors too.
+        proof_txids = self._txids_needed_by_utxo_beefs() if params.get("purgeSpent") else None
+        if params.get("purgeSpent") and proof_txids is None:
+            log_lines.append("purgeSpent skipped: a UTXO's BEEF needs a transaction that is not in storage")
+
+        with session_scope(self.SessionLocal) as session:
+            if proof_txids is not None:
                 cutoff = _cutoff("purgeSpentAge")
-                proof_txids = {
-                    txid
-                    for txid in session.execute(
-                        select(Output.txid).where(Output.spendable.is_(True), Output.txid.is_not(None))
-                    ).scalars()
-                    if txid
-                }
-                proof_txids.update(
-                    txid
-                    for txid in session.execute(
-                        select(TransactionModel.txid)
-                        .join(Output, Output.transaction_id == TransactionModel.transaction_id)
-                        .where(Output.spendable.is_(True), TransactionModel.txid.is_not(None))
-                    ).scalars()
-                    if txid
-                )
 
                 spent_candidates = session.execute(
                     select(TransactionModel.transaction_id, TransactionModel.txid).where(
@@ -4596,6 +4419,7 @@ class StorageProvider:
                 orphan_deleted = (
                     session.execute(
                         delete(ProvenTx).where(
+                            ProvenTx.txid.not_in(proof_txids),  # a UTXO's BEEF may need a proof with no tx row
                             ~exists(
                                 select(TransactionModel.transaction_id).where(
                                     (TransactionModel.txid == ProvenTx.txid)
@@ -4617,6 +4441,36 @@ class StorageProvider:
                     total_count += orphan_deleted
 
         return {"log": "\n".join(log_lines).strip(), "count": total_count}
+
+    def _txids_needed_by_utxo_beefs(self) -> set[str] | None:
+        """Every txid in the BEEF of each UTXO, built from local storage only (TS purgeData purgeSpent).
+
+        Returns None when a UTXO's BEEF needs an ancestor that is not in storage: what else it needs
+        is then unknown, so nothing may be purged as spent.
+        """
+        with session_scope(self.SessionLocal) as session:
+            utxo_txids = set(
+                session.execute(
+                    select(Output.txid)
+                    .join(TransactionModel, Output.transaction_id == TransactionModel.transaction_id)
+                    .where(
+                        Output.spendable.is_(True),
+                        Output.txid.is_not(None),
+                        TransactionModel.status.in_(["sending", "unproven", "completed", "nosend"]),
+                    )
+                ).scalars()
+            )
+        beef = Beef(version=BEEF_V2)
+        for txid in utxo_txids:
+            try:
+                self.get_beef_for_transaction(txid, {"mergeToBeef": beef, "ignoreServices": True})
+            except WalletError as e:
+                if "is not known to storage" not in str(e):
+                    raise
+                if f"{txid!r} is not known to storage" not in str(e):
+                    return None
+                # The UTXO's own tx is unknown here; having spendable outputs, it is never purged as spent.
+        return set(beef.txs)
 
     # NOTE: allocate_funding_input and count_funding_inputs are defined earlier in this file
     # (around line 2216 and 2237) with proper Transaction status checking.
@@ -4685,96 +4539,90 @@ class StorageProvider:
         finally:
             session.close()
 
-    def update_transaction_status(self, status: str, transaction_id: int) -> int:
-        """Update a single transaction's status.
+    def update_transaction_status(
+        self,
+        status: str,
+        transaction_id: int | None = None,
+        user_id: int | None = None,
+        reference: str | None = None,
+    ) -> int:
+        """Set a transaction's status, found by id or by user and reference (TS updateTransactionStatus).
 
-        Changes the status field of a transaction record. Status values include:
-        'unsigned', 'signed', 'sent', 'unproven', 'unprocessed', 'completed', 'failed'.
-
-        Args:
-            status: New status string for the transaction
-            transaction_id: Primary key of transaction to update
+        A completed (or proven) transaction can't change and a failed one can't be un-failed.
+        'failed' also releases the outputs the transaction had allocated as inputs and makes its
+        own outputs unspendable.
 
         Returns:
-            int: Number of rows updated (0 if transaction not found, 1 if updated)
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (updateTransactionStatus)
+            1 if updated, 0 if no such transaction.
         """
-        session = self.SessionLocal()
-        try:
-            query = select(TransactionModel).where(TransactionModel.transaction_id == transaction_id)
-            result = session.execute(query)
-            tx = result.scalar_one_or_none()
-
-            if tx:
-                tx.status = status
-                session.add(tx)
-                session.commit()
-                return 1
-
-            return 0
-        finally:
-            session.close()
+        if transaction_id is None and not (user_id is not None and reference):
+            raise InvalidParameterError("transactionId", "either transactionId or userId and reference")
+        q = select(TransactionModel)
+        if transaction_id is not None:
+            q = q.where(TransactionModel.transaction_id == transaction_id)
+        if user_id is not None:
+            q = q.where(TransactionModel.user_id == user_id)
+        if reference:
+            q = q.where(TransactionModel.reference == reference)
+        with session_scope(self.SessionLocal) as session:
+            tx = session.execute(q).scalar_one_or_none()
+            if tx is None:
+                return 0
+            self._set_transaction_status(tx, status, session)
+            return 1
 
     def update_transactions_status(self, transaction_ids: list[int], status: str) -> int:
-        """Update status for multiple transactions in a batch operation.
-
-        Efficiently updates status for many transactions at once, used during
-        operations like finalizing a batch of transactions or marking them as sent.
-
-        Args:
-            transaction_ids: List of transaction primary keys to update
-            status: New status string to apply to all transactions
+        """update_transaction_status for each id, all or nothing (TS updateTransactionsStatus).
 
         Returns:
-            int: Number of transactions actually updated
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (updateTransactionsStatus)
+            Number of transactions updated.
         """
         if not transaction_ids:
             return 0
-
-        session = self.SessionLocal()
-        try:
-            query = select(TransactionModel).where(TransactionModel.transaction_id.in_(transaction_ids))
-            result = session.execute(query)
-            txs = result.scalars().all()
-
-            updated = 0
+        with session_scope(self.SessionLocal) as session:
+            txs = (
+                session.execute(select(TransactionModel).where(TransactionModel.transaction_id.in_(transaction_ids)))
+                .scalars()
+                .all()
+            )
             for tx in txs:
-                if status == "failed":
-                    # TS updateTransactionStatus('failed'): also release the inputs it had allocated.
-                    self._mark_transaction_failed(tx, session)
-                else:
-                    tx.status = status
-                session.add(tx)
-                updated += 1
+                self._set_transaction_status(tx, status, session)
+            return len(txs)
 
-            session.commit()
-            return updated
-        finally:
-            session.close()
+    _SETTABLE_TX_STATUSES: ClassVar[frozenset[str]] = frozenset(
+        {"failed", "nosend", "unsigned", "unprocessed", "sending", "unproven", "completed"}
+    )
+
+    def _set_transaction_status(self, tx: TransactionModel, status: str, session: Session) -> None:
+        """TS updateTransactionStatus on a loaded row: guards, then the 'failed' side effects."""
+        if (status != "completed" and tx.status == "completed") or tx.proven_tx_id is not None:
+            raise StateError('The status of a "completed" transaction cannot be changed.', current_state=tx.status)
+        if status != "failed" and tx.status == "failed":
+            raise StateError('A "failed" transaction may not be un-failed by this method.', current_state=tx.status)
+        if status not in self._SETTABLE_TX_STATUSES:
+            raise InvalidParameterError("status", f"not be {status}")
+        if status == "failed":
+            # Inputs it had allocated become spendable again; outputs it would have created never existed.
+            session.execute(
+                update(Output)
+                .where(Output.spent_by == tx.transaction_id)
+                .values(spendable=True, spent_by=None)
+                .execution_options(synchronize_session=False)
+            )
+            session.execute(
+                update(Output)
+                .where(Output.transaction_id == tx.transaction_id)
+                .where(or_(Output.spendable.is_(True), Output.spent_by.is_not(None)))
+                .values(spendable=False, spent_by=None)
+                .execution_options(synchronize_session=False)
+            )
+        tx.status = status
 
     def _is_fatal_broadcast_error(self, message: str | None) -> bool:
         if not message:
             return False
         lowered = message.lower()
         return any(hint in lowered for hint in self._FATAL_BROADCAST_ERROR_HINTS)
-
-    def _mark_transaction_failed(self, tx_model: TransactionModel, session: Session) -> None:
-        """Mark a transaction as failed and release any inputs it had allocated."""
-        if tx_model.status == "failed":
-            return
-
-        tx_model.status = "failed"
-
-        outputs = session.execute(select(Output).where(Output.spent_by == tx_model.transaction_id)).scalars().all()
-        for output in outputs:
-            output.spendable = True
-            output.spent_by = None
-            session.add(output)
 
     def insert_certificate_auth(self, auth: dict[str, Any], certificate: dict[str, Any]) -> int:
         """Insert a certificate with auth validation (authorized certificate insertion).
@@ -4871,34 +4719,93 @@ class StorageProvider:
 
         return _impl(self, {}, txid, options)
 
-    def attempt_to_post_reqs_to_network(self, reqs: list[dict[str, Any]]) -> dict[str, Any]:
-        """Attempt to post ProvenTxReq records to the network.
+    def attempt_to_post_reqs_to_network(self, reqs: list[dict[str, Any]], services: Any = None) -> dict[str, Any]:
+        """Post each req's transaction as AtomicBEEF and record the outcome (TS attemptToPostReqsToNetwork).
 
-        Tries to send ProvenTxReq (transaction proof requests) to network.
-        In full implementation, would connect to external service; currently
-        counts attempts for instrumentation.
+        The one send path for an immediate processAction and for TaskSendWaiting. Per req:
+            success: req 'unmined', its notify transactions 'unproven'
+            doubleSpend / invalidTx: req 'doubleSpend' / 'invalid', transactions 'failed'
+            serviceError: req 'sending' with one more attempt, transactions 'sending' (sent again later)
+        A req that is already 'unmined' or 'completed' is left as it is.
 
         Args:
-            reqs: List of ProvenTxReq dictionaries to post
+            reqs: ProvenTxReq dicts; only 'txid' is read.
+            services: Services to post with; defaults to the storage's own.
 
         Returns:
-            dict with keys:
-                - posted (int): Count of successfully posted requests
-                - failed (int): Count of requests that failed to post
-
-        Reference:
-            - toolbox/ts-wallet-toolbox/src/storage/StorageProvider.ts (attemptToPostReqsToNetwork)
+            {"details": [{"txid", "status", "message"}]}, status 'invalid' when the txid has no req.
         """
-        posted = 0
-        failed = 0
-
-        for _req in reqs:
+        services = services if services is not None else self._services
+        details: list[dict[str, Any]] = []
+        for txid in dict.fromkeys(r["txid"] for r in reqs):
+            with session_scope(self.SessionLocal) as session:
+                req = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid)).scalar_one_or_none()
+                problem = self._req_not_sendable(req, session)
+                if problem and req is not None and req.status not in ("unmined", "completed"):
+                    req.status = "invalid"
+            if problem:
+                details.append({"txid": txid, "status": "invalid", "message": problem})
+                continue
             try:
-                posted += 1
-            except Exception:
-                failed += 1
+                if services is None:
+                    raise WalletError("Services not configured")
+                beef = Beef.from_binary(self.get_beef_for_transaction(txid))
+                result = services.post_beef(beef.to_binary_atomic(txid).hex())
+            except Exception as exc:
+                result = {"accepted": False, "message": str(exc)}
+            message = result.get("message")
+            if result.get("accepted"):
+                status, req_status, tx_status = "success", "unmined", "unproven"
+            elif result.get("doubleSpend"):
+                status, req_status, tx_status = "doubleSpend", "doubleSpend", "failed"
+            elif result.get("serviceError") is False or (
+                # Services.post_beef says whether only services failed; older results carry only a message.
+                result.get("serviceError") is None
+                and self._is_fatal_broadcast_error(message)
+            ):
+                status, req_status, tx_status = "invalidTx", "invalid", "failed"
+            else:
+                status, req_status, tx_status = "serviceError", "sending", "sending"
+            with session_scope(self.SessionLocal) as session:
+                req = session.execute(select(ProvenTxReq).where(ProvenTxReq.txid == txid)).scalar_one()
+                if req.status not in ("unmined", "completed"):
+                    req.status = req_status
+                    if status == "serviceError":
+                        req.attempts = (req.attempts or 0) + 1
+                    self._set_notify_transactions_status(req, tx_status, session)
+            details.append({"txid": txid, "status": status, "message": message})
+        return {"details": details}
 
-        return {"posted": posted, "failed": failed}
+    def _req_not_sendable(self, req: ProvenTxReq | None, session: Session) -> str | None:
+        """Why a req must not be broadcast, or None (TS validateReqsAndMergeBeefs).
+
+        A req without notify.transactionIds (written before they were recorded) or one whose transaction
+        is already failed may belong to a transaction whose inputs were released; broadcasting it would
+        put a transaction the wallet has given up on onto the chain.
+        """
+        if req is None:
+            return "missing ProvenTxReq"
+        ids = json.loads(req.notify or "{}").get("transactionIds") or []
+        if not ids:
+            return "no notify transactionIds"
+        failed = session.execute(
+            select(TransactionModel.transaction_id).where(
+                TransactionModel.transaction_id.in_(ids), TransactionModel.status == "failed"
+            )
+        ).first()
+        return "transaction is failed" if failed else None
+
+    def _set_notify_transactions_status(self, req: ProvenTxReq, status: str, session: Session) -> None:
+        """Set the status of the req's notify.transactionIds (TS updateTransactionsStatus)."""
+        ids = json.loads(req.notify or "{}").get("transactionIds") or []
+        if not ids:
+            return
+        txs = session.execute(select(TransactionModel).where(TransactionModel.transaction_id.in_(ids))).scalars().all()
+        for tx in txs:
+            try:
+                self._set_transaction_status(tx, status, session)
+            except StateError:
+                pass  # A completed or failed row keeps its status; refusing would leave the req to be re-sent forever.
 
     def update_proven_tx_req_dynamics(self, proven_tx_req_id: int) -> bool:
         """Update dynamic properties of a ProvenTxReq record.
@@ -5572,6 +5479,10 @@ class InternalizeActionContext:
 
         if not subject_txid or subject_tx is None:
             raise InvalidParameterError("tx", "AtomicBEEF must include subject transaction data")
+
+        # Storage is a trust boundary too (remote clients call it directly): TS validateAtomicBeef.
+        if not Services.verify_beef_spv(self.storage.get_services(), beef_obj, allow_txid_only=False):
+            raise InvalidParameterError("tx", "valid AtomicBEEF")
 
         self.beef_obj = beef_obj
         return subject_txid, subject_tx

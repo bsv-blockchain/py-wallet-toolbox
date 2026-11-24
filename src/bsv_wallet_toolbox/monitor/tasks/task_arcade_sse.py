@@ -201,7 +201,16 @@ class TaskArcadeSSE(WalletMonitorTask):
         inputs of transactions marked 'failed'.
         """
         txs = self.monitor.storage.find_transactions({"partial": {"txid": req.get("txid")}})
-        ids = [t["transactionId"] for t in txs if t.get("transactionId") is not None]
+        # Rows of other users sharing the txid may already be completed or failed; storage refuses
+        # to change those, and one refusal would roll back the whole batch.
+        ids = [
+            t["transactionId"]
+            for t in txs
+            if t.get("transactionId") is not None
+            and t.get("status") != "completed"
+            and t.get("provenTxId") is None
+            and (new_status == "failed" or t.get("status") != "failed")
+        ]
         self.monitor.storage.update_transactions_status(ids, new_status)
 
     def _request_proof_check(self) -> None:

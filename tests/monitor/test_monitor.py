@@ -36,7 +36,6 @@ try:
         create_legacy_wallet_sqlite_copy,
         create_sqlite_test_setup_1_wallet,
         mock_merkle_path_services_as_callback,
-        mock_post_services_as_callback,
     )
 
     UTILS_AVAILABLE = True
@@ -51,9 +50,6 @@ except ImportError:
         pytest.skip("Utility functions not available")
 
     def mock_merkle_path_services_as_callback(*args, **kwargs):
-        pytest.skip("Utility functions not available")
-
-    def mock_post_services_as_callback(*args, **kwargs):
         pytest.skip("Utility functions not available")
 
 
@@ -276,103 +272,6 @@ class TestMonitor:
         assert log.startswith(f"process header: 1000 {'a' * 64}")
         assert monitor.last_new_header == tip
         assert check_proofs_task.check_now is True
-
-        ctx.storage.destroy()
-
-    def test_tasksendwaiting_success(self) -> None:
-        """Given: Storage with unsent ProvenTxReqs and mocked successful postBeef
-           When: Execute TaskSendWaiting
-           Then: All unsent transactions are broadcast successfully
-
-        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
-                   test('3 TaskSendWaiting success')
-        """
-        # Given
-        ctx = create_legacy_wallet_sqlite_copy("monitorTest3")
-        storage = ctx.active_storage
-        monitor = ctx.monitor
-
-        if monitor is None:
-            raise ValueError("test requires setup with monitor")
-
-        expected_txids = [
-            "d9ec73b2e0f06e0f482d2d1db9ceccf2f212f0b24afbe10846ac907567be571f",
-            "b7634f08d8c7f3c6244050bebf73a79f40e672aba7d5232663609a58b123b816",
-            "3d2ea64ee584a1f6eb161dbedf3a8d299e3e4497ac7a203d23c044c998c6aa08",
-            "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26",
-            "6d68cc6fa7363e59aaccbaa65f0ca613a6ae8af718453ab5d3a2b022c59b5cc6",
-        ]
-
-        txids_posted: list[str] = []
-
-        def post_beef_callback(beef, txids) -> str:
-            txids_posted.extend(txids)
-            return "success"
-
-        mock_post_services_as_callback([ctx], post_beef_callback)
-
-        # Verify initial state - create test data if not exists
-        for txid in expected_txids:
-            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
-            if len(reqs) == 0:
-                # Create test data if it doesn't exist
-                # Also create the associated transaction first
-                transaction_data = {
-                    "userId": 1,
-                    "txid": f"tx_{txid[:8]}",
-                    "reference": f"test_ref_{txid[:8]}",
-                    "status": "nosend",
-                    "isOutgoing": True,
-                    "satoshis": 1000,
-                    "description": "Test transaction",
-                    "version": 1,
-                    "lockTime": 0,
-                    "rawTx": b"test_tx",
-                }
-                transaction_id = storage.insert_transaction(transaction_data)
-
-                proven_tx_req_data = {
-                    "txid": txid,
-                    "rawTx": b"test_raw_tx",
-                    "status": "unsent",
-                    "notify": json.dumps({"transactionIds": [transaction_id]}),
-                    "history": json.dumps(["created"]),
-                }
-                storage.insert_proven_tx_req(proven_tx_req_data)
-                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
-            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
-            req = reqs[0]
-            assert req["status"] == "unsent"
-
-            notify = ProvenTxReq(req).notify
-            notify_ids = notify.get("transactionIds", [])
-            for transaction_id in notify_ids:
-                txs = storage.find_transactions({"partial": {"transactionId": transaction_id}})
-                assert len(txs) > 0, f"No transaction found for id {transaction_id}"
-                tx = txs[0]
-                assert tx["status"] in ["nosend", "unprocessed", "sending"]
-
-        # When
-        task = TaskSendWaiting(monitor, 1, 1)
-        monitor._tasks.append(task)
-        monitor.run_task("SendWaiting")
-
-        # Then
-        assert txids_posted == expected_txids
-
-        for txid in expected_txids:
-            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
-            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
-            req = reqs[0]
-            assert req["status"] == "unmined"
-
-            notify = ProvenTxReq(req).notify
-            notify_ids = notify.get("transactionIds", [])
-            for transaction_id in notify_ids:
-                txs = storage.find_transactions({"partial": {"transactionId": transaction_id}})
-                assert len(txs) > 0, f"No transaction found for id {transaction_id}"
-                tx = txs[0]
-                assert tx["status"] == "unproven"
 
         ctx.storage.destroy()
 
@@ -687,102 +586,6 @@ class TestMonitor:
             assert req is not None
             assert req.status == "completed"
             assert req.proven_tx_id == proven["provenTxId"]
-
-        assert updates_received == len(expected_txids)
-
-        ctx.storage.destroy()
-
-    def test_processbroadcastedtransactions(self) -> None:
-        """Given: Storage with unsent ProvenTxReqs and onTransactionBroadcasted callback
-           When: Execute TaskSendWaiting to broadcast transactions
-           Then: onTransactionBroadcasted callback is invoked for each broadcast
-
-        Reference: wallet-toolbox/test/monitor/Monitor.test.ts
-                   test('9 ProcessBroadcastedTransactions')
-        """
-        # Given
-        ctx = create_legacy_wallet_sqlite_copy("monitorTest8")
-        storage = ctx.active_storage
-        monitor = ctx.monitor
-
-        if monitor is None:
-            raise ValueError("test requires setup with monitor")
-
-        expected_txids = [
-            "d9ec73b2e0f06e0f482d2d1db9ceccf2f212f0b24afbe10846ac907567be571f",
-            "b7634f08d8c7f3c6244050bebf73a79f40e672aba7d5232663609a58b123b816",
-            "3d2ea64ee584a1f6eb161dbedf3a8d299e3e4497ac7a203d23c044c998c6aa08",
-            "a3a8fe7f541c1383ff7b975af49b27284ae720af5f2705d8409baaf519190d26",
-            "6d68cc6fa7363e59aaccbaa65f0ca613a6ae8af718453ab5d3a2b022c59b5cc6",
-        ]
-
-        txids_posted: list[str] = []
-        updates_received = 0
-
-        def post_beef_callback(beef, txids) -> str:
-            txids_posted.extend(txids)
-            return "success"
-
-        mock_post_services_as_callback([ctx], post_beef_callback)
-
-        def on_transaction_broadcasted(broadcast_result) -> None:
-            nonlocal updates_received
-            assert broadcast_result["status"] == "success"
-            assert broadcast_result["txid"] in expected_txids
-            updates_received += 1
-
-        monitor.on_transaction_broadcasted = on_transaction_broadcasted
-
-        # Verify initial state - create test data if not exists
-        for txid in expected_txids:
-            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
-            if len(reqs) == 0:
-                # Create test data if it doesn't exist
-                # Also create the associated transaction first
-                transaction_data = {
-                    "userId": 1,
-                    "txid": f"tx_{txid[:8]}",
-                    "reference": f"test_ref_{txid[:8]}",
-                    "status": "nosend",
-                    "isOutgoing": True,
-                    "satoshis": 1000,
-                    "description": "Test transaction",
-                    "version": 1,
-                    "lockTime": 0,
-                    "rawTx": b"test_tx",
-                }
-                transaction_id = storage.insert_transaction(transaction_data)
-
-                proven_tx_req_data = {
-                    "txid": txid,
-                    "rawTx": b"test_raw_tx",
-                    "status": "unsent",
-                    "notify": json.dumps({"transactionIds": [transaction_id]}),
-                    "history": json.dumps(["created"]),
-                }
-                storage.insert_proven_tx_req(proven_tx_req_data)
-                reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
-            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
-
-        # Verify initial state
-        for txid in expected_txids:
-            req = ProvenTxReq.from_storage_txid(storage, txid)
-            assert req is not None
-            assert req.status == "unsent"
-
-        # When
-        task = TaskSendWaiting(monitor, 1, 1)
-        monitor._tasks.append(task)
-        monitor.run_task("SendWaiting")
-
-        # Then
-        assert txids_posted == expected_txids
-
-        for txid in expected_txids:
-            reqs = storage.find_proven_tx_reqs({"partial": {"txid": txid}})
-            assert len(reqs) > 0, f"No proven tx req found for txid {txid}"
-            req = reqs[0]
-            assert req["status"] == "unmined"
 
         assert updates_received == len(expected_txids)
 

@@ -6,7 +6,7 @@ Tests the core signing logic without requiring full wallet infrastructure.
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from bsv.transaction import Transaction
+from bsv.transaction import Beef, Transaction
 
 from bsv_wallet_toolbox.signer.methods import (
     PendingSignAction,
@@ -61,6 +61,7 @@ class TestCreateAction:
             patch("bsv_wallet_toolbox.signer.methods._create_new_tx") as mock_create_tx,
             patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process,
+            patch.object(Beef, "to_binary_atomic", return_value=b"atomic"),  # the mock tx can't be serialized
         ):
 
             mock_create_tx.return_value = mock_pending
@@ -168,6 +169,7 @@ class TestSignAction:
             patch("bsv_wallet_toolbox.signer.methods.complete_signed_transaction") as mock_complete,
             patch("bsv_wallet_toolbox.signer.methods.process_action") as mock_process,
             patch("bsv_wallet_toolbox.signer.methods._verify_unlock_scripts") as mock_verify,
+            patch.object(Beef, "to_binary_atomic", return_value=b"atomic"),  # the mock tx can't be serialized
         ):
 
             mock_complete.return_value = mock_tx
@@ -477,7 +479,7 @@ class TestSignerHelperFunctions:
         from bsv_wallet_toolbox.signer.methods import _merge_prior_options
 
         ca_vargs = {"option1": "value1", "options": {}}
-        sa_args = {"option2": "value2"}
+        sa_args = {"reference": "ref", "option2": "value2"}
 
         result = _merge_prior_options(ca_vargs, sa_args)
 

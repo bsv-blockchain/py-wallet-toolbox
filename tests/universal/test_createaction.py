@@ -42,7 +42,7 @@ class TestUniversalVectorsCreateAction:
         assert isinstance(result["txid"], str)
         assert len(result["txid"]) == 64  # Valid txid length
         assert isinstance(result["tx"], list)
-        assert len(result["tx"]) > 0  # Has transaction bytes
+        assert bytes(result["tx"][:4]) == bytes.fromhex("01010101")  # AtomicBEEF (BRC-100), not a raw tx
         # Optional fields
         if "noSendChangeOutputVouts" in result:
             assert isinstance(result["noSendChangeOutputVouts"], list)

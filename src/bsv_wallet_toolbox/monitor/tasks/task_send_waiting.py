@@ -56,8 +56,6 @@ class TaskSendWaiting(WalletMonitorTask):
         if not reqs:
             return ""
 
-        log_messages: list[str] = []
-
         # Filter reqs by minimum age
         current_time = int(time.time() * 1000)
         filtered_reqs = []
@@ -81,46 +79,18 @@ class TaskSendWaiting(WalletMonitorTask):
                 # If no updated_at, assume it's old enough to process
                 filtered_reqs.append(req)
 
-        for req in filtered_reqs:
-            txid = req.get("txid")
-            req_id = req.get("provenTxReqId")
+        if not filtered_reqs:
+            return ""
 
-            if not txid or not req_id:
-                continue
+        # Same send path as an immediate processAction: AtomicBEEF of each tx, statuses updated by storage.
+        result = self.monitor.storage.attempt_to_post_reqs_to_network(filtered_reqs, self.monitor.services)
+        log_messages: list[str] = []
+        for d in result["details"]:
+            txid = d["txid"]
+            if d["status"] == "success":
+                log_messages.append(f"Broadcasted {txid}: Success")
+                self.monitor.call_on_broadcasted_transaction({"status": "success", "txid": txid})
+            else:
+                log_messages.append(f"Broadcast failed {txid}: {d['status']} {d.get('message')}")
 
-            # Get the raw transaction
-            raw_tx = req.get("rawTx")
-            if not raw_tx:
-                continue
-
-            try:
-                # Call the post service
-                result = self.monitor.services.post_beef(raw_tx, [txid])
-
-                if result == "success" or (isinstance(result, dict) and result.get("accepted")):
-                    # Update req status to 'unmined'
-                    self.monitor.storage.update_proven_tx_req(req_id, {"status": "unmined"})
-                    # Update associated transactions to 'unproven'
-                    notify = req.get("notify", {})
-                    if isinstance(notify, str):
-                        import json
-
-                        notify = json.loads(notify)
-                    transaction_ids = notify.get("transactionIds", [])
-                    for tx_id in transaction_ids:
-                        self.monitor.storage.update_transaction(tx_id, {"status": "unproven"})
-                    log_messages.append(f"Broadcasted {txid}: Success")
-
-                    # Call callback
-                    broadcast_result = {"status": "success", "txid": txid}
-                    self.monitor.call_on_broadcasted_transaction(broadcast_result)
-                # Format error message to match test expectations
-                elif isinstance(result, dict) and "message" in result:
-                    log_messages.append(f"Broadcast failed {txid}: {result['message']}")
-                else:
-                    log_messages.append(f"Failed to broadcast transaction {txid}: {result}")
-
-            except Exception as e:
-                log_messages.append(f"Error broadcasting transaction {txid}: {e!s}")
-
-        return "\n".join(log_messages) if log_messages else ""
+        return "\n".join(log_messages)

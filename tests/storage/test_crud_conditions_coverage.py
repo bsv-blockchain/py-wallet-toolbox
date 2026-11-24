@@ -453,7 +453,7 @@ class TestOutputReader:
         result = reader.paged(10, 5, True)
 
         assert result == reader
-        assert reader.paging == {"limit": 10, "offset": 5, "desc": True}
+        assert reader.paging == {"paged": {"limit": 10, "offset": 5}, "orderDescending": True}  # TS Find*Args
 
     def test_output_reader_find(self, mock_provider):
         """Test OutputReader.find method."""

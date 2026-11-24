@@ -439,21 +439,6 @@ class TestWalletErrorConditions:
             # Should work without reference lookup in pending actions
             assert result["txid"] == "test_txid_no_ref"
 
-    def test_wallet_init_beef_creation_failure_fallback(self):
-        """Test wallet initialization when BEEF creation fails completely."""
-        if not IMPORTS_AVAILABLE:
-            pytest.skip("Required imports not available")
-
-        root_key = PrivateKey(bytes.fromhex("a" * 64))
-        key_deriver = KeyDeriver(root_key)
-
-        # Mock Beef to always fail
-        with patch("bsv_wallet_toolbox.wallet.Beef", side_effect=Exception("Beef always fails")):
-            wallet = Wallet(key_deriver=key_deriver, chain="test")
-
-            # Should set beef to None as fallback
-            assert wallet.beef is None
-
     def test_verify_returned_txid_only_no_subject_txid(self, wallet_with_mocks):
         """Test verify_returned_txid_only when no subject txid can be extracted."""
         wallet = wallet_with_mocks

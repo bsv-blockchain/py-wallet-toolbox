@@ -48,6 +48,43 @@ logger = logging.getLogger(__name__)
 ATOMIC_BEEF_HEX_PREFIX = "01010101"
 
 
+# TS ARC.ts: how ARC txStatus values and HTTP errors are classified.
+ARC_ACCEPTED_TX_STATUSES = frozenset(
+    {
+        "RECEIVED",
+        "SENT_TO_NETWORK",
+        "ANNOUNCED_TO_NETWORK",
+        "ACCEPTED_BY_NETWORK",
+        "SEEN_ON_NETWORK",
+        "STORED",
+        "MINED",
+        "IMMUTABLE",
+    }
+)
+ARC_DOUBLE_SPEND_TX_STATUSES = frozenset({"DOUBLE_SPEND_ATTEMPTED", "SEEN_IN_ORPHAN_MEMPOOL"})
+ARC_INVALID_TX_STATUSES = frozenset({"INVALID", "MALFORMED", "REJECTED"})
+_ARC_SERVICE_ERROR_DETAILS = (
+    "maximum batch size",
+    "too many requests",
+    "rate limit",
+    "timeout",
+    "temporarily",
+    "backpressure",
+    "unavailable",
+)
+
+
+def is_arc_service_error_status(status: int | None, detail: str | None = None) -> bool:
+    """True when an ARC HTTP error says nothing about the tx itself (TS isArcServiceErrorStatus).
+
+    Unlike TS, 401/403/404 count too: a bad key or URL says nothing about the tx, and treating it as a
+    refusal would fail the tx and release its inputs although another provider may have accepted it.
+    """
+    if status is None or status in (401, 403, 404, 408, 429, 476) or status >= 500:
+        return True
+    return detail is not None and any(d in detail.lower() for d in _ARC_SERVICE_ERROR_DETAILS)
+
+
 @dataclass
 class ArcConfig:
     """Configuration options for the ARC broadcaster."""
@@ -364,11 +401,14 @@ class ARC:
                     result.data += f" txid altered from {result.txid} to {response_txid}"
                 result.txid = response_txid
 
-                if tx_status in ("DOUBLE_SPEND_ATTEMPTED", "SEEN_IN_ORPHAN_MEMPOOL"):
+                if tx_status in ARC_DOUBLE_SPEND_TX_STATUSES:
                     result.status = "error"
                     result.double_spend = True
                     result.competing_txs = competing_txs
                     result.notes.append({**nne, **nnr, "what": "postRawTxDoubleSpend"})
+                elif tx_status in ARC_INVALID_TX_STATUSES:
+                    result.status = "error"  # the tx itself was refused: not a service error (TS)
+                    result.notes.append({**nne, **nnr, "what": "postRawTxInvalid"})
                 else:
                     result.notes.append({**nn, **nnr, "what": "postRawTxSuccess"})
             else:
@@ -378,7 +418,15 @@ class ARC:
                     result.rate_limited = True
                 else:
                     result.status = "error"
-                result.service_error = True
+                detail = None
+                try:
+                    detail = response.json().get("detail")
+                except Exception:
+                    pass
+                # TS: only 408/429/476/5xx and rate-limit/timeout details are service errors; other 4xx refuse the tx.
+                result.service_error = is_arc_service_error_status(
+                    response.status_code, detail if isinstance(detail, str) else None
+                )
 
                 nnr = {}
                 try:
@@ -550,7 +598,7 @@ class ARC:
                         "returnedTxid": dr.txid if dr else None,
                     }
                 )
-            elif dr and dr.tx_status in ("SEEN_ON_NETWORK", "STORED"):
+            elif dr and dr.tx_status in ARC_ACCEPTED_TX_STATUSES:
                 tr.data = dr.tx_status
                 tr.notes.append(
                     {

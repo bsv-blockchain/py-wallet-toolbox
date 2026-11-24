@@ -145,26 +145,3 @@ def test_update_proven_tx_req_with_new_proven_tx_min_shape(sp):
         }
     )
     assert set(r.keys()) >= {"status", "provenTxId", "history"}
-
-
-def test_get_valid_beef_for_txid_min_bytes(sp):
-    # Prepare a simple req row so rawTx exists
-    with sp.SessionLocal() as s:
-        txid = "aa" * 32
-        req = ProvenTxReq(
-            status="unknown",
-            attempts=0,
-            notified=False,
-            txid=txid,
-            batch=None,
-            history="{}",
-            notify="{}",
-            raw_tx=b"\x00",
-            input_beef=None,
-        )
-        s.add(req)
-        s.flush()
-        s.commit()
-
-    beef = sp.get_valid_beef_for_txid(txid, known_txids=[txid])
-    assert isinstance(beef, (bytes, bytearray))

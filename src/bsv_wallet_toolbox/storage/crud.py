@@ -278,7 +278,7 @@ class CommissionReader(EntityReader):
         return NumericCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> CommissionReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -332,7 +332,7 @@ class TransactionReader(EntityReader):
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> TransactionReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -380,7 +380,7 @@ class UserReader(EntityReader):
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> UserReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -428,7 +428,7 @@ class OutputBasketReader(EntityReader):
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> OutputBasketReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -482,7 +482,7 @@ class OutputReader(EntityReader):
         return BoolCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> OutputReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -530,7 +530,7 @@ class TxNoteReader(EntityReader):
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> TxNoteReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -574,7 +574,7 @@ class KnownTxReader(EntityReader):
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> KnownTxReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:
@@ -619,7 +619,7 @@ class CertifierReader(EntityReader):
         return StringCondition(self, setter)
 
     def paged(self, limit: int, offset: int, desc: bool = False) -> CertifierReader:
-        self.paging = {"limit": limit, "offset": offset, "desc": desc}
+        self.paging = {"paged": {"limit": limit, "offset": offset}, "orderDescending": desc}
         return self
 
     def find(self) -> list[dict[str, Any]]:

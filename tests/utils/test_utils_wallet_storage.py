@@ -98,14 +98,3 @@ def mock_merkle_path_services_as_callback(contexts, callback):
         if ctx.monitor and hasattr(ctx.monitor, "services"):
             # Mock the merkle path service
             ctx.monitor.services.get_merkle_path_for_transaction = callback
-
-
-def mock_post_services_as_callback(contexts, callback):
-    """Mock post services for testing.
-
-    This is a minimal implementation that patches services to use the callback.
-    """
-    for ctx in contexts:
-        if ctx.monitor and hasattr(ctx.monitor, "services"):
-            # Mock the post service
-            ctx.monitor.services.post_beef = callback

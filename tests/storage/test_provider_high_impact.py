@@ -768,65 +768,6 @@ class TestProcessActionOperations:
             pass
 
 
-class TestBeefBuilding:
-    """Test BEEF building operations."""
-
-    def test_build_beef_for_outputs(self, storage_provider, user_with_basket):
-        """Test building BEEF for outputs."""
-        user_id = user_with_basket["userId"]
-        basket_id = user_with_basket["basketId"]
-
-        # Create outputs with proven transactions
-        proven_txid = "q" * 64
-        storage_provider.insert_proven_tx(
-            {
-                "txid": proven_txid,
-                "height": 500,
-                "index": 1,
-                "merklePath": b"\x00\x01\x02",
-                "rawTx": b"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00",
-                "blockHash": "b" * 64,
-                "merkleRoot": "m" * 64,
-            }
-        )
-
-        # Create transaction first
-        tx_id = storage_provider.insert_transaction(
-            {
-                "userId": user_id,
-                "reference": "tx_beef_test",
-                "txid": proven_txid,
-                "status": "completed",
-                "satoshis": 10000,
-            }
-        )
-
-        storage_provider.insert_output(
-            {
-                "userId": user_id,
-                "basketId": basket_id,
-                "transactionId": tx_id,
-                "vout": 0,
-                "satoshis": 10000,
-                "spendable": True,
-                "txid": proven_txid,
-                "lockingScript": b"\x76\xa9\x14" + bytes(20) + b"\x88\xac",
-            }
-        )
-
-        auth = {"userId": user_id}
-        args = {
-            "basket": "default",
-            "includeTransactions": True,
-            "limit": 10,
-        }
-
-        result = storage_provider.list_outputs(auth, args)
-
-        # May include BEEF in result
-        assert "outputs" in result
-
-
 class TestCreateActionOperations:
     """Test create_action related operations."""
 

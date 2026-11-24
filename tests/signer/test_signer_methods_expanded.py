@@ -313,7 +313,7 @@ class TestBuildSignableTransactionAdvanced:
         }
 
         args = {
-            "inputBeef": b"\x01\x00\x00\x00",  # Minimal BEEF
+            "inputBEEF": b"\x01\x00\x00\x00",  # Minimal BEEF
             "version": 1,
             "lockTime": 0,
         }

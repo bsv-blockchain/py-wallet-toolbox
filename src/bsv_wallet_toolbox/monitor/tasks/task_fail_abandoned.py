@@ -32,52 +32,40 @@ class TaskFailAbandoned(WalletMonitorTask):
         return {"run": should_run}
 
     def run_task(self) -> str:
-        """Fail abandoned transactions."""
+        """Fail unprocessed/unsigned transactions not updated for abandoned_msecs, a page at a time (TS)."""
         log_lines: list[str] = []
-        now = datetime.now(UTC)
-        abandoned_time = now - timedelta(milliseconds=self.abandoned_msecs)
-
-        # Find transactions with statuses that can be abandoned
-        # TS uses: ['unprocessed', 'unsigned']
-        # We need to check Python's transaction status flow.
-        # Assuming similar statuses for now.
-        txs = self.monitor.storage.find_transactions({"txStatus": ["unprocessed", "unsigned"]})
-
-        if not txs:
-            return ""
-
-        count = 0
-        for tx in txs:
-            updated_at = tx.get("updatedAt")
-            if not updated_at:
-                continue
-
-            # updated_at might be datetime or string (depending on storage implementation)
-            if isinstance(updated_at, str):
-                try:
-                    # Handle potential Z suffix
-                    updated_at_dt = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
-                except ValueError:
-                    continue
-            elif isinstance(updated_at, datetime):
-                updated_at_dt = updated_at
-            else:
-                continue
-
-            # Ensure timezone awareness for comparison
-            if updated_at_dt.tzinfo is None:
-                updated_at_dt = updated_at_dt.replace(tzinfo=UTC)
-
-            if updated_at_dt < abandoned_time:
+        abandoned_time = datetime.now(UTC) - timedelta(milliseconds=self.abandoned_msecs)
+        limit, offset = 100, 0
+        while True:
+            txs = self.monitor.storage.find_transactions(
+                {"partial": {}, "status": ["unprocessed", "unsigned"], "paged": {"limit": limit, "offset": offset}}
+            )
+            retained = len(txs)
+            for tx in txs:
                 tx_id = tx.get("transactionId")
-                if tx_id:
+                if tx_id and self._is_abandoned(tx.get("updatedAt"), abandoned_time):
                     try:
                         self.monitor.storage.update_transaction_status("failed", tx_id)
                         log_lines.append(f"updated tx {tx_id} status to 'failed'")
-                        count += 1
+                        retained -= 1
                     except Exception as e:
                         log_lines.append(f"failed to update tx {tx_id}: {e!s}")
+            if len(txs) < limit:
+                break
+            offset += retained  # failed rows drop out of the status filter
 
-        if log_lines:
-            return "\n".join(log_lines)
-        return ""
+        return "\n".join(log_lines)
+
+    @staticmethod
+    def _is_abandoned(updated_at: object, abandoned_time: datetime) -> bool:
+        # updated_at might be datetime or string (depending on storage implementation)
+        if isinstance(updated_at, str):
+            try:
+                updated_at = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+            except ValueError:
+                return False
+        if not isinstance(updated_at, datetime):
+            return False
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=UTC)
+        return updated_at < abandoned_time

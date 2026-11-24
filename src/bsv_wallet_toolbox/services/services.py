@@ -49,8 +49,8 @@ from time import time
 from typing import Any
 
 from bsv.chaintracker import ChainTracker
-from bsv.transaction import Transaction
-from bsv.transaction.beef import parse_beef, parse_beef_ex
+from bsv.transaction import Beef, Transaction
+from bsv.transaction.beef import BEEF_V1, BEEF_V2, parse_beef, parse_beef_ex
 
 from ..errors import InvalidParameterError
 from ..utils.random_utils import double_sha256_be
@@ -1577,6 +1577,7 @@ class Services(WalletServices):
             return "ARC: " + " - ".join(parts)
 
         provider_errors: dict[str, str] = {}
+        service_errors_only = True  # False once a provider refuses the tx itself (TS statusError)
 
         # Debug: high-level broadcast context
         self.logger.debug(
@@ -1606,112 +1607,58 @@ class Services(WalletServices):
                     }
                 if not res.service_error:
                     # Terminal validation failure: another provider would reject it too.
-                    return {"accepted": False, "txid": txid, "message": _fmt_arc_error(res)}
+                    return {"accepted": False, "serviceError": False, "txid": txid, "message": _fmt_arc_error(res)}
                 provider_errors["arcade"] = _fmt_arc_error(res)
             except Exception as e:
                 provider_errors["arcade"] = str(e)
                 self.logger.debug("Services.post_beef: Arcade broadcast exception: %s", e)
 
-        # 1. Try ARC TAAL first (if configured)
-        if self.arc_taal:
-            self.logger.debug("Services.post_beef: Attempting TAAL broadcast (first priority)")
+        # 1-2. ARC TAAL, then GorillaPool. Like TS postBeef 'UntilSuccess', any failure but a double spend
+        # (a 429 included) moves on to the next provider. ARC gets the BEEF as V1, so unconfirmed parents
+        # travel with the tx (TS ARC.postBeef); a bare raw tx is sent as is.
+        if beef_obj is not None and all(btx.data_format != 2 for btx in beef_obj.txs.values()):
+            # ARC answers for the last tx of the BEEF: cut it after the subject so that is the subject.
+            v1 = Beef.from_binary(beef_obj.to_binary_atomic(txid)) if txid else beef_obj.clone()
+            v1.version = BEEF_V1
+            v1.atomic_txid = None
+            arc_payload = v1.to_hex()
+        else:  # txid-only entries can't go in V1: the tx as EF, or raw when its inputs aren't linked
             try:
-                # Handle async broadcast - ARC expects Transaction object
-                if tx is None:
-                    raise ValueError("ARC broadcast requires transaction object")
-                res = self._run_async(self.arc_taal.broadcast(tx))
-
-                if getattr(res, "status", "") == "success":
-                    return {
-                        "accepted": True,
-                        "txid": txid,
-                        "message": getattr(res, "message", "Broadcast successful"),
-                    }
-                elif getattr(res, "status", "") == "rate_limited":
-                    return {
-                        "accepted": False,
-                        "rate_limited": True,
-                        "message": getattr(res, "description", "Rate limited"),
-                    }
-                elif getattr(res, "double_spend", False):
-                    return {
-                        "accepted": False,
-                        "doubleSpend": True,
-                        "message": getattr(res, "description", "Double spend detected"),
-                    }
-                provider_errors["arcTaal"] = _fmt_arc_error(res)
-                self.logger.debug(
-                    "Services.post_beef: TAAL broadcast non-success, status=%r, double_spend=%r",
-                    getattr(res, "status", None),
-                    getattr(res, "double_spend", None),
-                )
-            except Exception as e:
-                provider_errors["arcTaal"] = str(e)
-                self.logger.debug("Services.post_beef: TAAL broadcast exception: %s", e)
-
-        # 2. Try ARC GorillaPool (if configured) - fallback after TAAL
-        if self.arc_gorillapool:
-            self.logger.debug("Services.post_beef: Attempting GorillaPool broadcast (TAAL failed)")
+                arc_payload = tx.to_ef().hex()
+            except Exception:
+                arc_payload = tx.hex()
+        for name, arc in (("arcTaal", self.arc_taal), ("arcGorillaPool", self.arc_gorillapool)):
+            if not arc:
+                continue
             try:
-                # Handle async broadcast - ARC expects Transaction object
-                if tx is None:
-                    raise ValueError("ARC broadcast requires transaction object")
-                # Debug: Verify transaction hex is raw transaction, not AtomicBEEF
-                tx_hex = tx.hex() if hasattr(tx, "hex") else None
-                if tx_hex:
-                    self.logger.debug(
-                        "Services.post_beef: Transaction.hex() result, txid=%s, hex_len=%d bytes, hex (first 100 chars): %s...",
-                        txid,
-                        len(tx_hex) // 2,
-                        tx_hex[:100],
-                    )
-                    if tx_hex.startswith(ATOMIC_BEEF_HEX_PREFIX):
-                        self.logger.error(
-                            "Services.post_beef: ERROR - Transaction.hex() returns AtomicBEEF format! "
-                            "This should be raw transaction hex. Transaction object may be corrupted."
-                        )
-                res = self._run_async(self.arc_gorillapool.broadcast(tx))
-
-                if getattr(res, "status", "") == "success":
-                    return {
-                        "accepted": True,
-                        "txid": txid,
-                        "message": getattr(res, "message", "Broadcast successful"),
-                    }
-                elif getattr(res, "status", "") == "rate_limited":
-                    return {
-                        "accepted": False,
-                        "rate_limited": True,
-                        "message": getattr(res, "description", "Rate limited"),
-                    }
-                elif getattr(res, "double_spend", False):
-                    return {
-                        "accepted": False,
-                        "doubleSpend": True,
-                        "message": getattr(res, "description", "Double spend detected"),
-                    }
-                provider_errors["arcGorillaPool"] = _fmt_arc_error(res)
-                self.logger.debug(
-                    "Services.post_beef: GorillaPool broadcast non-success, status=%r, double_spend=%r",
-                    getattr(res, "status", None),
-                    getattr(res, "double_spend", None),
-                )
+                res = arc.post_raw_tx(arc_payload, [txid] if txid else None)
+                if res.status == "success":
+                    return {"accepted": True, "txid": txid, "message": getattr(res, "message", "Broadcast successful")}
+                if res.double_spend:
+                    return {"accepted": False, "doubleSpend": True, "txid": txid, "message": _fmt_arc_error(res)}
+                provider_errors[name] = _fmt_arc_error(res)
+                service_errors_only = service_errors_only and bool(res.service_error)
             except Exception as e:
-                provider_errors["arcGorillaPool"] = str(e)
-                self.logger.debug("Services.post_beef: GorillaPool broadcast exception: %s", e)
+                provider_errors[name] = str(e)
+                self.logger.debug("Services.post_beef: %s broadcast exception: %s", name, e)
 
-        # 3. Try Bitails (if configured) - final fallback
+        # 3. Bitails (if configured) - final fallback. It gets every full tx of the BEEF as raws, parents
+        # first, so unconfirmed parents go along (TS Bitails.postBeef posts raws in txids order).
         if self.bitails:
             try:
-                # Bitails expects a Beef object, pass beef_obj if available, otherwise tx
-                beef_to_use = beef_obj if beef_obj is not None else tx
-                res = self.bitails.post_beef(beef_to_use, txids)
-                if isinstance(res, dict) and res.get("accepted"):
-                    return res
-                if isinstance(res, dict):
-                    provider_errors["bitails"] = res.get("message", "Bitails broadcast failed")
-                else:
-                    provider_errors["bitails"] = "Bitails broadcast failed"
+                bitails_beef = beef_obj
+                if bitails_beef is None:
+                    bitails_beef = Beef(version=BEEF_V2)
+                    bitails_beef.merge_transaction(tx)
+                raw_txids = [t for t, btx in bitails_beef.txs.items() if btx.tx_obj is not None]
+                res = self.bitails.post_beef(bitails_beef, raw_txids)
+                tr = next((r for r in res.txid_results if r.txid == txid), None)
+                if tr is not None and tr.status == "success":
+                    return {"accepted": True, "txid": txid, "message": "Broadcast successful"}
+                if tr is not None and tr.double_spend:
+                    return {"accepted": False, "doubleSpend": True, "txid": txid, "message": res.error_message}
+                provider_errors["bitails"] = res.error_message or "Bitails broadcast failed"
+                service_errors_only = service_errors_only and (tr is None or tr.service_error)
             except Exception as e:
                 provider_errors["bitails"] = str(e)
                 self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)
@@ -1745,7 +1692,13 @@ class Services(WalletServices):
             message,
             txids,
         )
-        return {"accepted": False, "txid": None, "message": message, "providerErrors": provider_errors}
+        return {
+            "accepted": False,
+            "serviceError": service_errors_only,
+            "txid": None,
+            "message": message,
+            "providerErrors": provider_errors,
+        }
 
     def verify_beef(self, beef: str | bytes) -> bool:
         """Verify BEEF data using the chaintracker.
@@ -1785,6 +1738,16 @@ class Services(WalletServices):
         # Verify using chaintracker
         chaintracker = self.get_chain_tracker()
         return self._run_async(beef_obj.verify(chaintracker, True))
+
+    @staticmethod
+    def verify_beef_spv(services: Any, beef: Any, allow_txid_only: bool) -> bool:
+        """TS ``beef.verify(await services.getChainTracker(), allowTxidOnly)`` from sync code.
+
+        Works with any WalletServices (sync or async ``get_chain_tracker``). A missing or failing
+        chain tracker raises, so callers fail closed.
+        """
+        tracker = Services._run_async(services.get_chain_tracker())
+        return Services._run_async(beef.verify(tracker, allow_txid_only)) is True
 
     def post_beef_array(self, beefs: list[str]) -> list[dict[str, Any]]:
         """Broadcast multiple BEEFs via ARC (TS-compatible batch behavior).

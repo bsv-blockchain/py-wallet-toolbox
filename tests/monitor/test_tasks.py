@@ -240,73 +240,33 @@ class TestTaskSendWaiting:
         )
 
     def test_task_send_waiting_run_task_with_transactions(self) -> None:
-        """Test TaskSendWaiting with unsent ProvenTxReqs."""
+        """TaskSendWaiting hands aged reqs to the storage send path and reports successes."""
         mock_monitor = MagicMock()
-        mock_storage = MagicMock()
-        mock_services = MagicMock()
+        reqs = [{"txid": "tx1", "status": "unsent"}, {"txid": "tx2", "status": "unsent"}]
+        mock_monitor.storage.find_proven_tx_reqs.return_value = reqs
+        mock_monitor.storage.attempt_to_post_reqs_to_network.return_value = {
+            "details": [{"txid": "tx1", "status": "success"}, {"txid": "tx2", "status": "success"}]
+        }
 
-        # Mock ProvenTxReq data
-        reqs = [
-            {
-                "txid": "tx1",
-                "provenTxReqId": 123,
-                "rawTx": bytes([1, 2, 3]),
-                "status": "unsent",
-                "notify": '{"transactionIds": [1]}',
-            },
-            {
-                "txid": "tx2",
-                "provenTxReqId": 456,
-                "rawTx": bytes([4, 5, 6]),
-                "status": "unsent",
-                "notify": '{"transactionIds": [2]}',
-            },
-        ]
-        mock_storage.find_proven_tx_reqs.return_value = reqs
-        mock_services.post_beef.return_value = {"accepted": True}
-
-        mock_monitor.storage = mock_storage
-        mock_monitor.services = mock_services
-
-        task = TaskSendWaiting(mock_monitor)
-        result = task.run_task()
+        result = TaskSendWaiting(mock_monitor).run_task()
 
         assert "Broadcasted tx1: Success" in result
         assert "Broadcasted tx2: Success" in result
-
-        # Verify calls
-        assert mock_storage.update_proven_tx_req.call_count == 2
-        assert mock_storage.update_transaction.call_count == 2
-        assert mock_services.post_beef.call_count == 2
+        mock_monitor.storage.attempt_to_post_reqs_to_network.assert_called_once_with(reqs, mock_monitor.services)
+        assert mock_monitor.call_on_broadcasted_transaction.call_count == 2
 
     def test_task_send_waiting_run_task_broadcast_failure(self) -> None:
-        """Test TaskSendWaiting handles broadcast failure."""
+        """A failed post is logged and not reported as broadcasted."""
         mock_monitor = MagicMock()
-        mock_storage = MagicMock()
-        mock_services = MagicMock()
+        mock_monitor.storage.find_proven_tx_reqs.return_value = [{"txid": "tx1", "status": "unsent"}]
+        mock_monitor.storage.attempt_to_post_reqs_to_network.return_value = {
+            "details": [{"txid": "tx1", "status": "serviceError", "message": "Network error"}]
+        }
 
-        reqs = [
-            {
-                "txid": "tx1",
-                "provenTxReqId": 123,
-                "rawTx": bytes([1, 2, 3]),
-                "status": "unsent",
-                "notify": '{"transactionIds": [1]}',
-            }
-        ]
-        mock_storage.find_proven_tx_reqs.return_value = reqs
-        mock_services.post_beef.return_value = {"accepted": False, "message": "Network error"}
+        result = TaskSendWaiting(mock_monitor).run_task()
 
-        mock_monitor.storage = mock_storage
-        mock_monitor.services = mock_services
-
-        task = TaskSendWaiting(mock_monitor)
-        result = task.run_task()
-
-        assert "Broadcast failed tx1: Network error" in result
-        # Should not update req or transaction status on failure
-        mock_storage.update_proven_tx_req.assert_not_called()
-        mock_storage.update_transaction.assert_not_called()
+        assert "Broadcast failed tx1: serviceError Network error" in result
+        mock_monitor.call_on_broadcasted_transaction.assert_not_called()
 
 
 class TestTaskCheckForProofs:

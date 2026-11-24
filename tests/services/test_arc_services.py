@@ -278,9 +278,14 @@ class TestArcServices:
         services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return rate limited response (since valid_arc_config only sets arcUrl)
-        mock_arc_result = Mock()
-        mock_arc_result.status = "rate_limited"
-        mock_arc_result.description = "Rate limited"
+        from bsv_wallet_toolbox.services.providers.arc import PostTxResultForTxid, PostTxResultForTxidError
+
+        mock_arc_result = PostTxResultForTxid(
+            txid="a" * 64,
+            status="rate_limited",
+            service_error=True,
+            data=PostTxResultForTxidError(status="429", detail="Rate limited"),
+        )
         services.arc_taal.post_raw_tx = Mock(return_value=mock_arc_result)
 
         result = services.post_beef(valid_beef_data)
@@ -425,7 +430,7 @@ class TestArcServices:
         services, _, _mock_client = mock_services
 
         # Mock ARC TAAL provider to return success result
-        mock_arc_result = Mock()
+        mock_arc_result = Mock(double_spend=False)
         mock_arc_result.status = "success"
         mock_arc_result.txid = "fallback_txid_123"
         mock_arc_result.message = "Accepted via fallback provider"
