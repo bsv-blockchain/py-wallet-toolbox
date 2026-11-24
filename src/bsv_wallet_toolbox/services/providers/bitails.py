@@ -228,9 +228,14 @@ class Bitails:
                 tr.status, tr.service_error = "error", True  # no answer for it: HTTP error or exception
             elif code == -27:
                 tr.notes.append({**nn, "what": "postRawsSuccessAlreadyInMempool"})  # TS: already known is success
+            elif code == -25:
+                # missing-inputs: TS calls it a possible double spend and confirms it (confirmDoubleSpend)
+                # before failing the tx. Python has no such check, so it stays a retryable service error:
+                # the parent may just not have reached Bitails, and failing would release the inputs.
+                tr.status, tr.service_error = "error", True
+                tr.notes.append({**nne, "what": "postRawsErrorMissingInputs"})
             elif code is not None:
                 tr.status = "error"
-                tr.double_spend = code == -25  # TS: missing-inputs is a possible double spend
                 tr.notes.append({**nne, "what": "postRawsError", "code": code})
             result.txids.append(txid)
             result.txid_results.append(tr)
@@ -289,8 +294,20 @@ class Bitails:
 
                 # Handle different response formats
                 if isinstance(response_data, list):
-                    # List format: [{"txid": "...", "success": true}, ...]
+                    # List format: one row per raw, in order. TS postRaws checks the count and that each
+                    # row's txid is that raw's; otherwise no row can be trusted for any tx.
                     btrs_data = response_data
+                    bad = len(btrs_data) != len(raws) or any(
+                        isinstance(b, dict) and b.get("txid") and b["txid"] != raw_txids[i]
+                        for i, b in enumerate(btrs_data)
+                    )
+                    if bad:
+                        msg = "Bitails results do not match the posted raws"
+                        return [BitailsPostRawsResult(txid=t, success=False, error_message=msg) for t in raw_txids]
+                    btrs_data = [
+                        {**b, "txid": b.get("txid") or raw_txids[i]} if isinstance(b, dict) else b
+                        for i, b in enumerate(btrs_data)
+                    ]
                 elif isinstance(response_data, dict) and "txids" in response_data:
                     # Dict format: {"success": true, "txids": ["txid1", "txid2"]}
                     btrs_data = []

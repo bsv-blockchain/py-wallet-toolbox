@@ -16,6 +16,7 @@ from bsv_wallet_toolbox.services.providers.bitails import (
     GetMerklePathResult,
     PostBeefResult,
 )
+from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 
 
 class TestBitailsInitialization:
@@ -201,73 +202,63 @@ class TestBitailsPostRaws:
         """Create Bitails instance for testing."""
         return Bitails()
 
+    @staticmethod
+    def _txid(raw: str) -> str:
+        return bytes(double_sha256_be(bytes.fromhex(raw))).hex()
+
     def test_post_raws_success(self, bitails: Bitails) -> None:
-        """Test successful post_raws operation."""
+        """Rows come back in raws order, each with its raw's txid."""
         raws = ["deadbeef", "beefdead"]
-        txids = ["txid1", "txid2"]
+        txids = [self._txid(r) for r in raws]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [{"txid": "txid1", "success": True}, {"txid": "txid2", "success": True}]
+        mock_response.json.return_value = [{"txid": t} for t in txids]
 
         with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
-            assert len(results) == 2
-            assert all(isinstance(r, BitailsPostRawsResult) for r in results)
-            assert all(r.success for r in results)
-            assert results[0].txid == "txid1"
-            assert results[1].txid == "txid2"
+            assert [r.txid for r in results] == txids
+            assert all(isinstance(r, BitailsPostRawsResult) and r.success for r in results)
 
     def test_post_raws_partial_success(self, bitails: Bitails) -> None:
-        """Test post_raws with partial success."""
+        """A row without a txid belongs to the raw in its position."""
         raws = ["deadbeef", "beefdead"]
-        txids = ["txid1", "txid2"]
+        txids = [self._txid(r) for r in raws]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [
-            {"txid": "txid1", "success": True},
-            {"error": "Invalid transaction", "success": False},
-        ]
+        mock_response.json.return_value = [{"txid": txids[0]}, {"error": "Invalid transaction"}]
 
         with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws, txids)
 
-            assert len(results) == 2
+            assert [r.txid for r in results] == txids
             assert results[0].success is True
             assert results[1].success is False
             assert "Invalid transaction" in results[1].error_message
 
-    def test_post_raws_no_provided_txids(self, bitails: Bitails) -> None:
-        """Test post_raws without providing txids (should infer from response)."""
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            [{"txid": "other"}],  # a txid that is not the raw's
+            [{}, {}],  # more rows than raws
+        ],
+    )
+    def test_post_raws_rows_not_matching_the_raws_fail_all(self, bitails: Bitails, rows: list) -> None:
+        """TS postRaws: a wrong count or txid means no row can be trusted."""
         raws = ["deadbeef"]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = [{"txid": "inferred_txid", "success": True}]
+        mock_response.json.return_value = rows
 
         with patch("requests.post", return_value=mock_response):
             results = bitails.post_raws(raws)
 
-            assert len(results) == 1
-            assert results[0].txid == "inferred_txid"
-            assert results[0].success is True
-
-    def test_post_raws_mismatched_lengths(self, bitails: Bitails) -> None:
-        """Test post_raws with mismatched raws and txids lengths."""
-        raws = ["deadbeef", "beefdead"]
-        txids = ["txid1"]  # Different length
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = [{"success": True}]
-
-        with patch("requests.post", return_value=mock_response):
-            results = bitails.post_raws(raws, txids)
-
-            # Should still work but txids might not match up properly
-            assert len(results) == 1
+            assert [r.txid for r in results] == [self._txid("deadbeef")]
+            assert results[0].success is False
+            assert results[0].error is None  # a service error, not a refusal of the tx
 
     def test_post_raws_empty_lists(self, bitails: Bitails) -> None:
         """Test post_raws with empty lists."""

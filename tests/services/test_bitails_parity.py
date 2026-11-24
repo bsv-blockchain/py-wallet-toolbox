@@ -69,10 +69,11 @@ def test_already_in_mempool_is_success(services: Services) -> None:
 @pytest.mark.parametrize(
     ("body", "status", "expected"),
     [
+        # missing-inputs may only mean the parent hasn't reached Bitails: retried, not failed (no confirmDoubleSpend)
         (
             [{"txid": PARENT}, {"txid": PARENT_BEEF_TXID, "error": {"code": -25, "message": "missing-inputs"}}],
             201,
-            {"doubleSpend": True},
+            {"serviceError": True, "doubleSpend": None},
         ),
         (
             [{"txid": PARENT}, {"txid": PARENT_BEEF_TXID, "error": {"code": -26, "message": "bad-txns"}}],
@@ -117,3 +118,20 @@ def test_get_merkle_path_not_found_has_no_path() -> None:
 
     assert "merklePath" not in r
     assert r["notes"][-1]["what"] == "getMerklePathNotFound"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        # Rows out of order: the error belongs to the parent, not to the subject.
+        [{"txid": PARENT_BEEF_TXID}, {"error": {"code": -25, "message": "missing-inputs"}}],
+        # Too many rows.
+        [{"txid": PARENT}, {"txid": PARENT_BEEF_TXID}, {"txid": PARENT_BEEF_TXID, "error": {"code": -26}}],
+    ],
+)
+def test_mismatched_rows_are_a_service_error(services: Services, body: Any) -> None:
+    r, _ = _post(services, body)
+
+    assert r["accepted"] is False
+    assert r["serviceError"] is True
+    assert not r.get("doubleSpend")
