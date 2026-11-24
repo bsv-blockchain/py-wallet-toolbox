@@ -49,7 +49,7 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        pytest tests/ -v --cov=src/bsv_wallet_toolbox --cov-report=term-missing --cov-report=html --cov-report=json
+        pytest tests/ -v -rs --cov=src/bsv_wallet_toolbox --cov-report=term-missing --cov-report=html --cov-report=json
 
     - name: Extract coverage percentage
       id: coverage
