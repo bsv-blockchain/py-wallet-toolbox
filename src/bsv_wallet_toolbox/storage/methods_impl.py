@@ -1149,10 +1149,6 @@ def get_beef_for_transaction(
 
     opts = _parse_get_beef_options(options)
 
-    # Go parity: if txid is in known list, return txid-only beef immediately
-    if txid in opts.known_txids:
-        return _beef_for_known_id(txid)
-
     # Track service-fetched transactions for potential persistence
     service_fetched_txs: dict[str, RawTxWithMerklePath] = {}
 
@@ -1165,6 +1161,11 @@ def get_beef_for_transaction(
         beef = opts.merge_to_beef
     else:
         beef = Beef(version=BEEF_V2)
+
+    # A txid the caller already knows goes in txid-only, into mergeToBeef too (TS getValidBeefForKnownTxid).
+    if txid in opts.known_txids:
+        beef.merge_txid_only(txid)
+        return beef.to_binary()
 
     # Try storage first (unless ignored)
     if not opts.ignore_storage:
@@ -1202,16 +1203,6 @@ def _parse_get_beef_options(options: dict[str, Any] | None) -> StorageGetBeefOpt
         chain_tracker=options.get("chainTracker"),
         skip_invalid_proofs=bool(options.get("skipInvalidProofs")),
     )
-
-
-def _beef_for_known_id(txid: str) -> bytes:
-    """Create a BEEF with only a txid-only entry.
-
-    Go parity: mirrors beefForKnownID in get_beef.go
-    """
-    beef = Beef(version=BEEF_V2)
-    beef.merge_txid_only(txid)
-    return beef.to_binary()
 
 
 def _get_beef_from_storage(

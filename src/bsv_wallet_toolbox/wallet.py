@@ -13,6 +13,7 @@ from bsv.keys import PublicKey
 from bsv.overlay_tools import LookupResolver, LookupResolverConfig
 from bsv.transaction import Beef
 from bsv.transaction.beef import BEEF_V2, parse_beef, parse_beef_ex
+from bsv.transaction.beef_party import BeefParty
 from bsv.wallet import Counterparty, CounterpartyType, KeyDeriver, ProtoWallet
 from bsv.wallet.wallet_interface import (
     AuthenticatedResult,
@@ -279,11 +280,7 @@ class Wallet:
         # Initialize Beef instance (BeefParty equivalent - aggregates all BEEF data)
         # TS: this.beef = new BeefParty([this.userParty])
         # TS/Go parity: Use BEEF_V2 as default version (BRC-96)
-        try:
-            self.beef: Any = Beef(version=BEEF_V2)
-        except Exception:
-            # Fallback if Beef initialization fails
-            self.beef = None
+        self.beef: Any = BeefParty([self.user_party] if self.user_party else [])
 
         # Fallback list for known txids when BEEF isn't available
         self._known_txids: list[str] = []
@@ -1131,9 +1128,17 @@ class Wallet:
             # Avoid mutating caller's dict
             args = {**args, "auth": auth}
 
+        if self.auto_known_txids and not args.get("knownTxids"):
+            args = {**args, "knownTxids": self.get_known_txids()}
+
         trace(logger, "wallet.list_outputs.call", originator=originator, auth=auth, args=args)
         try:
             result = self.storage.list_outputs(auth, args)
+            if result.get("BEEF") is not None and self.beef is not None:
+                # TS: this.beef.mergeBeefFromParty(this.storageParty, r.BEEF); r.BEEF = verifyReturnedTxidOnlyBEEF(r.BEEF)
+                beef_bytes = bytes(result["BEEF"])
+                self.beef.merge_beef_from_party(self.storage_party, beef_bytes)
+                result["BEEF"] = self.verify_returned_txid_only(Beef.from_binary(beef_bytes)).to_binary()
             trace(logger, "wallet.list_outputs.result", originator=originator, result=result)
             return result
         except Exception as e:
@@ -1452,13 +1457,7 @@ class Wallet:
         # 1. BEEF merge from transaction (if r.tx): this.beef.mergeBeefFromParty(this.storageParty, r.tx)
         if "tx" in result and result["tx"] is not None and self.beef is not None:
             try:
-                beef_data = result["tx"]
-                # Merge BEEF from result into wallet's BEEF state
-                if hasattr(self.beef, "merge_beef"):
-                    # BeefParty equivalent - merge with storage party tracking
-                    self.beef.merge_beef(beef_data)
-                elif hasattr(self.beef, "merge"):
-                    self.beef.merge(beef_data)
+                self.beef.merge_beef_from_party(self.storage_party, bytes(result["tx"]))
             except Exception:
                 # Best-effort BEEF merge; don't fail transaction on merge errors
                 pass

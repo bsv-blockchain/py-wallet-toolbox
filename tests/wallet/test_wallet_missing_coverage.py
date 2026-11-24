@@ -83,21 +83,6 @@ def wallet_with_mocks(mock_storage, mock_services, mock_monitor):
 class TestWalletInitializationEdgeCases:
     """Test wallet initialization edge cases."""
 
-    def test_wallet_initialization_beef_creation_failure(self):
-        """Test wallet initialization when BEEF creation fails."""
-        if not IMPORTS_AVAILABLE:
-            pytest.skip("Required imports not available")
-
-        root_key = PrivateKey(bytes.fromhex("a" * 64))
-        key_deriver = KeyDeriver(root_key)
-
-        # Mock Beef to raise exception during initialization
-        with patch("bsv_wallet_toolbox.wallet.Beef", side_effect=Exception("Beef init failed")):
-            wallet = Wallet(key_deriver=key_deriver, chain="test")
-
-            # Should set beef to None as fallback
-            assert wallet.beef is None
-
 
 class TestWalletCreateActionEdgeCases:
     """Test create_action edge cases."""
