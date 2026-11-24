@@ -979,7 +979,9 @@ class StorageProvider:
                 beef = Beef(version=BEEF_V2)
                 for output_row in rows:
                     txid = output_row.txid
-                    if txid and beef.find_transaction(txid) is None:
+                    btx = beef.find_transaction(txid) if txid else None
+                    # Also when an earlier output's tx put it in txid-only, from knownTxids.
+                    if txid and (btx is None or btx.data_format == 2):
                         # knownTxids shorten only the inputs: a listed output's own tx is always whole (TS).
                         known = [t for t in known_txids if t != txid]
                         self.get_beef_for_transaction(
