@@ -221,3 +221,25 @@ def test_broadcast_callback_from_monitor_options(storage: StorageProvider, servi
         TaskSendWaiting(monitor, 1, 0).run_task()
 
     assert broadcasted == [{"status": "success", "txid": TXID}]
+
+
+@pytest.mark.parametrize(
+    ("result", "req_status", "tx_status"),
+    [
+        # A service error is retried even when its text looks fatal: the parent may just not be there yet.
+        ({"accepted": False, "serviceError": True, "message": "ARC: HTTP 503 - missing inputs"}, "sending", "sending"),
+        # A provider that refused the tx itself fails it even without a known fatal phrase (TS statusError).
+        ({"accepted": False, "serviceError": False, "message": "ARC: HTTP 465 - fee too low"}, "invalid", "failed"),
+    ],
+)
+def test_services_service_error_flag_decides(
+    storage: StorageProvider, services: Services, result: dict[str, Any], req_status: str, tx_status: str
+) -> None:
+    _, tx_id, _ = _process(storage, delayed=True)
+    monitor = Monitor(MonitorOptions(chain="test", storage=storage, services=services))
+
+    with patch.object(Services, "post_beef", autospec=True, side_effect=_post([result], [])):
+        TaskSendWaiting(monitor, 1, 0).run_task()
+
+    assert _req(storage)["status"] == req_status
+    assert _tx_status(storage, tx_id) == tx_status

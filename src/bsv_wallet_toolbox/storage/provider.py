@@ -4756,7 +4756,11 @@ class StorageProvider:
                 status, req_status, tx_status = "success", "unmined", "unproven"
             elif result.get("doubleSpend"):
                 status, req_status, tx_status = "doubleSpend", "doubleSpend", "failed"
-            elif self._is_fatal_broadcast_error(message):
+            elif result.get("serviceError") is False or (
+                # Services.post_beef says whether only services failed; older results carry only a message.
+                result.get("serviceError") is None
+                and self._is_fatal_broadcast_error(message)
+            ):
                 status, req_status, tx_status = "invalidTx", "invalid", "failed"
             else:
                 status, req_status, tx_status = "serviceError", "sending", "sending"
