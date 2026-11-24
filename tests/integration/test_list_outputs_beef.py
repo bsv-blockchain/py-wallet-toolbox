@@ -46,3 +46,12 @@ def test_storage_beef_is_one_parsable_beef(wallet: Wallet, storage) -> None:
     beef = parse_beef(bytes(r["BEEF"]))
     assert PARENT_BEEF_TXID in beef.txs
     assert beef.is_valid(allow_txid_only=False)
+
+
+def test_known_txids_do_not_drop_the_listed_output_tx(wallet: Wallet, storage) -> None:
+    r = storage.list_outputs(
+        storage.auth, {"basket": "default", "includeTransactions": True, "knownTxids": [PARENT_BEEF_TXID]}
+    )
+
+    btx = parse_beef(bytes(r["BEEF"])).find_transaction(PARENT_BEEF_TXID)
+    assert btx is not None and btx.data_format != 2

@@ -978,9 +978,12 @@ class StorageProvider:
                     known_txids = []
                 beef = Beef(version=BEEF_V2)
                 for output_row in rows:
-                    if output_row.txid and beef.find_transaction(output_row.txid) is None:
+                    txid = output_row.txid
+                    if txid and beef.find_transaction(txid) is None:
+                        # knownTxids shorten only the inputs: a listed output's own tx is always whole (TS).
+                        known = [t for t in known_txids if t != txid]
                         self.get_beef_for_transaction(
-                            output_row.txid, {"mergeToBeef": beef, "knownTxids": known_txids, "ignoreServices": True}
+                            txid, {"mergeToBeef": beef, "knownTxids": known, "ignoreServices": True}
                         )
                 result["BEEF"] = beef.to_binary()
             return result
@@ -1398,7 +1401,8 @@ class StorageProvider:
 
     def get_valid_beef_for_txid(self, txid: str, known_txids: list[str] | None = None) -> bytes:
         """BEEF for a txid built from storage only, known_txids as txid-only (TS getValidBeefForKnownTxid)."""
-        return self.get_beef_for_transaction(txid, {"knownTxids": known_txids or [], "ignoreServices": True})
+        known = [t for t in known_txids or [] if t != txid]  # knownTxids shorten only the inputs (TS)
+        return self.get_beef_for_transaction(txid, {"knownTxids": known, "ignoreServices": True})
 
     # ------------------------------------------------------------------
     # Proven helpers

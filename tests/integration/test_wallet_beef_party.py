@@ -46,6 +46,6 @@ def test_list_outputs_beef_is_merged_and_auto_known_txids_are_sent(wallet: Walle
     r2 = wallet.list_outputs({"basket": "default", "include": "entire transactions"})
 
     assert PARENT_BEEF_TXID in sent[0]["knownTxids"]
-    # Storage answers known txids as txid-only; the wallet fills them back in from its BeefParty.
+    # The listed output's own tx stays whole (knownTxids only shorten its inputs).
     btx = parse_beef(bytes(r2["BEEF"])).find_transaction(PARENT_BEEF_TXID)
     assert btx is not None and btx.data_format != 2
