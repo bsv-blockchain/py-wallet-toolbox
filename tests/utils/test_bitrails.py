@@ -87,8 +87,12 @@ class TestBitrails:
         # When/Then
         for txid in test_txids:
             mp_result = bitails.get_merkle_path(txid, services)
-            if mp_result.merkle_path:
-                root = mp_result.merkle_path.compute_root(txid)
+            if mp_result.get("merklePath"):
+                from bsv.merkle_path import MerklePath
+
+                mp = mp_result["merklePath"]
+                root = MerklePath(mp["blockHeight"], mp["path"]).compute_root(txid)
+                assert root == mp_result["header"]["merkleRoot"]
                 # Note: Expected root depends on block, this is just checking the computation works
                 assert root is not None
                 assert len(root) == 64  # Hex string of 32 bytes

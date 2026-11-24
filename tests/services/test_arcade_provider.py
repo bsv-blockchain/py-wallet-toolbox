@@ -4,6 +4,7 @@ Reference: ts-wallet-toolbox/src/services/providers/__tests/Arcade.test.ts
 Reference: ts-wallet-toolbox/src/services/__tests/Services.arcade.test.ts
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 from bsv import P2PKH, PrivateKey, Transaction, TransactionInput, TransactionOutput
@@ -12,6 +13,7 @@ from bsv.transaction.beef import BEEF_V2, Beef
 
 from bsv_wallet_toolbox.services.providers.arc import ArcConfig
 from bsv_wallet_toolbox.services.providers.arcade import Arcade
+from bsv_wallet_toolbox.services.providers.bitails import PostBeefResult, TxidResult
 from bsv_wallet_toolbox.services.services import Services, create_default_options
 
 TXID = "8e60c4143879918ed03b8fc67b5ac33b8187daa3b46022ee2a9e1eb67e2e46ec"
@@ -406,6 +408,10 @@ class TestServicesArcadeRegistration:
         assert create_default_options("test").get("arcadeUrl") is None
 
 
+def _bitails_accepts(beef: Any, txids: list[str]) -> PostBeefResult:
+    return PostBeefResult(status="success", txid_results=[TxidResult(txid=t, status="success") for t in txids])
+
+
 def _arcade_only_services(**options: str) -> Services:
     services = Services({"chain": "main", "arcadeUrl": ARCADE_URL, "arcadeCallbackToken": "tok", **options})
     services.arc_taal = None
@@ -435,7 +441,7 @@ class TestServicesPostBeefArcade:
     def test_service_error_falls_through(self) -> None:
         services = _arcade_only_services()
         services.bitails = MagicMock()
-        services.bitails.post_beef.return_value = {"accepted": True, "txid": "x", "message": "ok"}
+        services.bitails.post_beef.side_effect = _bitails_accepts
         tx = _signed_tx()
 
         with patch(
@@ -465,7 +471,7 @@ class TestServicesPostBeefArcade:
     def test_fee_policy_rejection_falls_through(self) -> None:
         services = _arcade_only_services()
         services.bitails = MagicMock()
-        services.bitails.post_beef.return_value = {"accepted": True, "txid": "x", "message": "ok"}
+        services.bitails.post_beef.side_effect = _bitails_accepts
         tx = _signed_tx()
 
         with patch(
@@ -498,7 +504,7 @@ class TestServicesPostBeefArcade:
         """A bare raw tx cannot be encoded as EF, so Arcade is skipped without posting."""
         services = _arcade_only_services()
         services.bitails = MagicMock()
-        services.bitails.post_beef.return_value = {"accepted": True, "txid": "x", "message": "ok"}
+        services.bitails.post_beef.side_effect = _bitails_accepts
 
         with patch("bsv_wallet_toolbox.services.providers.arcade.requests.post") as post:
             result = services.post_beef(_signed_tx().hex())

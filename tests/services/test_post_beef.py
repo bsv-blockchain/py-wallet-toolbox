@@ -41,6 +41,7 @@ def mock_services(valid_services_config):
         mock_service_collection.return_value = mock_instance
 
         services = Services(valid_services_config)
+        services.bitails = None  # unit tests here stub ARC; a live Bitails fallback would reach the network
         yield services, mock_instance
 
 

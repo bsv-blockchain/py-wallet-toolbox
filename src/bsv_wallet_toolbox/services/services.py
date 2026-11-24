@@ -49,8 +49,8 @@ from time import time
 from typing import Any
 
 from bsv.chaintracker import ChainTracker
-from bsv.transaction import Transaction
-from bsv.transaction.beef import BEEF_V1, parse_beef, parse_beef_ex
+from bsv.transaction import Beef, Transaction
+from bsv.transaction.beef import BEEF_V1, BEEF_V2, parse_beef, parse_beef_ex
 
 from ..errors import InvalidParameterError
 from ..utils.random_utils import double_sha256_be
@@ -1641,18 +1641,23 @@ class Services(WalletServices):
                 provider_errors[name] = str(e)
                 self.logger.debug("Services.post_beef: %s broadcast exception: %s", name, e)
 
-        # 3. Try Bitails (if configured) - final fallback
+        # 3. Bitails (if configured) - final fallback. It gets every full tx of the BEEF as raws, parents
+        # first, so unconfirmed parents go along (TS Bitails.postBeef posts raws in txids order).
         if self.bitails:
             try:
-                # Bitails expects a Beef object, pass beef_obj if available, otherwise tx
-                beef_to_use = beef_obj if beef_obj is not None else tx
-                res = self.bitails.post_beef(beef_to_use, txids)
-                if isinstance(res, dict) and res.get("accepted"):
-                    return res
-                if isinstance(res, dict):
-                    provider_errors["bitails"] = res.get("message", "Bitails broadcast failed")
-                else:
-                    provider_errors["bitails"] = "Bitails broadcast failed"
+                bitails_beef = beef_obj
+                if bitails_beef is None:
+                    bitails_beef = Beef(version=BEEF_V2)
+                    bitails_beef.merge_transaction(tx)
+                raw_txids = [t for t, btx in bitails_beef.txs.items() if btx.tx_obj is not None]
+                res = self.bitails.post_beef(bitails_beef, raw_txids)
+                tr = next((r for r in res.txid_results if r.txid == txid), None)
+                if tr is not None and tr.status == "success":
+                    return {"accepted": True, "txid": txid, "message": "Broadcast successful"}
+                if tr is not None and tr.double_spend:
+                    return {"accepted": False, "doubleSpend": True, "txid": txid, "message": res.error_message}
+                provider_errors["bitails"] = res.error_message or "Bitails broadcast failed"
+                service_errors_only = service_errors_only and (tr is None or tr.service_error)
             except Exception as e:
                 provider_errors["bitails"] = str(e)
                 self.logger.debug("Services.post_beef: Bitails broadcast exception: %s", e)

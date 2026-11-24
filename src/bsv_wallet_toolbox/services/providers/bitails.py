@@ -29,6 +29,7 @@ from typing import Any
 
 import requests
 
+from bsv_wallet_toolbox.utils.merkle_path_utils import convert_proof_to_merkle_path
 from bsv_wallet_toolbox.utils.random_utils import double_sha256_be
 
 
@@ -89,6 +90,8 @@ class TxidResult:
     double_spend: bool = False
     competing_txs: list[str] | None = None
     notes: list[dict[str, Any]] = field(default_factory=list)
+    service_error: bool = False
+    """The request failed (HTTP error, exception), not the transaction."""
 
 
 @dataclass
@@ -209,37 +212,31 @@ class Bitails:
             # Test case: use dummy raws
             raws = ["deadbeef"] * len(txids)
         else:
-            # Normal case: extract from BEEF object
             for txid in txids:
-                beef_tx = beef.find_transaction(txid)
-                if beef_tx and hasattr(beef_tx, "tx_bytes"):
-                    raw_tx = beef_tx.tx_bytes.hex() if isinstance(beef_tx.tx_bytes, bytes) else beef_tx.tx_bytes
-                    raws.append(raw_tx)
+                btx = beef.find_transaction(txid)
+                if btx is not None and btx.tx_obj is not None:
+                    raws.append(btx.tx_obj.serialize().hex())
 
-        # Delegate to postRaws
-        raw_results = self.post_raws(raws, txids, beef)
+        raw_results = {r.txid: r for r in self.post_raws(raws, txids)}
 
-        # Convert to PostBeefResult
-        result = PostBeefResult(
-            name="BitailsPostBeef",
-            status="success",
-            txid_results=[],
-            notes=[note],
-            success=True,
-            txids=[],
-        )
-
-        # Process results
-        for raw_result in raw_results:
-            if raw_result.txid:
-                result.txids.append(raw_result.txid)
-                txid_result = TxidResult(txid=raw_result.txid, status="success" if raw_result.success else "error")
-                result.txid_results.append(txid_result)
-
-                if not raw_result.success:
-                    result.status = "error"
-                    result.success = False
-                    result.error_message = raw_result.error_message
+        result = PostBeefResult(name="BitailsPostBeef", status="success", notes=[note], success=True, txids=[])
+        for txid in txids:
+            rr = raw_results.get(txid)
+            tr = TxidResult(txid=txid, status="success")
+            code = rr.error.get("code") if rr is not None and isinstance(rr.error, dict) else None
+            if rr is None or (not rr.success and code is None):
+                tr.status, tr.service_error = "error", True  # no answer for it: HTTP error or exception
+            elif code == -27:
+                tr.notes.append({**nn, "what": "postRawsSuccessAlreadyInMempool"})  # TS: already known is success
+            elif code is not None:
+                tr.status = "error"
+                tr.double_spend = code == -25  # TS: missing-inputs is a possible double spend
+                tr.notes.append({**nne, "what": "postRawsError", "code": code})
+            result.txids.append(txid)
+            result.txid_results.append(tr)
+            if tr.status == "error":
+                result.status, result.success = "error", False
+                result.error_message = (rr.error_message if rr is not None else "") or "Bitails broadcast failed"
 
         if result.status == "success":
             result.notes.append({**nn, "what": "postBeefSuccess"})
@@ -252,7 +249,6 @@ class Bitails:
         self,
         raws: list[str],
         txids: list[str] | None = None,
-        beef: Any = None,
     ) -> list[BitailsPostRawsResult]:
         """Broadcast raw transactions via Bitails.
 
@@ -281,11 +277,7 @@ class Bitails:
         headers = self.get_http_headers()
         headers["Content-Type"] = "application/json"
 
-        data = {"raws": raws}
-        if beef is not None:
-            data["beef"] = beef
-        if txids is not None:
-            data["txids"] = txids
+        data = {"raws": raws}  # TS: only the raws; a Beef object in the body was a TypeError
         url = f"{self.url}tx/broadcast/multi"
 
         try:
@@ -329,8 +321,8 @@ class Bitails:
                             result.error_message = str(result.error.get("message", result.error))
                         else:
                             result.error_message = str(result.error)
-                    elif not hasattr(result, "success") or result.success is None:
-                        result.success = True
+                    elif not (isinstance(btr_data, dict) and btr_data.get("success") is False):
+                        result.success = True  # an entry without an error is a success (TS)
 
                     results.append(result)
             else:
@@ -348,79 +340,38 @@ class Bitails:
 
         return results
 
-    def get_merkle_path(self, txid: str, services: Any) -> GetMerklePathResult:
-        """Retrieve merkle path for a transaction.
+    def get_merkle_path(self, txid: str, services: Any) -> dict[str, Any]:
+        """Merkle path of a mined tx from Bitails' TSC proof (TS Bitails.getMerklePath).
 
-        Queries Bitails for a TSC (Transaction Space Commitment) proof and converts
-        it to a MerklePath using wallet-toolbox utilities.
-
-        Args:
-            txid: Transaction ID to retrieve merkle path for.
-            services: WalletServices instance for header lookup.
-
-        Returns:
-            GetMerklePathResult with merkle path and header information.
-
-        Reference: Bitails.ts (getMerklePath)
+        Returns the shape Services.get_merkle_path reads (as WhatsOnChain does): name and notes, plus
+        merklePath ({blockHeight, path}) and header on success, or error when the request failed.
         """
-        result = GetMerklePathResult(name="BitailsTsc", notes=[])
-
+        r: dict[str, Any] = {"name": "BitailsTsc", "notes": []}
         url = f"{self.url}tx/{txid}/proof/tsc"
-        now = datetime.now(UTC).isoformat()
-
-        def make_note_merkle(name: str, when: str, txid_val: str, url_val: str) -> dict[str, Any]:
-            return {"name": name, "when": when, "txid": txid_val, "url": url_val}
-
-        nn_merkle = make_note_merkle("BitailsProofTsc", now, txid, url)
-
-        headers = self.get_http_headers()
-
+        nn = {"name": "BitailsProofTsc", "when": datetime.now(UTC).isoformat(), "txid": txid, "url": url}
         try:
-            response = requests.get(url, headers=headers, timeout=30)
-
-            def make_note_extended_merkle() -> dict[str, Any]:
-                return {
-                    **nn_merkle,
-                    "txid": txid,
-                    "url": url,
-                    "status": response.status_code,
-                    "statusText": response.reason,
-                }
-
-            nne_merkle = make_note_extended_merkle()
-
+            response = requests.get(url, headers=self.get_http_headers(), timeout=30)
+            nne = {**nn, "status": response.status_code, "statusText": response.reason}
             if response.status_code == 404:
-                result.success = False
-                result.error_message = "Transaction not found"
-                result.notes.append({**nn_merkle, "what": "getMerklePathNotFound"})
+                r["notes"].append({**nn, "what": "getMerklePathNotFound"})
             elif response.status_code != 200:
-                result.success = False
-                result.error_message = f"HTTP {response.status_code}"
-                result.notes.append({**nne_merkle, "what": "getMerklePathBadStatus"})
+                r["notes"].append({**nne, "what": "getMerklePathBadStatus"})
             elif not response.content:
-                result.success = False
-                result.error_message = "No response data"
-                result.notes.append({**nne_merkle, "what": "getMerklePathNoData"})
+                r["notes"].append({**nne, "what": "getMerklePathNoData"})
             else:
-                proof_data = response.json()
-                result.merkle_path = proof_data.get("merklePath")
-                result.header = proof_data.get("header")
-                result.success = True
-                result.notes.append({**nne_merkle, "what": "getMerklePathSuccess"})
-
+                p = response.json()  # TSC: {index, txOrId, target (block hash), nodes}
+                header = services.hash_to_header(p["target"])
+                if header:
+                    proof = {"index": p["index"], "nodes": p["nodes"], "height": header["height"]}
+                    r["merklePath"] = convert_proof_to_merkle_path(txid, proof)
+                    r["header"] = header
+                    r["notes"].append({**nne, "what": "getMerklePathSuccess"})
+                else:
+                    r["notes"].append({**nne, "what": "getMerklePathNoHeader", "target": p["target"]})
         except Exception as e:
-            result.error = e
-            result.success = False
-            result.error_message = str(e)
-            result.notes.append(
-                {
-                    **nn_merkle,
-                    "what": "getMerklePathCatch",
-                    "error": str(e),
-                }
-            )
-
-        return result
+            r["notes"].append({**nn, "what": "getMerklePathCatch", "error": str(e)})
+            r["error"] = {"message": str(e), "code": "NETWORK_ERROR"}
+        return r
 
     def get_transaction_status(self, txid: str, use_next: bool | None = None) -> dict[str, Any]:
         """Get transaction status for a given txid (TS-compatible response shape).

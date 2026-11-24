@@ -115,11 +115,9 @@ class TestBitailsPostBeef:
             assert result.success is True
             assert result.txids == ["txid1", "txid2"]
 
-            # Verify the request was made correctly
+            # Only the raws go in the body (TS); a Beef object there was a TypeError.
             mock_post.assert_called_once()
-            call_args = mock_post.call_args
-            assert call_args[1]["json"]["beef"] == mock_beef
-            assert call_args[1]["json"]["txids"] == txids
+            assert set(mock_post.call_args[1]["json"]) == {"raws"}
 
     def test_post_beef_http_error(self, bitails: Bitails) -> None:
         """Test post_beef with HTTP error."""
@@ -323,79 +321,36 @@ class TestBitailsGetMerklePath:
         """Create Bitails instance for testing."""
         return Bitails()
 
-    def test_get_merkle_path_success(self, bitails: Bitails) -> None:
-        """Test successful get_merkle_path operation."""
-        txid = "test_txid"
-        mock_services = Mock()
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"merklePath": {"some": "path_data"}, "header": {"hash": "block_hash"}}
-
-        with patch("requests.get", return_value=mock_response):
-            result = bitails.get_merkle_path(txid, mock_services)
-
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is True
-            assert result.merkle_path == {"some": "path_data"}
-            assert result.header == {"hash": "block_hash"}
-
     def test_get_merkle_path_not_found(self, bitails: Bitails) -> None:
-        """Test get_merkle_path when transaction is not found."""
-        txid = "unknown_txid"
-        mock_services = Mock()
-
-        mock_response = Mock()
-        mock_response.status_code = 404
-        mock_response.text = "Transaction not found"
+        """A 404 returns notes and no merklePath (the TS / WhatsOnChain result shape)."""
+        mock_response = Mock(status_code=404, reason="Not Found")
 
         with patch("requests.get", return_value=mock_response):
-            result = bitails.get_merkle_path(txid, mock_services)
+            result = bitails.get_merkle_path("unknown_txid", Mock())
 
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert result.merkle_path is None
-            assert result.header is None
+        assert result["name"] == "BitailsTsc"
+        assert "merklePath" not in result
+        assert result["notes"][-1]["what"] == "getMerklePathNotFound"
 
-    def test_get_merkle_path_http_error(self, bitails: Bitails) -> None:
-        """Test get_merkle_path with HTTP error."""
-        txid = "test_txid"
-        mock_services = Mock()
+    @pytest.mark.parametrize(
+        "error", [requests.HTTPError("403 Forbidden"), requests.ConnectionError("Network timeout")]
+    )
+    def test_get_merkle_path_request_error(self, bitails: Bitails, error: Exception) -> None:
+        with patch("requests.get", side_effect=error):
+            result = bitails.get_merkle_path("test_txid", Mock())
 
-        with patch("requests.get", side_effect=requests.HTTPError("403 Forbidden")):
-            result = bitails.get_merkle_path(txid, mock_services)
-
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert "403 Forbidden" in result.error_message
-
-    def test_get_merkle_path_connection_error(self, bitails: Bitails) -> None:
-        """Test get_merkle_path with connection error."""
-        txid = "test_txid"
-        mock_services = Mock()
-
-        with patch("requests.get", side_effect=requests.ConnectionError("Network timeout")):
-            result = bitails.get_merkle_path(txid, mock_services)
-
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert "Network timeout" in result.error_message
+        assert "merklePath" not in result
+        assert str(error) in result["error"]["message"]
 
     def test_get_merkle_path_invalid_json(self, bitails: Bitails) -> None:
-        """Test get_merkle_path with invalid JSON response."""
-        txid = "test_txid"
-        mock_services = Mock()
-
-        mock_response = Mock()
-        mock_response.status_code = 200
+        mock_response = Mock(status_code=200, reason="OK", content=b"x")
         mock_response.json.side_effect = ValueError("Invalid JSON")
 
         with patch("requests.get", return_value=mock_response):
-            result = bitails.get_merkle_path(txid, mock_services)
+            result = bitails.get_merkle_path("test_txid", Mock())
 
-            assert isinstance(result, GetMerklePathResult)
-            assert result.success is False
-            assert "Invalid JSON" in result.error_message
+        assert "merklePath" not in result
+        assert "Invalid JSON" in result["error"]["message"]
 
 
 class TestBitailsGetTransactionStatus:
