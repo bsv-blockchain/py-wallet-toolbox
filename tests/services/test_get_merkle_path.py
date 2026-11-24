@@ -142,7 +142,7 @@ class TestGetMerklePath:
     """
 
     @pytest.mark.integration
-    def test_get_merkle_path(self) -> None:
+    def test_get_merkle_path(self, upstream_recovered) -> None:
         """Given: Services with mainnet configuration
            When: Get merkle path for a known txid
            Then: Returns merkle path with correct height and merkle proof
@@ -163,6 +163,8 @@ class TestGetMerklePath:
 
         # When
         result = services.get_merkle_path(txid)
+        if result.get("header") is not None and result.get("merklePath") is not None:
+            upstream_recovered()  # some provider answered, so a wrong value below is our bug
 
         # Then - Result is dict, use dict notation
         assert result.get("header") is not None
