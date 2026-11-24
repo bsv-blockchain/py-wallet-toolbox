@@ -185,6 +185,7 @@ class TestWhatsOnChain:
         # Then
         assert raw_tx_invalid is None
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_getmerklepath_testnet(self) -> None:
         """Given: WhatsOnChain service for testnet, Services instance, and a known txid
@@ -228,6 +229,7 @@ class TestWhatsOnChain:
         )
         assert s_invalid == expected_json_invalid
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
     async def test_getmerklepath_mainnet(self) -> None:
         """Given: WhatsOnChain service for mainnet, Services instance, and a known txid

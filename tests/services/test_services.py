@@ -189,6 +189,7 @@ class TestServices:
         assert ok_new is True
         assert len(headers_new) >= 0
 
+    @pytest.mark.integration
     def test_get_latest_header_bytes(self) -> None:
         """Given: ChaintracksFetch instance
            When: Download latest header bytes from WhatsOnChain
@@ -212,6 +213,7 @@ class TestServices:
         assert len(bytes_data) > 0
         assert bh.hash is not None
 
+    @pytest.mark.integration
     def test_get_headers(self) -> None:
         """Given: ChaintracksFetch instance
            When: Fetch headers JSON from WhatsOnChain

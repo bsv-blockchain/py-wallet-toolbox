@@ -24,13 +24,17 @@ Design goals:
 """
 
 import json
+import socket
+import ssl
 from collections.abc import Callable
 from datetime import UTC
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+import aiohttp
 import pytest
+import requests
 from bsv.keys import PrivateKey
 from bsv.wallet import KeyDeriver
 
@@ -678,6 +682,103 @@ def mock_whatsonchain_default_http(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("bsv.broadcasters.arc.default_http_client", fake_default_http_client)
     except Exception:
         pass
+
+
+# ========================================================================
+# Live-service tests: skip, don't fail, when the provider is the problem
+# ========================================================================
+# Tests marked `integration` talk to real services (WhatsOnChain, CDN, ...).
+# A 429/502/503/504, a dropped connection or a timeout from them is the provider's
+# problem, and product code often swallows it into a normal-looking result
+# ("blockhash not found"), so the assertion text can't tell it apart from a real
+# bug. Instead we watch the transport (requests + aiohttp) and turn a failure
+# into a skip only when such trouble was actually seen during that test and was
+# not cleared by a later good answer from the same URL (a successful retry).
+# DNS and TLS failures are not counted: a mistyped host or a bad certificate is
+# our bug, and CI always has a network.
+
+_UPSTREAM_TROUBLE = pytest.StashKey[dict[str, str]]()
+
+
+def _is_dns_or_tls_error(exc: BaseException | None) -> bool:
+    while exc is not None:
+        if isinstance(exc, (socket.gaierror, ssl.SSLError)):
+            return True
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
+@pytest.fixture(autouse=True)
+def watch_upstream_trouble(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    if request.node.get_closest_marker("integration") is None:
+        return
+    seen = request.node.stash[_UPSTREAM_TROUBLE] = {}
+
+    def note(url: Any, status: int | None = None, exc: BaseException | None = None) -> None:
+        url = str(url)
+        if exc is not None and not _is_dns_or_tls_error(exc):
+            seen[url] = type(exc).__name__
+        elif exc is None and status in (429, 502, 503, 504):
+            seen[url] = f"HTTP {status}"
+        else:
+            seen.pop(url, None)
+
+    # requests: Session.send also reads the body (unless stream=True), so body
+    # read failures land here too.
+    orig_send = requests.Session.send
+
+    def send(self, req, **kwargs):
+        try:
+            resp = orig_send(self, req, **kwargs)
+        except (requests.ConnectionError, requests.Timeout, requests.exceptions.ChunkedEncodingError) as exc:
+            note(req.url, exc=exc)
+            raise
+        note(req.url, resp.status_code)
+        return resp
+
+    # aiohttp: _request is what session.get/request call (private; switch to
+    # trace_configs if aiohttp renames it); the body is read later via read().
+    orig_request = aiohttp.ClientSession._request
+    orig_read = aiohttp.ClientResponse.read
+
+    async def _request(self, method, url, *args, **kwargs):
+        try:
+            resp = await orig_request(self, method, url, *args, **kwargs)
+        except (aiohttp.ClientConnectionError, TimeoutError) as exc:
+            note(url, exc=exc)
+            raise
+        note(url, resp.status)
+        return resp
+
+    async def read(self):
+        try:
+            return await orig_read(self)
+        except (aiohttp.ClientConnectionError, aiohttp.ClientPayloadError, TimeoutError) as exc:
+            note(self.url, exc=exc)
+            raise
+
+    monkeypatch.setattr(requests.Session, "send", send)
+    monkeypatch.setattr(aiohttp.ClientSession, "_request", _request)
+    monkeypatch.setattr(aiohttp.ClientResponse, "read", read)
+
+
+@pytest.fixture
+def upstream_recovered(request: pytest.FixtureRequest) -> Callable[[], None]:
+    """Call once the live data a test checks has actually arrived (e.g. from a
+    fallback provider): earlier provider trouble then no longer excuses a failure."""
+    return lambda: request.node.stash.get(_UPSTREAM_TROUBLE, {}).clear()
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_call(item: pytest.Item):
+    try:
+        return (yield)
+    except (Exception, pytest.fail.Exception):
+        seen = item.stash.get(_UPSTREAM_TROUBLE, None)
+        if seen:
+            trouble = "; ".join(f"{url}: {what}" for url, what in seen.items())
+            pytest.skip(f"upstream service trouble, not a test failure: {trouble}")
+        raise
 
 
 # ========================================================================
