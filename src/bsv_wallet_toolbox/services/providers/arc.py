@@ -75,8 +75,12 @@ _ARC_SERVICE_ERROR_DETAILS = (
 
 
 def is_arc_service_error_status(status: int | None, detail: str | None = None) -> bool:
-    """True when an ARC HTTP error says nothing about the tx itself (TS isArcServiceErrorStatus)."""
-    if status is None or status in (408, 429, 476) or status >= 500:
+    """True when an ARC HTTP error says nothing about the tx itself (TS isArcServiceErrorStatus).
+
+    Unlike TS, 401/403/404 count too: a bad key or URL says nothing about the tx, and treating it as a
+    refusal would fail the tx and release its inputs although another provider may have accepted it.
+    """
+    if status is None or status in (401, 403, 404, 408, 429, 476) or status >= 500:
         return True
     return detail is not None and any(d in detail.lower() for d in _ARC_SERVICE_ERROR_DETAILS)
 

@@ -1617,7 +1617,8 @@ class Services(WalletServices):
         # (a 429 included) moves on to the next provider. ARC gets the BEEF as V1, so unconfirmed parents
         # travel with the tx (TS ARC.postBeef); a bare raw tx is sent as is.
         if beef_obj is not None and all(btx.data_format != 2 for btx in beef_obj.txs.values()):
-            v1 = beef_obj.clone()
+            # ARC answers for the last tx of the BEEF: cut it after the subject so that is the subject.
+            v1 = Beef.from_binary(beef_obj.to_binary_atomic(txid)) if txid else beef_obj.clone()
             v1.version = BEEF_V1
             v1.atomic_txid = None
             arc_payload = v1.to_hex()
