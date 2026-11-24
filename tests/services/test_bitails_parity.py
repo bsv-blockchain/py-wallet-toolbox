@@ -127,6 +127,9 @@ def test_get_merkle_path_not_found_has_no_path() -> None:
         [{"txid": PARENT_BEEF_TXID}, {"error": {"code": -25, "message": "missing-inputs"}}],
         # Too many rows.
         [{"txid": PARENT}, {"txid": PARENT_BEEF_TXID}, {"txid": PARENT_BEEF_TXID, "error": {"code": -26}}],
+        # Not an array: a single row for a batch of two, or a summary object.
+        {"txid": PARENT_BEEF_TXID, "error": {"code": -26, "message": "bad-txns"}},
+        {"success": True, "txids": [PARENT, PARENT_BEEF_TXID]},
     ],
 )
 def test_mismatched_rows_are_a_service_error(services: Services, body: Any) -> None:

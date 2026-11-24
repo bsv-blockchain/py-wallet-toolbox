@@ -292,30 +292,20 @@ class Bitails:
                 # Parse response
                 response_data = response.json()
 
-                # Handle different response formats
-                if isinstance(response_data, list):
-                    # List format: one row per raw, in order. TS postRaws checks the count and that each
-                    # row's txid is that raw's; otherwise no row can be trusted for any tx.
-                    btrs_data = response_data
-                    bad = len(btrs_data) != len(raws) or any(
-                        isinstance(b, dict) and b.get("txid") and b["txid"] != raw_txids[i]
+                # TS postRaws: an array with one row per raw, in order, each row's txid that raw's (a row
+                # without a txid takes its raw's). Anything else can't be trusted for any tx.
+                btrs_data = response_data if isinstance(response_data, list) else None
+                if (
+                    btrs_data is None
+                    or len(btrs_data) != len(raws)
+                    or any(
+                        not isinstance(b, dict) or (b.get("txid") and b["txid"] != raw_txids[i])
                         for i, b in enumerate(btrs_data)
                     )
-                    if bad:
-                        msg = "Bitails results do not match the posted raws"
-                        return [BitailsPostRawsResult(txid=t, success=False, error_message=msg) for t in raw_txids]
-                    btrs_data = [
-                        {**b, "txid": b.get("txid") or raw_txids[i]} if isinstance(b, dict) else b
-                        for i, b in enumerate(btrs_data)
-                    ]
-                elif isinstance(response_data, dict) and "txids" in response_data:
-                    # Dict format: {"success": true, "txids": ["txid1", "txid2"]}
-                    btrs_data = []
-                    for txid in response_data.get("txids", []):
-                        btrs_data.append({"txid": txid, "success": response_data.get("success", True)})
-                else:
-                    # Fallback
-                    btrs_data = [response_data]
+                ):
+                    msg = "Bitails results do not match the posted raws"
+                    return [BitailsPostRawsResult(txid=t, success=False, error_message=msg) for t in raw_txids]
+                btrs_data = [{**b, "txid": b.get("txid") or raw_txids[i]} for i, b in enumerate(btrs_data)]
 
                 # Create results from response data
                 for i, btr_data in enumerate(btrs_data):

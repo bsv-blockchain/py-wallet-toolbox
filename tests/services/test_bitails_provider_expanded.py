@@ -101,24 +101,26 @@ class TestBitailsPostBeef:
         return Bitails()
 
     def test_post_beef_success(self, bitails: Bitails) -> None:
-        """Test successful post_beef operation."""
-        mock_beef = {"format": "BEEF", "version": 1}
-        txids = ["txid1", "txid2"]
+        """The raws of the requested txids go out in order; one row per raw comes back."""
+        from bsv.transaction.beef import parse_beef_ex
+
+        from tests.testabilities.tsgenerated import parent_transaction_atomic_beef
+
+        beef, child, _ = parse_beef_ex(parent_transaction_atomic_beef())
+        txids = [t for t in beef.txs if t != child] + [child]
 
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {"success": True, "txids": ["txid1", "txid2"]}
+        mock_response.json.return_value = [{"txid": t} for t in txids]
 
         with patch("requests.post", return_value=mock_response) as mock_post:
-            result = bitails.post_beef(mock_beef, txids)
+            result = bitails.post_beef(beef, txids)
 
             assert isinstance(result, PostBeefResult)
             assert result.success is True
-            assert result.txids == ["txid1", "txid2"]
-
+            assert result.txids == txids
             # Only the raws go in the body (TS); a Beef object there was a TypeError.
-            mock_post.assert_called_once()
-            assert set(mock_post.call_args[1]["json"]) == {"raws"}
+            assert mock_post.call_args[1]["json"] == {"raws": [beef.find_transaction(t).tx_obj.hex() for t in txids]}
 
     def test_post_beef_http_error(self, bitails: Bitails) -> None:
         """Test post_beef with HTTP error."""
